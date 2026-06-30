@@ -20,6 +20,11 @@ export async function associateNpc(campaignId, npcId) {
   return data;
 }
 
+export async function updateNpc(npcId, body) {
+  const { data } = await client.put(`/npcs/${npcId}`, body);
+  return data;
+}
+
 export async function setNpcVisibility(campaignId, npcId, visible) {
   const { data } = await client.patch(
     `/campaigns/${campaignId}/npcs/${npcId}/visibility`,

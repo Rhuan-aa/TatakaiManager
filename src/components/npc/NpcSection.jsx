@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { getCampaignNpc, setNpcVisibility } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
 import CreateNpcForm from './CreateNpcForm';
+import EditNpcForm from './EditNpcForm';
 
 const INTERACTION_LABELS = {
   TREINO: 'Treino',
@@ -72,24 +73,56 @@ function NpcDetail({ npc }) {
 export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
   const [creating, setCreating] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [details, setDetails] = useState({});
   const [error, setError] = useState('');
+
+  async function loadDetail(npcId) {
+    if (details[npcId]) return details[npcId];
+    const detail = await getCampaignNpc(campaignId, npcId);
+    setDetails((prev) => ({ ...prev, [npcId]: detail }));
+    return detail;
+  }
 
   async function toggleExpand(npcId) {
     setError('');
     if (expandedId === npcId) {
       setExpandedId(null);
+      setEditingId(null);
       return;
     }
     setExpandedId(npcId);
-    if (!details[npcId]) {
-      try {
-        const detail = await getCampaignNpc(campaignId, npcId);
-        setDetails((prev) => ({ ...prev, [npcId]: detail }));
-      } catch (err) {
-        setError(parseApiError(err).message);
-      }
+    setEditingId(null);
+    try {
+      await loadDetail(npcId);
+    } catch (err) {
+      setError(parseApiError(err).message);
     }
+  }
+
+  async function handleEditClick(npcId, event) {
+    event.stopPropagation();
+    setError('');
+    try {
+      await loadDetail(npcId);
+    } catch (err) {
+      setError(parseApiError(err).message);
+      return;
+    }
+    setExpandedId(npcId);
+    setEditingId(npcId);
+  }
+
+  function handleUpdated(updated) {
+    setDetails((prev) => ({ ...prev, [updated.id]: updated }));
+    setNpcs((prev) =>
+      prev.map((n) =>
+        n.id === updated.id
+          ? { ...n, name: updated.name, interactionTypes: updated.interactionTypes }
+          : n
+      )
+    );
+    setEditingId(null);
   }
 
   async function toggleVisibility(npc, event) {
@@ -152,21 +185,41 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
                   {npc.name}
                 </button>
                 {isMaster && (
-                  <button
-                    type="button"
-                    onClick={(e) => toggleVisibility(npc, e)}
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      npc.visible
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                    }`}
-                    title="Alternar visibilidade para os jogadores"
-                  >
-                    {npc.visible ? 'Visível' : 'Oculto'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => handleEditClick(npc.id, e)}
+                      className="rounded-full px-2 py-0.5 text-xs font-medium text-purple-600 hover:bg-purple-50"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => toggleVisibility(npc, e)}
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        npc.visible
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      }`}
+                      title="Alternar visibilidade para os jogadores"
+                    >
+                      {npc.visible ? 'Visível' : 'Oculto'}
+                    </button>
+                  </div>
                 )}
               </div>
-              {expandedId === npc.id && details[npc.id] && <NpcDetail npc={details[npc.id]} />}
+
+              {expandedId === npc.id && (
+                editingId === npc.id && details[npc.id] ? (
+                  <EditNpcForm
+                    npc={details[npc.id]}
+                    onUpdated={handleUpdated}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : details[npc.id] ? (
+                  <NpcDetail npc={details[npc.id]} />
+                ) : null
+              )}
             </li>
           ))}
         </ul>
