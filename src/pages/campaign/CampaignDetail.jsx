@@ -104,7 +104,7 @@ export default function CampaignDetail() {
             <section className="mt-8">
               <h2 className="text-base font-semibold text-slate-900">Logs narrativos</h2>
               <div className="mt-3">
-                <LogPanel campaignId={id} isMaster={isMaster} />
+                <LogPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
               </div>
             </section>
           </>
