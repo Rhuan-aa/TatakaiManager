@@ -34,14 +34,15 @@ public class GlobalExceptionHandler {
                 .body(body(HttpStatus.UNAUTHORIZED, ex.getMessage()));
     }
 
-    @ExceptionHandler({CampaignNotFoundException.class, UserNotFoundException.class})
+    @ExceptionHandler({CampaignNotFoundException.class, UserNotFoundException.class,
+            NpcNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(body(HttpStatus.NOT_FOUND, ex.getMessage()));
     }
 
-    @ExceptionHandler(AlreadyMemberException.class)
-    public ResponseEntity<Map<String, Object>> handleAlreadyMember(AlreadyMemberException ex) {
+    @ExceptionHandler({AlreadyMemberException.class, NpcAlreadyAssociatedException.class})
+    public ResponseEntity<Map<String, Object>> handleConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(body(HttpStatus.CONFLICT, ex.getMessage()));
     }

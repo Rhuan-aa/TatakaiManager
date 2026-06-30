@@ -41,22 +41,20 @@ CREATE TABLE npcs (
     created_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- Coleções embutidas do NPC (@ElementCollection — sem PK própria)
 CREATE TABLE npc_specs (
-    id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    npc_id  UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
-    name    VARCHAR(100) NOT NULL,
+    npc_id      UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
+    name        VARCHAR(100) NOT NULL,
     description TEXT
 );
 
 CREATE TABLE npc_traits (
-    id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     npc_id  UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
     name    VARCHAR(100) NOT NULL
 );
 
 -- Tipos de interação disponíveis por NPC (TREINO, TRABALHO, DESCANSO, OUTRO)
 CREATE TABLE npc_interaction_types (
-    id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     npc_id  UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
     type    VARCHAR(50) NOT NULL,
     UNIQUE (npc_id, type)

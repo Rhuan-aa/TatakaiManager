@@ -1,0 +1,223 @@
+package com.tatakai.manager.npc;
+
+import com.tatakai.manager.dto.request.*;
+import com.tatakai.manager.dto.response.CampaignNpcResponse;
+import com.tatakai.manager.dto.response.NpcResponse;
+import com.tatakai.manager.dto.response.NpcSummaryResponse;
+import com.tatakai.manager.entity.*;
+import com.tatakai.manager.exception.AccessDeniedException;
+import com.tatakai.manager.exception.NpcNotFoundException;
+import com.tatakai.manager.repository.*;
+import com.tatakai.manager.service.NpcService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("NpcService — Sprint 3 (US-06, US-07, US-08, US-20)")
+class NpcServiceTest {
+
+    @Mock private NpcRepository npcRepository;
+    @Mock private CampaignRepository campaignRepository;
+    @Mock private CampaignNpcRepository campaignNpcRepository;
+    @Mock private CampaignMemberRepository memberRepository;
+    @Mock private UserRepository userRepository;
+
+    private NpcService service;
+
+    private User master;
+    private User player;
+
+    @BeforeEach
+    void setUp() {
+        service = new NpcService(npcRepository, campaignRepository,
+                campaignNpcRepository, memberRepository, userRepository);
+        master = User.builder().id(UUID.randomUUID()).name("Mestre").email("mestre@rpg.com").build();
+        player = User.builder().id(UUID.randomUUID()).name("Player").email("player@rpg.com").build();
+    }
+
+    private Npc npcOwnedByMaster() {
+        return Npc.builder()
+                .id(UUID.randomUUID())
+                .name("Aldric")
+                .owner(master)
+                .attributes(NpcAttributes.builder().forca((short) 14).destreza((short) 16).build())
+                .interactionTypes(new java.util.HashSet<>(Set.of(InteractionType.TREINO)))
+                .build();
+    }
+
+    @Test
+    @DisplayName("US-06: cria NPC com atributos opcionais (alguns nulos) e define o dono")
+    void create_withOptionalAttributes_setsOwner() {
+        var req = new CreateNpcRequest(
+                "Vael", "Mercenário taciturno",
+                new NpcAttributesDto((short) 14, (short) 16, null, null, null, null),
+                List.of(new SpecDto("Visão nas trevas", "Enxerga no escuro")),
+                List.of("Cicatriz no rosto"),
+                Set.of(InteractionType.TREINO));
+
+        when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
+        when(npcRepository.save(any(Npc.class))).thenAnswer(inv -> {
+            Npc n = inv.getArgument(0);
+            n.setId(UUID.randomUUID());
+            return n;
+        });
+
+        NpcResponse res = service.create(master.getId(), req);
+
+        assertThat(res.name()).isEqualTo("Vael");
+        assertThat(res.ownerId()).isEqualTo(master.getId());
+        assertThat(res.attributes().forca()).isEqualTo((short) 14);
+        assertThat(res.attributes().constituicao()).isNull();
+        assertThat(res.interactionTypes()).containsExactly(InteractionType.TREINO);
+        assertThat(res.specs()).hasSize(1);
+        assertThat(res.traits()).containsExactly("Cicatriz no rosto");
+    }
+
+    @Test
+    @DisplayName("US-07: dono edita o NPC")
+    void update_byOwner_updatesNpc() {
+        Npc npc = npcOwnedByMaster();
+        when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
+        when(npcRepository.save(any(Npc.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var req = new UpdateNpcRequest("Aldric, o Veterano", "Atualizado",
+                new NpcAttributesDto((short) 18, null, null, null, null, null),
+                List.of(), List.of(), Set.of(InteractionType.TREINO, InteractionType.TRABALHO));
+
+        NpcResponse res = service.update(npc.getId(), master.getId(), req);
+
+        assertThat(res.name()).isEqualTo("Aldric, o Veterano");
+        assertThat(res.attributes().forca()).isEqualTo((short) 18);
+        assertThat(res.interactionTypes())
+                .containsExactlyInAnyOrder(InteractionType.TREINO, InteractionType.TRABALHO);
+    }
+
+    @Test
+    @DisplayName("US-07: não-dono não pode editar o NPC — AccessDenied")
+    void update_byNonOwner_throwsAccessDenied() {
+        Npc npc = npcOwnedByMaster();
+        when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
+
+        var req = new UpdateNpcRequest("Hack", null, null, List.of(), List.of(),
+                Set.of(InteractionType.TREINO));
+
+        assertThatThrownBy(() -> service.update(npc.getId(), player.getId(), req))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(npcRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("US-08: dono e Mestre associa NPC a uma campanha (visível por padrão)")
+    void associate_byOwnerMaster_createsVisibleAssociation() {
+        Npc npc = npcOwnedByMaster();
+        Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
+
+        when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
+        when(campaignRepository.findById(campaign.getId())).thenReturn(Optional.of(campaign));
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(
+                campaign.getId(), master.getId(), Role.MASTER)).thenReturn(true);
+        when(campaignNpcRepository.existsByCampaignIdAndNpcId(campaign.getId(), npc.getId()))
+                .thenReturn(false);
+        when(campaignNpcRepository.save(any(CampaignNpc.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CampaignNpcResponse res = service.associate(npc.getId(), campaign.getId(), master.getId());
+
+        assertThat(res.visible()).isTrue();
+        assertThat(res.npcId()).isEqualTo(npc.getId());
+        assertThat(res.campaignId()).isEqualTo(campaign.getId());
+    }
+
+    @Test
+    @DisplayName("US-08: associar sem ser Mestre da campanha é negado")
+    void associate_byNonMaster_throwsAccessDenied() {
+        Npc npc = npcOwnedByMaster();
+        Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
+
+        when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
+        when(campaignRepository.findById(campaign.getId())).thenReturn(Optional.of(campaign));
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(
+                campaign.getId(), master.getId(), Role.MASTER)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.associate(npc.getId(), campaign.getId(), master.getId()))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(campaignNpcRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("US-20: Mestre oculta NPC para os jogadores")
+    void setVisibility_byMaster_hidesNpc() {
+        Npc npc = npcOwnedByMaster();
+        Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
+        CampaignNpc assoc = CampaignNpc.builder()
+                .id(UUID.randomUUID()).campaign(campaign).npc(npc).visible(true).build();
+
+        when(campaignNpcRepository.findByCampaignIdAndNpcId(campaign.getId(), npc.getId()))
+                .thenReturn(Optional.of(assoc));
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(
+                campaign.getId(), master.getId(), Role.MASTER)).thenReturn(true);
+        when(campaignNpcRepository.save(any(CampaignNpc.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CampaignNpcResponse res = service.setVisibility(
+                campaign.getId(), npc.getId(), master.getId(), false);
+
+        assertThat(res.visible()).isFalse();
+        assertThat(assoc.isVisible()).isFalse();
+    }
+
+    @Test
+    @DisplayName("US-20: jogador lista NPCs da campanha e vê apenas os visíveis")
+    void listForCampaign_asPlayer_returnsOnlyVisible() {
+        Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
+        Npc visivel = npcOwnedByMaster();
+        CampaignNpc assocVisivel = CampaignNpc.builder()
+                .campaign(campaign).npc(visivel).visible(true).build();
+
+        when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), player.getId()))
+                .thenReturn(Optional.of(CampaignMember.builder()
+                        .campaign(campaign).user(player).role(Role.PLAYER).build()));
+        when(campaignNpcRepository.findByCampaignIdAndVisibleTrue(campaign.getId()))
+                .thenReturn(List.of(assocVisivel));
+
+        List<NpcSummaryResponse> result = service.listForCampaign(campaign.getId(), player.getId());
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).visible()).isTrue();
+        // garante que o caminho do jogador NÃO consulta todos os NPCs
+        verify(campaignNpcRepository, never()).findByCampaignId(any());
+    }
+
+    @Test
+    @DisplayName("US-20: jogador que acessa NPC oculto recebe 404 (não revela existência)")
+    void getForCampaign_hiddenNpc_asPlayer_throwsNotFound() {
+        Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
+        Npc oculto = npcOwnedByMaster();
+        CampaignNpc assoc = CampaignNpc.builder()
+                .campaign(campaign).npc(oculto).visible(false).build();
+
+        when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), player.getId()))
+                .thenReturn(Optional.of(CampaignMember.builder()
+                        .campaign(campaign).user(player).role(Role.PLAYER).build()));
+        when(campaignNpcRepository.findByCampaignIdAndNpcId(campaign.getId(), oculto.getId()))
+                .thenReturn(Optional.of(assoc));
+
+        assertThatThrownBy(() ->
+                service.getForCampaign(campaign.getId(), oculto.getId(), player.getId()))
+                .isInstanceOf(NpcNotFoundException.class);
+    }
+}
