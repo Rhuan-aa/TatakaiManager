@@ -5,6 +5,7 @@ import { listCampaignNpcs } from '../api/npcs';
 import { parseApiError } from '../api/parseApiError';
 import InviteMemberForm from '../components/InviteMemberForm';
 import TimeSkipPanel from '../components/TimeSkipPanel';
+import LogPanel from '../components/LogPanel';
 
 export default function CampaignDetail() {
   const { id } = useParams();
@@ -113,6 +114,13 @@ export default function CampaignDetail() {
               <h2 className="text-base font-semibold text-slate-900">Agenda (TimeSkips)</h2>
               <div className="mt-3">
                 <TimeSkipPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
+              </div>
+            </section>
+
+            <section className="mt-8">
+              <h2 className="text-base font-semibold text-slate-900">Logs narrativos</h2>
+              <div className="mt-3">
+                <LogPanel campaignId={id} isMaster={isMaster} />
               </div>
             </section>
           </>
