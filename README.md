@@ -60,5 +60,5 @@ src/main/java/com/tatakai/manager/
 - [x] **Sprint 4** — TimeSkip (criação, encerramento, histórico) — `TimeSkipServiceTest` ✓
 - [x] **Sprint 5** — Agendamento REST (reserva de slot, cancelamento, conflito) — `BookingServiceTest` ✓
 - [x] **Sprint 6** — WebSocket (broadcast em tempo real + auth no CONNECT) — `SlotEventPublisherTest`, `StompAuthChannelInterceptorTest` ✓
-- [ ] Sprint 7 — Log narrativo
-- [ ] Sprint 8 — Deploy
+- [x] **Sprint 7** — Log narrativo (jogador + Mestre, sanitização XSS) — `LogServiceTest`, `TextSanitizerTest` ✓
+- [ ] Sprint 8 — Deploy + Docker

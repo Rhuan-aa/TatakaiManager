@@ -101,7 +101,7 @@ CREATE TABLE bookings (
 
 CREATE TABLE interaction_logs (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    booking_id   UUID NOT NULL REFERENCES bookings(id),
+    booking_id   UUID REFERENCES bookings(id),  -- nulo em logs livres do Mestre
     user_id      UUID NOT NULL REFERENCES users(id),
     campaign_id  UUID NOT NULL REFERENCES campaigns(id),
     narrative    TEXT NOT NULL,
