@@ -35,17 +35,24 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({CampaignNotFoundException.class, UserNotFoundException.class,
-            NpcNotFoundException.class, TimeSkipNotFoundException.class})
+            NpcNotFoundException.class, TimeSkipNotFoundException.class,
+            BookingNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(body(HttpStatus.NOT_FOUND, ex.getMessage()));
     }
 
     @ExceptionHandler({AlreadyMemberException.class, NpcAlreadyAssociatedException.class,
-            ActiveTimeSkipExistsException.class, TimeSkipClosedException.class})
+            ActiveTimeSkipExistsException.class, TimeSkipClosedException.class,
+            SlotTakenException.class})
     public ResponseEntity<Map<String, Object>> handleConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(body(HttpStatus.CONFLICT, ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidBookingException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidBooking(InvalidBookingException ex) {
+        return ResponseEntity.badRequest().body(body(HttpStatus.BAD_REQUEST, ex.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
