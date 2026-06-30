@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-
-const WS_URL = import.meta.env.VITE_WS_URL ?? 'http://localhost:8080/ws';
+import { WS_URL } from '../config';
 
 export function useWebSocket(campaignId, onSlotUpdate) {
   const clientRef = useRef(null);
