@@ -4,6 +4,7 @@ import { getCampaign } from '../api/campaigns';
 import { listCampaignNpcs } from '../api/npcs';
 import { parseApiError } from '../api/parseApiError';
 import InviteMemberForm from '../components/InviteMemberForm';
+import NpcSection from '../components/NpcSection';
 import TimeSkipPanel from '../components/TimeSkipPanel';
 import LogPanel from '../components/LogPanel';
 
@@ -83,31 +84,14 @@ export default function CampaignDetail() {
 
             <section className="mt-8">
               <h2 className="text-base font-semibold text-slate-900">NPCs</h2>
-              {npcs.length === 0 ? (
-                <p className="mt-2 text-sm text-slate-500">Nenhum NPC nesta campanha ainda.</p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {npcs.map((npc) => (
-                    <li
-                      key={npc.id}
-                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
-                    >
-                      <span className="font-medium text-slate-900">{npc.name}</span>
-                      {isMaster && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            npc.visible
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {npc.visible ? 'Visível' : 'Oculto'}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className="mt-3">
+                <NpcSection
+                  campaignId={id}
+                  isMaster={isMaster}
+                  npcs={npcs}
+                  setNpcs={setNpcs}
+                />
+              </div>
             </section>
 
             <section className="mt-8">
