@@ -29,18 +29,22 @@ function bookingLabel(booking, npcs) {
   return `${npcName} · Dia ${booking.dayNumber} · Slot ${booking.slotNumber} · ${type}`;
 }
 
+const textareaClass =
+  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+
+const selectClass =
+  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+
 export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
   const { user } = useAuth();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Player booking state
   const [myBookings, setMyBookings] = useState([]);
   const [hasActiveTs, setHasActiveTs] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
 
-  // Form state
   const [narrative, setNarrative] = useState('');
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -115,10 +119,10 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
       return (
         <form
           onSubmit={handleSubmit}
-          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          className="rounded-lg border border-zinc-700 bg-zinc-800 p-4"
           noValidate
         >
-          <label htmlFor="narrative" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="narrative" className="block text-sm font-medium text-zinc-400">
             Novo log narrativo
           </label>
           <textarea
@@ -128,14 +132,14 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
             value={narrative}
             onChange={(e) => setNarrative(e.target.value)}
             placeholder="Descreva o que aconteceu..."
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className={textareaClass}
           />
-          {submitError && <p className="mt-1 text-sm text-red-600">{submitError}</p>}
+          {submitError && <p className="mt-1 text-sm text-red-400">{submitError}</p>}
           <div className="mt-3 flex justify-end">
             <button
               type="submit"
               disabled={submitting || !canSubmit}
-              className="rounded-md bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+              className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
             >
               {submitting ? 'Publicando...' : 'Publicar log'}
             </button>
@@ -145,12 +149,12 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
     }
 
     if (bookingsLoading) {
-      return <p className="text-sm text-slate-500">Carregando agendamentos...</p>;
+      return <p className="text-sm text-zinc-500">Carregando agendamentos...</p>;
     }
 
     if (!hasActiveTs) {
       return (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-zinc-500">
           Não há TimeSkip ativo no momento para registrar um log.
         </p>
       );
@@ -158,7 +162,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
 
     if (myBookings.length === 0) {
       return (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-zinc-500">
           Você não tem agendamentos no TimeSkip ativo para registrar um log.
         </p>
       );
@@ -167,11 +171,11 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
     return (
       <form
         onSubmit={handleSubmit}
-        className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        className="rounded-lg border border-zinc-700 bg-zinc-800 p-4"
         noValidate
       >
         <div>
-          <label htmlFor="booking-select" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="booking-select" className="block text-sm font-medium text-zinc-400">
             Agendamento
           </label>
           <select
@@ -179,7 +183,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
             required
             value={selectedBookingId}
             onChange={(e) => setSelectedBookingId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className={selectClass}
           >
             <option value="">Selecione um agendamento...</option>
             {myBookings.map((b) => (
@@ -190,7 +194,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
           </select>
         </div>
         <div className="mt-3">
-          <label htmlFor="narrative" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="narrative" className="block text-sm font-medium text-zinc-400">
             O que aconteceu?
           </label>
           <textarea
@@ -200,15 +204,15 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
             value={narrative}
             onChange={(e) => setNarrative(e.target.value)}
             placeholder="Descreva o que aconteceu..."
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className={textareaClass}
           />
         </div>
-        {submitError && <p className="mt-1 text-sm text-red-600">{submitError}</p>}
+        {submitError && <p className="mt-1 text-sm text-red-400">{submitError}</p>}
         <div className="mt-3 flex justify-end">
           <button
             type="submit"
             disabled={submitting || !canSubmit}
-            className="rounded-md bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+            className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
           >
             {submitting ? 'Publicando...' : 'Publicar log'}
           </button>
@@ -221,31 +225,29 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
     <div>
       {renderForm()}
 
-      <div className="mt-4">
-        {loading && <p className="text-sm text-slate-500">Carregando logs...</p>}
-        {!loading && error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="mt-4 space-y-3">
+        {loading && <p className="text-sm text-zinc-500">Carregando logs...</p>}
+        {!loading && error && <p className="text-sm text-red-400">{error}</p>}
         {!loading && !error && logs.length === 0 && (
-          <p className="text-sm text-slate-500">Nenhum log narrativo ainda.</p>
+          <p className="text-sm text-zinc-500">Nenhum log narrativo ainda.</p>
         )}
-        {!loading && !error && logs.length > 0 && (
-          <ul className="space-y-3">
-            {logs.map((log) => (
-              <li key={log.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-slate-900">{log.authorName}</span>
-                  <span className="text-xs text-slate-400">{formatDate(log.createdAt)}</span>
-                </div>
-                {log.bookingId && (
-                  <p className="mt-1 text-xs text-purple-700">
-                    {log.npcName} · Dia {log.dayNumber} · Slot {log.slotNumber} ·{' '}
-                    {INTERACTION_LABELS[log.interactionType] ?? log.interactionType}
-                  </p>
-                )}
-                <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{log.narrative}</p>
-              </li>
-            ))}
-          </ul>
-        )}
+        {!loading &&
+          !error &&
+          logs.map((log) => (
+            <div key={log.id} className="rounded-lg border border-zinc-700 bg-zinc-800 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-white">{log.authorName}</span>
+                <span className="text-xs text-zinc-600">{formatDate(log.createdAt)}</span>
+              </div>
+              {log.bookingId && (
+                <p className="mt-1 text-xs text-red-400">
+                  {log.npcName} · Dia {log.dayNumber} · Slot {log.slotNumber} ·{' '}
+                  {INTERACTION_LABELS[log.interactionType] ?? log.interactionType}
+                </p>
+              )}
+              <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{log.narrative}</p>
+            </div>
+          ))}
       </div>
     </div>
   );

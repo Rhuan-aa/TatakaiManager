@@ -1,12 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { getCampaign } from '../../api/campaigns';
 import { listCampaignNpcs } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
+import AppLayout from '../../components/layout/AppLayout';
 import InviteMemberForm from '../../components/campaign/InviteMemberForm';
 import NpcSection from '../../components/npc/NpcSection';
 import TimeSkipPanel from '../../components/timeskip/TimeSkipPanel';
 import LogPanel from '../../components/log/LogPanel';
+
+function SectionCard({ title, children }) {
+  return (
+    <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+      <h2 className="text-base font-semibold text-white">{title}</h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
 
 export default function CampaignDetail() {
   const { id } = useParams();
@@ -46,70 +56,62 @@ export default function CampaignDetail() {
   const isMaster = campaign?.currentUserRole === 'MASTER';
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white px-6 py-4">
-        <Link to="/dashboard" className="text-sm text-purple-600 hover:underline">
-          ← Voltar para campanhas
-        </Link>
-      </header>
+    <AppLayout backTo="/dashboard" backLabel="Campanhas">
+      {loading && <p className="text-sm text-zinc-500">Carregando...</p>}
+      {!loading && error && <p className="text-sm text-red-400">{error}</p>}
 
-      <main className="mx-auto max-w-3xl p-6">
-        {loading && <p className="text-sm text-slate-500">Carregando...</p>}
-
-        {!loading && error && <p className="text-sm text-red-600">{error}</p>}
-
-        {!loading && !error && campaign && (
-          <>
-            <section>
-              <h1 className="text-2xl font-semibold text-slate-900">{campaign.name}</h1>
-              {campaign.description && (
-                <p className="mt-2 text-slate-600">{campaign.description}</p>
-              )}
-              <span className="mt-3 inline-block rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+      {!loading && !error && campaign && (
+        <div className="space-y-6">
+          {/* Cabeçalho da campanha */}
+          <div>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-2xl font-bold text-white">{campaign.name}</h1>
+              <span
+                className={`mt-1 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  isMaster
+                    ? 'bg-red-950 text-red-400 border border-red-900'
+                    : 'bg-zinc-800 text-zinc-400'
+                }`}
+              >
                 {isMaster ? 'Mestre' : 'Jogador'}
               </span>
-            </section>
-
-            {isMaster && (
-              <section className="mt-8 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-base font-semibold text-slate-900">Convidar jogador</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Adicione um jogador já cadastrado pelo e-mail.
-                </p>
-                <div className="mt-4">
-                  <InviteMemberForm campaignId={id} />
-                </div>
-              </section>
+            </div>
+            {campaign.description && (
+              <p className="mt-2 text-sm text-zinc-400">{campaign.description}</p>
             )}
+          </div>
 
-            <section className="mt-8">
-              <h2 className="text-base font-semibold text-slate-900">NPCs</h2>
-              <div className="mt-3">
-                <NpcSection
-                  campaignId={id}
-                  isMaster={isMaster}
-                  npcs={npcs}
-                  setNpcs={setNpcs}
-                />
-              </div>
-            </section>
+          {/* Convidar jogador (só Mestre) */}
+          {isMaster && (
+            <SectionCard title="Convidar jogador">
+              <p className="mb-3 text-sm text-zinc-500">
+                Adicione um jogador já cadastrado pelo e-mail.
+              </p>
+              <InviteMemberForm campaignId={id} />
+            </SectionCard>
+          )}
 
-            <section className="mt-8">
-              <h2 className="text-base font-semibold text-slate-900">Agenda (TimeSkips)</h2>
-              <div className="mt-3">
-                <TimeSkipPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
-              </div>
-            </section>
+          {/* NPCs */}
+          <SectionCard title="NPCs">
+            <NpcSection
+              campaignId={id}
+              isMaster={isMaster}
+              npcs={npcs}
+              setNpcs={setNpcs}
+            />
+          </SectionCard>
 
-            <section className="mt-8">
-              <h2 className="text-base font-semibold text-slate-900">Logs narrativos</h2>
-              <div className="mt-3">
-                <LogPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
-              </div>
-            </section>
-          </>
-        )}
-      </main>
-    </div>
+          {/* TimeSkips */}
+          <SectionCard title="Agenda (TimeSkips)">
+            <TimeSkipPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
+          </SectionCard>
+
+          {/* Logs */}
+          <SectionCard title="Logs narrativos">
+            <LogPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
+          </SectionCard>
+        </div>
+      )}
+    </AppLayout>
   );
 }

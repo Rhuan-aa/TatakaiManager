@@ -18,6 +18,9 @@ const ATTRIBUTES = [
   { key: 'talento', label: 'Talento' },
 ];
 
+const inputClass =
+  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+
 export default function EditNpcForm({ npc, onUpdated, onCancel }) {
   const [name, setName] = useState(npc.name);
   const [description, setDescription] = useState(npc.description ?? '');
@@ -86,20 +89,17 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
     }
   }
 
-  const inputClass =
-    'mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500';
-
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-2 rounded-md border border-purple-200 bg-white p-4 shadow-sm"
+      className="mt-3 rounded-lg border border-zinc-700 bg-zinc-800 p-4"
       noValidate
     >
-      <h4 className="text-sm font-semibold text-slate-900">Editar NPC</h4>
+      <h4 className="text-sm font-semibold text-white">Editar NPC</h4>
 
       <div className="mt-3 space-y-4">
         <div>
-          <label htmlFor="edit-npc-name" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="edit-npc-name" className="block text-sm font-medium text-zinc-400">
             Nome
           </label>
           <input
@@ -110,12 +110,12 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
             onChange={(e) => setName(e.target.value)}
             className={inputClass}
           />
-          {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
+          {fieldErrors.name && <p className="mt-1 text-xs text-red-400">{fieldErrors.name}</p>}
         </div>
 
         <div>
-          <label htmlFor="edit-npc-desc" className="block text-sm font-medium text-slate-700">
-            Descrição <span className="text-slate-400">(opcional)</span>
+          <label htmlFor="edit-npc-desc" className="block text-sm font-medium text-zinc-400">
+            Descrição <span className="text-zinc-600">(opcional)</span>
           </label>
           <textarea
             id="edit-npc-desc"
@@ -124,20 +124,18 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
             onChange={(e) => setDescription(e.target.value)}
             className={inputClass}
           />
-          {fieldErrors.description && (
-            <p className="mt-1 text-xs text-red-600">{fieldErrors.description}</p>
-          )}
         </div>
 
         <fieldset>
-          <legend className="text-sm font-medium text-slate-700">Tipos de interação</legend>
+          <legend className="text-sm font-medium text-zinc-400">Tipos de interação</legend>
           <div className="mt-2 flex flex-wrap gap-3">
             {INTERACTION_TYPES.map((t) => (
-              <label key={t.value} className="flex items-center gap-1.5 text-sm text-slate-700">
+              <label key={t.value} className="flex items-center gap-1.5 text-sm text-zinc-300">
                 <input
                   type="checkbox"
                   checked={types.includes(t.value)}
                   onChange={() => toggleType(t.value)}
+                  className="accent-red-500"
                 />
                 {t.label}
               </label>
@@ -146,13 +144,13 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
         </fieldset>
 
         <fieldset>
-          <legend className="text-sm font-medium text-slate-700">
-            Atributos <span className="text-slate-400">(opcional, 0–999)</span>
+          <legend className="text-sm font-medium text-zinc-400">
+            Atributos <span className="text-zinc-600">(opcional, 0–999)</span>
           </legend>
           <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {ATTRIBUTES.map((a) => (
               <div key={a.key}>
-                <label htmlFor={`edit-attr-${a.key}`} className="block text-xs text-slate-500">
+                <label htmlFor={`edit-attr-${a.key}`} className="block text-xs text-zinc-500">
                   {a.label}
                 </label>
                 <input
@@ -170,8 +168,8 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
         </fieldset>
 
         <div>
-          <label htmlFor="edit-npc-traits" className="block text-sm font-medium text-slate-700">
-            Traços <span className="text-slate-400">(separados por vírgula)</span>
+          <label htmlFor="edit-npc-traits" className="block text-sm font-medium text-zinc-400">
+            Traços <span className="text-zinc-600">(separados por vírgula)</span>
           </label>
           <input
             id="edit-npc-traits"
@@ -185,13 +183,13 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
 
         <div>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">
-              Especializações <span className="text-slate-400">(opcional)</span>
+            <span className="text-sm font-medium text-zinc-400">
+              Especializações <span className="text-zinc-600">(opcional)</span>
             </span>
             <button
               type="button"
               onClick={() => setSpecs((prev) => [...prev, { name: '', description: '' }])}
-              className="text-sm text-purple-600 hover:underline"
+              className="text-sm text-red-400 hover:text-red-300"
             >
               + Adicionar
             </button>
@@ -203,19 +201,19 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
                 value={spec.name}
                 onChange={(e) => updateSpec(i, 'name', e.target.value)}
                 placeholder="Nome"
-                className="w-1/3 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                className="w-1/3 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
               />
               <input
                 type="text"
                 value={spec.description}
                 onChange={(e) => updateSpec(i, 'description', e.target.value)}
                 placeholder="Descrição"
-                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                className="flex-1 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => setSpecs((prev) => prev.filter((_, idx) => idx !== i))}
-                className="text-sm text-red-600 hover:underline"
+                className="text-sm text-zinc-500 hover:text-red-400"
               >
                 remover
               </button>
@@ -223,21 +221,21 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
           ))}
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
 
       <div className="mt-4 flex justify-end gap-3">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="rounded-md border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-700"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+          className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
         >
           {submitting ? 'Salvando...' : 'Salvar alterações'}
         </button>

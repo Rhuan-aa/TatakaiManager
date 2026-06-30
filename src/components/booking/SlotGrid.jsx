@@ -28,7 +28,6 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
   const isPastDay = day < timeSkip.currentDay;
   const canBook = isActive && !isPastDay;
 
-  // Reposiciona no dia atual sempre que troca de TimeSkip.
   useEffect(() => {
     setDay(timeSkip.currentDay);
   }, [timeSkip.id, timeSkip.currentDay]);
@@ -66,7 +65,6 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
           delete next[key];
           return next;
         }
-        // BOOKED: não sobrescreve um agendamento já conhecido (preserva o id do próprio usuário).
         if (prev[key]) return prev;
         return {
           ...prev,
@@ -119,8 +117,8 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
     }
   }
 
-  if (loading) return <p className="text-sm text-slate-500">Carregando agenda...</p>;
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  if (loading) return <p className="text-sm text-zinc-500">Carregando agenda...</p>;
+  if (error) return <p className="text-sm text-red-400">{error}</p>;
 
   return (
     <div>
@@ -130,15 +128,15 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
             type="button"
             onClick={() => setDay((d) => Math.max(1, d - 1))}
             disabled={day <= 1}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm disabled:opacity-40"
+            className="rounded-md border border-zinc-700 px-2 py-1 text-sm text-zinc-400 disabled:opacity-30 hover:bg-zinc-700"
           >
             ←
           </button>
-          <span className="text-sm font-medium text-slate-700">
+          <span className="text-sm font-medium text-zinc-300">
             Dia {day} de {timeSkip.totalDays}
             {day === timeSkip.currentDay && (
-              <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
-                dia atual
+              <span className="ml-2 rounded-full bg-red-950 border border-red-900 px-2 py-0.5 text-xs text-red-400">
+                hoje
               </span>
             )}
           </span>
@@ -146,7 +144,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
             type="button"
             onClick={() => setDay((d) => Math.min(timeSkip.totalDays, d + 1))}
             disabled={day >= timeSkip.totalDays}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm disabled:opacity-40"
+            className="rounded-md border border-zinc-700 px-2 py-1 text-sm text-zinc-400 disabled:opacity-30 hover:bg-zinc-700"
           >
             →
           </button>
@@ -154,27 +152,27 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
       </div>
 
       {!isActive && (
-        <p className="mt-2 text-sm text-amber-600">Este TimeSkip está encerrado (somente leitura).</p>
+        <p className="mt-2 text-sm text-zinc-500">TimeSkip encerrado — somente leitura.</p>
       )}
       {isActive && isPastDay && (
-        <p className="mt-2 text-sm text-slate-500">Dia já passado — agenda em modo leitura.</p>
+        <p className="mt-2 text-sm text-zinc-500">Dia já passado — somente leitura.</p>
       )}
-      {actionError && <p className="mt-2 text-sm text-red-600">{actionError}</p>}
+      {actionError && <p className="mt-2 text-sm text-red-400">{actionError}</p>}
 
       {npcs.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">Nenhum NPC disponível para agendar.</p>
+        <p className="mt-3 text-sm text-zinc-500">Nenhum NPC disponível para agendar.</p>
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th className="border-b border-slate-200 p-2 text-left font-medium text-slate-500">
+                <th className="border-b border-zinc-700 p-2 text-left text-xs font-medium text-zinc-500">
                   NPC
                 </th>
                 {SLOTS.map((slot) => (
                   <th
                     key={slot}
-                    className="border-b border-slate-200 p-2 text-center font-medium text-slate-500"
+                    className="border-b border-zinc-700 p-2 text-center text-xs font-medium text-zinc-500"
                   >
                     Slot {slot}
                   </th>
@@ -183,10 +181,8 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
             </thead>
             <tbody>
               {npcs.map((npc) => (
-                <tr key={npc.id}>
-                  <td className="border-b border-slate-100 p-2 font-medium text-slate-900">
-                    {npc.name}
-                  </td>
+                <tr key={npc.id} className="border-b border-zinc-800 last:border-0">
+                  <td className="p-2 text-sm font-medium text-zinc-300">{npc.name}</td>
                   {SLOTS.map((slot) => {
                     const key = slotKey(day, npc.id, slot);
                     const booking = bookings[key];
@@ -195,21 +191,18 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
                     const types = npc.interactionTypes ?? [];
 
                     return (
-                      <td
-                        key={slot}
-                        className="border-b border-slate-100 p-2 text-center align-top"
-                      >
+                      <td key={slot} className="p-2 text-center align-top">
                         {booking ? (
-                          <div className="rounded-md bg-purple-50 px-2 py-1 text-left">
-                            <p className="text-xs font-medium text-purple-700">
+                          <div className="rounded-md bg-zinc-700 px-2 py-1 text-left">
+                            <p className="text-xs font-medium text-zinc-200">
                               {INTERACTION_LABELS[booking.interactionType] ?? booking.interactionType}
                             </p>
-                            <p className="text-xs text-slate-500">{booking.userName}</p>
+                            <p className="text-xs text-zinc-500">{booking.userName}</p>
                             {mine && canBook && (
                               <button
                                 type="button"
                                 onClick={() => handleCancel(booking)}
-                                className="mt-1 text-xs text-red-600 hover:underline"
+                                className="mt-1 text-xs text-red-400 hover:underline"
                               >
                                 Cancelar
                               </button>
@@ -223,7 +216,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
                                   key={t}
                                   type="button"
                                   onClick={() => handleBook(npc, slot, t)}
-                                  className="rounded-md bg-purple-600 px-2 py-1 text-xs text-white hover:bg-purple-700"
+                                  className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
                                 >
                                   {INTERACTION_LABELS[t] ?? t}
                                 </button>
@@ -231,7 +224,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
                               <button
                                 type="button"
                                 onClick={() => setActiveCell(null)}
-                                className="text-xs text-slate-400 hover:underline"
+                                className="text-xs text-zinc-500 hover:text-zinc-300"
                               >
                                 cancelar
                               </button>
@@ -240,13 +233,13 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
                             <button
                               type="button"
                               onClick={() => setActiveCell(cellId)}
-                              className="rounded-md border border-dashed border-slate-300 px-2 py-1 text-xs text-slate-400 hover:border-purple-400 hover:text-purple-600"
+                              className="rounded-md border border-dashed border-zinc-700 px-2 py-1 text-xs text-zinc-600 hover:border-red-700 hover:text-red-400"
                             >
                               + Agendar
                             </button>
                           )
                         ) : (
-                          <span className="text-xs text-slate-300">—</span>
+                          <span className="text-xs text-zinc-700">—</span>
                         )}
                       </td>
                     );

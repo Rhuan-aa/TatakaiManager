@@ -8,6 +8,9 @@ import {
 import { parseApiError } from '../../api/parseApiError';
 import SlotGrid from '../booking/SlotGrid';
 
+const inputClass =
+  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+
 export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
   const [timeSkips, setTimeSkips] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -83,7 +86,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     }
   }
 
-  if (loading) return <p className="text-sm text-slate-500">Carregando TimeSkips...</p>;
+  if (loading) return <p className="text-sm text-zinc-500">Carregando TimeSkips...</p>;
 
   return (
     <div>
@@ -94,14 +97,16 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
               key={t.id}
               type="button"
               onClick={() => setSelectedId(t.id)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
                 t.id === selectedId
-                  ? 'bg-purple-600 text-white'
-                  : 'border border-slate-300 text-slate-700 hover:bg-slate-100'
+                  ? 'bg-red-600 text-white'
+                  : 'border border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
               }`}
             >
               {t.name}
-              {t.status === 'CLOSED' && ' (encerrado)'}
+              {t.status === 'CLOSED' && (
+                <span className="ml-1 text-xs opacity-60">(encerrado)</span>
+              )}
             </button>
           ))}
         </div>
@@ -109,24 +114,24 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700"
+            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"
           >
             Novo TimeSkip
           </button>
         )}
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
 
       {creating && (
         <form
           onSubmit={handleCreate}
-          className="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          className="mt-4 rounded-lg border border-zinc-700 bg-zinc-800 p-4"
           noValidate
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <label htmlFor="ts-name" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="ts-name" className="block text-sm font-medium text-zinc-400">
                 Nome
               </label>
               <input
@@ -135,12 +140,14 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 required
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                className={inputClass}
               />
-              {createFields.name && <p className="mt-1 text-xs text-red-600">{createFields.name}</p>}
+              {createFields.name && (
+                <p className="mt-1 text-xs text-red-400">{createFields.name}</p>
+              )}
             </div>
             <div className="w-full sm:w-32">
-              <label htmlFor="ts-days" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="ts-days" className="block text-sm font-medium text-zinc-400">
                 Dias
               </label>
               <input
@@ -151,52 +158,53 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 required
                 value={form.totalDays}
                 onChange={(e) => setForm((p) => ({ ...p, totalDays: e.target.value }))}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                className={inputClass}
               />
               {createFields.totalDays && (
-                <p className="mt-1 text-xs text-red-600">{createFields.totalDays}</p>
+                <p className="mt-1 text-xs text-red-400">{createFields.totalDays}</p>
               )}
             </div>
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="rounded-md bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
               >
                 Criar
               </button>
               <button
                 type="button"
                 onClick={() => setCreating(false)}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                className="rounded-md border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-700"
               >
                 Cancelar
               </button>
             </div>
           </div>
-          {createError && <p className="mt-2 text-sm text-red-600">{createError}</p>}
+          {createError && <p className="mt-2 text-sm text-red-400">{createError}</p>}
         </form>
       )}
 
       {!selected ? (
-        <p className="mt-4 text-sm text-slate-500">
-          Nenhum TimeSkip ainda.{isMaster ? ' Crie o primeiro para começar a agendar.' : ''}
+        <p className="mt-4 text-sm text-zinc-500">
+          Nenhum TimeSkip ainda.
+          {isMaster ? ' Crie o primeiro para começar a agendar.' : ''}
         </p>
       ) : (
-        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mt-4 rounded-lg border border-zinc-700 bg-zinc-800 p-4">
           {isMaster && selected.status === 'ACTIVE' && (
             <div className="mb-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={handleAdvanceDay}
                 disabled={selected.currentDay >= selected.totalDays}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                className="rounded-md border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
               >
                 Avançar dia ({selected.currentDay} → {selected.currentDay + 1})
               </button>
               <button
                 type="button"
                 onClick={handleClose}
-                className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                className="rounded-md border border-red-900 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-950/50"
               >
                 Encerrar TimeSkip
               </button>

@@ -4,6 +4,9 @@ import client from '../../api/client';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
 
+const inputClass =
+  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -32,58 +35,67 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Entrar</h1>
-        <p className="mt-1 text-sm text-slate-500">Acesse sua conta do Tatakai Manager.</p>
+    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <span className="text-3xl font-black tracking-tight text-red-500">TATAKAI</span>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            Manager
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-              E-mail
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={form.email}
-              onChange={handleChange}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            />
-          </div>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8">
+          <h1 className="text-lg font-semibold text-white">Entrar</h1>
+          <p className="mt-1 text-sm text-zinc-500">Acesse sua conta.</p>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-              Senha
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={form.password}
-              onChange={handleChange}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-zinc-400">
+                E-mail
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={form.email}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-zinc-400">
+                Senha
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={form.password}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-md bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
-          >
-            {submitting ? 'Entrando...' : 'Entrar'}
-          </button>
-        </form>
+            {error && <p className="text-sm text-red-400">{error}</p>}
 
-        <p className="mt-4 text-center text-sm text-slate-500">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {submitting ? 'Entrando...' : 'Entrar'}
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-5 text-center text-sm text-zinc-500">
           Não tem conta?{' '}
-          <Link to="/register" className="font-medium text-purple-600 hover:underline">
+          <Link to="/register" className="font-medium text-red-400 hover:text-red-300">
             Cadastre-se
           </Link>
         </p>

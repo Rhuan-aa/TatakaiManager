@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { createCampaign } from '../../api/campaigns';
 import { parseApiError } from '../../api/parseApiError';
 
+const inputClass =
+  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+
 export default function CreateCampaignForm({ onCreated, onCancel }) {
   const [form, setForm] = useState({ name: '', description: '' });
   const [error, setError] = useState('');
@@ -33,14 +36,14 @@ export default function CreateCampaignForm({ onCreated, onCancel }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+      className="rounded-xl border border-zinc-700 bg-zinc-800 p-6"
       noValidate
     >
-      <h2 className="text-base font-semibold text-slate-900">Nova campanha</h2>
+      <h2 className="text-base font-semibold text-white">Nova campanha</h2>
 
       <div className="mt-4 space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="name" className="block text-sm font-medium text-zinc-400">
             Nome
           </label>
           <input
@@ -50,14 +53,14 @@ export default function CreateCampaignForm({ onCreated, onCancel }) {
             required
             value={form.name}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className={inputClass}
           />
-          {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
+          {fieldErrors.name && <p className="mt-1 text-xs text-red-400">{fieldErrors.name}</p>}
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-slate-700">
-            Descrição <span className="text-slate-400">(opcional)</span>
+          <label htmlFor="description" className="block text-sm font-medium text-zinc-400">
+            Descrição <span className="text-zinc-600">(opcional)</span>
           </label>
           <textarea
             id="description"
@@ -65,28 +68,28 @@ export default function CreateCampaignForm({ onCreated, onCancel }) {
             rows={3}
             value={form.description}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className={inputClass}
           />
           {fieldErrors.description && (
-            <p className="mt-1 text-xs text-red-600">{fieldErrors.description}</p>
+            <p className="mt-1 text-xs text-red-400">{fieldErrors.description}</p>
           )}
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
 
       <div className="mt-5 flex justify-end gap-3">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="rounded-md border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-700"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+          className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
         >
           {submitting ? 'Criando...' : 'Criar campanha'}
         </button>
