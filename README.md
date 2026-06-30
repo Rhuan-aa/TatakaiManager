@@ -57,7 +57,7 @@ src/main/java/com/tatakai/manager/
 - [x] **Sprint 1** — Autenticação (cadastro/login com JWT) — `AuthServiceTest` ✓
 - [x] **Sprint 2** — Campanhas e membros — `CampaignServiceTest` ✓
 - [x] **Sprint 3** — NPCs (acervo, associação, visibilidade) — `NpcServiceTest` ✓
-- [ ] Sprint 4 — TimeSkip
+- [x] **Sprint 4** — TimeSkip (criação, encerramento, histórico) — `TimeSkipServiceTest` ✓
 - [ ] Sprint 5 — Agendamento (REST)
 - [ ] Sprint 6 — WebSocket (tempo real)
 - [ ] Sprint 7 — Log narrativo
