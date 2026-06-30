@@ -9,12 +9,27 @@ import NpcSection from '../../components/npc/NpcSection';
 import TimeSkipPanel from '../../components/timeskip/TimeSkipPanel';
 import LogPanel from '../../components/log/LogPanel';
 
-function SectionCard({ title, children }) {
+const TABS_MASTER = ['NPCs', 'Agenda', 'Logs', 'Configurações'];
+const TABS_PLAYER = ['NPCs', 'Agenda', 'Logs'];
+
+function TabBar({ tabs, active, onChange }) {
   return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-      <h2 className="text-base font-semibold text-white">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
+    <div className="flex gap-1 border-b border-zinc-800">
+      {tabs.map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          onClick={() => onChange(tab)}
+          className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+            active === tab
+              ? 'border-b-2 border-red-500 text-white'
+              : 'text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -24,6 +39,7 @@ export default function CampaignDetail() {
   const [npcs, setNpcs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('NPCs');
 
   useEffect(() => {
     let active = true;
@@ -54,6 +70,7 @@ export default function CampaignDetail() {
   }, [id]);
 
   const isMaster = campaign?.currentUserRole === 'MASTER';
+  const tabs = isMaster ? TABS_MASTER : TABS_PLAYER;
 
   return (
     <AppLayout backTo="/dashboard" backLabel="Campanhas">
@@ -62,54 +79,60 @@ export default function CampaignDetail() {
 
       {!loading && !error && campaign && (
         <div className="space-y-6">
-          {/* Cabeçalho da campanha */}
-          <div>
-            <div className="flex items-start justify-between gap-4">
+          {/* Cabeçalho */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
               <h1 className="text-2xl font-bold text-white">{campaign.name}</h1>
-              <span
-                className={`mt-1 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  isMaster
-                    ? 'bg-red-950 text-red-400 border border-red-900'
-                    : 'bg-zinc-800 text-zinc-400'
-                }`}
-              >
-                {isMaster ? 'Mestre' : 'Jogador'}
-              </span>
+              {campaign.description && (
+                <p className="mt-1 text-sm text-zinc-400">{campaign.description}</p>
+              )}
             </div>
-            {campaign.description && (
-              <p className="mt-2 text-sm text-zinc-400">{campaign.description}</p>
-            )}
+            <span
+              className={`mt-1 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                isMaster
+                  ? 'border border-red-900 bg-red-950 text-red-400'
+                  : 'bg-zinc-800 text-zinc-400'
+              }`}
+            >
+              {isMaster ? 'Mestre' : 'Jogador'}
+            </span>
           </div>
 
-          {/* Convidar jogador (só Mestre) */}
-          {isMaster && (
-            <SectionCard title="Convidar jogador">
-              <p className="mb-3 text-sm text-zinc-500">
-                Adicione um jogador já cadastrado pelo e-mail.
-              </p>
-              <InviteMemberForm campaignId={id} />
-            </SectionCard>
-          )}
+          {/* Abas */}
+          <div>
+            <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
-          {/* NPCs */}
-          <SectionCard title="NPCs">
-            <NpcSection
-              campaignId={id}
-              isMaster={isMaster}
-              npcs={npcs}
-              setNpcs={setNpcs}
-            />
-          </SectionCard>
+            <div className="mt-6">
+              {activeTab === 'NPCs' && (
+                <NpcSection
+                  campaignId={id}
+                  isMaster={isMaster}
+                  npcs={npcs}
+                  setNpcs={setNpcs}
+                />
+              )}
 
-          {/* TimeSkips */}
-          <SectionCard title="Agenda (TimeSkips)">
-            <TimeSkipPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
-          </SectionCard>
+              {activeTab === 'Agenda' && (
+                <TimeSkipPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
+              )}
 
-          {/* Logs */}
-          <SectionCard title="Logs narrativos">
-            <LogPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
-          </SectionCard>
+              {activeTab === 'Logs' && (
+                <LogPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
+              )}
+
+              {activeTab === 'Configurações' && isMaster && (
+                <div className="max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                  <h2 className="text-base font-semibold text-white">Convidar jogador</h2>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Adicione um jogador já cadastrado pelo e-mail.
+                  </p>
+                  <div className="mt-4">
+                    <InviteMemberForm campaignId={id} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </AppLayout>
