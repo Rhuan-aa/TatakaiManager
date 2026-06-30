@@ -61,4 +61,4 @@ src/main/java/com/tatakai/manager/
 - [x] **Sprint 5** — Agendamento REST (reserva de slot, cancelamento, conflito) — `BookingServiceTest` ✓
 - [x] **Sprint 6** — WebSocket (broadcast em tempo real + auth no CONNECT) — `SlotEventPublisherTest`, `StompAuthChannelInterceptorTest` ✓
 - [x] **Sprint 7** — Log narrativo (jogador + Mestre, sanitização XSS) — `LogServiceTest`, `TextSanitizerTest` ✓
-- [ ] Sprint 8 — Deploy + Docker
+- [x] **Sprint 8** — Docker + deploy (Dockerfile, config por env, boot validado contra Postgres) ✓
