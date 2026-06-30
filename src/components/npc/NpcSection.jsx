@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getCampaignNpc, setNpcVisibility } from '../../api/npcs';
+import { getCampaignNpc, setNpcVisibility, listOwnedNpcs, associateNpc } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
 import CreateNpcForm from './CreateNpcForm';
 import EditNpcForm from './EditNpcForm';
@@ -77,6 +77,13 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
   const [details, setDetails] = useState({});
   const [error, setError] = useState('');
 
+  // Acervo — associar NPC existente
+  const [associating, setAssociating] = useState(false);
+  const [acervo, setAcervo] = useState([]);
+  const [acervoLoading, setAcervoLoading] = useState(false);
+  const [acervoError, setAcervoError] = useState('');
+  const [associatingId, setAssociatingId] = useState(null);
+
   async function loadDetail(npcId) {
     if (details[npcId]) return details[npcId];
     const detail = await getCampaignNpc(campaignId, npcId);
@@ -136,6 +143,36 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
     }
   }
 
+  async function handleOpenAssociate() {
+    setAssociating(true);
+    setAcervoError('');
+    setAcervoLoading(true);
+    try {
+      const data = await listOwnedNpcs();
+      setAcervo(data);
+    } catch (err) {
+      setAcervoError(parseApiError(err).message);
+    } finally {
+      setAcervoLoading(false);
+    }
+  }
+
+  async function handleAssociate(npc) {
+    setAssociatingId(npc.id);
+    setAcervoError('');
+    try {
+      await associateNpc(campaignId, npc.id);
+      setNpcs((prev) => [
+        ...prev,
+        { id: npc.id, name: npc.name, visible: true, interactionTypes: npc.interactionTypes },
+      ]);
+    } catch (err) {
+      setAcervoError(parseApiError(err).message);
+    } finally {
+      setAssociatingId(null);
+    }
+  }
+
   function handleCreated(summary) {
     setNpcs((prev) => [...prev, summary]);
     setCreating(false);
@@ -143,18 +180,27 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm text-slate-500">
           {npcs.length} NPC{npcs.length === 1 ? '' : 's'} nesta campanha
         </span>
-        {isMaster && !creating && (
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700"
-          >
-            Adicionar NPC
-          </button>
+        {isMaster && !creating && !associating && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleOpenAssociate}
+              className="rounded-md border border-purple-300 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-50"
+            >
+              Associar do acervo
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700"
+            >
+              Adicionar NPC
+            </button>
+          </div>
         )}
       </div>
 
@@ -167,6 +213,62 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
             onCreated={handleCreated}
             onCancel={() => setCreating(false)}
           />
+        </div>
+      )}
+
+      {associating && (
+        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-slate-900">Associar NPC do acervo</h4>
+            <button
+              type="button"
+              onClick={() => setAssociating(false)}
+              className="text-sm text-slate-400 hover:text-slate-600"
+            >
+              Fechar
+            </button>
+          </div>
+          {acervoLoading && <p className="mt-3 text-sm text-slate-500">Carregando acervo...</p>}
+          {acervoError && <p className="mt-2 text-sm text-red-600">{acervoError}</p>}
+          {!acervoLoading && !acervoError && (() => {
+            const available = acervo.filter((n) => !npcs.some((existing) => existing.id === n.id));
+            if (available.length === 0) {
+              return (
+                <p className="mt-3 text-sm text-slate-500">
+                  {acervo.length === 0
+                    ? 'Você ainda não tem NPCs no acervo.'
+                    : 'Todos os NPCs do acervo já estão nesta campanha.'}
+                </p>
+              );
+            }
+            return (
+              <ul className="mt-3 space-y-2">
+                {available.map((npc) => (
+                  <li
+                    key={npc.id}
+                    className="flex items-center justify-between gap-3 rounded-md border border-slate-100 px-3 py-2"
+                  >
+                    <div>
+                      <span className="text-sm font-medium text-slate-900">{npc.name}</span>
+                      <span className="ml-2 text-xs text-slate-400">
+                        {[...npc.interactionTypes]
+                          .map((t) => INTERACTION_LABELS[t] ?? t)
+                          .join(', ')}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={associatingId === npc.id}
+                      onClick={() => handleAssociate(npc)}
+                      className="rounded-md bg-purple-600 px-2 py-1 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+                    >
+                      {associatingId === npc.id ? 'Associando...' : 'Associar'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            );
+          })()}
         </div>
       )}
 
