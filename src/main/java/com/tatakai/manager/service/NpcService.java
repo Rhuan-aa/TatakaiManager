@@ -132,7 +132,8 @@ public class NpcService {
                 : campaignNpcRepository.findByCampaignIdAndVisibleTrue(campaignId);
 
         return associations.stream()
-                .map(a -> new NpcSummaryResponse(a.getNpc().getId(), a.getNpc().getName(), a.isVisible()))
+                .map(a -> new NpcSummaryResponse(a.getNpc().getId(), a.getNpc().getName(),
+                        a.isVisible(), a.getNpc().getInteractionTypes()))
                 .toList();
     }
 

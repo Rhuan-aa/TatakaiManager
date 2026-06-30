@@ -198,6 +198,8 @@ class NpcServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).visible()).isTrue();
+        // a grade de slots usa os tipos de interação aceitos pelo NPC
+        assertThat(result.get(0).interactionTypes()).containsExactly(InteractionType.TREINO);
         // garante que o caminho do jogador NÃO consulta todos os NPCs
         verify(campaignNpcRepository, never()).findByCampaignId(any());
     }
