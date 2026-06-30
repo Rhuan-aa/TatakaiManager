@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { listCampaigns } from '../api/campaigns';
 import { parseApiError } from '../api/parseApiError';
 import { useAuth } from '../contexts/AuthContext';
@@ -96,17 +97,19 @@ export default function Dashboard() {
           {!loading && !error && campaigns.length > 0 && (
             <ul className="space-y-3">
               {campaigns.map((campaign) => (
-                <li
-                  key={campaign.id}
-                  className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-medium text-slate-900">{campaign.name}</h3>
-                    <RoleBadge role={campaign.currentUserRole} />
-                  </div>
-                  {campaign.description && (
-                    <p className="mt-1 text-sm text-slate-600">{campaign.description}</p>
-                  )}
+                <li key={campaign.id}>
+                  <Link
+                    to={`/campaigns/${campaign.id}`}
+                    className="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-purple-300 hover:shadow"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="font-medium text-slate-900">{campaign.name}</h3>
+                      <RoleBadge role={campaign.currentUserRole} />
+                    </div>
+                    {campaign.description && (
+                      <p className="mt-1 text-sm text-slate-600">{campaign.description}</p>
+                    )}
+                  </Link>
                 </li>
               ))}
             </ul>

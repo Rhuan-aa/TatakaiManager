@@ -4,6 +4,7 @@ import { PrivateRoute } from './routes/PrivateRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import CampaignDetail from './pages/CampaignDetail';
 
 function App() {
   return (
@@ -17,6 +18,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/campaigns/:id"
+            element={
+              <PrivateRoute>
+                <CampaignDetail />
               </PrivateRoute>
             }
           />
