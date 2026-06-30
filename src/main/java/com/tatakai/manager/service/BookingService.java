@@ -2,9 +2,11 @@ package com.tatakai.manager.service;
 
 import com.tatakai.manager.dto.request.CreateBookingRequest;
 import com.tatakai.manager.dto.response.BookingResponse;
+import com.tatakai.manager.dto.response.SlotUpdateMessage;
 import com.tatakai.manager.entity.*;
 import com.tatakai.manager.exception.*;
 import com.tatakai.manager.repository.*;
+import com.tatakai.manager.websocket.SlotEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,19 +23,22 @@ public class BookingService {
     private final CampaignNpcRepository campaignNpcRepository;
     private final CampaignMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final SlotEventPublisher slotEventPublisher;
 
     public BookingService(BookingRepository bookingRepository,
                           TimeSkipRepository timeSkipRepository,
                           TimeSkipDayRepository timeSkipDayRepository,
                           CampaignNpcRepository campaignNpcRepository,
                           CampaignMemberRepository memberRepository,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          SlotEventPublisher slotEventPublisher) {
         this.bookingRepository = bookingRepository;
         this.timeSkipRepository = timeSkipRepository;
         this.timeSkipDayRepository = timeSkipDayRepository;
         this.campaignNpcRepository = campaignNpcRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
+        this.slotEventPublisher = slotEventPublisher;
     }
 
     // ---------- US-13: agendar ----------
@@ -82,12 +87,17 @@ public class BookingService {
                 .interactionType(req.interactionType())
                 .build();
 
+        BookingResponse response;
         try {
-            return toResponse(bookingRepository.save(booking));
+            response = toResponse(bookingRepository.save(booking));
         } catch (DataIntegrityViolationException e) {
             // Dois jogadores passaram pela verificação ao mesmo tempo; o banco rejeitou o segundo
             throw new SlotTakenException();
         }
+
+        // US-15: notifica as telas dos demais jogadores em tempo real
+        slotEventPublisher.publish(SlotUpdateMessage.booked(campaignId, response, timeSkipId));
+        return response;
     }
 
     // ---------- US-14: cancelar ----------
@@ -99,7 +109,18 @@ public class BookingService {
         if (!booking.getUser().getId().equals(requesterId)) {
             throw new AccessDeniedException("Você só pode cancelar os seus próprios agendamentos");
         }
+
+        // Captura os dados do slot antes de remover, para o broadcast
+        TimeSkip timeSkip = booking.getTimeSkipDay().getTimeSkip();
+        UUID campaignId = timeSkip.getCampaign().getId();
+        SlotUpdateMessage message = SlotUpdateMessage.cancelled(
+                campaignId, timeSkip.getId(), booking.getNpc().getId(),
+                booking.getTimeSkipDay().getDayNumber(), booking.getSlotNumber());
+
         bookingRepository.delete(booking);
+
+        // US-15: libera o slot nas telas dos jogadores em tempo real
+        slotEventPublisher.publish(message);
     }
 
     // ---------- US-12: visualizar disponibilidade ----------

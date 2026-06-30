@@ -2,10 +2,12 @@ package com.tatakai.manager.booking;
 
 import com.tatakai.manager.dto.request.CreateBookingRequest;
 import com.tatakai.manager.dto.response.BookingResponse;
+import com.tatakai.manager.dto.response.SlotUpdateMessage;
 import com.tatakai.manager.entity.*;
 import com.tatakai.manager.exception.*;
 import com.tatakai.manager.repository.*;
 import com.tatakai.manager.service.BookingService;
+import com.tatakai.manager.websocket.SlotEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ class BookingServiceTest {
     @Mock private CampaignNpcRepository campaignNpcRepository;
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private UserRepository userRepository;
+    @Mock private SlotEventPublisher slotEventPublisher;
 
     private BookingService service;
 
@@ -46,7 +49,7 @@ class BookingServiceTest {
     @BeforeEach
     void setUp() {
         service = new BookingService(bookingRepository, timeSkipRepository, timeSkipDayRepository,
-                campaignNpcRepository, memberRepository, userRepository);
+                campaignNpcRepository, memberRepository, userRepository, slotEventPublisher);
 
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Ana").build();
@@ -98,6 +101,15 @@ class BookingServiceTest {
         assertThat(res.slotNumber()).isEqualTo((short) 2);
         assertThat(res.dayNumber()).isEqualTo((short) 3);
         assertThat(res.interactionType()).isEqualTo(InteractionType.TREINO);
+
+        // US-15: broadcast de BOOKED no canal da campanha
+        var captor = org.mockito.ArgumentCaptor.forClass(SlotUpdateMessage.class);
+        verify(slotEventPublisher).publish(captor.capture());
+        SlotUpdateMessage msg = captor.getValue();
+        assertThat(msg.event()).isEqualTo(SlotUpdateMessage.SlotEvent.BOOKED);
+        assertThat(msg.campaignId()).isEqualTo(campaign.getId());
+        assertThat(msg.npcId()).isEqualTo(aldric.getId());
+        assertThat(msg.slotNumber()).isEqualTo((short) 2);
     }
 
     @Test
@@ -222,6 +234,14 @@ class BookingServiceTest {
         service.cancel(booking.getId(), player.getId());
 
         verify(bookingRepository).delete(booking);
+
+        // US-15: broadcast de CANCELLED liberando o slot
+        var captor = org.mockito.ArgumentCaptor.forClass(SlotUpdateMessage.class);
+        verify(slotEventPublisher).publish(captor.capture());
+        SlotUpdateMessage msg = captor.getValue();
+        assertThat(msg.event()).isEqualTo(SlotUpdateMessage.SlotEvent.CANCELLED);
+        assertThat(msg.npcId()).isEqualTo(aldric.getId());
+        assertThat(msg.slotNumber()).isEqualTo((short) 1);
     }
 
     @Test

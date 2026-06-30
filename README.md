@@ -59,6 +59,6 @@ src/main/java/com/tatakai/manager/
 - [x] **Sprint 3** — NPCs (acervo, associação, visibilidade) — `NpcServiceTest` ✓
 - [x] **Sprint 4** — TimeSkip (criação, encerramento, histórico) — `TimeSkipServiceTest` ✓
 - [x] **Sprint 5** — Agendamento REST (reserva de slot, cancelamento, conflito) — `BookingServiceTest` ✓
-- [ ] Sprint 6 — WebSocket (tempo real)
+- [x] **Sprint 6** — WebSocket (broadcast em tempo real + auth no CONNECT) — `SlotEventPublisherTest`, `StompAuthChannelInterceptorTest` ✓
 - [ ] Sprint 7 — Log narrativo
 - [ ] Sprint 8 — Deploy
