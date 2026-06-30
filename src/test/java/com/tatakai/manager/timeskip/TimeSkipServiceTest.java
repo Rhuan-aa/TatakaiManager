@@ -5,6 +5,7 @@ import com.tatakai.manager.dto.response.TimeSkipResponse;
 import com.tatakai.manager.entity.*;
 import com.tatakai.manager.exception.AccessDeniedException;
 import com.tatakai.manager.exception.ActiveTimeSkipExistsException;
+import com.tatakai.manager.exception.InvalidTimeSkipException;
 import com.tatakai.manager.exception.TimeSkipClosedException;
 import com.tatakai.manager.repository.CampaignMemberRepository;
 import com.tatakai.manager.repository.CampaignRepository;
@@ -186,5 +187,64 @@ class TimeSkipServiceTest {
 
         assertThatThrownBy(() -> service.listForCampaign(campaign.getId(), player.getId()))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("Tempo de jogo: Mestre avança manualmente o dia atual da campanha")
+    void setCurrentDay_byMaster_updates() {
+        TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign)
+                .name("Inverno").totalDays((short) 7).currentDay((short) 1)
+                .status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        mockMaster(true);
+        when(timeSkipRepository.save(any(TimeSkip.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        TimeSkipResponse res = service.setCurrentDay(ts.getId(), master.getId(), (short) 4);
+
+        assertThat(res.currentDay()).isEqualTo((short) 4);
+        assertThat(ts.getCurrentDay()).isEqualTo((short) 4);
+    }
+
+    @Test
+    @DisplayName("Tempo de jogo: jogador não pode avançar o dia — AccessDenied")
+    void setCurrentDay_byNonMaster_throwsAccessDenied() {
+        TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign)
+                .name("Inverno").totalDays((short) 7).status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(
+                campaign.getId(), player.getId(), Role.MASTER)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.setCurrentDay(ts.getId(), player.getId(), (short) 3))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(timeSkipRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Tempo de jogo: dia fora do intervalo (1..totalDays) é rejeitado (400)")
+    void setCurrentDay_outOfRange_throws() {
+        TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign)
+                .name("Inverno").totalDays((short) 7).status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        mockMaster(true);
+
+        assertThatThrownBy(() -> service.setCurrentDay(ts.getId(), master.getId(), (short) 8))
+                .isInstanceOf(InvalidTimeSkipException.class);
+
+        verify(timeSkipRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Tempo de jogo: não se avança o dia de um TimeSkip encerrado")
+    void setCurrentDay_onClosed_throws() {
+        TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign)
+                .name("Velho").totalDays((short) 7).status(TimeSkipStatus.CLOSED).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        mockMaster(true);
+
+        assertThatThrownBy(() -> service.setCurrentDay(ts.getId(), master.getId(), (short) 3))
+                .isInstanceOf(TimeSkipClosedException.class);
+
+        verify(timeSkipRepository, never()).save(any());
     }
 }

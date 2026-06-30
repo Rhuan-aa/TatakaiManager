@@ -44,14 +44,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({AlreadyMemberException.class, NpcAlreadyAssociatedException.class,
             ActiveTimeSkipExistsException.class, TimeSkipClosedException.class,
-            SlotTakenException.class})
+            SlotTakenException.class, BookingAlreadyPassedException.class})
     public ResponseEntity<Map<String, Object>> handleConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(body(HttpStatus.CONFLICT, ex.getMessage()));
     }
 
-    @ExceptionHandler(InvalidBookingException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidBooking(InvalidBookingException ex) {
+    @ExceptionHandler({InvalidBookingException.class, InvalidTimeSkipException.class})
+    public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
         return ResponseEntity.badRequest().body(body(HttpStatus.BAD_REQUEST, ex.getMessage()));
     }
 

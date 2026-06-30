@@ -10,6 +10,7 @@ public record TimeSkipResponse(
         UUID campaignId,
         String name,
         short totalDays,
+        short currentDay,
         TimeSkipStatus status,
         Instant createdAt,
         Instant closedAt

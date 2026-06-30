@@ -57,6 +57,11 @@ public class BookingService {
                 .findByTimeSkipIdAndDayNumber(timeSkipId, req.dayNumber())
                 .orElseThrow(() -> new InvalidBookingException("Dia inválido para este TimeSkip"));
 
+        // Tempo de jogo: não se agenda em um dia que já passou
+        if (day.getDayNumber() < timeSkip.getCurrentDay()) {
+            throw new InvalidBookingException("Não é possível agendar em um dia que já passou");
+        }
+
         CampaignNpc association = campaignNpcRepository
                 .findByCampaignIdAndNpcId(campaignId, req.npcId())
                 .orElseThrow(NpcNotFoundException::new);
@@ -112,6 +117,12 @@ public class BookingService {
 
         // Captura os dados do slot antes de remover, para o broadcast
         TimeSkip timeSkip = booking.getTimeSkipDay().getTimeSkip();
+
+        // Tempo de jogo: só é possível desmarcar agendamentos cujo dia ainda não passou
+        if (booking.getTimeSkipDay().getDayNumber() < timeSkip.getCurrentDay()) {
+            throw new BookingAlreadyPassedException();
+        }
+
         UUID campaignId = timeSkip.getCampaign().getId();
         SlotUpdateMessage message = SlotUpdateMessage.cancelled(
                 campaignId, timeSkip.getId(), booking.getNpc().getId(),

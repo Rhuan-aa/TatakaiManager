@@ -245,6 +245,38 @@ class BookingServiceTest {
     }
 
     @Test
+    @DisplayName("Tempo de jogo: jogador não pode cancelar agendamento de dia que já passou (409)")
+    void cancel_pastBooking_rejected() {
+        // dia atual da campanha = 5; o agendamento é no dia 3 (já passou)
+        activeSkip.setCurrentDay((short) 5);
+        Booking booking = Booking.builder().id(UUID.randomUUID())
+                .timeSkipDay(day3).npc(aldric).user(player)
+                .slotNumber((short) 1).interactionType(InteractionType.TREINO).build();
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> service.cancel(booking.getId(), player.getId()))
+                .isInstanceOf(BookingAlreadyPassedException.class);
+
+        verify(bookingRepository, never()).delete(any());
+        verify(slotEventPublisher, never()).publish(any());
+    }
+
+    @Test
+    @DisplayName("Tempo de jogo: não é possível agendar em um dia que já passou (400)")
+    void book_onPastDay_rejected() {
+        activeSkip.setCurrentDay((short) 5);
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 1)))
+                .isInstanceOf(InvalidBookingException.class);
+
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("US-14: jogador não pode cancelar agendamento de outro (403)")
     void cancel_byNonOwner_throwsAccessDenied() {
         Booking booking = Booking.builder().id(UUID.randomUUID())

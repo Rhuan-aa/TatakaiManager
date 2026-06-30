@@ -35,6 +35,14 @@ public class TimeSkip {
     @Column(name = "total_days", nullable = false)
     private short totalDays;
 
+    /**
+     * Dia atual da campanha dentro deste TimeSkip (tempo de jogo, avançado manualmente
+     * pelo Mestre — independente do mundo real). Dias menores que este já passaram.
+     */
+    @Column(name = "current_day", nullable = false)
+    @Builder.Default
+    private short currentDay = 1;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

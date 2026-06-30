@@ -74,6 +74,7 @@ CREATE TABLE time_skips (
     campaign_id  UUID NOT NULL REFERENCES campaigns(id),
     name         VARCHAR(100) NOT NULL,
     total_days   SMALLINT NOT NULL CHECK (total_days > 0),
+    current_day  SMALLINT NOT NULL DEFAULT 1 CHECK (current_day >= 1),
     status       VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'CLOSED')),
     created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
     closed_at    TIMESTAMP

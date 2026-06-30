@@ -9,6 +9,7 @@ import com.tatakai.manager.entity.TimeSkipStatus;
 import com.tatakai.manager.exception.AccessDeniedException;
 import com.tatakai.manager.exception.ActiveTimeSkipExistsException;
 import com.tatakai.manager.exception.CampaignNotFoundException;
+import com.tatakai.manager.exception.InvalidTimeSkipException;
 import com.tatakai.manager.exception.TimeSkipClosedException;
 import com.tatakai.manager.exception.TimeSkipNotFoundException;
 import com.tatakai.manager.repository.CampaignMemberRepository;
@@ -73,6 +74,28 @@ public class TimeSkipService {
         return toResponse(timeSkipRepository.save(timeSkip));
     }
 
+    /**
+     * Avança/ajusta manualmente o dia atual da campanha dentro do TimeSkip (tempo de jogo).
+     * Só o Mestre, apenas em TimeSkip ativo, dentro do intervalo 1..totalDays.
+     */
+    @Transactional
+    public TimeSkipResponse setCurrentDay(UUID timeSkipId, UUID requesterId, short day) {
+        TimeSkip timeSkip = timeSkipRepository.findById(timeSkipId)
+                .orElseThrow(TimeSkipNotFoundException::new);
+        requireCampaignMaster(timeSkip.getCampaign().getId(), requesterId);
+
+        if (timeSkip.getStatus() == TimeSkipStatus.CLOSED) {
+            throw new TimeSkipClosedException();
+        }
+        if (day < 1 || day > timeSkip.getTotalDays()) {
+            throw new InvalidTimeSkipException(
+                    "O dia deve estar entre 1 e " + timeSkip.getTotalDays());
+        }
+
+        timeSkip.setCurrentDay(day);
+        return toResponse(timeSkipRepository.save(timeSkip));
+    }
+
     @Transactional(readOnly = true)
     public List<TimeSkipResponse> listForCampaign(UUID campaignId, UUID requesterId) {
         if (!memberRepository.existsByCampaignIdAndUserId(campaignId, requesterId)) {
@@ -95,6 +118,7 @@ public class TimeSkipService {
                 ts.getCampaign().getId(),
                 ts.getName(),
                 ts.getTotalDays(),
+                ts.getCurrentDay(),
                 ts.getStatus(),
                 ts.getCreatedAt(),
                 ts.getClosedAt());
