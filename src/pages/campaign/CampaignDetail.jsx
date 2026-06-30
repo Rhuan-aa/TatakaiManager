@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getCampaign } from '../api/campaigns';
-import { listCampaignNpcs } from '../api/npcs';
-import { parseApiError } from '../api/parseApiError';
-import InviteMemberForm from '../components/InviteMemberForm';
-import NpcSection from '../components/NpcSection';
-import TimeSkipPanel from '../components/TimeSkipPanel';
-import LogPanel from '../components/LogPanel';
+import { getCampaign } from '../../api/campaigns';
+import { listCampaignNpcs } from '../../api/npcs';
+import { parseApiError } from '../../api/parseApiError';
+import InviteMemberForm from '../../components/campaign/InviteMemberForm';
+import NpcSection from '../../components/npc/NpcSection';
+import TimeSkipPanel from '../../components/timeskip/TimeSkipPanel';
+import LogPanel from '../../components/log/LogPanel';
 
 export default function CampaignDetail() {
   const { id } = useParams();

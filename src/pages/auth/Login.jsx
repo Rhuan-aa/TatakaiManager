@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import client from '../api/client';
-import { parseApiError } from '../api/parseApiError';
-import { useAuth } from '../contexts/AuthContext';
+import client from '../../api/client';
+import { parseApiError } from '../../api/parseApiError';
+import { useAuth } from '../../contexts/AuthContext';
 
-export default function Register() {
+export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   function handleChange(event) {
@@ -20,16 +19,13 @@ export default function Register() {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
-    setFieldErrors({});
     setSubmitting(true);
     try {
-      const { data } = await client.post('/auth/register', form);
+      const { data } = await client.post('/auth/login', form);
       login(data.token, { userId: data.userId, name: data.name, email: data.email });
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      const parsed = parseApiError(err);
-      setError(parsed.message);
-      setFieldErrors(parsed.fields);
+      setError(parseApiError(err).message);
     } finally {
       setSubmitting(false);
     }
@@ -38,27 +34,10 @@ export default function Register() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Criar conta</h1>
-        <p className="mt-1 text-sm text-slate-500">Cadastre-se no Tatakai Manager.</p>
+        <h1 className="text-xl font-semibold text-slate-900">Entrar</h1>
+        <p className="mt-1 text-sm text-slate-500">Acesse sua conta do Tatakai Manager.</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-slate-700">
-              Nome
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              required
-              value={form.name}
-              onChange={handleChange}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            />
-            {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
-          </div>
-
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-slate-700">
               E-mail
@@ -73,7 +52,6 @@ export default function Register() {
               onChange={handleChange}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
-            {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
           </div>
 
           <div>
@@ -84,15 +62,12 @@ export default function Register() {
               id="password"
               name="password"
               type="password"
-              autoComplete="new-password"
+              autoComplete="current-password"
               required
               value={form.password}
               onChange={handleChange}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
-            {fieldErrors.password && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
-            )}
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -102,14 +77,14 @@ export default function Register() {
             disabled={submitting}
             className="w-full rounded-md bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
           >
-            {submitting ? 'Criando...' : 'Criar conta'}
+            {submitting ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
         <p className="mt-4 text-center text-sm text-slate-500">
-          Já tem conta?{' '}
-          <Link to="/login" className="font-medium text-purple-600 hover:underline">
-            Entrar
+          Não tem conta?{' '}
+          <Link to="/register" className="font-medium text-purple-600 hover:underline">
+            Cadastre-se
           </Link>
         </p>
       </div>

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { listBookings, createBooking, cancelBooking } from '../api/bookings';
-import { parseApiError } from '../api/parseApiError';
-import { useAuth } from '../contexts/AuthContext';
-import { useWebSocket } from '../hooks/useWebSocket';
+import { listBookings, createBooking, cancelBooking } from '../../api/bookings';
+import { parseApiError } from '../../api/parseApiError';
+import { useAuth } from '../../contexts/AuthContext';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 const SLOTS = [1, 2, 3, 4];
 

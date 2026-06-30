@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { inviteMember } from '../api/campaigns';
-import { parseApiError } from '../api/parseApiError';
+import { inviteMember } from '../../api/campaigns';
+import { parseApiError } from '../../api/parseApiError';
 
 export default function InviteMemberForm({ campaignId }) {
   const [email, setEmail] = useState('');

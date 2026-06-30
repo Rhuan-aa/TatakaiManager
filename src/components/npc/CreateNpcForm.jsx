@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { createNpc, associateNpc } from '../api/npcs';
-import { parseApiError } from '../api/parseApiError';
+import { createNpc, associateNpc } from '../../api/npcs';
+import { parseApiError } from '../../api/parseApiError';
 
 const INTERACTION_TYPES = [
   { value: 'TREINO', label: 'Treino' },

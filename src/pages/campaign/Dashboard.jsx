@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { listCampaigns } from '../api/campaigns';
-import { parseApiError } from '../api/parseApiError';
-import { useAuth } from '../contexts/AuthContext';
-import CreateCampaignForm from '../components/CreateCampaignForm';
+import { listCampaigns } from '../../api/campaigns';
+import { parseApiError } from '../../api/parseApiError';
+import { useAuth } from '../../contexts/AuthContext';
+import CreateCampaignForm from '../../components/campaign/CreateCampaignForm';
 
 function RoleBadge({ role }) {
   const isMaster = role === 'MASTER';

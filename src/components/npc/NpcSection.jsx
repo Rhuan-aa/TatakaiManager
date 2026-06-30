@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { getCampaignNpc, setNpcVisibility } from '../api/npcs';
-import { parseApiError } from '../api/parseApiError';
+import { getCampaignNpc, setNpcVisibility } from '../../api/npcs';
+import { parseApiError } from '../../api/parseApiError';
 import CreateNpcForm from './CreateNpcForm';
 
 const INTERACTION_LABELS = {

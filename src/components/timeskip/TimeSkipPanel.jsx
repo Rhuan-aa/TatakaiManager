@@ -4,9 +4,9 @@ import {
   createTimeSkip,
   closeTimeSkip,
   setCurrentDay,
-} from '../api/timeskips';
-import { parseApiError } from '../api/parseApiError';
-import SlotGrid from './SlotGrid';
+} from '../../api/timeskips';
+import { parseApiError } from '../../api/parseApiError';
+import SlotGrid from '../booking/SlotGrid';
 
 export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
   const [timeSkips, setTimeSkips] = useState([]);

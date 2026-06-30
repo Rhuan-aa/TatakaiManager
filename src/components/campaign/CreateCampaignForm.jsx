@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { createCampaign } from '../api/campaigns';
-import { parseApiError } from '../api/parseApiError';
+import { createCampaign } from '../../api/campaigns';
+import { parseApiError } from '../../api/parseApiError';
 
 export default function CreateCampaignForm({ onCreated, onCancel }) {
   const [form, setForm] = useState({ name: '', description: '' });

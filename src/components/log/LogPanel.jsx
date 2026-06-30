@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { listLogs, createLog } from '../api/logs';
-import { parseApiError } from '../api/parseApiError';
+import { listLogs, createLog } from '../../api/logs';
+import { parseApiError } from '../../api/parseApiError';
 
 const INTERACTION_LABELS = {
   TREINO: 'Treino',
