@@ -121,6 +121,15 @@ public class NpcService {
         return new CampaignNpcResponse(campaignId, npcId, assoc.isVisible());
     }
 
+    // ---------- acervo do dono ----------
+
+    @Transactional(readOnly = true)
+    public List<NpcSummaryResponse> listOwned(UUID ownerId) {
+        return npcRepository.findByOwnerId(ownerId).stream()
+                .map(n -> new NpcSummaryResponse(n.getId(), n.getName(), true, n.getInteractionTypes()))
+                .toList();
+    }
+
     // ---------- US-20: listar/consultar dentro da campanha ----------
 
     @Transactional(readOnly = true)

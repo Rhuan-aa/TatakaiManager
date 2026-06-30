@@ -27,6 +27,11 @@ public class NpcController {
 
     // ---- Acervo do Mestre (US-06, US-07) ----
 
+    @GetMapping("/npcs")
+    public ResponseEntity<List<NpcSummaryResponse>> listOwned() {
+        return ResponseEntity.ok(npcService.listOwned(AuthenticatedUser.id()));
+    }
+
     @PostMapping("/npcs")
     public ResponseEntity<NpcResponse> create(@Valid @RequestBody CreateNpcRequest request) {
         NpcResponse res = npcService.create(AuthenticatedUser.id(), request);

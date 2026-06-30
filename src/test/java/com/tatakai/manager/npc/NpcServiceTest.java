@@ -27,7 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("NpcService — Sprint 3 (US-06, US-07, US-08, US-20)")
+@DisplayName("NpcService — Sprint 3 + acervo (US-06, US-07, US-08, US-20)")
 class NpcServiceTest {
 
     @Mock private NpcRepository npcRepository;
@@ -57,6 +57,30 @@ class NpcServiceTest {
                 .attributes(NpcAttributes.builder().forca((short) 14).destreza((short) 16).build())
                 .interactionTypes(new java.util.HashSet<>(Set.of(InteractionType.TREINO)))
                 .build();
+    }
+
+    @Test
+    @DisplayName("listOwned: retorna todos os NPCs do dono")
+    void listOwned_returnsMasterNpcs() {
+        Npc npc1 = npcOwnedByMaster();
+        Npc npc2 = npcOwnedByMaster();
+        when(npcRepository.findByOwnerId(master.getId())).thenReturn(List.of(npc1, npc2));
+
+        List<NpcSummaryResponse> result = service.listOwned(master.getId());
+
+        assertThat(result).hasSize(2);
+        assertThat(result).allMatch(r -> r.interactionTypes().contains(InteractionType.TREINO));
+        verify(npcRepository).findByOwnerId(master.getId());
+    }
+
+    @Test
+    @DisplayName("listOwned: retorna lista vazia quando o dono não tem NPCs")
+    void listOwned_noNpcs_returnsEmpty() {
+        when(npcRepository.findByOwnerId(master.getId())).thenReturn(List.of());
+
+        List<NpcSummaryResponse> result = service.listOwned(master.getId());
+
+        assertThat(result).isEmpty();
     }
 
     @Test
