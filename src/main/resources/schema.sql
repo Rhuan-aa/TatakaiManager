@@ -22,6 +22,7 @@ CREATE TABLE campaign_members (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     campaign_id  UUID NOT NULL REFERENCES campaigns(id),
     user_id      UUID NOT NULL REFERENCES users(id),
+    role         VARCHAR(20) NOT NULL CHECK (role IN ('MASTER', 'PLAYER')),
     UNIQUE (campaign_id, user_id)
 );
 
