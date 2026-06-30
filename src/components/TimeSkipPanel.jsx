@@ -1,0 +1,210 @@
+import { useEffect, useState } from 'react';
+import {
+  listTimeSkips,
+  createTimeSkip,
+  closeTimeSkip,
+  setCurrentDay,
+} from '../api/timeskips';
+import { parseApiError } from '../api/parseApiError';
+import SlotGrid from './SlotGrid';
+
+export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
+  const [timeSkips, setTimeSkips] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ name: '', totalDays: 7 });
+  const [createError, setCreateError] = useState('');
+  const [createFields, setCreateFields] = useState({});
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const list = await listTimeSkips(campaignId);
+        if (!active) return;
+        setTimeSkips(list);
+        setSelectedId((prev) => prev ?? list[0]?.id ?? null);
+      } catch (err) {
+        if (active) setError(parseApiError(err).message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [campaignId]);
+
+  const selected = timeSkips.find((t) => t.id === selectedId) ?? null;
+
+  function upsert(updated) {
+    setTimeSkips((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  }
+
+  async function handleCreate(event) {
+    event.preventDefault();
+    setCreateError('');
+    setCreateFields({});
+    try {
+      const created = await createTimeSkip(campaignId, {
+        name: form.name,
+        totalDays: Number(form.totalDays),
+      });
+      setTimeSkips((prev) => [...prev, created]);
+      setSelectedId(created.id);
+      setCreating(false);
+      setForm({ name: '', totalDays: 7 });
+    } catch (err) {
+      const parsed = parseApiError(err);
+      setCreateError(parsed.message);
+      setCreateFields(parsed.fields);
+    }
+  }
+
+  async function handleAdvanceDay() {
+    setError('');
+    try {
+      const updated = await setCurrentDay(selected.id, selected.currentDay + 1);
+      upsert(updated);
+    } catch (err) {
+      setError(parseApiError(err).message);
+    }
+  }
+
+  async function handleClose() {
+    setError('');
+    try {
+      const updated = await closeTimeSkip(selected.id);
+      upsert(updated);
+    } catch (err) {
+      setError(parseApiError(err).message);
+    }
+  }
+
+  if (loading) return <p className="text-sm text-slate-500">Carregando TimeSkips...</p>;
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {timeSkips.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setSelectedId(t.id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                t.id === selectedId
+                  ? 'bg-purple-600 text-white'
+                  : 'border border-slate-300 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {t.name}
+              {t.status === 'CLOSED' && ' (encerrado)'}
+            </button>
+          ))}
+        </div>
+        {isMaster && !creating && (
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700"
+          >
+            Novo TimeSkip
+          </button>
+        )}
+      </div>
+
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
+      {creating && (
+        <form
+          onSubmit={handleCreate}
+          className="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          noValidate
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label htmlFor="ts-name" className="block text-sm font-medium text-slate-700">
+                Nome
+              </label>
+              <input
+                id="ts-name"
+                type="text"
+                required
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              />
+              {createFields.name && <p className="mt-1 text-xs text-red-600">{createFields.name}</p>}
+            </div>
+            <div className="w-full sm:w-32">
+              <label htmlFor="ts-days" className="block text-sm font-medium text-slate-700">
+                Dias
+              </label>
+              <input
+                id="ts-days"
+                type="number"
+                min={1}
+                max={365}
+                required
+                value={form.totalDays}
+                onChange={(e) => setForm((p) => ({ ...p, totalDays: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              />
+              {createFields.totalDays && (
+                <p className="mt-1 text-xs text-red-600">{createFields.totalDays}</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="rounded-md bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
+              >
+                Criar
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreating(false)}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+          {createError && <p className="mt-2 text-sm text-red-600">{createError}</p>}
+        </form>
+      )}
+
+      {!selected ? (
+        <p className="mt-4 text-sm text-slate-500">
+          Nenhum TimeSkip ainda.{isMaster ? ' Crie o primeiro para começar a agendar.' : ''}
+        </p>
+      ) : (
+        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          {isMaster && selected.status === 'ACTIVE' && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleAdvanceDay}
+                disabled={selected.currentDay >= selected.totalDays}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+              >
+                Avançar dia ({selected.currentDay} → {selected.currentDay + 1})
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+              >
+                Encerrar TimeSkip
+              </button>
+            </div>
+          )}
+          <SlotGrid campaignId={campaignId} timeSkip={selected} npcs={npcs} />
+        </div>
+      )}
+    </div>
+  );
+}
