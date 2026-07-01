@@ -2,21 +2,45 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listCampaigns } from '../../api/campaigns';
 import { parseApiError } from '../../api/parseApiError';
-import AppLayout from '../../components/layout/AppLayout';
+import Sidebar from '../../components/layout/Sidebar';
 import CreateCampaignForm from '../../components/campaign/CreateCampaignForm';
 
 function RoleBadge({ role }) {
   const isMaster = role === 'MASTER';
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
         isMaster
-          ? 'bg-red-950 text-red-400 border border-red-900'
+          ? 'border border-red-900 bg-red-950 text-red-400'
           : 'bg-zinc-800 text-zinc-400'
       }`}
     >
       {isMaster ? 'Mestre' : 'Jogador'}
     </span>
+  );
+}
+
+function CampaignCard({ campaign }) {
+  return (
+    <Link
+      to={`/campaigns/${campaign.id}`}
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-700 hover:shadow-lg hover:shadow-black/40"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-zinc-800 text-lg transition-colors group-hover:bg-red-950">
+          ⚔️
+        </span>
+        <RoleBadge role={campaign.currentUserRole} />
+      </div>
+      <h3 className="mt-3 truncate font-semibold text-white transition-colors group-hover:text-red-400">
+        {campaign.name}
+      </h3>
+      <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm text-zinc-500">
+        {campaign.description || 'Sem descrição.'}
+      </p>
+      {/* Barra de acento no hover */}
+      <span className="absolute inset-x-0 bottom-0 h-0.5 origin-left scale-x-0 bg-red-600 transition-transform duration-200 group-hover:scale-x-100" />
+    </Link>
   );
 }
 
@@ -49,70 +73,67 @@ export default function Dashboard() {
   }
 
   return (
-    <AppLayout>
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Minhas campanhas</h2>
-        {!creating && (
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-          >
-            Nova campanha
-          </button>
-        )}
-      </div>
+    <div className="min-h-screen bg-zinc-950">
+      <Sidebar onNewCampaign={() => setCreating(true)} />
 
-      {creating && (
-        <div className="mt-6">
-          <CreateCampaignForm onCreated={handleCreated} onCancel={() => setCreating(false)} />
-        </div>
-      )}
-
-      <div className="mt-6">
-        {loading && <p className="text-sm text-zinc-500">Carregando...</p>}
-        {!loading && error && <p className="text-sm text-red-400">{error}</p>}
-
-        {!loading && !error && campaigns.length === 0 && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-            <p className="text-2xl">⚔️</p>
-            <p className="mt-3 text-sm font-medium text-zinc-300">Nenhuma campanha ainda</p>
-            <p className="mt-1 text-sm text-zinc-500">
-              Crie a primeira campanha para começar a gerenciar seus NPCs.
-            </p>
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
-              className="mt-4 rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-            >
-              Criar campanha
-            </button>
+      <div className="pl-16">
+        <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
+          {/* Cabeçalho */}
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Minhas campanhas</h1>
+              <p className="mt-1 text-sm text-zinc-500">
+                Gerencie NPCs, agendamentos e o tempo de jogo de cada mesa.
+              </p>
+            </div>
+            {!creating && (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+              >
+                + Nova campanha
+              </button>
+            )}
           </div>
-        )}
 
-        {!loading && !error && campaigns.length > 0 && (
-          <ul className="space-y-3">
-            {campaigns.map((campaign) => (
-              <li key={campaign.id}>
-                <Link
-                  to={`/campaigns/${campaign.id}`}
-                  className="group flex items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900 p-5 transition hover:border-red-900 hover:bg-zinc-800"
+          {creating && (
+            <div className="mt-6">
+              <CreateCampaignForm onCreated={handleCreated} onCancel={() => setCreating(false)} />
+            </div>
+          )}
+
+          <div className="mt-8">
+            {loading && <p className="text-sm text-zinc-500">Carregando...</p>}
+            {!loading && error && <p className="text-sm text-red-400">{error}</p>}
+
+            {!loading && !error && campaigns.length === 0 && !creating && (
+              <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/40 p-12 text-center">
+                <p className="text-3xl">⚔️</p>
+                <p className="mt-3 text-base font-semibold text-zinc-200">Nenhuma campanha ainda</p>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Crie a primeira campanha para começar a gerenciar seus NPCs.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="mt-5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
                 >
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-white group-hover:text-red-400 transition">
-                      {campaign.name}
-                    </h3>
-                    {campaign.description && (
-                      <p className="mt-1 truncate text-sm text-zinc-500">{campaign.description}</p>
-                    )}
-                  </div>
-                  <RoleBadge role={campaign.currentUserRole} />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+                  Criar campanha
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && campaigns.length > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {campaigns.map((campaign) => (
+                  <CampaignCard key={campaign.id} campaign={campaign} />
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
       </div>
-    </AppLayout>
+    </div>
   );
 }
