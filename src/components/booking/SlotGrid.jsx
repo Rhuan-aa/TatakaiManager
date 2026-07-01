@@ -68,7 +68,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
             userId: msg.userId,
             userName: msg.userName,
             interactionName: msg.interactionName,
-            trainPointCost: msg.trainPointCost,
+            idlePointCost: msg.idlePointCost,
           },
         };
       });
@@ -190,8 +190,8 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
                           <div className="rounded-md bg-zinc-700 px-2 py-1 text-left">
                             <p className="text-xs font-medium text-zinc-200">
                               {booking.interactionName}
-                              {booking.trainPointCost != null && (
-                                <span className="text-red-400"> · {booking.trainPointCost} pts</span>
+                              {booking.idlePointCost != null && (
+                                <span className="text-red-400"> · {booking.idlePointCost} pts de ócio</span>
                               )}
                             </p>
                             <p className="text-xs text-zinc-500">{booking.userName}</p>
@@ -208,15 +208,15 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
                         ) : canBook ? (
                           activeCell === cellId ? (
                             <div className="flex flex-col gap-1">
-                              {interactions.map((it) => (
+                              {interactions.map((it, idx) => (
                                 <button
-                                  key={it.name}
+                                  key={idx}
                                   type="button"
                                   onClick={() => handleBook(npc, slot, it.name)}
                                   title={it.description || undefined}
                                   className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
                                 >
-                                  {it.name} · {it.trainPointCost} pts
+                                  {it.type ? `[${it.type}] ` : ''}{it.name} · {it.idlePointCost} pts de ócio
                                 </button>
                               ))}
                               <button

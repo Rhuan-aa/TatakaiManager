@@ -1,6 +1,7 @@
 /**
- * Editor dos tipos de interação de um NPC: cada entrada tem nome, descrição
- * (opcional) e custo em pontos de treino. Ao menos uma é obrigatória.
+ * Editor das interações de um NPC: cada entrada tem tipo (categoria), título,
+ * descrição (opcional) e custo em pontos de ócio. Podem existir várias do mesmo
+ * tipo. Ao menos uma é obrigatória.
  */
 export default function InteractionListEditor({ items, onChange }) {
   function update(index, key, value) {
@@ -8,7 +9,7 @@ export default function InteractionListEditor({ items, onChange }) {
   }
 
   function add() {
-    onChange([...items, { name: '', description: '', trainPointCost: '' }]);
+    onChange([...items, { type: '', name: '', description: '', idlePointCost: '' }]);
   }
 
   function remove(index) {
@@ -19,7 +20,7 @@ export default function InteractionListEditor({ items, onChange }) {
     <div>
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-zinc-400">
-          Tipos de interação <span className="text-zinc-600">(ao menos um)</span>
+          Interações <span className="text-zinc-600">(ao menos uma)</span>
         </span>
         <button
           type="button"
@@ -31,7 +32,7 @@ export default function InteractionListEditor({ items, onChange }) {
       </div>
       {items.length === 0 && (
         <p className="mt-1 text-xs text-zinc-600">
-          Adicione ao menos um tipo de interação (ex.: Treino, Trabalho).
+          Adicione ao menos uma interação (podem existir várias do mesmo tipo).
         </p>
       )}
       {items.map((item, i) => (
@@ -39,9 +40,16 @@ export default function InteractionListEditor({ items, onChange }) {
           <div className="flex gap-2">
             <input
               type="text"
+              value={item.type}
+              onChange={(e) => update(i, 'type', e.target.value)}
+              placeholder="Tipo (ex.: Treino)"
+              className="w-32 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+            />
+            <input
+              type="text"
               value={item.name}
               onChange={(e) => update(i, 'name', e.target.value)}
-              placeholder="Nome (ex.: Treino)"
+              placeholder="Título (ex.: Esgrima avançada)"
               className="flex-1 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
             />
             <div className="flex items-center gap-1">
@@ -49,13 +57,15 @@ export default function InteractionListEditor({ items, onChange }) {
                 type="number"
                 min={0}
                 max={9999}
-                value={item.trainPointCost}
-                onChange={(e) => update(i, 'trainPointCost', e.target.value)}
+                value={item.idlePointCost}
+                onChange={(e) => update(i, 'idlePointCost', e.target.value)}
                 placeholder="0"
-                title="Custo em pontos de treino"
+                title="Custo em pontos de ócio"
                 className="w-20 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
               />
-              <span className="text-xs text-zinc-500">pts</span>
+              <span className="text-xs text-zinc-500" title="pontos de ócio">
+                ócio
+              </span>
             </div>
             <button
               type="button"

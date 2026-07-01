@@ -22,9 +22,10 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
   const [description, setDescription] = useState(npc.description ?? '');
   const [interactions, setInteractions] = useState(
     npc.interactions?.map((i) => ({
+      type: i.type ?? '',
       name: i.name,
       description: i.description ?? '',
-      trainPointCost: i.trainPointCost != null ? String(i.trainPointCost) : '',
+      idlePointCost: i.idlePointCost != null ? String(i.idlePointCost) : '',
     })) ?? []
   );
   const [attrs, setAttrs] = useState(() => {
@@ -43,6 +44,9 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
   const [knowledge, setKnowledge] = useState(
     npc.knowledge?.map((k) => ({ name: k.name, description: k.description ?? '' })) ?? []
   );
+  const [specs, setSpecs] = useState(
+    npc.specs?.map((s) => ({ name: s.name, description: s.description ?? '' })) ?? []
+  );
   const [imageAction, setImageAction] = useState({ file: null, remove: false });
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -52,9 +56,10 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
     return interactions
       .filter((i) => i.name.trim())
       .map((i) => ({
+        type: i.type?.trim() || null,
         name: i.name.trim(),
         description: i.description?.trim() || null,
-        trainPointCost: i.trainPointCost === '' ? 0 : Number(i.trainPointCost),
+        idlePointCost: i.idlePointCost === '' ? 0 : Number(i.idlePointCost),
       }));
   }
 
@@ -69,6 +74,7 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
       attributes,
       traits: traits.filter((t) => t.name.trim()),
       knowledge: knowledge.filter((k) => k.name.trim()),
+      specs: specs.filter((s) => s.name.trim()),
       interactions: buildInteractions(),
     };
   }
@@ -172,6 +178,8 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
         </fieldset>
 
         <DetailListEditor label="Traços" items={traits} onChange={setTraits} />
+
+        <DetailListEditor label="Specs (habilidades)" items={specs} onChange={setSpecs} />
 
         <DetailListEditor label="Conhecimentos" items={knowledge} onChange={setKnowledge} />
 

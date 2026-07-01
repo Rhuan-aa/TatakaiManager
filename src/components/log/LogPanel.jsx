@@ -18,7 +18,7 @@ function formatDate(iso) {
 function bookingLabel(booking, npcs) {
   const npc = npcs.find((n) => n.id === booking.npcId);
   const npcName = npc?.name ?? `NPC ${booking.npcId}`;
-  return `${npcName} · Dia ${booking.dayNumber} · Slot ${booking.slotNumber} · ${booking.interactionName} (${booking.trainPointCost} pts)`;
+  return `${npcName} · Dia ${booking.dayNumber} · Slot ${booking.slotNumber} · ${booking.interactionName} (${booking.idlePointCost} pts de ócio)`;
 }
 
 const textareaClass =
@@ -235,7 +235,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
                 <p className="mt-1 text-xs text-red-400">
                   {log.npcName} · Dia {log.dayNumber} · Slot {log.slotNumber} ·{' '}
                   {log.interactionName}
-                  {log.trainPointCost != null && ` (${log.trainPointCost} pts)`}
+                  {log.idlePointCost != null && ` (${log.idlePointCost} pts de ócio)`}
                 </p>
               )}
               <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{log.narrative}</p>

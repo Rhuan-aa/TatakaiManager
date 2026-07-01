@@ -20,6 +20,10 @@ export async function associateNpc(campaignId, npcId) {
   return data;
 }
 
+export async function removeNpcFromCampaign(campaignId, npcId) {
+  await client.delete(`/campaigns/${campaignId}/npcs/${npcId}`);
+}
+
 export async function listOwnedNpcs() {
   const { data } = await client.get('/npcs');
   return data;

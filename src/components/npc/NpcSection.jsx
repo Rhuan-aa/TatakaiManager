@@ -4,6 +4,7 @@ import {
   setNpcVisibility,
   listOwnedNpcs,
   associateNpc,
+  removeNpcFromCampaign,
   fetchNpcImageUrl,
 } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
@@ -63,8 +64,9 @@ function NpcDetail({ npc, campaignId }) {
           <ul className="mt-1 space-y-0.5 text-xs text-zinc-400">
             {npc.interactions.map((it, i) => (
               <li key={i}>
+                {it.type ? <span className="text-zinc-500">[{it.type}] </span> : ''}
                 <strong className="text-zinc-300">{it.name}</strong>
-                <span className="text-red-400"> · {it.trainPointCost} pts</span>
+                <span className="text-red-400"> · {it.idlePointCost} pts de ócio</span>
                 {it.description ? ` — ${it.description}` : ''}
               </li>
             ))}
@@ -99,6 +101,20 @@ function NpcDetail({ npc, campaignId }) {
         </div>
       )}
 
+      {npc.specs?.length > 0 && (
+        <div className="mt-2">
+          <p className="text-xs font-medium text-zinc-500">Specs</p>
+          <ul className="mt-1 space-y-0.5 text-xs text-zinc-400">
+            {npc.specs.map((s, i) => (
+              <li key={i}>
+                <strong className="text-zinc-300">{s.name}</strong>
+                {s.description ? ` — ${s.description}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {npc.knowledge?.length > 0 && (
         <div className="mt-2">
           <p className="text-xs font-medium text-zinc-500">Conhecimentos</p>
@@ -122,6 +138,8 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
   const [editingId, setEditingId] = useState(null);
   const [details, setDetails] = useState({});
   const [error, setError] = useState('');
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
 
   // Acervo — associar NPC existente
   const [associating, setAssociating] = useState(false);
@@ -186,6 +204,27 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
       setNpcs((prev) => prev.map((n) => (n.id === npc.id ? { ...n, visible: res.visible } : n)));
     } catch (err) {
       setError(parseApiError(err).message);
+    }
+  }
+
+  async function handleRemove(npc, event) {
+    event.stopPropagation();
+    setError('');
+    setRemovingId(npc.id);
+    try {
+      await removeNpcFromCampaign(campaignId, npc.id);
+      setNpcs((prev) => prev.filter((n) => n.id !== npc.id));
+      setDetails((prev) => {
+        const next = { ...prev };
+        delete next[npc.id];
+        return next;
+      });
+      if (expandedId === npc.id) setExpandedId(null);
+      setConfirmRemoveId(null);
+    } catch (err) {
+      setError(parseApiError(err).message);
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -351,6 +390,40 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
                     >
                       {npc.visible ? 'Visível' : 'Oculto'}
                     </button>
+                    {confirmRemoveId === npc.id ? (
+                      <span className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemove(npc, e)}
+                          disabled={removingId === npc.id}
+                          className="rounded-md bg-red-600 px-2 py-0.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {removingId === npc.id ? 'Removendo...' : 'Confirmar'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmRemoveId(null);
+                          }}
+                          className="text-xs text-zinc-500 hover:text-zinc-300"
+                        >
+                          Cancelar
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmRemoveId(npc.id);
+                        }}
+                        className="text-xs text-zinc-600 hover:text-red-400"
+                        title="Remover NPC desta campanha"
+                      >
+                        Remover
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

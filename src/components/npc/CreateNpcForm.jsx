@@ -26,6 +26,7 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
   const [attrs, setAttrs] = useState(EMPTY_ATTRS);
   const [traits, setTraits] = useState([]);
   const [knowledge, setKnowledge] = useState([]);
+  const [specs, setSpecs] = useState([]);
   const [imageAction, setImageAction] = useState({ file: null, remove: false });
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -35,9 +36,10 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
     return interactions
       .filter((i) => i.name.trim())
       .map((i) => ({
+        type: i.type?.trim() || null,
         name: i.name.trim(),
         description: i.description?.trim() || null,
-        trainPointCost: i.trainPointCost === '' ? 0 : Number(i.trainPointCost),
+        idlePointCost: i.idlePointCost === '' ? 0 : Number(i.idlePointCost),
       }));
   }
 
@@ -52,6 +54,7 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
       attributes,
       traits: traits.filter((t) => t.name.trim()),
       knowledge: knowledge.filter((k) => k.name.trim()),
+      specs: specs.filter((s) => s.name.trim()),
       interactions: buildInteractions(),
     };
   }
@@ -152,6 +155,8 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
         </fieldset>
 
         <DetailListEditor label="Traços" items={traits} onChange={setTraits} />
+
+        <DetailListEditor label="Specs (habilidades)" items={specs} onChange={setSpecs} />
 
         <DetailListEditor label="Conhecimentos" items={knowledge} onChange={setKnowledge} />
 
