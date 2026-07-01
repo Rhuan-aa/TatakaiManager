@@ -37,3 +37,23 @@ export async function setNpcVisibility(campaignId, npcId, visible) {
   );
   return data;
 }
+
+export async function uploadNpcImage(npcId, file) {
+  const form = new FormData();
+  form.append('file', file);
+  await client.post(`/npcs/${npcId}/image`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+}
+
+export async function deleteNpcImage(npcId) {
+  await client.delete(`/npcs/${npcId}/image`);
+}
+
+/** Busca a imagem do NPC (autenticada) e devolve um object URL para usar em <img>. */
+export async function fetchNpcImageUrl(campaignId, npcId) {
+  const res = await client.get(`/campaigns/${campaignId}/npcs/${npcId}/image`, {
+    responseType: 'blob',
+  });
+  return URL.createObjectURL(res.data);
+}

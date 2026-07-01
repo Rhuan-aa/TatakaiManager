@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { createNpc, associateNpc } from '../../api/npcs';
+import { createNpc, associateNpc, uploadNpcImage } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
 import DetailListEditor from './DetailListEditor';
 import InteractionListEditor from './InteractionListEditor';
+import NpcImagePicker from './NpcImagePicker';
 
 const ATTRIBUTES = [
   { key: 'forca', label: 'Força' },
@@ -25,6 +26,7 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
   const [attrs, setAttrs] = useState(EMPTY_ATTRS);
   const [traits, setTraits] = useState([]);
   const [knowledge, setKnowledge] = useState([]);
+  const [imageAction, setImageAction] = useState({ file: null, remove: false });
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -65,6 +67,9 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
     setSubmitting(true);
     try {
       const npc = await createNpc(buildBody());
+      if (imageAction.file) {
+        await uploadNpcImage(npc.id, imageAction.file);
+      }
       await associateNpc(campaignId, npc.id);
       onCreated({
         id: npc.id,
@@ -117,6 +122,8 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
             className={inputClass}
           />
         </div>
+
+        <NpcImagePicker hasImage={false} onChange={setImageAction} />
 
         <InteractionListEditor items={interactions} onChange={setInteractions} />
 

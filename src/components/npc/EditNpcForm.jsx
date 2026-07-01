@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { updateNpc } from '../../api/npcs';
+import { updateNpc, uploadNpcImage, deleteNpcImage } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
 import DetailListEditor from './DetailListEditor';
 import InteractionListEditor from './InteractionListEditor';
+import NpcImagePicker from './NpcImagePicker';
 
 const ATTRIBUTES = [
   { key: 'forca', label: 'Força' },
@@ -16,7 +17,7 @@ const ATTRIBUTES = [
 const inputClass =
   'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
 
-export default function EditNpcForm({ npc, onUpdated, onCancel }) {
+export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
   const [name, setName] = useState(npc.name);
   const [description, setDescription] = useState(npc.description ?? '');
   const [interactions, setInteractions] = useState(
@@ -42,6 +43,7 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
   const [knowledge, setKnowledge] = useState(
     npc.knowledge?.map((k) => ({ name: k.name, description: k.description ?? '' })) ?? []
   );
+  const [imageAction, setImageAction] = useState({ file: null, remove: false });
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -81,7 +83,14 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
     }
     setSubmitting(true);
     try {
-      const updated = await updateNpc(npc.id, buildBody());
+      let updated = await updateNpc(npc.id, buildBody());
+      if (imageAction.file) {
+        await uploadNpcImage(npc.id, imageAction.file);
+        updated = { ...updated, hasImage: true };
+      } else if (imageAction.remove) {
+        await deleteNpcImage(npc.id);
+        updated = { ...updated, hasImage: false };
+      }
       onUpdated(updated);
     } catch (err) {
       const parsed = parseApiError(err);
@@ -128,6 +137,13 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
             className={inputClass}
           />
         </div>
+
+        <NpcImagePicker
+          campaignId={campaignId}
+          npcId={npc.id}
+          hasImage={npc.hasImage}
+          onChange={setImageAction}
+        />
 
         <InteractionListEditor items={interactions} onChange={setInteractions} />
 

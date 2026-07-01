@@ -1,5 +1,11 @@
-import { useState } from 'react';
-import { getCampaignNpc, setNpcVisibility, listOwnedNpcs, associateNpc } from '../../api/npcs';
+import { useEffect, useState } from 'react';
+import {
+  getCampaignNpc,
+  setNpcVisibility,
+  listOwnedNpcs,
+  associateNpc,
+  fetchNpcImageUrl,
+} from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
 import CreateNpcForm from './CreateNpcForm';
 import EditNpcForm from './EditNpcForm';
@@ -13,13 +19,42 @@ const ATTR_LABELS = {
   talento: 'Talento',
 };
 
-function NpcDetail({ npc }) {
+function NpcDetail({ npc, campaignId }) {
   const attrs = npc.attributes
     ? Object.entries(npc.attributes).filter(([, v]) => v != null)
     : [];
 
+  const [imageUrl, setImageUrl] = useState(null);
+
+  useEffect(() => {
+    if (!npc.hasImage) {
+      setImageUrl(null);
+      return;
+    }
+    let url;
+    let active = true;
+    fetchNpcImageUrl(campaignId, npc.id)
+      .then((u) => {
+        url = u;
+        if (active) setImageUrl(u);
+        else URL.revokeObjectURL(u);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [campaignId, npc.id, npc.hasImage]);
+
   return (
     <div className="mt-3 rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-sm">
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={npc.name}
+          className="mb-3 max-h-64 w-full rounded-md object-cover"
+        />
+      )}
       {npc.description && <p className="text-zinc-300">{npc.description}</p>}
 
       {npc.interactions?.length > 0 && (
@@ -325,11 +360,12 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
                   {editingId === npc.id && details[npc.id] ? (
                     <EditNpcForm
                       npc={details[npc.id]}
+                      campaignId={campaignId}
                       onUpdated={handleUpdated}
                       onCancel={() => setEditingId(null)}
                     />
                   ) : details[npc.id] ? (
-                    <NpcDetail npc={details[npc.id]} />
+                    <NpcDetail npc={details[npc.id]} campaignId={campaignId} />
                   ) : null}
                 </div>
               )}
