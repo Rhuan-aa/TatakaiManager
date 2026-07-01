@@ -19,3 +19,7 @@ export async function setCurrentDay(timeSkipId, currentDay) {
   const { data } = await client.patch(`/timeskips/${timeSkipId}/current-day`, { currentDay });
   return data;
 }
+
+export async function deleteTimeSkip(timeSkipId) {
+  await client.delete(`/timeskips/${timeSkipId}`);
+}

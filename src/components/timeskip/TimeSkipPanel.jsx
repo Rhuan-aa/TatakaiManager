@@ -4,6 +4,7 @@ import {
   createTimeSkip,
   closeTimeSkip,
   setCurrentDay,
+  deleteTimeSkip,
 } from '../../api/timeskips';
 import { parseApiError } from '../../api/parseApiError';
 import SlotGrid from '../booking/SlotGrid';
@@ -20,6 +21,8 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
   const [form, setForm] = useState({ name: '', totalDays: 7 });
   const [createError, setCreateError] = useState('');
   const [createFields, setCreateFields] = useState({});
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -86,6 +89,24 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     }
   }
 
+  async function handleDelete() {
+    setError('');
+    setDeleting(true);
+    try {
+      await deleteTimeSkip(selected.id);
+      setTimeSkips((prev) => {
+        const remaining = prev.filter((t) => t.id !== selected.id);
+        setSelectedId(remaining[0]?.id ?? null);
+        return remaining;
+      });
+      setConfirmingDelete(false);
+    } catch (err) {
+      setError(parseApiError(err).message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (loading) return <p className="text-sm text-zinc-500">Carregando TimeSkips...</p>;
 
   return (
@@ -96,7 +117,10 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
             <button
               key={t.id}
               type="button"
-              onClick={() => setSelectedId(t.id)}
+              onClick={() => {
+                setSelectedId(t.id);
+                setConfirmingDelete(false);
+              }}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
                 t.id === selectedId
                   ? 'bg-red-600 text-white'
@@ -191,23 +215,56 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
         </p>
       ) : (
         <div className="mt-4 rounded-lg border border-zinc-700 bg-zinc-800 p-4">
-          {isMaster && selected.status === 'ACTIVE' && (
-            <div className="mb-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={handleAdvanceDay}
-                disabled={selected.currentDay >= selected.totalDays}
-                className="rounded-md border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
-              >
-                Avançar dia ({selected.currentDay} → {selected.currentDay + 1})
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="rounded-md border border-red-900 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-950/50"
-              >
-                Encerrar TimeSkip
-              </button>
+          {isMaster && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              {selected.status === 'ACTIVE' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleAdvanceDay}
+                    disabled={selected.currentDay >= selected.totalDays}
+                    className="rounded-md border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                  >
+                    Avançar dia ({selected.currentDay} → {selected.currentDay + 1})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="rounded-md border border-red-900 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-950/50"
+                  >
+                    Encerrar TimeSkip
+                  </button>
+                </>
+              )}
+              {confirmingDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-red-400">Excluir permanentemente?</span>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {deleting ? 'Excluindo...' : 'Confirmar exclusão'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={deleting}
+                    className="rounded-md border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-400 hover:bg-zinc-700"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(true)}
+                  className="ml-auto rounded-md border border-red-900 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-950/50"
+                >
+                  Excluir TimeSkip
+                </button>
+              )}
             </div>
           )}
           <SlotGrid campaignId={campaignId} timeSkip={selected} npcs={npcs} />
