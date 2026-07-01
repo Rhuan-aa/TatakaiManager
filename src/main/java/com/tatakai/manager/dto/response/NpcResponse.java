@@ -16,6 +16,8 @@ public record NpcResponse(
         List<NpcDetailDto> traits,
         List<NpcInteractionDto> interactions,
         UUID ownerId,
+        /** Indica se o NPC tem imagem (retrato) cadastrada. */
+        boolean hasImage,
         /** Visibilidade na campanha consultada (nulo fora de contexto de campanha). */
         Boolean visible
 ) {}

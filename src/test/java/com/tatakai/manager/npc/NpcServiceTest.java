@@ -6,6 +6,7 @@ import com.tatakai.manager.dto.response.NpcResponse;
 import com.tatakai.manager.dto.response.NpcSummaryResponse;
 import com.tatakai.manager.entity.*;
 import com.tatakai.manager.exception.AccessDeniedException;
+import com.tatakai.manager.exception.InvalidImageException;
 import com.tatakai.manager.exception.NpcNotFoundException;
 import com.tatakai.manager.repository.*;
 import com.tatakai.manager.service.NpcService;
@@ -35,6 +36,7 @@ class NpcServiceTest {
     @Mock private CampaignNpcRepository campaignNpcRepository;
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private UserRepository userRepository;
+    @Mock private NpcImageRepository npcImageRepository;
 
     private NpcService service;
 
@@ -44,7 +46,7 @@ class NpcServiceTest {
     @BeforeEach
     void setUp() {
         service = new NpcService(npcRepository, campaignRepository,
-                campaignNpcRepository, memberRepository, userRepository);
+                campaignNpcRepository, memberRepository, userRepository, npcImageRepository);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").email("mestre@rpg.com").build();
         player = User.builder().id(UUID.randomUUID()).name("Player").email("player@rpg.com").build();
     }
@@ -253,6 +255,67 @@ class NpcServiceTest {
 
         assertThatThrownBy(() ->
                 service.getForCampaign(campaign.getId(), oculto.getId(), player.getId()))
+                .isInstanceOf(NpcNotFoundException.class);
+    }
+
+    // ---------- imagem do NPC ----------
+
+    @Test
+    @DisplayName("Imagem: dono envia imagem válida (persistida)")
+    void setImage_byOwner_persists() {
+        Npc npc = npcOwnedByMaster();
+        when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
+
+        service.setImage(npc.getId(), master.getId(), new byte[] {1, 2, 3}, "image/png");
+
+        var captor = org.mockito.ArgumentCaptor.forClass(NpcImage.class);
+        verify(npcImageRepository).save(captor.capture());
+        assertThat(captor.getValue().getNpcId()).isEqualTo(npc.getId());
+        assertThat(captor.getValue().getContentType()).isEqualTo("image/png");
+    }
+
+    @Test
+    @DisplayName("Imagem: arquivo que não é imagem é rejeitado (400)")
+    void setImage_nonImage_rejected() {
+        Npc npc = npcOwnedByMaster();
+        when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
+
+        assertThatThrownBy(() ->
+                service.setImage(npc.getId(), master.getId(), new byte[] {1}, "application/pdf"))
+                .isInstanceOf(InvalidImageException.class);
+
+        verify(npcImageRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Imagem: não-dono não pode enviar imagem — AccessDenied")
+    void setImage_byNonOwner_throwsAccessDenied() {
+        Npc npc = npcOwnedByMaster();
+        when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
+
+        assertThatThrownBy(() ->
+                service.setImage(npc.getId(), player.getId(), new byte[] {1}, "image/png"))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(npcImageRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Imagem: jogador não vê imagem de NPC oculto (404)")
+    void getImage_hiddenNpc_asPlayer_throwsNotFound() {
+        Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
+        Npc oculto = npcOwnedByMaster();
+        CampaignNpc assoc = CampaignNpc.builder()
+                .campaign(campaign).npc(oculto).visible(false).build();
+
+        when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), player.getId()))
+                .thenReturn(Optional.of(CampaignMember.builder()
+                        .campaign(campaign).user(player).role(Role.PLAYER).build()));
+        when(campaignNpcRepository.findByCampaignIdAndNpcId(campaign.getId(), oculto.getId()))
+                .thenReturn(Optional.of(assoc));
+
+        assertThatThrownBy(() ->
+                service.getImage(campaign.getId(), oculto.getId(), player.getId()))
                 .isInstanceOf(NpcNotFoundException.class);
     }
 }

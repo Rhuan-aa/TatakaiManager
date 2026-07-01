@@ -42,22 +42,32 @@ CREATE TABLE npcs (
 );
 
 -- Coleções embutidas do NPC (@ElementCollection — sem PK própria)
-CREATE TABLE npc_specs (
+-- Conhecimentos (ex-"especializações") e Traços: mesmo formato {nome, descrição}
+CREATE TABLE npc_knowledge (
     npc_id      UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
     name        VARCHAR(100) NOT NULL,
     description TEXT
 );
 
 CREATE TABLE npc_traits (
-    npc_id  UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
-    name    VARCHAR(100) NOT NULL
+    npc_id      UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
+    name        VARCHAR(100) NOT NULL,
+    description TEXT
 );
 
--- Tipos de interação disponíveis por NPC (TREINO, TRABALHO, DESCANSO, OUTRO)
-CREATE TABLE npc_interaction_types (
-    npc_id  UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
-    type    VARCHAR(50) NOT NULL,
-    UNIQUE (npc_id, type)
+-- Tipos de interação por NPC: nome, descrição e custo em pontos de treino
+CREATE TABLE npc_interactions (
+    npc_id           UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
+    name             VARCHAR(100) NOT NULL,
+    description      TEXT,
+    train_point_cost SMALLINT NOT NULL DEFAULT 0
+);
+
+-- Imagem (retrato) do NPC — tabela separada para não pesar as consultas
+CREATE TABLE npc_images (
+    npc_id       UUID PRIMARY KEY REFERENCES npcs(id) ON DELETE CASCADE,
+    content_type VARCHAR(100) NOT NULL,
+    data         BYTEA NOT NULL
 );
 
 -- NPC associado a campanhas (compartilhável); visible controla visibilidade para jogadores
@@ -94,7 +104,8 @@ CREATE TABLE bookings (
     npc_id           UUID NOT NULL REFERENCES npcs(id),
     user_id          UUID NOT NULL REFERENCES users(id),
     slot_number      SMALLINT NOT NULL CHECK (slot_number BETWEEN 1 AND 4),
-    interaction_type VARCHAR(50) NOT NULL,
+    interaction_name VARCHAR(100) NOT NULL,
+    train_point_cost SMALLINT NOT NULL DEFAULT 0,
     created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (time_skip_day_id, npc_id, slot_number)  -- regra central de conflito
 );

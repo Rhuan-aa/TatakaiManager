@@ -11,6 +11,7 @@ import com.tatakai.manager.dto.response.NpcSummaryResponse;
 import com.tatakai.manager.entity.*;
 import com.tatakai.manager.exception.AccessDeniedException;
 import com.tatakai.manager.exception.CampaignNotFoundException;
+import com.tatakai.manager.exception.InvalidImageException;
 import com.tatakai.manager.exception.NpcAlreadyAssociatedException;
 import com.tatakai.manager.exception.NpcNotFoundException;
 import com.tatakai.manager.exception.UserNotFoundException;
@@ -30,17 +31,20 @@ public class NpcService {
     private final CampaignNpcRepository campaignNpcRepository;
     private final CampaignMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final NpcImageRepository npcImageRepository;
 
     public NpcService(NpcRepository npcRepository,
                       CampaignRepository campaignRepository,
                       CampaignNpcRepository campaignNpcRepository,
                       CampaignMemberRepository memberRepository,
-                      UserRepository userRepository) {
+                      UserRepository userRepository,
+                      NpcImageRepository npcImageRepository) {
         this.npcRepository = npcRepository;
         this.campaignRepository = campaignRepository;
         this.campaignNpcRepository = campaignNpcRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
+        this.npcImageRepository = npcImageRepository;
     }
 
     // ---------- US-06: criar ----------
@@ -160,6 +164,53 @@ public class NpcService {
         return toResponse(assoc.getNpc(), assoc.isVisible());
     }
 
+    // ---------- imagem (retrato) do NPC ----------
+
+    private static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024; // 5 MB
+
+    /** Define/atualiza a imagem do NPC. Só o dono. */
+    @Transactional
+    public void setImage(UUID npcId, UUID ownerId, byte[] data, String contentType) {
+        Npc npc = npcRepository.findById(npcId).orElseThrow(NpcNotFoundException::new);
+        requireOwner(npc, ownerId);
+
+        if (data == null || data.length == 0) {
+            throw new InvalidImageException("A imagem está vazia");
+        }
+        if (data.length > MAX_IMAGE_BYTES) {
+            throw new InvalidImageException("A imagem excede o limite de 5 MB");
+        }
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new InvalidImageException("O arquivo enviado não é uma imagem");
+        }
+
+        NpcImage image = npcImageRepository.findById(npcId).orElseGet(NpcImage::new);
+        image.setNpcId(npcId);
+        image.setContentType(contentType);
+        image.setData(data);
+        npcImageRepository.save(image);
+    }
+
+    /** Remove a imagem do NPC. Só o dono. */
+    @Transactional
+    public void deleteImage(UUID npcId, UUID ownerId) {
+        Npc npc = npcRepository.findById(npcId).orElseThrow(NpcNotFoundException::new);
+        requireOwner(npc, ownerId);
+        npcImageRepository.deleteById(npcId);
+    }
+
+    /** Busca a imagem do NPC dentro de uma campanha (respeita a visibilidade). */
+    @Transactional(readOnly = true)
+    public NpcImage getImage(UUID campaignId, UUID npcId, UUID requesterId) {
+        Role role = requireMembership(campaignId, requesterId);
+        CampaignNpc assoc = campaignNpcRepository.findByCampaignIdAndNpcId(campaignId, npcId)
+                .orElseThrow(NpcNotFoundException::new);
+        if (!assoc.isVisible() && role != Role.MASTER) {
+            throw new NpcNotFoundException();
+        }
+        return npcImageRepository.findById(npcId).orElseThrow(NpcNotFoundException::new);
+    }
+
     // ---------- helpers de autorização ----------
 
     private void requireOwner(Npc npc, UUID requesterId) {
@@ -237,6 +288,7 @@ public class NpcService {
                 toDetailDtos(npc.getTraits()),
                 toInteractionDtos(npc.getInteractions()),
                 npc.getOwner().getId(),
+                npcImageRepository.existsById(npc.getId()),
                 visible);
     }
 }

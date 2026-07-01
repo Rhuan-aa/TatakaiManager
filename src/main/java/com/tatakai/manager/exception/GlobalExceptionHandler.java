@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -50,9 +51,16 @@ public class GlobalExceptionHandler {
                 .body(body(HttpStatus.CONFLICT, ex.getMessage()));
     }
 
-    @ExceptionHandler({InvalidBookingException.class, InvalidTimeSkipException.class})
+    @ExceptionHandler({InvalidBookingException.class, InvalidTimeSkipException.class,
+            InvalidImageException.class})
     public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
         return ResponseEntity.badRequest().body(body(HttpStatus.BAD_REQUEST, ex.getMessage()));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(body(HttpStatus.PAYLOAD_TOO_LARGE, "O arquivo excede o tamanho máximo permitido (5 MB)"));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
