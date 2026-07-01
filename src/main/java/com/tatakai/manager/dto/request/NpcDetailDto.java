@@ -4,11 +4,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-public record SpecDto(
+/**
+ * Entrada de Conhecimento ou Traço do NPC — mesmo formato {nome, descrição}.
+ * A lista é opcional, mas cada entrada precisa de um nome.
+ */
+public record NpcDetailDto(
 
-        @NotBlank(message = "nome da spec é obrigatório")
+        @NotBlank(message = "o nome é obrigatório")
         @Size(max = 100)
-        @Pattern(regexp = "^[^<>]*$", message = "spec contém caracteres inválidos")
+        @Pattern(regexp = "^[^<>]*$", message = "contém caracteres inválidos")
         String name,
 
         @Size(max = 2000)

@@ -25,9 +25,10 @@ public record UpdateNpcRequest(
         NpcAttributesDto attributes,
 
         @Valid
-        List<SpecDto> specs,
+        List<NpcDetailDto> knowledge,
 
-        List<@Pattern(regexp = "^[^<>]*$", message = "traço contém caracteres inválidos") String> traits,
+        @Valid
+        List<NpcDetailDto> traits,
 
         @NotEmpty(message = "informe ao menos um tipo de interação")
         Set<InteractionType> interactionTypes

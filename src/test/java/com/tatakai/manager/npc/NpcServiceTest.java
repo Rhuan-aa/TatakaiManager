@@ -89,8 +89,8 @@ class NpcServiceTest {
         var req = new CreateNpcRequest(
                 "Vael", "Mercenário taciturno",
                 new NpcAttributesDto((short) 14, (short) 16, null, null, null, null),
-                List.of(new SpecDto("Visão nas trevas", "Enxerga no escuro")),
-                List.of("Cicatriz no rosto"),
+                List.of(new NpcDetailDto("Visão nas trevas", "Enxerga no escuro")),
+                List.of(new NpcDetailDto("Cicatriz no rosto", "Marca de uma antiga batalha")),
                 Set.of(InteractionType.TREINO));
 
         when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
@@ -107,8 +107,10 @@ class NpcServiceTest {
         assertThat(res.attributes().forca()).isEqualTo((short) 14);
         assertThat(res.attributes().constituicao()).isNull();
         assertThat(res.interactionTypes()).containsExactly(InteractionType.TREINO);
-        assertThat(res.specs()).hasSize(1);
-        assertThat(res.traits()).containsExactly("Cicatriz no rosto");
+        assertThat(res.knowledge()).hasSize(1);
+        assertThat(res.knowledge().get(0).name()).isEqualTo("Visão nas trevas");
+        assertThat(res.traits()).hasSize(1);
+        assertThat(res.traits().get(0).name()).isEqualTo("Cicatriz no rosto");
     }
 
     @Test

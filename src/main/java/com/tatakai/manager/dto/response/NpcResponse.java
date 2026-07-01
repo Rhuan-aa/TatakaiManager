@@ -1,7 +1,7 @@
 package com.tatakai.manager.dto.response;
 
 import com.tatakai.manager.dto.request.NpcAttributesDto;
-import com.tatakai.manager.dto.request.SpecDto;
+import com.tatakai.manager.dto.request.NpcDetailDto;
 import com.tatakai.manager.entity.InteractionType;
 
 import java.util.List;
@@ -13,8 +13,8 @@ public record NpcResponse(
         String name,
         String description,
         NpcAttributesDto attributes,
-        List<SpecDto> specs,
-        List<String> traits,
+        List<NpcDetailDto> knowledge,
+        List<NpcDetailDto> traits,
         Set<InteractionType> interactionTypes,
         UUID ownerId,
         /** Visibilidade na campanha consultada (nulo fora de contexto de campanha). */

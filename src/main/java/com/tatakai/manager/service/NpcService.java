@@ -2,7 +2,7 @@ package com.tatakai.manager.service;
 
 import com.tatakai.manager.dto.request.CreateNpcRequest;
 import com.tatakai.manager.dto.request.NpcAttributesDto;
-import com.tatakai.manager.dto.request.SpecDto;
+import com.tatakai.manager.dto.request.NpcDetailDto;
 import com.tatakai.manager.dto.request.UpdateNpcRequest;
 import com.tatakai.manager.dto.response.CampaignNpcResponse;
 import com.tatakai.manager.dto.response.NpcResponse;
@@ -55,8 +55,8 @@ public class NpcService {
                 .description(req.description())
                 .attributes(toAttributes(req.attributes()))
                 .owner(owner)
-                .specs(toSpecs(req.specs()))
-                .traits(req.traits() == null ? new ArrayList<>() : new ArrayList<>(req.traits()))
+                .knowledge(toDetails(req.knowledge()))
+                .traits(toDetails(req.traits()))
                 .interactionTypes(new HashSet<>(req.interactionTypes()))
                 .build();
 
@@ -73,10 +73,10 @@ public class NpcService {
         npc.setName(req.name());
         npc.setDescription(req.description());
         npc.setAttributes(toAttributes(req.attributes()));
-        npc.getSpecs().clear();
-        npc.getSpecs().addAll(toSpecs(req.specs()));
+        npc.getKnowledge().clear();
+        npc.getKnowledge().addAll(toDetails(req.knowledge()));
         npc.getTraits().clear();
-        if (req.traits() != null) npc.getTraits().addAll(req.traits());
+        npc.getTraits().addAll(toDetails(req.traits()));
         npc.getInteractionTypes().clear();
         npc.getInteractionTypes().addAll(req.interactionTypes());
 
@@ -199,15 +199,17 @@ public class NpcService {
                 a.getMental(), a.getInteligencia(), a.getTalento());
     }
 
-    private List<NpcSpec> toSpecs(List<SpecDto> dtos) {
+    private List<NpcDetail> toDetails(List<NpcDetailDto> dtos) {
         if (dtos == null) return new ArrayList<>();
         return dtos.stream()
-                .map(d -> new NpcSpec(d.name(), d.description()))
+                .map(d -> new NpcDetail(d.name(), d.description()))
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 
-    private List<SpecDto> toSpecDtos(List<NpcSpec> specs) {
-        return specs.stream().map(s -> new SpecDto(s.getName(), s.getDescription())).toList();
+    private List<NpcDetailDto> toDetailDtos(List<NpcDetail> details) {
+        return details.stream()
+                .map(d -> new NpcDetailDto(d.getName(), d.getDescription()))
+                .toList();
     }
 
     private NpcResponse toResponse(Npc npc, Boolean visible) {
@@ -216,8 +218,8 @@ public class NpcService {
                 npc.getName(),
                 npc.getDescription(),
                 toAttributesDto(npc.getAttributes()),
-                toSpecDtos(npc.getSpecs()),
-                List.copyOf(npc.getTraits()),
+                toDetailDtos(npc.getKnowledge()),
+                toDetailDtos(npc.getTraits()),
                 npc.getInteractionTypes(),
                 npc.getOwner().getId(),
                 visible);

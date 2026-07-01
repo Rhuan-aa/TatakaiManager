@@ -41,16 +41,17 @@ public class Npc {
     @JoinColumn(name = "created_by", nullable = false)
     private User owner;
 
+    /** Conhecimentos do NPC (antes "especializações"). Opcional. */
     @ElementCollection
-    @CollectionTable(name = "npc_specs", joinColumns = @JoinColumn(name = "npc_id"))
+    @CollectionTable(name = "npc_knowledge", joinColumns = @JoinColumn(name = "npc_id"))
     @Builder.Default
-    private List<NpcSpec> specs = new ArrayList<>();
+    private List<NpcDetail> knowledge = new ArrayList<>();
 
+    /** Traços do NPC — mesmo formato {nome, descrição} dos conhecimentos. Opcional. */
     @ElementCollection
     @CollectionTable(name = "npc_traits", joinColumns = @JoinColumn(name = "npc_id"))
-    @Column(name = "name", nullable = false, length = 100)
     @Builder.Default
-    private List<String> traits = new ArrayList<>();
+    private List<NpcDetail> traits = new ArrayList<>();
 
     @ElementCollection
     @CollectionTable(name = "npc_interaction_types", joinColumns = @JoinColumn(name = "npc_id"))
