@@ -14,8 +14,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompAuthChannelInterceptor authInterceptor;
 
-    @Value("${FRONTEND_URL:http://localhost:5173}")
-    private String frontendUrl;
+    @Value("${app.cors.allowed-origins}")
+    private String[] allowedOrigins;
 
     public WebSocketConfig(StompAuthChannelInterceptor authInterceptor) {
         this.authInterceptor = authInterceptor;
@@ -24,7 +24,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(frontendUrl)
+                .setAllowedOrigins(allowedOrigins)
                 .withSockJS();
     }
 

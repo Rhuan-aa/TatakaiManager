@@ -14,9 +14,6 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
-  websocket:
-    allowed-origins: ${FRONTEND_URL:http://localhost:5173}
-
   servlet:
     multipart:
       max-file-size: 5MB
@@ -24,6 +21,12 @@ spring:
 
 server:
   port: ${PORT:8080}
+
+# Origens liberadas para CORS e handshake WebSocket (deploy define via FRONTEND_URL).
+# Aceita várias origens separadas por vírgula.
+app:
+  cors:
+    allowed-origins: ${FRONTEND_URL:http://localhost:5173}
 
 security:
   jwt:
