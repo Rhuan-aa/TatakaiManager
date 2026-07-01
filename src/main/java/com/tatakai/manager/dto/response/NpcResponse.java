@@ -14,6 +14,7 @@ public record NpcResponse(
         NpcAttributesDto attributes,
         List<NpcDetailDto> knowledge,
         List<NpcDetailDto> traits,
+        List<NpcDetailDto> specs,
         List<NpcInteractionDto> interactions,
         UUID ownerId,
         /** Indica se o NPC tem imagem (retrato) cadastrada. */

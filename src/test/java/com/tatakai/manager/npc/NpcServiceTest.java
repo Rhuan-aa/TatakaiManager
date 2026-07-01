@@ -37,6 +37,8 @@ class NpcServiceTest {
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private UserRepository userRepository;
     @Mock private NpcImageRepository npcImageRepository;
+    @Mock private BookingRepository bookingRepository;
+    @Mock private InteractionLogRepository logRepository;
 
     private NpcService service;
 
@@ -46,7 +48,8 @@ class NpcServiceTest {
     @BeforeEach
     void setUp() {
         service = new NpcService(npcRepository, campaignRepository,
-                campaignNpcRepository, memberRepository, userRepository, npcImageRepository);
+                campaignNpcRepository, memberRepository, userRepository, npcImageRepository,
+                bookingRepository, logRepository);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").email("mestre@rpg.com").build();
         player = User.builder().id(UUID.randomUUID()).name("Player").email("player@rpg.com").build();
     }
@@ -58,7 +61,7 @@ class NpcServiceTest {
                 .owner(master)
                 .attributes(NpcAttributes.builder().forca((short) 14).destreza((short) 16).build())
                 .interactions(new java.util.ArrayList<>(List.of(
-                        new NpcInteraction("Treino", "Aprende esgrima", (short) 2))))
+                        new NpcInteraction("Treino", "Treino", "Aprende esgrima", (short) 2))))
                 .build();
     }
 
@@ -95,7 +98,8 @@ class NpcServiceTest {
                 new NpcAttributesDto((short) 14, (short) 16, null, null, null, null),
                 List.of(new NpcDetailDto("Visão nas trevas", "Enxerga no escuro")),
                 List.of(new NpcDetailDto("Cicatriz no rosto", "Marca de uma antiga batalha")),
-                List.of(new NpcInteractionDto("Treino", "Sessão de treino", (short) 2)));
+                List.of(new NpcDetailDto("Golpe giratório", "Ataque em área")),
+                List.of(new NpcInteractionDto("Treino", "Esgrima", "Sessão de treino", (short) 2)));
 
         when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
         when(npcRepository.save(any(Npc.class))).thenAnswer(inv -> {
@@ -111,12 +115,15 @@ class NpcServiceTest {
         assertThat(res.attributes().forca()).isEqualTo((short) 14);
         assertThat(res.attributes().constituicao()).isNull();
         assertThat(res.interactions()).hasSize(1);
-        assertThat(res.interactions().get(0).name()).isEqualTo("Treino");
-        assertThat(res.interactions().get(0).trainPointCost()).isEqualTo((short) 2);
+        assertThat(res.interactions().get(0).type()).isEqualTo("Treino");
+        assertThat(res.interactions().get(0).name()).isEqualTo("Esgrima");
+        assertThat(res.interactions().get(0).idlePointCost()).isEqualTo((short) 2);
         assertThat(res.knowledge()).hasSize(1);
         assertThat(res.knowledge().get(0).name()).isEqualTo("Visão nas trevas");
         assertThat(res.traits()).hasSize(1);
         assertThat(res.traits().get(0).name()).isEqualTo("Cicatriz no rosto");
+        assertThat(res.specs()).hasSize(1);
+        assertThat(res.specs().get(0).name()).isEqualTo("Golpe giratório");
     }
 
     @Test
@@ -128,16 +135,16 @@ class NpcServiceTest {
 
         var req = new UpdateNpcRequest("Aldric, o Veterano", "Atualizado",
                 new NpcAttributesDto((short) 18, null, null, null, null, null),
-                List.of(), List.of(), List.of(
-                        new NpcInteractionDto("Treino", null, (short) 1),
-                        new NpcInteractionDto("Trabalho", null, (short) 3)));
+                List.of(), List.of(), List.of(), List.of(
+                        new NpcInteractionDto("Treino", "Esgrima", null, (short) 1),
+                        new NpcInteractionDto("Trabalho", "Ferraria", null, (short) 3)));
 
         NpcResponse res = service.update(npc.getId(), master.getId(), req);
 
         assertThat(res.name()).isEqualTo("Aldric, o Veterano");
         assertThat(res.attributes().forca()).isEqualTo((short) 18);
         assertThat(res.interactions()).extracting(NpcInteractionDto::name)
-                .containsExactlyInAnyOrder("Treino", "Trabalho");
+                .containsExactlyInAnyOrder("Esgrima", "Ferraria");
     }
 
     @Test
@@ -146,8 +153,8 @@ class NpcServiceTest {
         Npc npc = npcOwnedByMaster();
         when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
 
-        var req = new UpdateNpcRequest("Hack", null, null, List.of(), List.of(),
-                List.of(new NpcInteractionDto("Treino", null, (short) 1)));
+        var req = new UpdateNpcRequest("Hack", null, null, List.of(), List.of(), List.of(),
+                List.of(new NpcInteractionDto("Treino", "Esgrima", null, (short) 1)));
 
         assertThatThrownBy(() -> service.update(npc.getId(), player.getId(), req))
                 .isInstanceOf(AccessDeniedException.class);
@@ -316,6 +323,57 @@ class NpcServiceTest {
 
         assertThatThrownBy(() ->
                 service.getImage(campaign.getId(), oculto.getId(), player.getId()))
+                .isInstanceOf(NpcNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Remover da campanha: Mestre desassocia e limpa agendamentos+logs do NPC")
+    void removeFromCampaign_byMaster_cleansBookingsAndLogs() {
+        UUID campaignId = UUID.randomUUID();
+        Npc npc = npcOwnedByMaster();
+        CampaignNpc assoc = CampaignNpc.builder()
+                .id(UUID.randomUUID()).npc(npc).visible(true).build();
+        Booking b = Booking.builder().id(UUID.randomUUID()).npc(npc).build();
+
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaignId, master.getId(), Role.MASTER))
+                .thenReturn(true);
+        when(campaignNpcRepository.findByCampaignIdAndNpcId(campaignId, npc.getId()))
+                .thenReturn(Optional.of(assoc));
+        when(bookingRepository.findByNpcIdAndTimeSkipDay_TimeSkip_CampaignId(npc.getId(), campaignId))
+                .thenReturn(List.of(b));
+
+        service.removeFromCampaign(campaignId, npc.getId(), master.getId());
+
+        verify(logRepository).deleteByBookingIn(List.of(b));
+        verify(bookingRepository).deleteAll(List.of(b));
+        verify(campaignNpcRepository).delete(assoc);
+    }
+
+    @Test
+    @DisplayName("Remover da campanha: jogador (não-Mestre) é negado — AccessDenied")
+    void removeFromCampaign_byNonMaster_throwsAccessDenied() {
+        UUID campaignId = UUID.randomUUID();
+        UUID npcId = UUID.randomUUID();
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaignId, player.getId(), Role.MASTER))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.removeFromCampaign(campaignId, npcId, player.getId()))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(campaignNpcRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Remover da campanha: NPC não associado resulta em 404")
+    void removeFromCampaign_notAssociated_throwsNotFound() {
+        UUID campaignId = UUID.randomUUID();
+        UUID npcId = UUID.randomUUID();
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaignId, master.getId(), Role.MASTER))
+                .thenReturn(true);
+        when(campaignNpcRepository.findByCampaignIdAndNpcId(campaignId, npcId))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.removeFromCampaign(campaignId, npcId, master.getId()))
                 .isInstanceOf(NpcNotFoundException.class);
     }
 }

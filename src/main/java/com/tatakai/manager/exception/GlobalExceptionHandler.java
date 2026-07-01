@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({CampaignNotFoundException.class, UserNotFoundException.class,
             NpcNotFoundException.class, TimeSkipNotFoundException.class,
-            BookingNotFoundException.class})
+            BookingNotFoundException.class, MemberNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(body(HttpStatus.NOT_FOUND, ex.getMessage()));

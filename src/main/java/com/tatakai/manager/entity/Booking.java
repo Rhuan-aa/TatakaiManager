@@ -50,9 +50,9 @@ public class Booking {
     @Column(name = "interaction_name", nullable = false, length = 100)
     private String interactionName;
 
-    /** Custo em pontos de treino no momento do agendamento (registrado no log). */
-    @Column(name = "train_point_cost", nullable = false)
-    private short trainPointCost;
+    /** Custo em pontos de ócio no momento do agendamento (registrado no log). */
+    @Column(name = "idle_point_cost", nullable = false)
+    private short idlePointCost;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

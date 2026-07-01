@@ -32,19 +32,25 @@ public class NpcService {
     private final CampaignMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final NpcImageRepository npcImageRepository;
+    private final BookingRepository bookingRepository;
+    private final InteractionLogRepository logRepository;
 
     public NpcService(NpcRepository npcRepository,
                       CampaignRepository campaignRepository,
                       CampaignNpcRepository campaignNpcRepository,
                       CampaignMemberRepository memberRepository,
                       UserRepository userRepository,
-                      NpcImageRepository npcImageRepository) {
+                      NpcImageRepository npcImageRepository,
+                      BookingRepository bookingRepository,
+                      InteractionLogRepository logRepository) {
         this.npcRepository = npcRepository;
         this.campaignRepository = campaignRepository;
         this.campaignNpcRepository = campaignNpcRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
         this.npcImageRepository = npcImageRepository;
+        this.bookingRepository = bookingRepository;
+        this.logRepository = logRepository;
     }
 
     // ---------- US-06: criar ----------
@@ -61,6 +67,7 @@ public class NpcService {
                 .owner(owner)
                 .knowledge(toDetails(req.knowledge()))
                 .traits(toDetails(req.traits()))
+                .specs(toDetails(req.specs()))
                 .interactions(toInteractions(req.interactions()))
                 .build();
 
@@ -81,6 +88,8 @@ public class NpcService {
         npc.getKnowledge().addAll(toDetails(req.knowledge()));
         npc.getTraits().clear();
         npc.getTraits().addAll(toDetails(req.traits()));
+        npc.getSpecs().clear();
+        npc.getSpecs().addAll(toDetails(req.specs()));
         npc.getInteractions().clear();
         npc.getInteractions().addAll(toInteractions(req.interactions()));
 
@@ -123,6 +132,26 @@ public class NpcService {
         assoc.setVisible(visible);
         campaignNpcRepository.save(assoc);
         return new CampaignNpcResponse(campaignId, npcId, assoc.isVisible());
+    }
+
+    /**
+     * Remove um NPC de uma campanha (desassocia). Só o Mestre. Limpa em cascata os
+     * agendamentos daquele NPC na campanha e os logs vinculados a eles. O NPC permanece
+     * no acervo do dono e pode ser reassociado depois.
+     */
+    @Transactional
+    public void removeFromCampaign(UUID campaignId, UUID npcId, UUID requesterId) {
+        requireCampaignMaster(campaignId, requesterId);
+        CampaignNpc assoc = campaignNpcRepository.findByCampaignIdAndNpcId(campaignId, npcId)
+                .orElseThrow(NpcNotFoundException::new);
+
+        List<Booking> bookings =
+                bookingRepository.findByNpcIdAndTimeSkipDay_TimeSkip_CampaignId(npcId, campaignId);
+        if (!bookings.isEmpty()) {
+            logRepository.deleteByBookingIn(bookings);
+            bookingRepository.deleteAll(bookings);
+        }
+        campaignNpcRepository.delete(assoc);
     }
 
     // ---------- acervo do dono ----------
@@ -267,14 +296,15 @@ public class NpcService {
     private List<NpcInteraction> toInteractions(List<NpcInteractionDto> dtos) {
         if (dtos == null) return new ArrayList<>();
         return dtos.stream()
-                .map(d -> new NpcInteraction(d.name(), d.description(),
-                        d.trainPointCost() == null ? 0 : d.trainPointCost()))
+                .map(d -> new NpcInteraction(d.type(), d.name(), d.description(),
+                        d.idlePointCost() == null ? 0 : d.idlePointCost()))
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 
     private List<NpcInteractionDto> toInteractionDtos(List<NpcInteraction> interactions) {
         return interactions.stream()
-                .map(i -> new NpcInteractionDto(i.getName(), i.getDescription(), i.getTrainPointCost()))
+                .map(i -> new NpcInteractionDto(i.getType(), i.getName(), i.getDescription(),
+                        i.getIdlePointCost()))
                 .toList();
     }
 
@@ -286,6 +316,7 @@ public class NpcService {
                 toAttributesDto(npc.getAttributes()),
                 toDetailDtos(npc.getKnowledge()),
                 toDetailDtos(npc.getTraits()),
+                toDetailDtos(npc.getSpecs()),
                 toInteractionDtos(npc.getInteractions()),
                 npc.getOwner().getId(),
                 npcImageRepository.existsById(npc.getId()),

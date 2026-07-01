@@ -51,6 +51,12 @@ public class Npc {
     @Builder.Default
     private List<NpcDetail> traits = new ArrayList<>();
 
+    /** Specs (habilidades especiais) do NPC — mesmo formato {nome, descrição}. Opcional. */
+    @ElementCollection
+    @CollectionTable(name = "npc_specs", joinColumns = @JoinColumn(name = "npc_id"))
+    @Builder.Default
+    private List<NpcDetail> specs = new ArrayList<>();
+
     /** Tipos de interação oferecidos por este NPC (nome, descrição e custo). */
     @ElementCollection
     @CollectionTable(name = "npc_interactions", joinColumns = @JoinColumn(name = "npc_id"))

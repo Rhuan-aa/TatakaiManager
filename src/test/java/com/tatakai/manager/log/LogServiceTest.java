@@ -60,7 +60,7 @@ class LogServiceTest {
         Npc npc = Npc.builder().id(UUID.randomUUID()).name("Aldric").owner(master).build();
         playerBooking = Booking.builder().id(UUID.randomUUID())
                 .timeSkipDay(day).npc(npc).user(player)
-                .slotNumber((short) 1).interactionName("Treino").trainPointCost((short) 2).build();
+                .slotNumber((short) 1).interactionName("Treino").idlePointCost((short) 2).build();
     }
 
     private void mockMember(User user, Role role) {
@@ -170,7 +170,7 @@ class LogServiceTest {
         TimeSkipDay d2 = TimeSkipDay.builder().id(UUID.randomUUID()).timeSkip(ts2).dayNumber((short) 1).build();
         Booking alien = Booking.builder().id(UUID.randomUUID()).timeSkipDay(d2)
                 .npc(Npc.builder().id(UUID.randomUUID()).name("X").owner(master).build())
-                .user(player).slotNumber((short) 1).interactionName("Treino").trainPointCost((short) 2).build();
+                .user(player).slotNumber((short) 1).interactionName("Treino").idlePointCost((short) 2).build();
         when(bookingRepository.findById(alien.getId())).thenReturn(Optional.of(alien));
 
         var req = new CreateLogRequest(alien.getId(), "log cruzado");

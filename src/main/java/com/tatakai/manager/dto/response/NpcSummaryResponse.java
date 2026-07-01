@@ -10,7 +10,7 @@ import java.util.UUID;
  * Para o Mestre, {@code visible} indica o estado da visibilidade;
  * para o jogador, apenas NPCs visíveis são listados.
  * {@code interactions} permite à grade de slots oferecer as interações válidas
- * (com nome e custo em pontos de treino).
+ * (com nome e custo em pontos de ócio).
  */
 public record NpcSummaryResponse(
         UUID id,

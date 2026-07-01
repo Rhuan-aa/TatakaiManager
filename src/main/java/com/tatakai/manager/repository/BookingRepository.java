@@ -13,4 +13,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByTimeSkipDay_TimeSkipId(UUID timeSkipId);
 
     List<Booking> findByTimeSkipDay_TimeSkipIdAndNpcId(UUID timeSkipId, UUID npcId);
+
+    /** Agendamentos de um NPC em toda a campanha (usado ao remover o NPC da campanha). */
+    List<Booking> findByNpcIdAndTimeSkipDay_TimeSkip_CampaignId(UUID npcId, UUID campaignId);
 }

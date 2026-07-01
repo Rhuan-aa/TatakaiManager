@@ -88,6 +88,13 @@ public class NpcController {
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
+    @DeleteMapping("/campaigns/{campaignId}/npcs/{npcId}")
+    public ResponseEntity<Void> removeFromCampaign(@PathVariable UUID campaignId,
+                                                   @PathVariable UUID npcId) {
+        npcService.removeFromCampaign(campaignId, npcId, AuthenticatedUser.id());
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/campaigns/{campaignId}/npcs/{npcId}/visibility")
     public ResponseEntity<CampaignNpcResponse> setVisibility(@PathVariable UUID campaignId,
                                                             @PathVariable UUID npcId,

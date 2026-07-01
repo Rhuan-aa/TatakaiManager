@@ -12,6 +12,6 @@ public record BookingResponse(
         short dayNumber,
         short slotNumber,
         String interactionName,
-        short trainPointCost,
+        short idlePointCost,
         Instant createdAt
 ) {}

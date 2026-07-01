@@ -92,7 +92,7 @@ public class BookingService {
                 .user(user)
                 .slotNumber(req.slotNumber())
                 .interactionName(interaction.getName())
-                .trainPointCost(interaction.getTrainPointCost())
+                .idlePointCost(interaction.getIdlePointCost())
                 .build();
 
         BookingResponse response;
@@ -177,7 +177,7 @@ public class BookingService {
                 b.getTimeSkipDay().getDayNumber(),
                 b.getSlotNumber(),
                 b.getInteractionName(),
-                b.getTrainPointCost(),
+                b.getIdlePointCost(),
                 b.getCreatedAt());
     }
 }

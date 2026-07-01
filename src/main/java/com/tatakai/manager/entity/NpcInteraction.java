@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Tipo de interação oferecido por um NPC. Cada NPC define a própria lista.
- * O custo em pontos de treino é debitado do jogador que agenda a interação e
- * fica registrado no log do agendamento.
+ * Interação oferecida por um NPC. Cada NPC define a própria lista, podendo haver
+ * várias do mesmo tipo (ex.: dois "Treino" com títulos diferentes). O custo em
+ * pontos de ócio é debitado do jogador que agenda e fica registrado no log.
  */
 @Embeddable
 @Getter
@@ -19,13 +19,18 @@ import lombok.Setter;
 @AllArgsConstructor
 public class NpcInteraction {
 
+    /** Tipo/categoria da interação (ex.: Treino, Trabalho, Descanso, Outro). */
+    @Column(name = "type", length = 50)
+    private String type;
+
+    /** Título da interação. */
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    /** Custo em pontos de treino (>= 0). */
-    @Column(name = "train_point_cost", nullable = false)
-    private short trainPointCost;
+    /** Custo em pontos de ócio (>= 0). */
+    @Column(name = "idle_point_cost", nullable = false)
+    private short idlePointCost;
 }

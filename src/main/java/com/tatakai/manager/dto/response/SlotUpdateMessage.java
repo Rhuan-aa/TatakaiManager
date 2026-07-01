@@ -16,7 +16,7 @@ public record SlotUpdateMessage(
         UUID userId,
         String userName,
         String interactionName,
-        Short trainPointCost
+        Short idlePointCost
 ) {
     public enum SlotEvent {
         BOOKED,
@@ -26,7 +26,7 @@ public record SlotUpdateMessage(
     public static SlotUpdateMessage booked(UUID campaignId, BookingResponse b, UUID timeSkipId) {
         return new SlotUpdateMessage(SlotEvent.BOOKED, campaignId, timeSkipId, b.npcId(),
                 b.dayNumber(), b.slotNumber(), b.userId(), b.userName(),
-                b.interactionName(), b.trainPointCost());
+                b.interactionName(), b.idlePointCost());
     }
 
     public static SlotUpdateMessage cancelled(UUID campaignId, UUID timeSkipId, UUID npcId,

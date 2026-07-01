@@ -42,7 +42,7 @@ CREATE TABLE npcs (
 );
 
 -- Coleções embutidas do NPC (@ElementCollection — sem PK própria)
--- Conhecimentos (ex-"especializações") e Traços: mesmo formato {nome, descrição}
+-- Conhecimentos, Traços e Specs (habilidades): mesmo formato {nome, descrição}
 CREATE TABLE npc_knowledge (
     npc_id      UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
     name        VARCHAR(100) NOT NULL,
@@ -55,12 +55,19 @@ CREATE TABLE npc_traits (
     description TEXT
 );
 
--- Tipos de interação por NPC: nome, descrição e custo em pontos de treino
+CREATE TABLE npc_specs (
+    npc_id      UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
+    name        VARCHAR(100) NOT NULL,
+    description TEXT
+);
+
+-- Interações por NPC: tipo (categoria), título, descrição e custo em pontos de ócio
 CREATE TABLE npc_interactions (
     npc_id           UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
+    type             VARCHAR(50),
     name             VARCHAR(100) NOT NULL,
     description      TEXT,
-    train_point_cost SMALLINT NOT NULL DEFAULT 0
+    idle_point_cost SMALLINT NOT NULL DEFAULT 0
 );
 
 -- Imagem (retrato) do NPC — tabela separada para não pesar as consultas
@@ -105,7 +112,7 @@ CREATE TABLE bookings (
     user_id          UUID NOT NULL REFERENCES users(id),
     slot_number      SMALLINT NOT NULL CHECK (slot_number BETWEEN 1 AND 4),
     interaction_name VARCHAR(100) NOT NULL,
-    train_point_cost SMALLINT NOT NULL DEFAULT 0,
+    idle_point_cost SMALLINT NOT NULL DEFAULT 0,
     created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (time_skip_day_id, npc_id, slot_number)  -- regra central de conflito
 );
@@ -123,7 +130,7 @@ CREATE TABLE interaction_logs (
 CREATE TABLE character_sheet_visibility (
     id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     campaign_member_id UUID NOT NULL REFERENCES campaign_members(id),
-    section            VARCHAR(50) NOT NULL,  -- LOGS, ATTRIBUTES, SPECS, TRAITS
+    section            VARCHAR(50) NOT NULL,  -- LOGS, ATTRIBUTES, KNOWLEDGE, TRAITS
     hidden_by_master   BOOLEAN NOT NULL DEFAULT FALSE,
     hidden_by_self     BOOLEAN NOT NULL DEFAULT FALSE,
     UNIQUE (campaign_member_id, section)

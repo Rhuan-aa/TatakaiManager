@@ -16,6 +16,6 @@ public record LogResponse(
         Short dayNumber,
         Short slotNumber,
         String interactionName,
-        // Custo em pontos de treino do agendamento (nulo em log livre)
-        Short trainPointCost
+        // Custo em pontos de ócio do agendamento (nulo em log livre)
+        Short idlePointCost
 ) {}
