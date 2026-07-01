@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { updateNpc } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
+import DetailListEditor from './DetailListEditor';
 
 const INTERACTION_TYPES = [
   { value: 'TREINO', label: 'Treino' },
@@ -35,9 +36,11 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
     }
     return base;
   });
-  const [traits, setTraits] = useState((npc.traits ?? []).join(', '));
-  const [specs, setSpecs] = useState(
-    npc.specs?.map((s) => ({ name: s.name, description: s.description ?? '' })) ?? []
+  const [traits, setTraits] = useState(
+    npc.traits?.map((t) => ({ name: t.name, description: t.description ?? '' })) ?? []
+  );
+  const [knowledge, setKnowledge] = useState(
+    npc.knowledge?.map((k) => ({ name: k.name, description: k.description ?? '' })) ?? []
   );
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -49,10 +52,6 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
     );
   }
 
-  function updateSpec(index, key, value) {
-    setSpecs((prev) => prev.map((s, i) => (i === index ? { ...s, [key]: value } : s)));
-  }
-
   function buildBody() {
     const attributes = {};
     for (const { key } of ATTRIBUTES) {
@@ -62,8 +61,8 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
       name,
       description: description || null,
       attributes,
-      traits: traits.split(',').map((t) => t.trim()).filter(Boolean),
-      specs: specs.filter((s) => s.name.trim()),
+      traits: traits.filter((t) => t.name.trim()),
+      knowledge: knowledge.filter((k) => k.name.trim()),
       interactionTypes: types,
     };
   }
@@ -167,59 +166,9 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
           </div>
         </fieldset>
 
-        <div>
-          <label htmlFor="edit-npc-traits" className="block text-sm font-medium text-zinc-400">
-            Traços <span className="text-zinc-600">(separados por vírgula)</span>
-          </label>
-          <input
-            id="edit-npc-traits"
-            type="text"
-            value={traits}
-            onChange={(e) => setTraits(e.target.value)}
-            placeholder="corajoso, leal, impulsivo"
-            className={inputClass}
-          />
-        </div>
+        <DetailListEditor label="Traços" items={traits} onChange={setTraits} />
 
-        <div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-400">
-              Especializações <span className="text-zinc-600">(opcional)</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setSpecs((prev) => [...prev, { name: '', description: '' }])}
-              className="text-sm text-red-400 hover:text-red-300"
-            >
-              + Adicionar
-            </button>
-          </div>
-          {specs.map((spec, i) => (
-            <div key={i} className="mt-2 flex gap-2">
-              <input
-                type="text"
-                value={spec.name}
-                onChange={(e) => updateSpec(i, 'name', e.target.value)}
-                placeholder="Nome"
-                className="w-1/3 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
-              />
-              <input
-                type="text"
-                value={spec.description}
-                onChange={(e) => updateSpec(i, 'description', e.target.value)}
-                placeholder="Descrição"
-                className="flex-1 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setSpecs((prev) => prev.filter((_, idx) => idx !== i))}
-                className="text-sm text-zinc-500 hover:text-red-400"
-              >
-                remover
-              </button>
-            </div>
-          ))}
-        </div>
+        <DetailListEditor label="Conhecimentos" items={knowledge} onChange={setKnowledge} />
 
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>

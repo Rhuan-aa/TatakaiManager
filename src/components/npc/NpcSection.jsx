@@ -50,19 +50,27 @@ function NpcDetail({ npc }) {
       )}
 
       {npc.traits?.length > 0 && (
-        <p className="mt-2 text-xs text-zinc-400">
-          <span className="font-medium text-zinc-500">Traços:</span> {npc.traits.join(', ')}
-        </p>
+        <div className="mt-2">
+          <p className="text-xs font-medium text-zinc-500">Traços</p>
+          <ul className="mt-1 space-y-0.5 text-xs text-zinc-400">
+            {npc.traits.map((t, i) => (
+              <li key={i}>
+                <strong className="text-zinc-300">{t.name}</strong>
+                {t.description ? ` — ${t.description}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
-      {npc.specs?.length > 0 && (
+      {npc.knowledge?.length > 0 && (
         <div className="mt-2">
-          <p className="text-xs font-medium text-zinc-500">Especializações</p>
+          <p className="text-xs font-medium text-zinc-500">Conhecimentos</p>
           <ul className="mt-1 space-y-0.5 text-xs text-zinc-400">
-            {npc.specs.map((s, i) => (
+            {npc.knowledge.map((k, i) => (
               <li key={i}>
-                <strong className="text-zinc-300">{s.name}</strong>
-                {s.description ? ` — ${s.description}` : ''}
+                <strong className="text-zinc-300">{k.name}</strong>
+                {k.description ? ` — ${k.description}` : ''}
               </li>
             ))}
           </ul>
