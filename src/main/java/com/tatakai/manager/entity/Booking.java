@@ -46,9 +46,13 @@ public class Booking {
     @Column(name = "slot_number", nullable = false)
     private short slotNumber;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "interaction_type", nullable = false, length = 50)
-    private InteractionType interactionType;
+    /** Nome da interação escolhida (snapshot do NPC no momento do agendamento). */
+    @Column(name = "interaction_name", nullable = false, length = 100)
+    private String interactionName;
+
+    /** Custo em pontos de treino no momento do agendamento (registrado no log). */
+    @Column(name = "train_point_cost", nullable = false)
+    private short trainPointCost;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

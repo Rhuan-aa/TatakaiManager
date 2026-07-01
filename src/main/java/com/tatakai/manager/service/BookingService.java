@@ -71,9 +71,11 @@ public class BookingService {
         }
 
         Npc npc = association.getNpc();
-        if (!npc.getInteractionTypes().contains(req.interactionType())) {
-            throw new InvalidBookingException("Este NPC não aceita a interação: " + req.interactionType());
-        }
+        NpcInteraction interaction = npc.getInteractions().stream()
+                .filter(i -> i.getName().equals(req.interactionName()))
+                .findFirst()
+                .orElseThrow(() -> new InvalidBookingException(
+                        "Este NPC não aceita a interação: " + req.interactionName()));
 
         // Verificação otimista; a constraint única é a garantia final em concorrência
         if (bookingRepository.existsByTimeSkipDayIdAndNpcIdAndSlotNumber(
@@ -89,7 +91,8 @@ public class BookingService {
                 .npc(npc)
                 .user(user)
                 .slotNumber(req.slotNumber())
-                .interactionType(req.interactionType())
+                .interactionName(interaction.getName())
+                .trainPointCost(interaction.getTrainPointCost())
                 .build();
 
         BookingResponse response;
@@ -173,7 +176,8 @@ public class BookingService {
                 b.getUser().getName(),
                 b.getTimeSkipDay().getDayNumber(),
                 b.getSlotNumber(),
-                b.getInteractionType(),
+                b.getInteractionName(),
+                b.getTrainPointCost(),
                 b.getCreatedAt());
     }
 }

@@ -3,6 +3,7 @@ package com.tatakai.manager.service;
 import com.tatakai.manager.dto.request.CreateNpcRequest;
 import com.tatakai.manager.dto.request.NpcAttributesDto;
 import com.tatakai.manager.dto.request.NpcDetailDto;
+import com.tatakai.manager.dto.request.NpcInteractionDto;
 import com.tatakai.manager.dto.request.UpdateNpcRequest;
 import com.tatakai.manager.dto.response.CampaignNpcResponse;
 import com.tatakai.manager.dto.response.NpcResponse;
@@ -18,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,7 +57,7 @@ public class NpcService {
                 .owner(owner)
                 .knowledge(toDetails(req.knowledge()))
                 .traits(toDetails(req.traits()))
-                .interactionTypes(new HashSet<>(req.interactionTypes()))
+                .interactions(toInteractions(req.interactions()))
                 .build();
 
         return toResponse(npcRepository.save(npc), null);
@@ -77,8 +77,8 @@ public class NpcService {
         npc.getKnowledge().addAll(toDetails(req.knowledge()));
         npc.getTraits().clear();
         npc.getTraits().addAll(toDetails(req.traits()));
-        npc.getInteractionTypes().clear();
-        npc.getInteractionTypes().addAll(req.interactionTypes());
+        npc.getInteractions().clear();
+        npc.getInteractions().addAll(toInteractions(req.interactions()));
 
         return toResponse(npcRepository.save(npc), null);
     }
@@ -126,7 +126,8 @@ public class NpcService {
     @Transactional(readOnly = true)
     public List<NpcSummaryResponse> listOwned(UUID ownerId) {
         return npcRepository.findByOwnerId(ownerId).stream()
-                .map(n -> new NpcSummaryResponse(n.getId(), n.getName(), true, n.getInteractionTypes()))
+                .map(n -> new NpcSummaryResponse(n.getId(), n.getName(), true,
+                        toInteractionDtos(n.getInteractions())))
                 .toList();
     }
 
@@ -142,7 +143,7 @@ public class NpcService {
 
         return associations.stream()
                 .map(a -> new NpcSummaryResponse(a.getNpc().getId(), a.getNpc().getName(),
-                        a.isVisible(), a.getNpc().getInteractionTypes()))
+                        a.isVisible(), toInteractionDtos(a.getNpc().getInteractions())))
                 .toList();
     }
 
@@ -212,6 +213,20 @@ public class NpcService {
                 .toList();
     }
 
+    private List<NpcInteraction> toInteractions(List<NpcInteractionDto> dtos) {
+        if (dtos == null) return new ArrayList<>();
+        return dtos.stream()
+                .map(d -> new NpcInteraction(d.name(), d.description(),
+                        d.trainPointCost() == null ? 0 : d.trainPointCost()))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    }
+
+    private List<NpcInteractionDto> toInteractionDtos(List<NpcInteraction> interactions) {
+        return interactions.stream()
+                .map(i -> new NpcInteractionDto(i.getName(), i.getDescription(), i.getTrainPointCost()))
+                .toList();
+    }
+
     private NpcResponse toResponse(Npc npc, Boolean visible) {
         return new NpcResponse(
                 npc.getId(),
@@ -220,7 +235,7 @@ public class NpcService {
                 toAttributesDto(npc.getAttributes()),
                 toDetailDtos(npc.getKnowledge()),
                 toDetailDtos(npc.getTraits()),
-                npc.getInteractionTypes(),
+                toInteractionDtos(npc.getInteractions()),
                 npc.getOwner().getId(),
                 visible);
     }

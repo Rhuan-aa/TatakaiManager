@@ -1,7 +1,5 @@
 package com.tatakai.manager.dto.response;
 
-import com.tatakai.manager.entity.InteractionType;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -13,6 +11,7 @@ public record BookingResponse(
         String userName,
         short dayNumber,
         short slotNumber,
-        InteractionType interactionType,
+        String interactionName,
+        short trainPointCost,
         Instant createdAt
 ) {}

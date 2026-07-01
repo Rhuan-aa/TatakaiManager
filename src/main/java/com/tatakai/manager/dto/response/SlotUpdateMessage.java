@@ -1,7 +1,5 @@
 package com.tatakai.manager.dto.response;
 
-import com.tatakai.manager.entity.InteractionType;
-
 import java.util.UUID;
 
 /**
@@ -17,7 +15,8 @@ public record SlotUpdateMessage(
         short slotNumber,
         UUID userId,
         String userName,
-        InteractionType interactionType
+        String interactionName,
+        Short trainPointCost
 ) {
     public enum SlotEvent {
         BOOKED,
@@ -26,12 +25,13 @@ public record SlotUpdateMessage(
 
     public static SlotUpdateMessage booked(UUID campaignId, BookingResponse b, UUID timeSkipId) {
         return new SlotUpdateMessage(SlotEvent.BOOKED, campaignId, timeSkipId, b.npcId(),
-                b.dayNumber(), b.slotNumber(), b.userId(), b.userName(), b.interactionType());
+                b.dayNumber(), b.slotNumber(), b.userId(), b.userName(),
+                b.interactionName(), b.trainPointCost());
     }
 
     public static SlotUpdateMessage cancelled(UUID campaignId, UUID timeSkipId, UUID npcId,
                                               short dayNumber, short slotNumber) {
         return new SlotUpdateMessage(SlotEvent.CANCELLED, campaignId, timeSkipId, npcId,
-                dayNumber, slotNumber, null, null, null);
+                dayNumber, slotNumber, null, null, null, null);
     }
 }

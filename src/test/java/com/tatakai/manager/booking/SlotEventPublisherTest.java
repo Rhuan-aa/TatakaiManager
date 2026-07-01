@@ -1,7 +1,6 @@
 package com.tatakai.manager.booking;
 
 import com.tatakai.manager.dto.response.SlotUpdateMessage;
-import com.tatakai.manager.entity.InteractionType;
 import com.tatakai.manager.websocket.SlotEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,7 @@ class SlotEventPublisherTest {
         var message = new SlotUpdateMessage(
                 SlotUpdateMessage.SlotEvent.BOOKED, campaignId, UUID.randomUUID(),
                 UUID.randomUUID(), (short) 3, (short) 2, UUID.randomUUID(), "Ana",
-                InteractionType.TREINO);
+                "Treino", (short) 2);
 
         publisher.publish(message);
 

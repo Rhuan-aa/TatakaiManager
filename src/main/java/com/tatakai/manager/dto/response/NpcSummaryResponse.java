@@ -1,19 +1,20 @@
 package com.tatakai.manager.dto.response;
 
-import com.tatakai.manager.entity.InteractionType;
+import com.tatakai.manager.dto.request.NpcInteractionDto;
 
-import java.util.Set;
+import java.util.List;
 import java.util.UUID;
 
 /**
  * Resumo de NPC na listagem de uma campanha.
  * Para o Mestre, {@code visible} indica o estado da visibilidade;
  * para o jogador, apenas NPCs visíveis são listados.
- * {@code interactionTypes} permite à grade de slots oferecer só interações válidas.
+ * {@code interactions} permite à grade de slots oferecer as interações válidas
+ * (com nome e custo em pontos de treino).
  */
 public record NpcSummaryResponse(
         UUID id,
         String name,
         boolean visible,
-        Set<InteractionType> interactionTypes
+        List<NpcInteractionDto> interactions
 ) {}

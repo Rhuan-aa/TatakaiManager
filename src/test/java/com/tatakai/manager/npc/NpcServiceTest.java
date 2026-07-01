@@ -55,7 +55,8 @@ class NpcServiceTest {
                 .name("Aldric")
                 .owner(master)
                 .attributes(NpcAttributes.builder().forca((short) 14).destreza((short) 16).build())
-                .interactionTypes(new java.util.HashSet<>(Set.of(InteractionType.TREINO)))
+                .interactions(new java.util.ArrayList<>(List.of(
+                        new NpcInteraction("Treino", "Aprende esgrima", (short) 2))))
                 .build();
     }
 
@@ -69,7 +70,8 @@ class NpcServiceTest {
         List<NpcSummaryResponse> result = service.listOwned(master.getId());
 
         assertThat(result).hasSize(2);
-        assertThat(result).allMatch(r -> r.interactionTypes().contains(InteractionType.TREINO));
+        assertThat(result).allMatch(r -> r.interactions().stream()
+                .anyMatch(i -> i.name().equals("Treino")));
         verify(npcRepository).findByOwnerId(master.getId());
     }
 
@@ -91,7 +93,7 @@ class NpcServiceTest {
                 new NpcAttributesDto((short) 14, (short) 16, null, null, null, null),
                 List.of(new NpcDetailDto("Visão nas trevas", "Enxerga no escuro")),
                 List.of(new NpcDetailDto("Cicatriz no rosto", "Marca de uma antiga batalha")),
-                Set.of(InteractionType.TREINO));
+                List.of(new NpcInteractionDto("Treino", "Sessão de treino", (short) 2)));
 
         when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
         when(npcRepository.save(any(Npc.class))).thenAnswer(inv -> {
@@ -106,7 +108,9 @@ class NpcServiceTest {
         assertThat(res.ownerId()).isEqualTo(master.getId());
         assertThat(res.attributes().forca()).isEqualTo((short) 14);
         assertThat(res.attributes().constituicao()).isNull();
-        assertThat(res.interactionTypes()).containsExactly(InteractionType.TREINO);
+        assertThat(res.interactions()).hasSize(1);
+        assertThat(res.interactions().get(0).name()).isEqualTo("Treino");
+        assertThat(res.interactions().get(0).trainPointCost()).isEqualTo((short) 2);
         assertThat(res.knowledge()).hasSize(1);
         assertThat(res.knowledge().get(0).name()).isEqualTo("Visão nas trevas");
         assertThat(res.traits()).hasSize(1);
@@ -122,14 +126,16 @@ class NpcServiceTest {
 
         var req = new UpdateNpcRequest("Aldric, o Veterano", "Atualizado",
                 new NpcAttributesDto((short) 18, null, null, null, null, null),
-                List.of(), List.of(), Set.of(InteractionType.TREINO, InteractionType.TRABALHO));
+                List.of(), List.of(), List.of(
+                        new NpcInteractionDto("Treino", null, (short) 1),
+                        new NpcInteractionDto("Trabalho", null, (short) 3)));
 
         NpcResponse res = service.update(npc.getId(), master.getId(), req);
 
         assertThat(res.name()).isEqualTo("Aldric, o Veterano");
         assertThat(res.attributes().forca()).isEqualTo((short) 18);
-        assertThat(res.interactionTypes())
-                .containsExactlyInAnyOrder(InteractionType.TREINO, InteractionType.TRABALHO);
+        assertThat(res.interactions()).extracting(NpcInteractionDto::name)
+                .containsExactlyInAnyOrder("Treino", "Trabalho");
     }
 
     @Test
@@ -139,7 +145,7 @@ class NpcServiceTest {
         when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
 
         var req = new UpdateNpcRequest("Hack", null, null, List.of(), List.of(),
-                Set.of(InteractionType.TREINO));
+                List.of(new NpcInteractionDto("Treino", null, (short) 1)));
 
         assertThatThrownBy(() -> service.update(npc.getId(), player.getId(), req))
                 .isInstanceOf(AccessDeniedException.class);
@@ -224,8 +230,9 @@ class NpcServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).visible()).isTrue();
-        // a grade de slots usa os tipos de interação aceitos pelo NPC
-        assertThat(result.get(0).interactionTypes()).containsExactly(InteractionType.TREINO);
+        // a grade de slots usa as interações aceitas pelo NPC (nome + custo)
+        assertThat(result.get(0).interactions()).extracting(NpcInteractionDto::name)
+                .containsExactly("Treino");
         // garante que o caminho do jogador NÃO consulta todos os NPCs
         verify(campaignNpcRepository, never()).findByCampaignId(any());
     }

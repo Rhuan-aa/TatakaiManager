@@ -1,8 +1,8 @@
 package com.tatakai.manager.dto.request;
 
-import com.tatakai.manager.entity.InteractionType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.UUID;
@@ -21,7 +21,7 @@ public record CreateBookingRequest(
         @Max(value = 4, message = "o slot deve ser de 1 a 4")
         Short slotNumber,
 
-        @NotNull(message = "o tipo de interação é obrigatório")
-        InteractionType interactionType
+        @NotBlank(message = "o tipo de interação é obrigatório")
+        String interactionName
 
 ) {}

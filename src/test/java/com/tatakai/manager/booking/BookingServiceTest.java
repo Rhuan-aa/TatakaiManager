@@ -58,7 +58,8 @@ class BookingServiceTest {
                 .name("Inverno").totalDays((short) 7).status(TimeSkipStatus.ACTIVE).build();
         day3 = TimeSkipDay.builder().id(UUID.randomUUID()).timeSkip(activeSkip).dayNumber((short) 3).build();
         aldric = Npc.builder().id(UUID.randomUUID()).name("Aldric").owner(master)
-                .interactionTypes(new java.util.HashSet<>(Set.of(InteractionType.TREINO))).build();
+                .interactions(new java.util.ArrayList<>(java.util.List.of(
+                        new NpcInteraction("Treino", "Sessão de treino", (short) 2)))).build();
     }
 
     private void mockPlayerMember() {
@@ -74,7 +75,7 @@ class BookingServiceTest {
     }
 
     private CreateBookingRequest req(short slot) {
-        return new CreateBookingRequest(aldric.getId(), (short) 3, slot, InteractionType.TREINO);
+        return new CreateBookingRequest(aldric.getId(), (short) 3, slot, "Treino");
     }
 
     @Test
@@ -100,7 +101,8 @@ class BookingServiceTest {
         assertThat(res.userName()).isEqualTo("Ana");
         assertThat(res.slotNumber()).isEqualTo((short) 2);
         assertThat(res.dayNumber()).isEqualTo((short) 3);
-        assertThat(res.interactionType()).isEqualTo(InteractionType.TREINO);
+        assertThat(res.interactionName()).isEqualTo("Treino");
+        assertThat(res.trainPointCost()).isEqualTo((short) 2);
 
         // US-15: broadcast de BOOKED no canal da campanha
         var captor = org.mockito.ArgumentCaptor.forClass(SlotUpdateMessage.class);
@@ -190,7 +192,7 @@ class BookingServiceTest {
                 .thenReturn(Optional.of(day3));
         mockVisibleAssociation();
 
-        var badReq = new CreateBookingRequest(aldric.getId(), (short) 3, (short) 1, InteractionType.TRABALHO);
+        var badReq = new CreateBookingRequest(aldric.getId(), (short) 3, (short) 1, "Trabalho");
 
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), badReq))
                 .isInstanceOf(InvalidBookingException.class);
@@ -228,7 +230,7 @@ class BookingServiceTest {
     void cancel_byOwner_deletesBooking() {
         Booking booking = Booking.builder().id(UUID.randomUUID())
                 .timeSkipDay(day3).npc(aldric).user(player)
-                .slotNumber((short) 1).interactionType(InteractionType.TREINO).build();
+                .slotNumber((short) 1).interactionName("Treino").trainPointCost((short) 2).build();
         when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
 
         service.cancel(booking.getId(), player.getId());
@@ -251,7 +253,7 @@ class BookingServiceTest {
         activeSkip.setCurrentDay((short) 5);
         Booking booking = Booking.builder().id(UUID.randomUUID())
                 .timeSkipDay(day3).npc(aldric).user(player)
-                .slotNumber((short) 1).interactionType(InteractionType.TREINO).build();
+                .slotNumber((short) 1).interactionName("Treino").trainPointCost((short) 2).build();
         when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
 
         assertThatThrownBy(() -> service.cancel(booking.getId(), player.getId()))
@@ -281,7 +283,7 @@ class BookingServiceTest {
     void cancel_byNonOwner_throwsAccessDenied() {
         Booking booking = Booking.builder().id(UUID.randomUUID())
                 .timeSkipDay(day3).npc(aldric).user(player)
-                .slotNumber((short) 1).interactionType(InteractionType.TREINO).build();
+                .slotNumber((short) 1).interactionName("Treino").trainPointCost((short) 2).build();
         when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
 
         assertThatThrownBy(() -> service.cancel(booking.getId(), master.getId()))
@@ -295,7 +297,7 @@ class BookingServiceTest {
     void listBookings_returnsForTimeSkip() {
         Booking b = Booking.builder().id(UUID.randomUUID())
                 .timeSkipDay(day3).npc(aldric).user(player)
-                .slotNumber((short) 1).interactionType(InteractionType.TREINO).build();
+                .slotNumber((short) 1).interactionName("Treino").trainPointCost((short) 2).build();
         when(memberRepository.existsByCampaignIdAndUserId(campaign.getId(), player.getId()))
                 .thenReturn(true);
         when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));

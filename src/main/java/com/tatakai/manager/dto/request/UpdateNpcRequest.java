@@ -1,6 +1,5 @@
 package com.tatakai.manager.dto.request;
 
-import com.tatakai.manager.entity.InteractionType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -8,7 +7,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
-import java.util.Set;
 
 public record UpdateNpcRequest(
 
@@ -31,6 +29,7 @@ public record UpdateNpcRequest(
         List<NpcDetailDto> traits,
 
         @NotEmpty(message = "informe ao menos um tipo de interação")
-        Set<InteractionType> interactionTypes
+        @Valid
+        List<NpcInteractionDto> interactions
 
 ) {}

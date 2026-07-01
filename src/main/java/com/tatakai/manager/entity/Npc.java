@@ -9,9 +9,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -53,12 +51,11 @@ public class Npc {
     @Builder.Default
     private List<NpcDetail> traits = new ArrayList<>();
 
+    /** Tipos de interação oferecidos por este NPC (nome, descrição e custo). */
     @ElementCollection
-    @CollectionTable(name = "npc_interaction_types", joinColumns = @JoinColumn(name = "npc_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 50)
+    @CollectionTable(name = "npc_interactions", joinColumns = @JoinColumn(name = "npc_id"))
     @Builder.Default
-    private Set<InteractionType> interactionTypes = new HashSet<>();
+    private List<NpcInteraction> interactions = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

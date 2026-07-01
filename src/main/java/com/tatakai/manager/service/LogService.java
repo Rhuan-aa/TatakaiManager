@@ -96,6 +96,7 @@ public class LogService {
                 b == null ? null : b.getNpc().getName(),
                 b == null ? null : b.getTimeSkipDay().getDayNumber(),
                 b == null ? null : b.getSlotNumber(),
-                b == null ? null : b.getInteractionType());
+                b == null ? null : b.getInteractionName(),
+                b == null ? null : b.getTrainPointCost());
     }
 }

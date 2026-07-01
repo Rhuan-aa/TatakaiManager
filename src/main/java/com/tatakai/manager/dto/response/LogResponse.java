@@ -1,7 +1,5 @@
 package com.tatakai.manager.dto.response;
 
-import com.tatakai.manager.entity.InteractionType;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,5 +15,7 @@ public record LogResponse(
         String npcName,
         Short dayNumber,
         Short slotNumber,
-        InteractionType interactionType
+        String interactionName,
+        // Custo em pontos de treino do agendamento (nulo em log livre)
+        Short trainPointCost
 ) {}
