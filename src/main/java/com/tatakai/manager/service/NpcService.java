@@ -160,6 +160,7 @@ public class NpcService {
     public List<NpcSummaryResponse> listOwned(UUID ownerId) {
         return npcRepository.findByOwnerId(ownerId).stream()
                 .map(n -> new NpcSummaryResponse(n.getId(), n.getName(), true,
+                        npcImageRepository.existsById(n.getId()),
                         toInteractionDtos(n.getInteractions())))
                 .toList();
     }
@@ -176,7 +177,8 @@ public class NpcService {
 
         return associations.stream()
                 .map(a -> new NpcSummaryResponse(a.getNpc().getId(), a.getNpc().getName(),
-                        a.isVisible(), toInteractionDtos(a.getNpc().getInteractions())))
+                        a.isVisible(), npcImageRepository.existsById(a.getNpc().getId()),
+                        toInteractionDtos(a.getNpc().getInteractions())))
                 .toList();
     }
 

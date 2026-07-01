@@ -16,5 +16,6 @@ public record NpcSummaryResponse(
         UUID id,
         String name,
         boolean visible,
+        boolean hasImage,
         List<NpcInteractionDto> interactions
 ) {}
