@@ -4,13 +4,6 @@ import { parseApiError } from '../../api/parseApiError';
 import CreateNpcForm from './CreateNpcForm';
 import EditNpcForm from './EditNpcForm';
 
-const INTERACTION_LABELS = {
-  TREINO: 'Treino',
-  TRABALHO: 'Trabalho',
-  DESCANSO: 'Descanso',
-  OUTRO: 'Outro',
-};
-
 const ATTR_LABELS = {
   forca: 'Força',
   destreza: 'Destreza',
@@ -29,12 +22,20 @@ function NpcDetail({ npc }) {
     <div className="mt-3 rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-sm">
       {npc.description && <p className="text-zinc-300">{npc.description}</p>}
 
-      <p className="mt-2 text-xs text-zinc-500">
-        Interações:{' '}
-        <span className="text-zinc-400">
-          {(npc.interactionTypes ?? []).map((t) => INTERACTION_LABELS[t] ?? t).join(', ')}
-        </span>
-      </p>
+      {npc.interactions?.length > 0 && (
+        <div className="mt-2">
+          <p className="text-xs font-medium text-zinc-500">Interações</p>
+          <ul className="mt-1 space-y-0.5 text-xs text-zinc-400">
+            {npc.interactions.map((it, i) => (
+              <li key={i}>
+                <strong className="text-zinc-300">{it.name}</strong>
+                <span className="text-red-400"> · {it.trainPointCost} pts</span>
+                {it.description ? ` — ${it.description}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {attrs.length > 0 && (
         <div className="mt-2">
@@ -135,7 +136,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
     setNpcs((prev) =>
       prev.map((n) =>
         n.id === updated.id
-          ? { ...n, name: updated.name, interactionTypes: updated.interactionTypes }
+          ? { ...n, name: updated.name, interactions: updated.interactions }
           : n
       )
     );
@@ -174,7 +175,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
       await associateNpc(campaignId, npc.id);
       setNpcs((prev) => [
         ...prev,
-        { id: npc.id, name: npc.name, visible: true, interactionTypes: npc.interactionTypes },
+        { id: npc.id, name: npc.name, visible: true, interactions: npc.interactions },
       ]);
     } catch (err) {
       setAcervoError(parseApiError(err).message);
@@ -261,9 +262,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
                     <div>
                       <span className="text-sm font-medium text-white">{npc.name}</span>
                       <span className="ml-2 text-xs text-zinc-500">
-                        {[...npc.interactionTypes]
-                          .map((t) => INTERACTION_LABELS[t] ?? t)
-                          .join(', ')}
+                        {(npc.interactions ?? []).map((i) => i.name).join(', ')}
                       </span>
                     </div>
                     <button

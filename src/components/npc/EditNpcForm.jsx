@@ -2,13 +2,7 @@ import { useState } from 'react';
 import { updateNpc } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
 import DetailListEditor from './DetailListEditor';
-
-const INTERACTION_TYPES = [
-  { value: 'TREINO', label: 'Treino' },
-  { value: 'TRABALHO', label: 'Trabalho' },
-  { value: 'DESCANSO', label: 'Descanso' },
-  { value: 'OUTRO', label: 'Outro' },
-];
+import InteractionListEditor from './InteractionListEditor';
 
 const ATTRIBUTES = [
   { key: 'forca', label: 'Força' },
@@ -25,7 +19,13 @@ const inputClass =
 export default function EditNpcForm({ npc, onUpdated, onCancel }) {
   const [name, setName] = useState(npc.name);
   const [description, setDescription] = useState(npc.description ?? '');
-  const [types, setTypes] = useState(npc.interactionTypes ?? []);
+  const [interactions, setInteractions] = useState(
+    npc.interactions?.map((i) => ({
+      name: i.name,
+      description: i.description ?? '',
+      trainPointCost: i.trainPointCost != null ? String(i.trainPointCost) : '',
+    })) ?? []
+  );
   const [attrs, setAttrs] = useState(() => {
     const base = { forca: '', destreza: '', constituicao: '', mental: '', inteligencia: '', talento: '' };
     if (npc.attributes) {
@@ -46,10 +46,14 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  function toggleType(value) {
-    setTypes((prev) =>
-      prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]
-    );
+  function buildInteractions() {
+    return interactions
+      .filter((i) => i.name.trim())
+      .map((i) => ({
+        name: i.name.trim(),
+        description: i.description?.trim() || null,
+        trainPointCost: i.trainPointCost === '' ? 0 : Number(i.trainPointCost),
+      }));
   }
 
   function buildBody() {
@@ -63,7 +67,7 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
       attributes,
       traits: traits.filter((t) => t.name.trim()),
       knowledge: knowledge.filter((k) => k.name.trim()),
-      interactionTypes: types,
+      interactions: buildInteractions(),
     };
   }
 
@@ -71,8 +75,8 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
     event.preventDefault();
     setError('');
     setFieldErrors({});
-    if (types.length === 0) {
-      setError('Selecione ao menos um tipo de interação.');
+    if (buildInteractions().length === 0) {
+      setError('Adicione ao menos um tipo de interação (com nome).');
       return;
     }
     setSubmitting(true);
@@ -125,22 +129,7 @@ export default function EditNpcForm({ npc, onUpdated, onCancel }) {
           />
         </div>
 
-        <fieldset>
-          <legend className="text-sm font-medium text-zinc-400">Tipos de interação</legend>
-          <div className="mt-2 flex flex-wrap gap-3">
-            {INTERACTION_TYPES.map((t) => (
-              <label key={t.value} className="flex items-center gap-1.5 text-sm text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={types.includes(t.value)}
-                  onChange={() => toggleType(t.value)}
-                  className="accent-red-500"
-                />
-                {t.label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <InteractionListEditor items={interactions} onChange={setInteractions} />
 
         <fieldset>
           <legend className="text-sm font-medium text-zinc-400">

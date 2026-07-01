@@ -5,10 +5,10 @@ export async function listBookings(campaignId, timeSkipId) {
   return data;
 }
 
-export async function createBooking(campaignId, timeSkipId, { npcId, dayNumber, slotNumber, interactionType }) {
+export async function createBooking(campaignId, timeSkipId, { npcId, dayNumber, slotNumber, interactionName }) {
   const { data } = await client.post(
     `/campaigns/${campaignId}/timeskips/${timeSkipId}/bookings`,
-    { npcId, dayNumber, slotNumber, interactionType }
+    { npcId, dayNumber, slotNumber, interactionName }
   );
   return data;
 }

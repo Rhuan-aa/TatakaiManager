@@ -6,13 +6,6 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 
 const SLOTS = [1, 2, 3, 4];
 
-const INTERACTION_LABELS = {
-  TREINO: 'Treino',
-  TRABALHO: 'Trabalho',
-  DESCANSO: 'Descanso',
-  OUTRO: 'Outro',
-};
-
 const slotKey = (day, npcId, slot) => `${day}:${npcId}:${slot}`;
 
 export default function SlotGrid({ campaignId, timeSkip, npcs }) {
@@ -74,7 +67,8 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
             slotNumber: msg.slotNumber,
             userId: msg.userId,
             userName: msg.userName,
-            interactionType: msg.interactionType,
+            interactionName: msg.interactionName,
+            trainPointCost: msg.trainPointCost,
           },
         };
       });
@@ -84,7 +78,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
 
   useWebSocket(campaignId, handleSlotUpdate);
 
-  async function handleBook(npc, slot, interactionType) {
+  async function handleBook(npc, slot, interactionName) {
     setActionError('');
     setActiveCell(null);
     try {
@@ -92,7 +86,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
         npcId: npc.id,
         dayNumber: day,
         slotNumber: slot,
-        interactionType,
+        interactionName,
       });
       setBookings((prev) => ({
         ...prev,
@@ -188,14 +182,17 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
                     const booking = bookings[key];
                     const mine = booking && booking.userId === user?.userId;
                     const cellId = `${npc.id}:${slot}`;
-                    const types = npc.interactionTypes ?? [];
+                    const interactions = npc.interactions ?? [];
 
                     return (
                       <td key={slot} className="p-2 text-center align-top">
                         {booking ? (
                           <div className="rounded-md bg-zinc-700 px-2 py-1 text-left">
                             <p className="text-xs font-medium text-zinc-200">
-                              {INTERACTION_LABELS[booking.interactionType] ?? booking.interactionType}
+                              {booking.interactionName}
+                              {booking.trainPointCost != null && (
+                                <span className="text-red-400"> · {booking.trainPointCost} pts</span>
+                              )}
                             </p>
                             <p className="text-xs text-zinc-500">{booking.userName}</p>
                             {mine && canBook && (
@@ -211,14 +208,15 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
                         ) : canBook ? (
                           activeCell === cellId ? (
                             <div className="flex flex-col gap-1">
-                              {types.map((t) => (
+                              {interactions.map((it) => (
                                 <button
-                                  key={t}
+                                  key={it.name}
                                   type="button"
-                                  onClick={() => handleBook(npc, slot, t)}
+                                  onClick={() => handleBook(npc, slot, it.name)}
+                                  title={it.description || undefined}
                                   className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
                                 >
-                                  {INTERACTION_LABELS[t] ?? t}
+                                  {it.name} · {it.trainPointCost} pts
                                 </button>
                               ))}
                               <button

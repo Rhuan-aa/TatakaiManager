@@ -5,13 +5,6 @@ import { listBookings } from '../../api/bookings';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
 
-const INTERACTION_LABELS = {
-  TREINO: 'Treino',
-  TRABALHO: 'Trabalho',
-  DESCANSO: 'Descanso',
-  OUTRO: 'Outro',
-};
-
 function formatDate(iso) {
   return new Date(iso).toLocaleString('pt-BR', {
     day: '2-digit',
@@ -25,8 +18,7 @@ function formatDate(iso) {
 function bookingLabel(booking, npcs) {
   const npc = npcs.find((n) => n.id === booking.npcId);
   const npcName = npc?.name ?? `NPC ${booking.npcId}`;
-  const type = INTERACTION_LABELS[booking.interactionType] ?? booking.interactionType;
-  return `${npcName} · Dia ${booking.dayNumber} · Slot ${booking.slotNumber} · ${type}`;
+  return `${npcName} · Dia ${booking.dayNumber} · Slot ${booking.slotNumber} · ${booking.interactionName} (${booking.trainPointCost} pts)`;
 }
 
 const textareaClass =
@@ -242,7 +234,8 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
               {log.bookingId && (
                 <p className="mt-1 text-xs text-red-400">
                   {log.npcName} · Dia {log.dayNumber} · Slot {log.slotNumber} ·{' '}
-                  {INTERACTION_LABELS[log.interactionType] ?? log.interactionType}
+                  {log.interactionName}
+                  {log.trainPointCost != null && ` (${log.trainPointCost} pts)`}
                 </p>
               )}
               <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{log.narrative}</p>
