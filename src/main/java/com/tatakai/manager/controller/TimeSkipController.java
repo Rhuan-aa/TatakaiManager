@@ -39,6 +39,12 @@ public class TimeSkipController {
         return ResponseEntity.ok(timeSkipService.close(timeSkipId, AuthenticatedUser.id()));
     }
 
+    @DeleteMapping("/timeskips/{timeSkipId}")
+    public ResponseEntity<Void> delete(@PathVariable UUID timeSkipId) {
+        timeSkipService.delete(timeSkipId, AuthenticatedUser.id());
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/timeskips/{timeSkipId}/current-day")
     public ResponseEntity<TimeSkipResponse> setCurrentDay(@PathVariable UUID timeSkipId,
                                                           @Valid @RequestBody SetCurrentDayRequest request) {

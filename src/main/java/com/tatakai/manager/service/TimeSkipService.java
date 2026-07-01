@@ -2,6 +2,7 @@ package com.tatakai.manager.service;
 
 import com.tatakai.manager.dto.request.CreateTimeSkipRequest;
 import com.tatakai.manager.dto.response.TimeSkipResponse;
+import com.tatakai.manager.entity.Booking;
 import com.tatakai.manager.entity.Campaign;
 import com.tatakai.manager.entity.Role;
 import com.tatakai.manager.entity.TimeSkip;
@@ -12,8 +13,10 @@ import com.tatakai.manager.exception.CampaignNotFoundException;
 import com.tatakai.manager.exception.InvalidTimeSkipException;
 import com.tatakai.manager.exception.TimeSkipClosedException;
 import com.tatakai.manager.exception.TimeSkipNotFoundException;
+import com.tatakai.manager.repository.BookingRepository;
 import com.tatakai.manager.repository.CampaignMemberRepository;
 import com.tatakai.manager.repository.CampaignRepository;
+import com.tatakai.manager.repository.InteractionLogRepository;
 import com.tatakai.manager.repository.TimeSkipRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,13 +31,19 @@ public class TimeSkipService {
     private final TimeSkipRepository timeSkipRepository;
     private final CampaignRepository campaignRepository;
     private final CampaignMemberRepository memberRepository;
+    private final BookingRepository bookingRepository;
+    private final InteractionLogRepository logRepository;
 
     public TimeSkipService(TimeSkipRepository timeSkipRepository,
                            CampaignRepository campaignRepository,
-                           CampaignMemberRepository memberRepository) {
+                           CampaignMemberRepository memberRepository,
+                           BookingRepository bookingRepository,
+                           InteractionLogRepository logRepository) {
         this.timeSkipRepository = timeSkipRepository;
         this.campaignRepository = campaignRepository;
         this.memberRepository = memberRepository;
+        this.bookingRepository = bookingRepository;
+        this.logRepository = logRepository;
     }
 
     @Transactional
@@ -72,6 +81,25 @@ public class TimeSkipService {
         timeSkip.setStatus(TimeSkipStatus.CLOSED);
         timeSkip.setClosedAt(Instant.now());
         return toResponse(timeSkipRepository.save(timeSkip));
+    }
+
+    /**
+     * Exclui um TimeSkip por completo (ex.: criado por engano). Só o Mestre da campanha.
+     * Remove em cascata os agendamentos do TimeSkip e os logs vinculados a eles; os dias
+     * são removidos por orphanRemoval ao apagar o TimeSkip.
+     */
+    @Transactional
+    public void delete(UUID timeSkipId, UUID requesterId) {
+        TimeSkip timeSkip = timeSkipRepository.findById(timeSkipId)
+                .orElseThrow(TimeSkipNotFoundException::new);
+        requireCampaignMaster(timeSkip.getCampaign().getId(), requesterId);
+
+        List<Booking> bookings = bookingRepository.findByTimeSkipDay_TimeSkipId(timeSkipId);
+        if (!bookings.isEmpty()) {
+            logRepository.deleteByBookingIn(bookings);
+            bookingRepository.deleteAll(bookings);
+        }
+        timeSkipRepository.delete(timeSkip);
     }
 
     /**

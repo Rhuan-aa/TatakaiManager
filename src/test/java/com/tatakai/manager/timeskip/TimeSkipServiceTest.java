@@ -7,8 +7,11 @@ import com.tatakai.manager.exception.AccessDeniedException;
 import com.tatakai.manager.exception.ActiveTimeSkipExistsException;
 import com.tatakai.manager.exception.InvalidTimeSkipException;
 import com.tatakai.manager.exception.TimeSkipClosedException;
+import com.tatakai.manager.exception.TimeSkipNotFoundException;
+import com.tatakai.manager.repository.BookingRepository;
 import com.tatakai.manager.repository.CampaignMemberRepository;
 import com.tatakai.manager.repository.CampaignRepository;
+import com.tatakai.manager.repository.InteractionLogRepository;
 import com.tatakai.manager.repository.TimeSkipRepository;
 import com.tatakai.manager.service.TimeSkipService;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +38,8 @@ class TimeSkipServiceTest {
     @Mock private TimeSkipRepository timeSkipRepository;
     @Mock private CampaignRepository campaignRepository;
     @Mock private CampaignMemberRepository memberRepository;
+    @Mock private BookingRepository bookingRepository;
+    @Mock private InteractionLogRepository logRepository;
 
     private TimeSkipService service;
 
@@ -44,7 +49,8 @@ class TimeSkipServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TimeSkipService(timeSkipRepository, campaignRepository, memberRepository);
+        service = new TimeSkipService(timeSkipRepository, campaignRepository, memberRepository,
+                bookingRepository, logRepository);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Player").build();
         campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
@@ -157,6 +163,71 @@ class TimeSkipServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(timeSkipRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Exclusão: Mestre apaga TimeSkip removendo agendamentos e logs vinculados")
+    void delete_byMaster_removesBookingsLogsAndTimeSkip() {
+        TimeSkip ts = TimeSkip.builder()
+                .id(UUID.randomUUID()).campaign(campaign).name("Engano")
+                .totalDays((short) 5).status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        mockMaster(true);
+        List<Booking> bookings = List.of(
+                Booking.builder().id(UUID.randomUUID()).build(),
+                Booking.builder().id(UUID.randomUUID()).build());
+        when(bookingRepository.findByTimeSkipDay_TimeSkipId(ts.getId())).thenReturn(bookings);
+
+        service.delete(ts.getId(), master.getId());
+
+        verify(logRepository).deleteByBookingIn(bookings);
+        verify(bookingRepository).deleteAll(bookings);
+        verify(timeSkipRepository).delete(ts);
+    }
+
+    @Test
+    @DisplayName("Exclusão: sem agendamentos, apaga só o TimeSkip")
+    void delete_noBookings_removesOnlyTimeSkip() {
+        TimeSkip ts = TimeSkip.builder()
+                .id(UUID.randomUUID()).campaign(campaign).name("Vazio")
+                .totalDays((short) 3).status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        mockMaster(true);
+        when(bookingRepository.findByTimeSkipDay_TimeSkipId(ts.getId())).thenReturn(List.of());
+
+        service.delete(ts.getId(), master.getId());
+
+        verify(logRepository, never()).deleteByBookingIn(any());
+        verify(bookingRepository, never()).deleteAll(any());
+        verify(timeSkipRepository).delete(ts);
+    }
+
+    @Test
+    @DisplayName("Exclusão: jogador não pode apagar TimeSkip — AccessDenied")
+    void delete_byNonMaster_throwsAccessDenied() {
+        TimeSkip ts = TimeSkip.builder()
+                .id(UUID.randomUUID()).campaign(campaign).name("Alvo")
+                .totalDays((short) 5).status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(
+                campaign.getId(), player.getId(), Role.MASTER)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.delete(ts.getId(), player.getId()))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(timeSkipRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Exclusão: TimeSkip inexistente — TimeSkipNotFound")
+    void delete_notFound_throws() {
+        UUID missing = UUID.randomUUID();
+        when(timeSkipRepository.findById(missing)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.delete(missing, master.getId()))
+                .isInstanceOf(TimeSkipNotFoundException.class);
+
+        verify(timeSkipRepository, never()).delete(any());
     }
 
     @Test
