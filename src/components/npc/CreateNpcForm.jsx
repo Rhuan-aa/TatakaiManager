@@ -79,6 +79,7 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
         name: npc.name,
         visible: true,
         interactions: npc.interactions,
+        hasImage: !!imageAction.file,
       });
     } catch (err) {
       const parsed = parseApiError(err);
