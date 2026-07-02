@@ -3,6 +3,10 @@
 *.env
 !.env.example
 
+# Docs de trabalho — mantidas apenas localmente, fora do repositório remoto
+DEPLOY.md
+HANDOFF.md
+
 # OS / editor
 .DS_Store
 Thumbs.db
