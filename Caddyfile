@@ -5,6 +5,6 @@ tatakai.duckdns.org {
     reverse_proxy frontend:80
 }
 
-tatakaiapi.duckdns.org {
+fightapi.duckdns.org {
     reverse_proxy backend:8080
 }
