@@ -8,6 +8,9 @@ target/
 *.env
 .env
 
+# Config local (não versionada — use application.properties.example como base)
+src/main/resources/application.properties
+
 # IDE
 .idea/
 .vscode/

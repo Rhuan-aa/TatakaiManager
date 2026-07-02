@@ -9,6 +9,8 @@ RUN chmod +x mvnw && ./mvnw -B -q dependency:go-offline
 
 # Código e empacotamento (testes rodam no CI, não na imagem)
 COPY src ./src
+# application.properties não é versionado; num checkout limpo (ex.: deploy) usa o template
+RUN [ -f src/main/resources/application.properties ] || cp src/main/resources/application.properties.example src/main/resources/application.properties
 RUN ./mvnw -B -q clean package -DskipTests
 
 # ---- runtime ----
