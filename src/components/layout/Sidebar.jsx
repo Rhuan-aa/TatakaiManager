@@ -1,45 +1,107 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-function IconGrid() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+const svg = (children) => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="shrink-0"
+  >
+    {children}
+  </svg>
+);
+
+const ICONS = {
+  grid: svg(
+    <>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
       <rect x="14" y="14" width="7" height="7" rx="1.5" />
-    </svg>
-  );
-}
-
-function IconPlus() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-
-function IconLogout() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+    </>
+  ),
+  plus: svg(<path d="M12 5v14M5 12h14" />),
+  back: svg(<path d="M19 12H5M12 19l-7-7 7-7" />),
+  users: svg(
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.5-6 8-6s8 2 8 6" />
+    </>
+  ),
+  calendar: svg(
+    <>
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <path d="M3 9h18M8 2v4M16 2v4" />
+    </>
+  ),
+  scroll: svg(
+    <>
+      <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </>
+  ),
+  settings: svg(
+    <>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+      <circle cx="9" cy="6" r="2" fill="currentColor" />
+      <circle cx="16" cy="12" r="2" fill="currentColor" />
+      <circle cx="11" cy="18" r="2" fill="currentColor" />
+    </>
+  ),
+  logout: svg(
+    <>
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="M16 17l5-5-5-5M21 12H9" />
-    </svg>
-  );
-}
+    </>
+  ),
+};
 
 // Rótulo que só aparece quando a sidebar está expandida (hover)
 const label =
   'overflow-hidden whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover/sb:opacity-100';
-const item =
-  'flex items-center gap-3 rounded-lg py-2.5 pl-3.5 pr-3 text-sm font-medium transition-colors';
+const itemBase =
+  'flex w-full items-center gap-3 rounded-lg py-2.5 pl-3.5 pr-3 text-sm font-medium transition-colors';
 
-export default function Sidebar({ onNewCampaign }) {
+function NavItem({ item }) {
+  const cls = `${itemBase} ${
+    item.active
+      ? 'bg-red-950/50 text-red-400'
+      : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
+  }`;
+  const inner = (
+    <>
+      {ICONS[item.icon] ?? ICONS.grid}
+      <span className={label}>{item.label}</span>
+    </>
+  );
+  if (item.to) {
+    return (
+      <Link to={item.to} className={cls}>
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={item.onClick} className={cls}>
+      {inner}
+    </button>
+  );
+}
+
+/**
+ * Sidebar lateral retrátil: rail de ícones que expande no hover mostrando os
+ * rótulos. `items` é a navegação contextual (ex.: campanhas no dashboard,
+ * seções dentro de uma campanha). Itens com `divider: true` viram separador.
+ */
+export default function Sidebar({ items = [] }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const onCampaigns = pathname.startsWith('/dashboard');
 
   function handleLogout() {
     logout();
@@ -61,27 +123,15 @@ export default function Sidebar({ onNewCampaign }) {
         </span>
       </Link>
 
-      {/* Navegação */}
+      {/* Navegação contextual */}
       <nav className="flex-1 space-y-1 px-2.5 py-2">
-        <Link
-          to="/dashboard"
-          className={`${item} ${
-            onCampaigns
-              ? 'bg-red-950/50 text-red-400'
-              : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
-          }`}
-        >
-          <IconGrid />
-          <span className={label}>Campanhas</span>
-        </Link>
-        <button
-          type="button"
-          onClick={onNewCampaign}
-          className={`${item} w-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100`}
-        >
-          <IconPlus />
-          <span className={label}>Nova campanha</span>
-        </button>
+        {items.map((item, i) =>
+          item.divider ? (
+            <hr key={`d${i}`} className="my-2 border-zinc-800" />
+          ) : (
+            <NavItem key={item.key ?? item.label} item={item} />
+          )
+        )}
       </nav>
 
       {/* Usuário + sair */}
@@ -95,9 +145,9 @@ export default function Sidebar({ onNewCampaign }) {
         <button
           type="button"
           onClick={handleLogout}
-          className={`${item} w-full text-zinc-500 hover:bg-zinc-800 hover:text-red-400`}
+          className={`${itemBase} text-zinc-500 hover:bg-zinc-800 hover:text-red-400`}
         >
-          <IconLogout />
+          {ICONS.logout}
           <span className={label}>Sair</span>
         </button>
       </div>

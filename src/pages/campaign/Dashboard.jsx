@@ -74,7 +74,12 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-zinc-950">
-      <Sidebar onNewCampaign={() => setCreating(true)} />
+      <Sidebar
+        items={[
+          { key: 'campaigns', label: 'Campanhas', icon: 'grid', to: '/dashboard', active: true },
+          { key: 'new', label: 'Nova campanha', icon: 'plus', onClick: () => setCreating(true) },
+        ]}
+      />
 
       <div className="pl-16">
         <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
