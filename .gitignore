@@ -1,0 +1,8 @@
+# Ambiente de produção/local — nunca versionar (contém segredos)
+.env
+*.env
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db

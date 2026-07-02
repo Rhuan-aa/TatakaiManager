@@ -1,0 +1,10 @@
+# TLS (Let's Encrypt) e WSS automáticos. Troque os domínios pelos seus (DuckDNS).
+# O Caddy faz proxy transparente do upgrade WebSocket — nada extra é necessário.
+
+tatakai.duckdns.org {
+    reverse_proxy frontend:80
+}
+
+tatakaiapi.duckdns.org {
+    reverse_proxy backend:8080
+}

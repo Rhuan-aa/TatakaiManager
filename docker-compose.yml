@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-tatakai}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+    ports:
+      # host:container — porta de host configurável (evita conflito com Postgres local)
+      - "${DB_HOST_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-tatakai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Conexão interna ao Postgres (rede do compose, sempre 5432)
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-tatakai}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production-min-32-chars}
+      # Origem do front para CORS / WebSocket (deve bater com a porta publicada do frontend)
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
+      DDL_AUTO: ${DDL_AUTO:-update}
+    ports:
+      - "${BACKEND_HOST_PORT:-8080}:8080"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    environment:
+      # URLs que o NAVEGADOR usa para alcançar o backend (host, não rede interna)
+      API_URL: ${API_URL:-http://localhost:8080}
+      WS_URL: ${WS_URL:-http://localhost:8080/ws}
+    ports:
+      - "${FRONTEND_HOST_PORT:-3001}:80"
+
+volumes:
+  pgdata:
