@@ -1,0 +1,25 @@
+# Datasource (Postgres) — valores vêm de env; os defaults servem para dev local.
+spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/tatakai}
+spring.datasource.username=${DB_USER:postgres}
+spring.datasource.password=${DB_PASS:postgres}
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JPA / Hibernate — validate em produção (schema via migração); update no compose/dev contra Postgres novo
+spring.jpa.hibernate.ddl-auto=${DDL_AUTO:validate}
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.format_sql=true
+
+# Upload de imagem de NPC
+spring.servlet.multipart.max-file-size=5MB
+spring.servlet.multipart.max-request-size=5MB
+
+server.port=${PORT:8080}
+
+# Origens liberadas para CORS e handshake WebSocket (deploy define via FRONTEND_URL).
+# Aceita varias origens separadas por virgula.
+app.cors.allowed-origins=${FRONTEND_URL:http://localhost:5173}
+
+# JWT
+security.jwt.secret=${JWT_SECRET:change-this-secret-in-production-min-32-chars}
+security.jwt.expiration-ms=86400000
