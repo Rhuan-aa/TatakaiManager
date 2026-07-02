@@ -44,9 +44,7 @@ TatakaiManager/
 ├── frontend/                # SPA React + Vite
 ├── docker-compose.yml       # ambiente de desenvolvimento
 ├── docker-compose.prod.yml  # produção (Caddy à frente; back/DB só na rede interna)
-├── Caddyfile                # reverse proxy com TLS/WSS automáticos
-├── DEPLOY.md                # runbook de deploy (Oracle Cloud Always Free — custo zero)
-└── HANDOFF.md               # estado do projeto / notas de continuidade
+└── Caddyfile                # reverse proxy com TLS/WSS automáticos
 ```
 
 ---
@@ -111,6 +109,19 @@ dá para trocar o endpoint **sem rebuildar a imagem**.
 
 ## Deploy
 
-Runbook completo em **[DEPLOY.md](DEPLOY.md)** — alvo é a **Oracle Cloud Always Free**
-(VM ARM Ampere, custo zero e sem expiração), com Caddy provendo HTTPS e WebSocket seguro
-(WSS) automaticamente. O deploy é um único `git clone` + `docker compose`.
+Alvo de produção: **Oracle Cloud Always Free** (VM ARM Ampere, custo zero e sem
+expiração), com **Caddy** provendo HTTPS e WebSocket seguro (WSS) automaticamente. O
+deploy roda o `docker-compose.prod.yml` — um único `git clone` + `docker compose`.
+
+Em resumo, na VM:
+
+```bash
+git clone https://github.com/Rhuan-aa/TatakaiManager.git
+cd TatakaiManager
+# criar o .env de produção (segredos + FRONTEND_URL/API_URL/WS_URL) e ajustar os
+# domínios no Caddyfile
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+> O runbook detalhado (provisionamento da VM, DuckDNS, portas, backup) é mantido
+> **fora do repositório**, apenas localmente.
