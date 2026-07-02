@@ -61,11 +61,16 @@ export default function NpcImagePicker({ campaignId, npcId, hasImage, onChange }
         Imagem <span className="text-zinc-600">(opcional)</span>
       </span>
       {shownUrl && (
-        <img
-          src={shownUrl}
-          alt="Retrato do NPC"
-          className="mt-2 max-h-48 rounded-md object-cover"
-        />
+        <div className="mt-2 w-32 overflow-hidden rounded-lg border border-zinc-800 shadow-md shadow-black/30">
+          {/* Mesma proporção 3:4 do card e do modal — uma imagem por NPC. */}
+          <div className="aspect-[3/4]">
+            <img
+              src={shownUrl}
+              alt="Retrato do NPC"
+              className="h-full w-full object-cover object-top"
+            />
+          </div>
+        </div>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <label className="cursor-pointer rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-700">

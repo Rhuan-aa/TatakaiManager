@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { inviteMember } from '../../api/campaigns';
 import { parseApiError } from '../../api/parseApiError';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function InviteMemberForm({ campaignId }) {
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -17,6 +19,7 @@ export default function InviteMemberForm({ campaignId }) {
       const member = await inviteMember(campaignId, email);
       setSuccess(`${member.name} foi adicionado como jogador.`);
       setEmail('');
+      toast(`${member.name} adicionado à campanha.`);
     } catch (err) {
       setError(parseApiError(err).message);
     } finally {
@@ -33,7 +36,7 @@ export default function InviteMemberForm({ campaignId }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="e-mail do jogador"
-          className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+          className="w-full rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
         />
         {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
         {success && <p className="mt-1 text-xs text-green-400">{success}</p>}

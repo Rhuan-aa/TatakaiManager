@@ -7,12 +7,14 @@ import {
   deleteTimeSkip,
 } from '../../api/timeskips';
 import { parseApiError } from '../../api/parseApiError';
+import { EmptyState } from '../../components/layout/AppShell';
+import { useToast } from '../../contexts/ToastContext';
 import SlotGrid from '../booking/SlotGrid';
 
-const inputClass =
-  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+const inputClass = 'field';
 
 export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
+  const toast = useToast();
   const [timeSkips, setTimeSkips] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +64,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
       setSelectedId(created.id);
       setCreating(false);
       setForm({ name: '', totalDays: 7 });
+      toast(`TimeSkip "${created.name}" criado.`);
     } catch (err) {
       const parsed = parseApiError(err);
       setCreateError(parsed.message);
@@ -84,6 +87,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     try {
       const updated = await closeTimeSkip(selected.id);
       upsert(updated);
+      toast('TimeSkip encerrado.');
     } catch (err) {
       setError(parseApiError(err).message);
     }
@@ -100,6 +104,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
         return remaining;
       });
       setConfirmingDelete(false);
+      toast('TimeSkip excluído.');
     } catch (err) {
       setError(parseApiError(err).message);
     } finally {
@@ -107,7 +112,17 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     }
   }
 
-  if (loading) return <p className="text-sm text-zinc-500">Carregando TimeSkips...</p>;
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex gap-2">
+          <div className="skeleton h-9 w-28 rounded-lg" />
+          <div className="skeleton h-9 w-24 rounded-lg" />
+        </div>
+        <div className="skeleton h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -121,10 +136,10 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 setSelectedId(t.id);
                 setConfirmingDelete(false);
               }}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                 t.id === selectedId
-                  ? 'bg-red-600 text-white'
-                  : 'border border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+                  ? 'bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/40'
+                  : 'border border-zinc-700/70 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
               }`}
             >
               {t.name}
@@ -138,9 +153,9 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"
+            className="rounded-lg bg-gradient-to-b from-red-500 to-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-lg shadow-red-950/40 transition hover:to-red-700"
           >
-            Novo TimeSkip
+            + Novo TimeSkip
           </button>
         )}
       </div>
@@ -150,7 +165,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
       {creating && (
         <form
           onSubmit={handleCreate}
-          className="mt-4 rounded-lg border border-zinc-700 bg-zinc-800 p-4"
+          className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
           noValidate
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -209,12 +224,29 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
       )}
 
       {!selected ? (
-        <p className="mt-4 text-sm text-zinc-500">
-          Nenhum TimeSkip ainda.
-          {isMaster ? ' Crie o primeiro para começar a agendar.' : ''}
-        </p>
+        <EmptyState
+          className="mt-4"
+          icon="🗓️"
+          title="Nenhum TimeSkip ainda"
+          description={
+            isMaster
+              ? 'Crie o primeiro TimeSkip para começar a agendar as interações.'
+              : 'Aguarde o Mestre criar um TimeSkip para começar a agendar.'
+          }
+          action={
+            isMaster && !creating ? (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="rounded-lg bg-gradient-to-b from-red-500 to-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-lg shadow-red-950/40 transition hover:to-red-700"
+              >
+                + Novo TimeSkip
+              </button>
+            ) : null
+          }
+        />
       ) : (
-        <div className="mt-4 rounded-lg border border-zinc-700 bg-zinc-800 p-4">
+        <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           {isMaster && (
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {selected.status === 'ACTIVE' && (

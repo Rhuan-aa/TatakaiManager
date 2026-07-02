@@ -1,16 +1,78 @@
 @import 'tailwindcss';
 
+/*
+ * ─────────────────────────────────────────────────────────────────────────
+ * Tatakai Manager — Design tokens
+ * Fontes: Inter (corpo/UI) + Space Grotesk (display/títulos). Acento: red-600.
+ * Superfície escura em camadas: fundo zinc-950 → surface translúcida → cards.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+@theme {
+  --font-sans: 'Inter Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk Variable', 'Inter Variable', system-ui, sans-serif;
+}
+
 :root {
   color-scheme: dark;
+  --vignette: rgba(24, 24, 27, 0.6);
 }
 
 body {
   margin: 0;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
   background-color: #09090b; /* zinc-950 */
-  color: #ffffff;
+  color: #fafafa; /* zinc-50 */
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Algarismos e recursos tipográficos: números tabulares + ligaduras contextuais. */
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * ─── Tema claro ───────────────────────────────────────────────────────────
+ * O Tailwind v4 expõe as cores como var(--color-*). Invertendo a escala zinc,
+ * as utilities de fundo (zinc-950/900/800) ficam claras e as de texto
+ * (zinc-300/400/500) ficam escuras — sem tocar no vermelho de acento nem no
+ * branco (que segue sobre botões vermelhos).
+ */
+[data-theme='light'] {
+  color-scheme: light;
+  --vignette: rgba(244, 244, 245, 0);
+
+  --color-zinc-950: #fafafa;
+  --color-zinc-900: #f4f4f5;
+  --color-zinc-800: #e4e4e7;
+  --color-zinc-700: #d4d4d8;
+  --color-zinc-600: #a1a1aa;
+  --color-zinc-500: #71717a;
+  --color-zinc-400: #52525b;
+  --color-zinc-300: #3f3f46;
+  --color-zinc-200: #27272a;
+  --color-zinc-100: #18181b;
+  --color-zinc-50: #09090b;
+}
+
+[data-theme='light'] body {
+  background-color: #fafafa;
+  color: #18181b;
+}
+
+/* Skeleton no claro: base clara + brilho escuro */
+[data-theme='light'] .skeleton {
+  background-color: rgba(212, 212, 216, 0.55);
+}
+[data-theme='light'] .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.05), transparent);
+}
+
+/* Títulos e a marca usam a fonte display (mais geométrica/impactante). */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
 
 /* Seleção de texto no tema (acento vermelho) */
@@ -37,6 +99,58 @@ body {
   background-color: #52525b; /* zinc-600 */
 }
 
+/*
+ * Componentes reutilizáveis — reduzem repetição e mantêm o visual coeso.
+ * Adotados nas telas, formulários e painéis.
+ */
+@layer components {
+  /* Painel "surface": camada translúcida elevada sobre o fundo. Os cards
+     sólidos (zinc-900) por cima dela ganham leitura de profundidade sem
+     conflitar de cor — resolve o aninhamento apontado no handoff. */
+  .surface {
+    @apply rounded-2xl border border-zinc-800/70 bg-zinc-900/40 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-sm;
+  }
+
+  /* Campo de formulário padrão (input / select / textarea). */
+  .field {
+    @apply mt-1 w-full rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 shadow-inner shadow-black/20 transition placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40;
+  }
+
+  /* Botões */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-b from-red-500 to-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-950/40 transition hover:from-red-500 hover:to-red-700 hover:shadow-red-900/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/40 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:pointer-events-none disabled:opacity-50;
+  }
+}
+
+/* Skeleton de carregamento com shimmer */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background-color: rgba(39, 39, 42, 0.6); /* zinc-800/60 */
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Animação de entrada para modais/overlays */
 @keyframes fade-in {
   from {
@@ -54,5 +168,15 @@ body {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* Respeita quem prefere menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   getCampaignNpc,
   setNpcVisibility,
@@ -8,6 +9,8 @@ import {
   fetchNpcImageUrl,
 } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
+import { EmptyState } from '../../components/layout/AppShell';
+import { useToast } from '../../contexts/ToastContext';
 import CreateNpcForm from './CreateNpcForm';
 import EditNpcForm from './EditNpcForm';
 
@@ -86,6 +89,7 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
 
         {/* Gradiente + nome */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3 pt-8">
+          {/* Nome sobre overlay escuro da imagem — sempre branco (independe do tema) */}
           <p className="truncate text-sm font-semibold text-white">{npc.name}</p>
           {npc.interactions?.length > 0 && (
             <p className="truncate text-[11px] text-zinc-400">
@@ -146,8 +150,10 @@ function NpcDetailView({ npc, campaignId }) {
     : [];
 
   return (
-    <div className="grid gap-5 sm:grid-cols-[minmax(0,180px)_1fr]">
-      <div className="mx-auto w-40 shrink-0 overflow-hidden rounded-lg border border-zinc-800 sm:mx-0 sm:w-full">
+    <div className="flex flex-col gap-5 sm:flex-row">
+      {/* Retrato adaptado ao modal: mesma proporção 3:4 do card, porém maior,
+          alinhado ao topo e integrado (ring/sombra) — sem "flutuar". */}
+      <div className="w-40 shrink-0 self-start overflow-hidden rounded-xl border border-zinc-800 shadow-lg shadow-black/40 ring-1 ring-white/5 sm:w-52">
         <div className="aspect-[3/4]">
           <NpcPortrait
             campaignId={campaignId}
@@ -158,7 +164,7 @@ function NpcDetailView({ npc, campaignId }) {
         </div>
       </div>
 
-      <div className="min-w-0 space-y-4">
+      <div className="min-w-0 flex-1 space-y-4">
         {npc.description && <p className="text-sm text-zinc-300">{npc.description}</p>}
 
         {npc.interactions?.length > 0 && (
@@ -192,7 +198,7 @@ function NpcDetailView({ npc, campaignId }) {
                   key={k}
                   className="rounded-md border border-zinc-800 bg-zinc-800/60 px-2 py-1 text-xs text-zinc-300"
                 >
-                  {ATTR_LABELS[k] ?? k}: <strong className="text-white">{v}</strong>
+                  {ATTR_LABELS[k] ?? k}: <strong className="text-zinc-50">{v}</strong>
                 </span>
               ))}
             </div>
@@ -248,7 +254,9 @@ function Modal({ title, onClose, children }) {
     };
   }, [onClose]);
 
-  return (
+  // Portal para o body: escapa de qualquer ancestral com backdrop-filter/transform
+  // (ex.: a .surface), que de outra forma vira o containing block do position:fixed.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm animate-[fade-in_120ms_ease-out] sm:items-center sm:p-4"
       onClick={onClose}
@@ -258,7 +266,7 @@ function Modal({ title, onClose, children }) {
         className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-zinc-800 bg-zinc-900 shadow-2xl animate-[pop-in_160ms_ease-out] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-5 py-3">
-          <h3 className="truncate text-base font-semibold text-white">{title}</h3>
+          <h3 className="truncate text-base font-semibold text-zinc-50">{title}</h3>
           <button
             type="button"
             onClick={onClose}
@@ -272,11 +280,13 @@ function Modal({ title, onClose, children }) {
         </div>
         <div className="overflow-y-auto px-5 py-4">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
 export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
+  const toast = useToast();
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -330,6 +340,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
       )
     );
     setEditing(false);
+    toast(`NPC "${updated.name}" atualizado.`);
   }
 
   async function toggleVisibility(npc) {
@@ -337,6 +348,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
     try {
       const res = await setNpcVisibility(campaignId, npc.id, !npc.visible);
       setNpcs((prev) => prev.map((n) => (n.id === npc.id ? { ...n, visible: res.visible } : n)));
+      toast(res.visible ? 'NPC visível aos jogadores.' : 'NPC ocultado dos jogadores.');
     } catch (err) {
       setError(parseApiError(err).message);
     }
@@ -354,6 +366,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
         return next;
       });
       closeModal();
+      toast(`NPC "${npc.name}" removido da campanha.`);
     } catch (err) {
       setError(parseApiError(err).message);
     } finally {
@@ -390,6 +403,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
           interactions: npc.interactions,
         },
       ]);
+      toast(`"${npc.name}" associado à campanha.`);
     } catch (err) {
       setAcervoError(parseApiError(err).message);
     } finally {
@@ -400,6 +414,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
   function handleCreated(summary) {
     setNpcs((prev) => [...prev, summary]);
     setCreating(false);
+    toast(`NPC "${summary.name}" criado.`);
   }
 
   return (
@@ -443,7 +458,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
       {associating && (
         <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-white">Associar NPC do acervo</h4>
+            <h4 className="text-sm font-semibold text-zinc-50">Associar NPC do acervo</h4>
             <button
               type="button"
               onClick={() => setAssociating(false)}
@@ -473,7 +488,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
                     className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 px-3 py-2"
                   >
                     <div className="min-w-0">
-                      <span className="text-sm font-medium text-white">{npc.name}</span>
+                      <span className="text-sm font-medium text-zinc-50">{npc.name}</span>
                       <span className="ml-2 text-xs text-zinc-500">
                         {(npc.interactions ?? []).map((i) => i.name).join(', ')}
                       </span>
@@ -495,11 +510,29 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
       )}
 
       {npcs.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/40 p-8 text-center">
-          <p className="text-sm text-zinc-500">Nenhum NPC nesta campanha ainda.</p>
-        </div>
+        <EmptyState
+          className="mt-4"
+          icon="🎭"
+          title="Nenhum NPC nesta campanha"
+          description={
+            isMaster
+              ? 'Crie um novo NPC ou associe um do seu acervo para começar.'
+              : 'O Mestre ainda não adicionou NPCs visíveis nesta campanha.'
+          }
+          action={
+            isMaster && !creating && !associating ? (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="rounded-lg bg-gradient-to-b from-red-500 to-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-lg shadow-red-950/40 transition hover:to-red-700"
+              >
+                + Adicionar NPC
+              </button>
+            ) : null
+          }
+        />
       ) : (
-        <div className="mx-auto mt-4 grid w-full max-w-2xl grid-cols-2 gap-3 sm:gap-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
           {npcs.map((npc) => (
             <NpcCard
               key={npc.id}

@@ -4,8 +4,7 @@ import client from '../../api/client';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
 
-const inputClass =
-  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+const inputClass = 'field';
 
 export default function Login() {
   const { login } = useAuth();
@@ -35,17 +34,28 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <span className="text-3xl font-black tracking-tight text-red-500">TATAKAI</span>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-950 px-4">
+      {/* Fundo ambiente */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full bg-red-600/15 blur-[120px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,var(--vignette),transparent_60%)]" />
+      </div>
+
+      <div className="relative w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-red-500 to-red-700 text-2xl font-black text-white shadow-xl shadow-red-900/50 ring-1 ring-red-400/30">
+            武
+          </span>
+          <div className="mt-4 flex items-baseline gap-1.5">
+            <span className="text-3xl font-black tracking-tight text-red-500">TATAKAI</span>
+          </div>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.25em] text-zinc-500">
             Manager
           </p>
         </div>
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8">
-          <h1 className="text-lg font-semibold text-white">Entrar</h1>
+        <div className="surface p-8">
+          <h1 className="text-lg font-semibold text-zinc-50">Entrar</h1>
           <p className="mt-1 text-sm text-zinc-500">Acesse sua conta.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
@@ -83,11 +93,7 @@ export default function Login() {
 
             {error && <p className="text-sm text-red-400">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-            >
+            <button type="submit" disabled={submitting} className="btn-primary w-full">
               {submitting ? 'Entrando...' : 'Entrar'}
             </button>
           </form>

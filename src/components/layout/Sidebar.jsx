@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const svg = (children) => (
   <svg
@@ -60,22 +61,33 @@ const ICONS = {
       <path d="M16 17l5-5-5-5M21 12H9" />
     </>
   ),
+  sun: svg(
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </>
+  ),
+  moon: svg(<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />),
 };
 
 // Rótulo que só aparece quando a sidebar está expandida (hover)
 const label =
   'overflow-hidden whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover/sb:opacity-100';
 const itemBase =
-  'flex w-full items-center gap-3 rounded-lg py-2.5 pl-3.5 pr-3 text-sm font-medium transition-colors';
+  'group/item relative flex w-full items-center gap-3 rounded-lg py-2.5 pl-3.5 pr-3 text-sm font-medium transition-colors';
 
 function NavItem({ item }) {
   const cls = `${itemBase} ${
     item.active
-      ? 'bg-red-950/50 text-red-400'
-      : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
+      ? 'bg-red-950/40 text-red-400 ring-1 ring-inset ring-red-900/40'
+      : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-100'
   }`;
   const inner = (
     <>
+      {/* Barra de acento no item ativo */}
+      {item.active && (
+        <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-red-500" />
+      )}
       {ICONS[item.icon] ?? ICONS.grid}
       <span className={label}>{item.label}</span>
     </>
@@ -101,6 +113,7 @@ function NavItem({ item }) {
  */
 export default function Sidebar({ items = [] }) {
   const { user, logout } = useAuth();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -109,10 +122,10 @@ export default function Sidebar({ items = [] }) {
   }
 
   return (
-    <aside className="group/sb fixed inset-y-0 left-0 z-40 flex w-16 flex-col overflow-hidden border-r border-zinc-800 bg-zinc-900/95 backdrop-blur transition-[width] duration-200 ease-out hover:w-60 hover:shadow-2xl hover:shadow-black/50">
+    <aside className="group/sb fixed inset-y-0 left-0 z-40 flex w-16 flex-col overflow-hidden border-r border-zinc-800/80 bg-gradient-to-b from-zinc-900 to-zinc-950/95 backdrop-blur transition-[width] duration-200 ease-out hover:w-60 hover:shadow-2xl hover:shadow-black/60">
       {/* Logo */}
       <Link to="/dashboard" className="flex h-16 shrink-0 items-center gap-3 px-3.5">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-red-600 text-lg font-black text-white shadow-sm shadow-red-900/40">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-lg font-black text-white shadow-lg shadow-red-900/50 ring-1 ring-red-400/30">
           武
         </span>
         <span className={`flex items-baseline gap-1 ${label}`}>
@@ -134,8 +147,17 @@ export default function Sidebar({ items = [] }) {
         )}
       </nav>
 
-      {/* Usuário + sair */}
+      {/* Tema + Usuário + sair */}
       <div className="space-y-1 border-t border-zinc-800 p-2.5">
+        <button
+          type="button"
+          onClick={toggle}
+          className={`${itemBase} text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-100`}
+          title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+        >
+          {theme === 'dark' ? ICONS.sun : ICONS.moon}
+          <span className={label}>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
+        </button>
         <div className="flex items-center gap-3 px-1 py-1">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-zinc-800 text-sm font-semibold text-zinc-300">
             {user?.name?.charAt(0)?.toUpperCase() ?? '?'}

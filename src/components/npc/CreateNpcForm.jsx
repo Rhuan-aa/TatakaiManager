@@ -17,7 +17,7 @@ const ATTRIBUTES = [
 const EMPTY_ATTRS = { forca: '', destreza: '', constituicao: '', mental: '', inteligencia: '', talento: '' };
 
 const inputClass =
-  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+  'field';
 
 export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
   const [name, setName] = useState('');
@@ -95,7 +95,7 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
       className="rounded-xl border border-zinc-700 bg-zinc-800 p-6"
       noValidate
     >
-      <h3 className="text-base font-semibold text-white">Novo NPC</h3>
+      <h3 className="text-base font-semibold text-zinc-50">Novo NPC</h3>
 
       <div className="mt-4 space-y-4">
         <div>

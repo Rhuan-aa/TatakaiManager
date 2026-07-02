@@ -3,13 +3,34 @@ import { listBookings, createBooking, cancelBooking } from '../../api/bookings';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { EmptyState } from '../../components/layout/AppShell';
+import { useToast } from '../../contexts/ToastContext';
 
 const SLOTS = [1, 2, 3, 4];
+
+function SlotGridSkeleton() {
+  return (
+    <div className="mt-4 space-y-3">
+      {Array.from({ length: 3 }).map((_, r) => (
+        <div key={r} className="flex items-center gap-3">
+          <div className="skeleton h-7 w-7 shrink-0 rounded-md" />
+          <div className="skeleton h-4 w-24 shrink-0" />
+          <div className="ml-auto flex gap-2">
+            {SLOTS.map((s) => (
+              <div key={s} className="skeleton h-9 w-24 rounded-lg" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const slotKey = (day, npcId, slot) => `${day}:${npcId}:${slot}`;
 
 export default function SlotGrid({ campaignId, timeSkip, npcs }) {
   const { user } = useAuth();
+  const toast = useToast();
   const [bookings, setBookings] = useState({});
   const [day, setDay] = useState(timeSkip.currentDay);
   const [loading, setLoading] = useState(true);
@@ -92,6 +113,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
         ...prev,
         [slotKey(booking.dayNumber, booking.npcId, booking.slotNumber)]: booking,
       }));
+      toast(`Agendado: ${npc.name} · ${interactionName}.`);
     } catch (err) {
       setActionError(parseApiError(err).message);
     }
@@ -106,13 +128,87 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
         delete next[slotKey(booking.dayNumber, booking.npcId, booking.slotNumber)];
         return next;
       });
+      toast('Agendamento cancelado.');
     } catch (err) {
       setActionError(parseApiError(err).message);
     }
   }
 
-  if (loading) return <p className="text-sm text-zinc-500">Carregando agenda...</p>;
+  if (loading) return <SlotGridSkeleton />;
   if (error) return <p className="text-sm text-red-400">{error}</p>;
+
+  // Conteúdo de uma célula de slot — reutilizado na tabela (desktop) e nos
+  // cards empilhados (mobile).
+  function renderSlot(npc, slot) {
+    const key = slotKey(day, npc.id, slot);
+    const booking = bookings[key];
+    const mine = booking && booking.userId === user?.userId;
+    const cellId = `${npc.id}:${slot}`;
+    const interactions = npc.interactions ?? [];
+
+    if (booking) {
+      return (
+        <div
+          className={`rounded-lg border-l-2 px-2.5 py-1.5 text-left shadow-sm shadow-black/20 ${
+            mine ? 'border-red-500 bg-red-950/25' : 'border-zinc-600 bg-zinc-800/80'
+          }`}
+        >
+          <p className="text-xs font-semibold text-zinc-100">{booking.interactionName}</p>
+          {booking.idlePointCost != null && (
+            <p className="text-[11px] font-medium text-red-400">
+              {booking.idlePointCost} pts de ócio
+            </p>
+          )}
+          <p className="mt-0.5 text-[11px] text-zinc-500">{booking.userName}</p>
+          {mine && canBook && (
+            <button
+              type="button"
+              onClick={() => handleCancel(booking)}
+              className="mt-1 text-[11px] font-medium text-red-400 hover:underline"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    if (canBook) {
+      return activeCell === cellId ? (
+        <div className="flex flex-col gap-1">
+          {interactions.map((it, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleBook(npc, slot, it.name)}
+              title={it.description || undefined}
+              className="rounded-md bg-gradient-to-b from-red-500 to-red-600 px-2 py-1 text-xs font-medium text-white shadow-sm shadow-red-950/40 transition hover:to-red-700"
+            >
+              {it.type ? `[${it.type}] ` : ''}
+              {it.name} · {it.idlePointCost} pts de ócio
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setActiveCell(null)}
+            className="text-xs text-zinc-500 hover:text-zinc-300"
+          >
+            cancelar
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setActiveCell(cellId)}
+          className="w-full rounded-lg border border-dashed border-zinc-700/70 px-2 py-2 text-xs text-zinc-600 transition hover:border-red-600/70 hover:bg-red-950/10 hover:text-red-400"
+        >
+          + Agendar
+        </button>
+      );
+    }
+
+    return <span className="text-xs text-zinc-700">—</span>;
+  }
 
   return (
     <div>
@@ -154,99 +250,84 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
       {actionError && <p className="mt-2 text-sm text-red-400">{actionError}</p>}
 
       {npcs.length === 0 ? (
-        <p className="mt-3 text-sm text-zinc-500">Nenhum NPC disponível para agendar.</p>
+        <EmptyState
+          className="mt-4"
+          icon="🧑‍🤝‍🧑"
+          title="Nenhum NPC para agendar"
+          description="Adicione NPCs à campanha para começar a montar a agenda de interações."
+        />
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="border-b border-zinc-700 p-2 text-left text-xs font-medium text-zinc-500">
-                  NPC
-                </th>
-                {SLOTS.map((slot) => (
-                  <th
-                    key={slot}
-                    className="border-b border-zinc-700 p-2 text-center text-xs font-medium text-zinc-500"
-                  >
-                    Slot {slot}
+        <>
+          {/* Desktop: tabela */}
+          <div className="mt-4 hidden overflow-x-auto md:block">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="border-b border-zinc-700 p-2 text-left text-xs font-medium text-zinc-500">
+                    NPC
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {npcs.map((npc) => (
-                <tr key={npc.id} className="border-b border-zinc-800 last:border-0">
-                  <td className="p-2 text-sm font-medium text-zinc-300">{npc.name}</td>
-                  {SLOTS.map((slot) => {
-                    const key = slotKey(day, npc.id, slot);
-                    const booking = bookings[key];
-                    const mine = booking && booking.userId === user?.userId;
-                    const cellId = `${npc.id}:${slot}`;
-                    const interactions = npc.interactions ?? [];
-
-                    return (
-                      <td key={slot} className="p-2 text-center align-top">
-                        {booking ? (
-                          <div className="rounded-md bg-zinc-700 px-2 py-1 text-left">
-                            <p className="text-xs font-medium text-zinc-200">
-                              {booking.interactionName}
-                              {booking.idlePointCost != null && (
-                                <span className="text-red-400"> · {booking.idlePointCost} pts de ócio</span>
-                              )}
-                            </p>
-                            <p className="text-xs text-zinc-500">{booking.userName}</p>
-                            {mine && canBook && (
-                              <button
-                                type="button"
-                                onClick={() => handleCancel(booking)}
-                                className="mt-1 text-xs text-red-400 hover:underline"
-                              >
-                                Cancelar
-                              </button>
-                            )}
-                          </div>
-                        ) : canBook ? (
-                          activeCell === cellId ? (
-                            <div className="flex flex-col gap-1">
-                              {interactions.map((it, idx) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => handleBook(npc, slot, it.name)}
-                                  title={it.description || undefined}
-                                  className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
-                                >
-                                  {it.type ? `[${it.type}] ` : ''}{it.name} · {it.idlePointCost} pts de ócio
-                                </button>
-                              ))}
-                              <button
-                                type="button"
-                                onClick={() => setActiveCell(null)}
-                                className="text-xs text-zinc-500 hover:text-zinc-300"
-                              >
-                                cancelar
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setActiveCell(cellId)}
-                              className="rounded-md border border-dashed border-zinc-700 px-2 py-1 text-xs text-zinc-600 hover:border-red-700 hover:text-red-400"
-                            >
-                              + Agendar
-                            </button>
-                          )
-                        ) : (
-                          <span className="text-xs text-zinc-700">—</span>
-                        )}
-                      </td>
-                    );
-                  })}
+                  {SLOTS.map((slot) => (
+                    <th
+                      key={slot}
+                      className="border-b border-zinc-700 p-2 text-center text-xs font-medium text-zinc-500"
+                    >
+                      Slot {slot}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {npcs.map((npc) => (
+                  <tr
+                    key={npc.id}
+                    className="border-b border-zinc-800 transition-colors last:border-0 hover:bg-white/[0.015]"
+                  >
+                    <td className="p-2">
+                      <div className="flex items-center gap-2">
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-zinc-800 text-xs font-bold text-zinc-400 ring-1 ring-white/5">
+                          {npc.name?.charAt(0)?.toUpperCase() ?? '?'}
+                        </span>
+                        <span className="text-sm font-medium text-zinc-200">{npc.name}</span>
+                      </div>
+                    </td>
+                    {SLOTS.map((slot) => (
+                      <td key={slot} className="p-2 text-center align-top">
+                        {renderSlot(npc, slot)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: cards empilhados por NPC (evita rolagem horizontal) */}
+          <div className="mt-4 space-y-3 md:hidden">
+            {npcs.map((npc) => (
+              <div key={npc.id} className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+                <div className="mb-2.5 flex items-center gap-2">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-zinc-800 text-xs font-bold text-zinc-400 ring-1 ring-white/5">
+                    {npc.name?.charAt(0)?.toUpperCase() ?? '?'}
+                  </span>
+                  <span className="text-sm font-semibold text-zinc-100">{npc.name}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {SLOTS.map((slot) => (
+                    <div
+                      key={slot}
+                      className="rounded-lg border border-zinc-800/70 bg-zinc-900/40 p-2"
+                    >
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                        Slot {slot}
+                      </p>
+                      {renderSlot(npc, slot)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -15,7 +15,7 @@ const ATTRIBUTES = [
 ];
 
 const inputClass =
-  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+  'field';
 
 export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
   const [name, setName] = useState(npc.name);
@@ -113,7 +113,7 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
       className="mt-3 rounded-lg border border-zinc-700 bg-zinc-800 p-4"
       noValidate
     >
-      <h4 className="text-sm font-semibold text-white">Editar NPC</h4>
+      <h4 className="text-sm font-semibold text-zinc-50">Editar NPC</h4>
 
       <div className="mt-3 space-y-4">
         <div>

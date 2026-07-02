@@ -4,6 +4,24 @@ import { listTimeSkips } from '../../api/timeskips';
 import { listBookings } from '../../api/bookings';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
+import { EmptyState } from '../../components/layout/AppShell';
+import { useToast } from '../../contexts/ToastContext';
+
+function LogSkeleton() {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <div className="flex items-center gap-3">
+        <div className="skeleton h-8 w-8 rounded-full" />
+        <div className="flex-1">
+          <div className="skeleton h-4 w-32" />
+          <div className="skeleton mt-1.5 h-3 w-48" />
+        </div>
+      </div>
+      <div className="skeleton mt-3 h-3 w-full" />
+      <div className="skeleton mt-1.5 h-3 w-4/5" />
+    </div>
+  );
+}
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString('pt-BR', {
@@ -21,14 +39,13 @@ function bookingLabel(booking, npcs) {
   return `${npcName} · Dia ${booking.dayNumber} · Slot ${booking.slotNumber} · ${booking.interactionName} (${booking.idlePointCost} pts de ócio)`;
 }
 
-const textareaClass =
-  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+const textareaClass = 'field';
 
-const selectClass =
-  'mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500';
+const selectClass = 'field';
 
 export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
   const { user } = useAuth();
+  const toast = useToast();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -97,6 +114,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
       setLogs((prev) => [created, ...prev]);
       setNarrative('');
       setSelectedBookingId('');
+      toast('Log publicado.');
     } catch (err) {
       setSubmitError(parseApiError(err).message);
     } finally {
@@ -111,7 +129,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
       return (
         <form
           onSubmit={handleSubmit}
-          className="rounded-lg border border-zinc-700 bg-zinc-800 p-4"
+          className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
           noValidate
         >
           <label htmlFor="narrative" className="block text-sm font-medium text-zinc-400">
@@ -163,7 +181,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
     return (
       <form
         onSubmit={handleSubmit}
-        className="rounded-lg border border-zinc-700 bg-zinc-800 p-4"
+        className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
         noValidate
       >
         <div>
@@ -218,29 +236,59 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
       {renderForm()}
 
       <div className="mt-4 space-y-3">
-        {loading && <p className="text-sm text-zinc-500">Carregando logs...</p>}
+        {loading &&
+          Array.from({ length: 2 }).map((_, i) => <LogSkeleton key={i} />)}
         {!loading && error && <p className="text-sm text-red-400">{error}</p>}
         {!loading && !error && logs.length === 0 && (
-          <p className="text-sm text-zinc-500">Nenhum log narrativo ainda.</p>
+          <EmptyState
+            icon="📜"
+            title="Nenhum log narrativo ainda"
+            description="Os registros da campanha aparecerão aqui conforme forem publicados."
+          />
         )}
         {!loading &&
           !error &&
-          logs.map((log) => (
-            <div key={log.id} className="rounded-lg border border-zinc-700 bg-zinc-800 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold text-white">{log.authorName}</span>
-                <span className="text-xs text-zinc-600">{formatDate(log.createdAt)}</span>
-              </div>
-              {log.bookingId && (
-                <p className="mt-1 text-xs text-red-400">
-                  {log.npcName} · Dia {log.dayNumber} · Slot {log.slotNumber} ·{' '}
-                  {log.interactionName}
-                  {log.idlePointCost != null && ` (${log.idlePointCost} pts de ócio)`}
+          logs.map((log) => {
+            // Logs vinculados a agendamento = ação de jogador; sem vínculo = narração
+            // livre (Mestre), que ganha um accent lateral vermelho para se destacar.
+            const isNarration = !log.bookingId;
+            return (
+              <div
+                key={log.id}
+                className={`rounded-xl border border-zinc-800 p-4 ${
+                  isNarration
+                    ? 'bg-gradient-to-r from-red-950/15 to-zinc-950/40 shadow-[inset_3px_0_0_0_rgba(239,68,68,0.55)]'
+                    : 'bg-zinc-950/40'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300 ring-1 ring-white/5">
+                    {log.authorName?.charAt(0)?.toUpperCase() ?? '?'}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate text-sm font-semibold text-zinc-50">
+                        {log.authorName}
+                      </span>
+                      <span className="shrink-0 text-xs text-zinc-600">
+                        {formatDate(log.createdAt)}
+                      </span>
+                    </div>
+                    {log.bookingId && (
+                      <span className="mt-1 inline-flex flex-wrap items-center gap-x-1 rounded-full border border-red-900/50 bg-red-950/40 px-2 py-0.5 text-[11px] font-medium text-red-300">
+                        {log.npcName} · Dia {log.dayNumber} · Slot {log.slotNumber} ·{' '}
+                        {log.interactionName}
+                        {log.idlePointCost != null && ` · ${log.idlePointCost} pts`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
+                  {log.narrative}
                 </p>
-              )}
-              <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{log.narrative}</p>
-            </div>
-          ))}
+              </div>
+            );
+          })}
       </div>
     </div>
   );

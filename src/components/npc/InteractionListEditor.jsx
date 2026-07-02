@@ -54,7 +54,7 @@ export default function InteractionListEditor({ items, onChange }) {
                 value={selectValue}
                 onChange={(e) => changeType(i, e.target.value)}
                 title="Tipo da interação"
-                className="w-36 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-white focus:border-red-500 focus:outline-none"
+                className="w-36 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-zinc-50 focus:border-red-500 focus:outline-none"
               >
                 {PREDEFINED_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -68,7 +68,7 @@ export default function InteractionListEditor({ items, onChange }) {
                 value={item.name}
                 onChange={(e) => update(i, 'name', e.target.value)}
                 placeholder="Título (ex.: Esgrima avançada)"
-                className="flex-1 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
               />
               <div className="flex items-center gap-1">
                 <input
@@ -79,7 +79,7 @@ export default function InteractionListEditor({ items, onChange }) {
                   onChange={(e) => update(i, 'idlePointCost', e.target.value)}
                   placeholder="0"
                   title="Custo em pontos de ócio"
-                  className="w-20 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+                  className="w-20 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
                 />
                 <span className="text-xs text-zinc-500" title="pontos de ócio">
                   ócio
@@ -99,7 +99,7 @@ export default function InteractionListEditor({ items, onChange }) {
                 value={item.type}
                 onChange={(e) => update(i, 'type', e.target.value)}
                 placeholder="Tipo personalizado (ex.: Diplomacia)"
-                className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+                className="mt-2 w-full rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
               />
             )}
             <input
@@ -107,7 +107,7 @@ export default function InteractionListEditor({ items, onChange }) {
               value={item.description}
               onChange={(e) => update(i, 'description', e.target.value)}
               placeholder="Descrição (opcional)"
-              className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+              className="mt-2 w-full rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
             />
           </div>
         );

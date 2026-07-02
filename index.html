@@ -7,6 +7,14 @@
     <title>Tatakai Manager</title>
     <!-- Config de runtime (URLs de API/WS injetadas pelo container no deploy) -->
     <script src="/env.js"></script>
+    <!-- Aplica o tema salvo antes do render (evita flash) -->
+    <script>
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem('theme') || 'dark';
+      } catch (e) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

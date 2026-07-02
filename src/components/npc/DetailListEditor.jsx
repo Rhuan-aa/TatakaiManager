@@ -36,14 +36,14 @@ export default function DetailListEditor({ label, items, onChange }) {
             value={item.name}
             onChange={(e) => update(i, 'name', e.target.value)}
             placeholder="Nome"
-            className="w-1/3 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+            className="w-1/3 rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
           />
           <input
             type="text"
             value={item.description}
             onChange={(e) => update(i, 'description', e.target.value)}
             placeholder="Descrição"
-            className="flex-1 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+            className="flex-1 rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
           />
           <button
             type="button"
