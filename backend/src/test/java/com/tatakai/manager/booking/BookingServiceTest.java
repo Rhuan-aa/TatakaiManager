@@ -36,6 +36,7 @@ class BookingServiceTest {
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private UserRepository userRepository;
     @Mock private NpcRepository npcRepository;
+    @Mock private TimeSkipActivityRepository timeSkipActivityRepository;
     @Mock private SlotEventPublisher slotEventPublisher;
 
     private BookingService service;
@@ -50,7 +51,8 @@ class BookingServiceTest {
     @BeforeEach
     void setUp() {
         service = new BookingService(bookingRepository, timeSkipRepository, timeSkipDayRepository,
-                campaignNpcRepository, memberRepository, userRepository, npcRepository, slotEventPublisher);
+                campaignNpcRepository, memberRepository, userRepository, npcRepository,
+                timeSkipActivityRepository, slotEventPublisher);
 
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Ana").build();
@@ -77,11 +79,15 @@ class BookingServiceTest {
     }
 
     private CreateBookingRequest req(short slot) {
-        return new CreateBookingRequest(aldric.getId(), (short) 3, slot, "Treino", null, null);
+        return new CreateBookingRequest(aldric.getId(), (short) 3, slot, "Treino", null, null, null);
     }
 
     private CreateBookingRequest soloReq(short slot, SoloActivityType type, String description) {
-        return new CreateBookingRequest(null, (short) 3, slot, null, type, description);
+        return new CreateBookingRequest(null, (short) 3, slot, null, type, null, description);
+    }
+
+    private CreateBookingRequest customActivityReq(short slot, UUID activityId) {
+        return new CreateBookingRequest(null, (short) 3, slot, null, null, activityId, null);
     }
 
     @Test
@@ -198,7 +204,7 @@ class BookingServiceTest {
                 .thenReturn(Optional.of(day3));
         mockVisibleAssociation();
 
-        var badReq = new CreateBookingRequest(aldric.getId(), (short) 3, (short) 1, "Trabalho", null, null);
+        var badReq = new CreateBookingRequest(aldric.getId(), (short) 3, (short) 1, "Trabalho", null, null, null);
 
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), badReq))
                 .isInstanceOf(InvalidBookingException.class);
@@ -257,7 +263,7 @@ class BookingServiceTest {
         assertThat(res.interactionName()).isNull();
         assertThat(res.soloActivityType()).isEqualTo(SoloActivityType.TREINO);
         assertThat(res.description()).isEqualTo("Treinar esgrima sozinho no pátio");
-        assertThat(res.idlePointCost()).isEqualTo((short) 0);
+        assertThat(res.idlePointCost()).isEqualTo((short) 1);
 
         var captor = org.mockito.ArgumentCaptor.forClass(SlotUpdateMessage.class);
         verify(slotEventPublisher).publish(captor.capture());
@@ -308,6 +314,53 @@ class BookingServiceTest {
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(),
                 soloReq((short) 1, null, "Alguma descrição")))
                 .isInstanceOf(InvalidBookingException.class);
+
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Atividade customizada do TimeSkip: reserva com sucesso, usa custo do catálogo")
+    void book_customTimeSkipActivity_success() {
+        TimeSkipActivity rebuild = TimeSkipActivity.builder().id(UUID.randomUUID())
+                .timeSkip(activeSkip).name("Reconstrução da vila")
+                .description("Ajudar a reconstruir as casas destruídas").idlePointCost((short) 3).build();
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        when(bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
+                day3.getId(), player.getId(), (short) 2)).thenReturn(false);
+        when(timeSkipActivityRepository.findByIdAndTimeSkipId(rebuild.getId(), activeSkip.getId()))
+                .thenReturn(Optional.of(rebuild));
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        BookingResponse res = service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                customActivityReq((short) 2, rebuild.getId()));
+
+        assertThat(res.soloActivityType()).isNull();
+        assertThat(res.activityId()).isEqualTo(rebuild.getId());
+        assertThat(res.activityName()).isEqualTo("Reconstrução da vila");
+        assertThat(res.description()).isEqualTo("Ajudar a reconstruir as casas destruídas");
+        assertThat(res.idlePointCost()).isEqualTo((short) 3);
+    }
+
+    @Test
+    @DisplayName("Atividade customizada de outro TimeSkip é rejeitada (404)")
+    void book_customTimeSkipActivity_fromOtherTimeSkip_rejected() {
+        UUID foreignActivityId = UUID.randomUUID();
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        when(bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
+                day3.getId(), player.getId(), (short) 2)).thenReturn(false);
+        when(timeSkipActivityRepository.findByIdAndTimeSkipId(foreignActivityId, activeSkip.getId()))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                customActivityReq((short) 2, foreignActivityId)))
+                .isInstanceOf(TimeSkipActivityNotFoundException.class);
 
         verify(bookingRepository, never()).save(any());
     }

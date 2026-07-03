@@ -21,6 +21,8 @@ public record SlotUpdateMessage(
         String interactionName,
         Short idlePointCost,
         SoloActivityType soloActivityType,
+        UUID activityId,
+        String activityName,
         String description
 ) {
     public enum SlotEvent {
@@ -31,12 +33,13 @@ public record SlotUpdateMessage(
     public static SlotUpdateMessage booked(UUID campaignId, BookingResponse b, UUID timeSkipId) {
         return new SlotUpdateMessage(SlotEvent.BOOKED, campaignId, timeSkipId, b.id(), b.npcId(),
                 b.dayNumber(), b.slotNumber(), b.userId(), b.userName(),
-                b.interactionName(), b.idlePointCost(), b.soloActivityType(), b.description());
+                b.interactionName(), b.idlePointCost(), b.soloActivityType(),
+                b.activityId(), b.activityName(), b.description());
     }
 
     public static SlotUpdateMessage cancelled(UUID campaignId, UUID timeSkipId, UUID bookingId,
                                               UUID npcId, short dayNumber, short slotNumber) {
         return new SlotUpdateMessage(SlotEvent.CANCELLED, campaignId, timeSkipId, bookingId, npcId,
-                dayNumber, slotNumber, null, null, null, null, null, null);
+                dayNumber, slotNumber, null, null, null, null, null, null, null, null);
     }
 }

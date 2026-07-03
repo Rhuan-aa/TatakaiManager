@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { listBookings, createBooking, cancelBooking } from '../../api/bookings';
+import { listTimeSkipActivities } from '../../api/timeSkipActivities';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -15,6 +16,13 @@ const SOLO_TYPES = [
 ];
 
 const soloLabel = (type) => SOLO_TYPES.find((t) => t.value === type)?.label ?? type;
+
+// Rótulo de um agendamento solo: atividade customizada do TimeSkip (se houver) ou
+// um dos tipos fixos (Treino/Estudo/Ação geral).
+const bookingSoloLabel = (b) => b.activityName ?? soloLabel(b.soloActivityType);
+
+const FIXED_OPTION_PREFIX = 'fixed:';
+const CUSTOM_OPTION_PREFIX = 'custom:';
 
 function SlotGridSkeleton() {
   return (
@@ -36,17 +44,18 @@ function SlotGridSkeleton() {
 
 const slotKey = (day, npcId, slot) => `${day}:${npcId}:${slot}`;
 
-export default function SlotGrid({ campaignId, timeSkip, npcs }) {
+export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion }) {
   const { user } = useAuth();
   const toast = useToast();
   const [bookings, setBookings] = useState({});
   const [soloBookings, setSoloBookings] = useState({});
+  const [customActivities, setCustomActivities] = useState([]);
   const [day, setDay] = useState(timeSkip.currentDay);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [activeCell, setActiveCell] = useState(null);
-  const [soloForm, setSoloForm] = useState({ type: 'TREINO', description: '' });
+  const [soloForm, setSoloForm] = useState({ option: `${FIXED_OPTION_PREFIX}TREINO`, description: '' });
 
   const isActive = timeSkip.status === 'ACTIVE';
   const isPastDay = day < timeSkip.currentDay;
@@ -83,6 +92,22 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
     };
   }, [campaignId, timeSkip.id]);
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const list = await listTimeSkipActivities(campaignId, timeSkip.id);
+        if (active) setCustomActivities(list);
+      } catch {
+        // Catálogo de atividades customizadas é um complemento; falha aqui não
+        // deve travar a grade de agendamento (os tipos fixos continuam disponíveis).
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [campaignId, timeSkip.id, activitiesVersion]);
+
   const handleSlotUpdate = useCallback(
     (msg) => {
       if (msg.timeSkipId !== timeSkip.id) return;
@@ -106,6 +131,8 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
               userId: msg.userId,
               userName: msg.userName,
               soloActivityType: msg.soloActivityType,
+              activityId: msg.activityId,
+              activityName: msg.activityName,
               description: msg.description,
             },
           };
@@ -161,23 +188,36 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
     }
   }
 
+  function resetSoloForm() {
+    setSoloForm({ option: `${FIXED_OPTION_PREFIX}TREINO`, description: '' });
+  }
+
   async function handleBookSolo(slot) {
     setActionError('');
-    if (!soloForm.description.trim()) {
+    const isCustom = soloForm.option.startsWith(CUSTOM_OPTION_PREFIX);
+
+    if (!isCustom && !soloForm.description.trim()) {
       setActionError('A descrição da atividade solo é obrigatória');
       return;
     }
+
     try {
-      const booking = await createBooking(campaignId, timeSkip.id, {
-        dayNumber: day,
-        slotNumber: slot,
-        soloActivityType: soloForm.type,
-        description: soloForm.description.trim(),
-      });
+      const booking = isCustom
+        ? await createBooking(campaignId, timeSkip.id, {
+            dayNumber: day,
+            slotNumber: slot,
+            activityId: soloForm.option.slice(CUSTOM_OPTION_PREFIX.length),
+          })
+        : await createBooking(campaignId, timeSkip.id, {
+            dayNumber: day,
+            slotNumber: slot,
+            soloActivityType: soloForm.option.slice(FIXED_OPTION_PREFIX.length),
+            description: soloForm.description.trim(),
+          });
       setSoloBookings((prev) => ({ ...prev, [booking.id]: booking }));
       setActiveCell(null);
-      setSoloForm({ type: 'TREINO', description: '' });
-      toast(`Ação solo agendada: ${soloLabel(booking.soloActivityType)}.`);
+      resetSoloForm();
+      toast(`Ação solo agendada: ${bookingSoloLabel(booking)}.`);
     } catch (err) {
       setActionError(parseApiError(err).message);
     }
@@ -299,15 +339,20 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
             key={o.id}
             className="rounded-md border-l-2 border-zinc-600 bg-zinc-800/80 px-2.5 py-1.5 text-left"
           >
-            <p className="text-xs font-semibold text-zinc-100">{soloLabel(o.soloActivityType)}</p>
+            <p className="text-xs font-semibold text-zinc-100">{bookingSoloLabel(o)}</p>
             <p className="mt-0.5 text-[11px] text-zinc-500">{o.userName}</p>
           </div>
         ))}
 
         {mine ? (
           <div className="rounded-lg border-l-2 border-red-500 bg-red-950/25 px-2.5 py-1.5 text-left shadow-sm shadow-black/20">
-            <p className="text-xs font-semibold text-zinc-100">{soloLabel(mine.soloActivityType)}</p>
+            <p className="text-xs font-semibold text-zinc-100">{bookingSoloLabel(mine)}</p>
             <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-500">{mine.description}</p>
+            {mine.idlePointCost != null && (
+              <p className="mt-0.5 text-[11px] font-medium text-red-400">
+                {mine.idlePointCost} pts de ócio
+              </p>
+            )}
             {canBook && (
               <button
                 type="button"
@@ -322,23 +367,35 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
           activeCell === cellId ? (
             <div className="flex flex-col gap-1.5 rounded-lg border border-zinc-700/70 bg-zinc-900/60 p-2">
               <select
-                value={soloForm.type}
-                onChange={(e) => setSoloForm((f) => ({ ...f, type: e.target.value }))}
+                value={soloForm.option}
+                onChange={(e) => setSoloForm((f) => ({ ...f, option: e.target.value }))}
                 className="field text-xs"
               >
                 {SOLO_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
+                  <option key={t.value} value={`${FIXED_OPTION_PREFIX}${t.value}`}>
                     {t.label}
                   </option>
                 ))}
+                {customActivities.map((a) => (
+                  <option key={a.id} value={`${CUSTOM_OPTION_PREFIX}${a.id}`}>
+                    {a.name} · {a.idlePointCost} pts de ócio
+                  </option>
+                ))}
               </select>
-              <textarea
-                value={soloForm.description}
-                onChange={(e) => setSoloForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="O que seu personagem faz nesse período?"
-                rows={2}
-                className="field text-xs"
-              />
+              {soloForm.option.startsWith(CUSTOM_OPTION_PREFIX) ? (
+                <p className="rounded-md border border-zinc-800 bg-zinc-950/50 p-2 text-[11px] text-zinc-400">
+                  {customActivities.find((a) => a.id === soloForm.option.slice(CUSTOM_OPTION_PREFIX.length))
+                    ?.description}
+                </p>
+              ) : (
+                <textarea
+                  value={soloForm.description}
+                  onChange={(e) => setSoloForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="O que seu personagem faz nesse período?"
+                  rows={2}
+                  className="field text-xs"
+                />
+              )}
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -351,7 +408,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs }) {
                   type="button"
                   onClick={() => {
                     setActiveCell(null);
-                    setSoloForm({ type: 'TREINO', description: '' });
+                    resetSoloForm();
                   }}
                   className="text-xs text-zinc-500 hover:text-zinc-300"
                 >

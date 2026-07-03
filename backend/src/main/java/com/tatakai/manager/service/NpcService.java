@@ -186,6 +186,7 @@ public class NpcService {
                 .collect(Collectors.toMap(Npc::getId, Function.identity()));
 
         return associations.stream()
+                .filter(a -> npcById.containsKey(a.getNpcId()))
                 .map(a -> {
                     Npc npc = npcById.get(a.getNpcId());
                     return new NpcSummaryResponse(a.getNpcId(), npc.getName(),

@@ -37,7 +37,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({CampaignNotFoundException.class, UserNotFoundException.class,
             NpcNotFoundException.class, TimeSkipNotFoundException.class,
-            BookingNotFoundException.class, MemberNotFoundException.class})
+            BookingNotFoundException.class, MemberNotFoundException.class,
+            TimeSkipActivityNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(body(HttpStatus.NOT_FOUND, ex.getMessage()));
@@ -45,7 +46,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({AlreadyMemberException.class, NpcAlreadyAssociatedException.class,
             ActiveTimeSkipExistsException.class, TimeSkipClosedException.class,
-            SlotTakenException.class, BookingAlreadyPassedException.class})
+            SlotTakenException.class, BookingAlreadyPassedException.class,
+            InvalidActivityNameException.class})
     public ResponseEntity<Map<String, Object>> handleConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(body(HttpStatus.CONFLICT, ex.getMessage()));

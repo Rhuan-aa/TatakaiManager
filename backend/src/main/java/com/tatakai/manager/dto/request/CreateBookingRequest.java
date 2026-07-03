@@ -8,9 +8,10 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 /**
- * Agendamento de um slot: com NPC ({@code npcId} + {@code interactionName}) ou
- * atividade solo ({@code soloActivityType} + {@code description}) — mutuamente
- * exclusivos, validado em {@code BookingService}.
+ * Agendamento de um slot: com NPC ({@code npcId} + {@code interactionName}), atividade
+ * solo fixa ({@code soloActivityType} + {@code description}) ou atividade solo
+ * customizada do TimeSkip ({@code activityId}) — mutuamente exclusivos, validado em
+ * {@code BookingService}.
  */
 public record CreateBookingRequest(
 
@@ -28,6 +29,8 @@ public record CreateBookingRequest(
         String interactionName,
 
         SoloActivityType soloActivityType,
+
+        UUID activityId,
 
         String description
 

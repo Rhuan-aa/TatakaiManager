@@ -10,6 +10,7 @@ import { parseApiError } from '../../api/parseApiError';
 import { EmptyState } from '../../components/layout/AppShell';
 import { useToast } from '../../contexts/ToastContext';
 import SlotGrid from '../booking/SlotGrid';
+import TimeSkipActivityManager from './TimeSkipActivityManager';
 
 const inputClass = 'field';
 
@@ -25,6 +26,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
   const [createFields, setCreateFields] = useState({});
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [activitiesVersion, setActivitiesVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -299,7 +301,20 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
               )}
             </div>
           )}
-          <SlotGrid campaignId={campaignId} timeSkip={selected} npcs={npcs} />
+          {isMaster && (
+            <TimeSkipActivityManager
+              campaignId={campaignId}
+              timeSkipId={selected.id}
+              isActive={selected.status === 'ACTIVE'}
+              onChanged={() => setActivitiesVersion((v) => v + 1)}
+            />
+          )}
+          <SlotGrid
+            campaignId={campaignId}
+            timeSkip={selected}
+            npcs={npcs}
+            activitiesVersion={activitiesVersion}
+          />
         </div>
       )}
     </div>

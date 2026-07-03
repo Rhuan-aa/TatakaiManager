@@ -24,6 +24,7 @@ public class BookingService {
     private final CampaignMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final NpcRepository npcRepository;
+    private final TimeSkipActivityRepository timeSkipActivityRepository;
     private final SlotEventPublisher slotEventPublisher;
 
     public BookingService(BookingRepository bookingRepository,
@@ -33,6 +34,7 @@ public class BookingService {
                           CampaignMemberRepository memberRepository,
                           UserRepository userRepository,
                           NpcRepository npcRepository,
+                          TimeSkipActivityRepository timeSkipActivityRepository,
                           SlotEventPublisher slotEventPublisher) {
         this.bookingRepository = bookingRepository;
         this.timeSkipRepository = timeSkipRepository;
@@ -41,6 +43,7 @@ public class BookingService {
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
         this.npcRepository = npcRepository;
+        this.timeSkipActivityRepository = timeSkipActivityRepository;
         this.slotEventPublisher = slotEventPublisher;
     }
 
@@ -125,12 +128,15 @@ public class BookingService {
 
     // ---------- treino solo: mesmo slot, sem NPC ----------
 
+    private static final short FIXED_SOLO_ACTIVITY_COST = 1;
+
     private Booking buildSoloBooking(TimeSkipDay day, CreateBookingRequest req, UUID requesterId) {
-        if (req.soloActivityType() == null) {
+        if (req.soloActivityType() == null && req.activityId() == null) {
             throw new InvalidBookingException("o tipo da atividade solo é obrigatório");
         }
-        if (req.description() == null || req.description().isBlank()) {
-            throw new InvalidBookingException("a descrição da atividade solo é obrigatória");
+        if (req.soloActivityType() != null && req.activityId() != null) {
+            throw new InvalidBookingException(
+                    "informe o tipo fixo ou a atividade customizada, não os dois");
         }
 
         // Verificação otimista; sem NPC não há constraint única no banco — o mesmo
@@ -143,13 +149,30 @@ public class BookingService {
         User user = userRepository.findById(requesterId)
                 .orElseThrow(() -> new UserNotFoundException("Usuário autenticado não encontrado"));
 
-        return Booking.builder()
+        Booking.BookingBuilder booking = Booking.builder()
                 .timeSkipDay(day)
                 .user(user)
-                .slotNumber(req.slotNumber())
+                .slotNumber(req.slotNumber());
+
+        if (req.activityId() != null) {
+            TimeSkipActivity activity = timeSkipActivityRepository
+                    .findByIdAndTimeSkipId(req.activityId(), day.getTimeSkip().getId())
+                    .orElseThrow(TimeSkipActivityNotFoundException::new);
+            return booking
+                    .timeSkipActivityId(activity.getId())
+                    .activityName(activity.getName())
+                    .description(activity.getDescription())
+                    .idlePointCost(activity.getIdlePointCost())
+                    .build();
+        }
+
+        if (req.description() == null || req.description().isBlank()) {
+            throw new InvalidBookingException("a descrição da atividade solo é obrigatória");
+        }
+        return booking
                 .soloActivityType(req.soloActivityType())
                 .description(req.description())
-                .idlePointCost((short) 0)
+                .idlePointCost(FIXED_SOLO_ACTIVITY_COST)
                 .build();
     }
 
@@ -224,6 +247,8 @@ public class BookingService {
                 b.getInteractionName(),
                 b.getIdlePointCost(),
                 b.getSoloActivityType(),
+                b.getTimeSkipActivityId(),
+                b.getActivityName(),
                 b.getDescription(),
                 b.getCreatedAt());
     }

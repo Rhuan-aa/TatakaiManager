@@ -56,16 +56,29 @@ public class Booking {
     @Column(name = "interaction_name", length = 100)
     private String interactionName;
 
-    /** Custo em pontos de ócio no momento do agendamento (registrado no log). Zero em atividades solo. */
+    /** Custo em pontos de ócio no momento do agendamento (registrado no log): o da interação do
+     * NPC, 1 ponto fixo para Treino/Estudo/Ação geral, ou o do catálogo da atividade customizada. */
     @Column(name = "idle_point_cost", nullable = false)
     private short idlePointCost;
 
-    /** Tipo da atividade solo (treino/estudo/ação geral). Nulo quando o agendamento é com um NPC. */
+    /** Tipo da atividade solo fixa (treino/estudo/ação geral). Nulo quando o agendamento é com
+     * NPC ou com uma atividade solo customizada do TimeSkip ({@link #timeSkipActivityId}). */
     @Enumerated(EnumType.STRING)
     @Column(name = "solo_activity_type", length = 20)
     private SoloActivityType soloActivityType;
 
-    /** Descrição livre da atividade solo. Nulo quando o agendamento é com um NPC. */
+    /** Id da atividade solo customizada do TimeSkip (ver {@link TimeSkipActivity}). Nulo nos
+     * agendamentos com NPC ou com um dos tipos solo fixos. */
+    @Column(name = "time_skip_activity_id")
+    private UUID timeSkipActivityId;
+
+    /** Nome da atividade customizada — snapshot no momento do agendamento (sobrevive à edição
+     * ou remoção posterior da atividade no catálogo do TimeSkip). Nulo fora do caminho custom. */
+    @Column(name = "activity_name", length = 100)
+    private String activityName;
+
+    /** Descrição da atividade solo: texto livre digitado pelo jogador (tipos fixos) ou snapshot
+     * da descrição cadastrada pelo Mestre (atividade customizada). Nulo quando é com NPC. */
     @Column(name = "description", columnDefinition = "text")
     private String description;
 

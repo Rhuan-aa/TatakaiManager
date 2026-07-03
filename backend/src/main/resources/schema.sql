@@ -65,23 +65,38 @@ CREATE TABLE time_skip_days (
     UNIQUE (time_skip_id, day_number)
 );
 
+-- Atividade solo customizada, cadastrada pelo Mestre e exclusiva de um TimeSkip
+-- (ex.: "Reconstrução da vila") — ao contrário de Treino/Estudo/Ação geral, que são
+-- fixos e valem para qualquer TimeSkip (ver enum solo_activity_type em bookings).
+CREATE TABLE time_skip_activities (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    time_skip_id    UUID NOT NULL REFERENCES time_skips(id) ON DELETE CASCADE,
+    name            VARCHAR(100) NOT NULL,
+    description     TEXT NOT NULL,
+    idle_point_cost SMALLINT NOT NULL DEFAULT 0,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE (time_skip_id, name)
+);
+
 -- Reserva de slot (slot_number: 1 a 4). npc_id é UUID solto (NPC vive no Mongo).
--- Atividade solo (sem NPC): npc_id/npc_name/interaction_name nulos,
--- solo_activity_type + description preenchidos (ver US de treino solo).
+-- Atividade solo (sem NPC): npc_id/npc_name/interaction_name nulos, e exatamente um dos
+-- dois caminhos preenchido — solo_activity_type (tipo fixo) ou time_skip_activity_id
+-- (customizada, cadastrada no TimeSkip; activity_name é o snapshot do nome).
 CREATE TABLE bookings (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    time_skip_day_id    UUID NOT NULL REFERENCES time_skip_days(id),
-    npc_id              UUID,
-    npc_name            VARCHAR(100),
-    user_id             UUID NOT NULL REFERENCES users(id),
-    slot_number         SMALLINT NOT NULL CHECK (slot_number BETWEEN 1 AND 4),
-    interaction_name    VARCHAR(100),
-    idle_point_cost     SMALLINT NOT NULL DEFAULT 0,
-    solo_activity_type  VARCHAR(20) CHECK (solo_activity_type IN ('TREINO', 'ESTUDO', 'ACAO_GERAL')),
-    description         TEXT,
-    created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
-    CHECK ( (npc_id IS NOT NULL AND solo_activity_type IS NULL)
-         OR (npc_id IS NULL AND solo_activity_type IS NOT NULL) ),
+    id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    time_skip_day_id       UUID NOT NULL REFERENCES time_skip_days(id),
+    npc_id                 UUID,
+    npc_name               VARCHAR(100),
+    user_id                UUID NOT NULL REFERENCES users(id),
+    slot_number            SMALLINT NOT NULL CHECK (slot_number BETWEEN 1 AND 4),
+    interaction_name       VARCHAR(100),
+    idle_point_cost        SMALLINT NOT NULL DEFAULT 0,
+    solo_activity_type     VARCHAR(20) CHECK (solo_activity_type IN ('TREINO', 'ESTUDO', 'ACAO_GERAL')),
+    time_skip_activity_id  UUID REFERENCES time_skip_activities(id),
+    activity_name          VARCHAR(100),
+    description            TEXT,
+    created_at             TIMESTAMP NOT NULL DEFAULT NOW(),
+    CHECK ( num_nonnulls(npc_id, solo_activity_type, time_skip_activity_id) = 1 ),
     UNIQUE (time_skip_day_id, npc_id, slot_number)  -- regra central de conflito (NPC); solo checado em app
 );
 

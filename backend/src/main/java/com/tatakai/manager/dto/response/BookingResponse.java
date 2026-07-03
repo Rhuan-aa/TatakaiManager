@@ -16,6 +16,8 @@ public record BookingResponse(
         String interactionName,
         short idlePointCost,
         SoloActivityType soloActivityType,
+        UUID activityId,
+        String activityName,
         String description,
         Instant createdAt
 ) {}

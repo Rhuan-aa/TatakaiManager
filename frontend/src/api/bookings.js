@@ -8,11 +8,19 @@ export async function listBookings(campaignId, timeSkipId) {
 export async function createBooking(
   campaignId,
   timeSkipId,
-  { npcId = null, dayNumber, slotNumber, interactionName = null, soloActivityType = null, description = null }
+  {
+    npcId = null,
+    dayNumber,
+    slotNumber,
+    interactionName = null,
+    soloActivityType = null,
+    activityId = null,
+    description = null,
+  }
 ) {
   const { data } = await client.post(
     `/campaigns/${campaignId}/timeskips/${timeSkipId}/bookings`,
-    { npcId, dayNumber, slotNumber, interactionName, soloActivityType, description }
+    { npcId, dayNumber, slotNumber, interactionName, soloActivityType, activityId, description }
   );
   return data;
 }
