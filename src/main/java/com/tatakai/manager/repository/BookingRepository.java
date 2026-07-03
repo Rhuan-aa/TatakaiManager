@@ -10,6 +10,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     boolean existsByTimeSkipDayIdAndNpcIdAndSlotNumber(UUID timeSkipDayId, UUID npcId, short slotNumber);
 
+    /** Conflito de atividade solo: o mesmo jogador não pode ocupar duas vezes o mesmo slot do dia. */
+    boolean existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
+            UUID timeSkipDayId, UUID userId, short slotNumber);
+
     List<Booking> findByTimeSkipDay_TimeSkipId(UUID timeSkipId);
 
     List<Booking> findByTimeSkipDay_TimeSkipIdAndNpcId(UUID timeSkipId, UUID npcId);

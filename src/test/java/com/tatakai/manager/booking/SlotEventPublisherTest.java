@@ -26,9 +26,9 @@ class SlotEventPublisherTest {
         var publisher = new SlotEventPublisher(messagingTemplate);
         UUID campaignId = UUID.randomUUID();
         var message = new SlotUpdateMessage(
-                SlotUpdateMessage.SlotEvent.BOOKED, campaignId, UUID.randomUUID(),
+                SlotUpdateMessage.SlotEvent.BOOKED, campaignId, UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), (short) 3, (short) 2, UUID.randomUUID(), "Ana",
-                "Treino", (short) 2);
+                "Treino", (short) 2, null, null);
 
         publisher.publish(message);
 

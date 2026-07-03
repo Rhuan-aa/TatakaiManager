@@ -58,7 +58,7 @@ class NpcServiceTest {
         return Npc.builder()
                 .id(UUID.randomUUID())
                 .name("Aldric")
-                .owner(master)
+                .ownerId(master.getId())
                 .attributes(NpcAttributes.builder().forca((short) 14).destreza((short) 16).build())
                 .interactions(new java.util.ArrayList<>(List.of(
                         new NpcInteraction("Treino", "Treino", "Aprende esgrima", (short) 2))))
@@ -206,7 +206,7 @@ class NpcServiceTest {
         Npc npc = npcOwnedByMaster();
         Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
         CampaignNpc assoc = CampaignNpc.builder()
-                .id(UUID.randomUUID()).campaign(campaign).npc(npc).visible(true).build();
+                .id(UUID.randomUUID()).campaign(campaign).npcId(npc.getId()).visible(true).build();
 
         when(campaignNpcRepository.findByCampaignIdAndNpcId(campaign.getId(), npc.getId()))
                 .thenReturn(Optional.of(assoc));
@@ -227,13 +227,14 @@ class NpcServiceTest {
         Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
         Npc visivel = npcOwnedByMaster();
         CampaignNpc assocVisivel = CampaignNpc.builder()
-                .campaign(campaign).npc(visivel).visible(true).build();
+                .campaign(campaign).npcId(visivel.getId()).visible(true).build();
 
         when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), player.getId()))
                 .thenReturn(Optional.of(CampaignMember.builder()
                         .campaign(campaign).user(player).role(Role.PLAYER).build()));
         when(campaignNpcRepository.findByCampaignIdAndVisibleTrue(campaign.getId()))
                 .thenReturn(List.of(assocVisivel));
+        when(npcRepository.findAllById(List.of(visivel.getId()))).thenReturn(List.of(visivel));
 
         List<NpcSummaryResponse> result = service.listForCampaign(campaign.getId(), player.getId());
 
@@ -252,7 +253,7 @@ class NpcServiceTest {
         Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
         Npc oculto = npcOwnedByMaster();
         CampaignNpc assoc = CampaignNpc.builder()
-                .campaign(campaign).npc(oculto).visible(false).build();
+                .campaign(campaign).npcId(oculto.getId()).visible(false).build();
 
         when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), player.getId()))
                 .thenReturn(Optional.of(CampaignMember.builder()
@@ -313,7 +314,7 @@ class NpcServiceTest {
         Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
         Npc oculto = npcOwnedByMaster();
         CampaignNpc assoc = CampaignNpc.builder()
-                .campaign(campaign).npc(oculto).visible(false).build();
+                .campaign(campaign).npcId(oculto.getId()).visible(false).build();
 
         when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), player.getId()))
                 .thenReturn(Optional.of(CampaignMember.builder()
@@ -332,8 +333,8 @@ class NpcServiceTest {
         UUID campaignId = UUID.randomUUID();
         Npc npc = npcOwnedByMaster();
         CampaignNpc assoc = CampaignNpc.builder()
-                .id(UUID.randomUUID()).npc(npc).visible(true).build();
-        Booking b = Booking.builder().id(UUID.randomUUID()).npc(npc).build();
+                .id(UUID.randomUUID()).npcId(npc.getId()).visible(true).build();
+        Booking b = Booking.builder().id(UUID.randomUUID()).npcId(npc.getId()).npcName(npc.getName()).build();
 
         when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaignId, master.getId(), Role.MASTER))
                 .thenReturn(true);

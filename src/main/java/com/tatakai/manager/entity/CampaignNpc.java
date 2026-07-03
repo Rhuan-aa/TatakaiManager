@@ -31,9 +31,9 @@ public class CampaignNpc {
     @JoinColumn(name = "campaign_id", nullable = false)
     private Campaign campaign;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "npc_id", nullable = false)
-    private Npc npc;
+    /** Id do NPC (ficha vive no Mongo — {@link Npc} não é mais uma entidade JPA). */
+    @Column(name = "npc_id", nullable = false)
+    private UUID npcId;
 
     @Column(nullable = false)
     @Builder.Default
