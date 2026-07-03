@@ -19,9 +19,13 @@ import com.tatakai.manager.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class NpcService {
@@ -57,18 +61,20 @@ public class NpcService {
 
     @Transactional
     public NpcResponse create(UUID ownerId, CreateNpcRequest req) {
-        User owner = userRepository.findById(ownerId)
+        userRepository.findById(ownerId)
                 .orElseThrow(() -> new UserNotFoundException("Usuário autenticado não encontrado"));
 
         Npc npc = Npc.builder()
+                .id(UUID.randomUUID())
                 .name(req.name())
                 .description(req.description())
                 .attributes(toAttributes(req.attributes()))
-                .owner(owner)
+                .ownerId(ownerId)
                 .knowledge(toDetails(req.knowledge()))
                 .traits(toDetails(req.traits()))
                 .specs(toDetails(req.specs()))
                 .interactions(toInteractions(req.interactions()))
+                .createdAt(Instant.now())
                 .build();
 
         return toResponse(npcRepository.save(npc), null);
@@ -113,7 +119,7 @@ public class NpcService {
 
         CampaignNpc assoc = campaignNpcRepository.save(CampaignNpc.builder()
                 .campaign(campaign)
-                .npc(npc)
+                .npcId(npc.getId())
                 .visible(true)
                 .build());
 
@@ -175,10 +181,17 @@ public class NpcService {
                 ? campaignNpcRepository.findByCampaignId(campaignId)
                 : campaignNpcRepository.findByCampaignIdAndVisibleTrue(campaignId);
 
+        Map<UUID, Npc> npcById = npcRepository
+                .findAllById(associations.stream().map(CampaignNpc::getNpcId).toList()).stream()
+                .collect(Collectors.toMap(Npc::getId, Function.identity()));
+
         return associations.stream()
-                .map(a -> new NpcSummaryResponse(a.getNpc().getId(), a.getNpc().getName(),
-                        a.isVisible(), npcImageRepository.existsById(a.getNpc().getId()),
-                        toInteractionDtos(a.getNpc().getInteractions())))
+                .map(a -> {
+                    Npc npc = npcById.get(a.getNpcId());
+                    return new NpcSummaryResponse(a.getNpcId(), npc.getName(),
+                            a.isVisible(), npcImageRepository.existsById(a.getNpcId()),
+                            toInteractionDtos(npc.getInteractions()));
+                })
                 .toList();
     }
 
@@ -192,7 +205,8 @@ public class NpcService {
         if (!assoc.isVisible() && role != Role.MASTER) {
             throw new NpcNotFoundException();
         }
-        return toResponse(assoc.getNpc(), assoc.isVisible());
+        Npc npc = npcRepository.findById(npcId).orElseThrow(NpcNotFoundException::new);
+        return toResponse(npc, assoc.isVisible());
     }
 
     // ---------- imagem (retrato) do NPC ----------
@@ -245,7 +259,7 @@ public class NpcService {
     // ---------- helpers de autorização ----------
 
     private void requireOwner(Npc npc, UUID requesterId) {
-        if (!npc.getOwner().getId().equals(requesterId)) {
+        if (!npc.getOwnerId().equals(requesterId)) {
             throw new AccessDeniedException("Apenas o dono do NPC pode realizar esta ação");
         }
     }
@@ -320,7 +334,7 @@ public class NpcService {
                 toDetailDtos(npc.getTraits()),
                 toDetailDtos(npc.getSpecs()),
                 toInteractionDtos(npc.getInteractions()),
-                npc.getOwner().getId(),
+                npc.getOwnerId(),
                 npcImageRepository.existsById(npc.getId()),
                 visible);
     }

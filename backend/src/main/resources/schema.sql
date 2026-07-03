@@ -26,53 +26,14 @@ CREATE TABLE campaign_members (
     UNIQUE (campaign_id, user_id)
 );
 
-CREATE TABLE npcs (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        VARCHAR(100)    NOT NULL,
-    description TEXT,
-    -- Atributos opcionais
-    attr_for    SMALLINT,
-    attr_des    SMALLINT,
-    attr_con    SMALLINT,
-    attr_men    SMALLINT,
-    attr_int    SMALLINT,
-    attr_tal    SMALLINT,
-    created_by  UUID NOT NULL REFERENCES users(id),
-    created_at  TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
--- Coleções embutidas do NPC (@ElementCollection — sem PK própria)
--- Conhecimentos, Traços e Specs (habilidades): mesmo formato {nome, descrição}
-CREATE TABLE npc_knowledge (
-    npc_id      UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
-    name        VARCHAR(100) NOT NULL,
-    description TEXT
-);
-
-CREATE TABLE npc_traits (
-    npc_id      UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
-    name        VARCHAR(100) NOT NULL,
-    description TEXT
-);
-
-CREATE TABLE npc_specs (
-    npc_id      UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
-    name        VARCHAR(100) NOT NULL,
-    description TEXT
-);
-
--- Interações por NPC: tipo (categoria), título, descrição e custo em pontos de ócio
-CREATE TABLE npc_interactions (
-    npc_id           UUID NOT NULL REFERENCES npcs(id) ON DELETE CASCADE,
-    type             VARCHAR(50),
-    name             VARCHAR(100) NOT NULL,
-    description      TEXT,
-    idle_point_cost SMALLINT NOT NULL DEFAULT 0
-);
+-- A ficha textual do NPC (nome, descrição, atributos, conhecimentos, traços, specs,
+-- interações) NÃO vive mais aqui — foi migrada para o MongoDB (coleção `npcs`, ver
+-- entity/Npc.java e DEPLOY.md). Só a imagem e as referências por id continuam no
+-- Postgres, então npc_id abaixo é um UUID solto (sem FK — o NPC pode estar em outro banco).
 
 -- Imagem (retrato) do NPC — tabela separada para não pesar as consultas
 CREATE TABLE npc_images (
-    npc_id       UUID PRIMARY KEY REFERENCES npcs(id) ON DELETE CASCADE,
+    npc_id       UUID PRIMARY KEY,
     content_type VARCHAR(100) NOT NULL,
     data         BYTEA NOT NULL
 );
@@ -81,7 +42,7 @@ CREATE TABLE npc_images (
 CREATE TABLE campaign_npcs (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     campaign_id  UUID NOT NULL REFERENCES campaigns(id),
-    npc_id       UUID NOT NULL REFERENCES npcs(id),
+    npc_id       UUID NOT NULL,
     visible      BOOLEAN NOT NULL DEFAULT TRUE,
     UNIQUE (campaign_id, npc_id)
 );
@@ -104,17 +65,24 @@ CREATE TABLE time_skip_days (
     UNIQUE (time_skip_id, day_number)
 );
 
--- Reserva de slot (slot_number: 1 a 4)
+-- Reserva de slot (slot_number: 1 a 4). npc_id é UUID solto (NPC vive no Mongo).
+-- Atividade solo (sem NPC): npc_id/npc_name/interaction_name nulos,
+-- solo_activity_type + description preenchidos (ver US de treino solo).
 CREATE TABLE bookings (
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    time_skip_day_id UUID NOT NULL REFERENCES time_skip_days(id),
-    npc_id           UUID NOT NULL REFERENCES npcs(id),
-    user_id          UUID NOT NULL REFERENCES users(id),
-    slot_number      SMALLINT NOT NULL CHECK (slot_number BETWEEN 1 AND 4),
-    interaction_name VARCHAR(100) NOT NULL,
-    idle_point_cost SMALLINT NOT NULL DEFAULT 0,
-    created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
-    UNIQUE (time_skip_day_id, npc_id, slot_number)  -- regra central de conflito
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    time_skip_day_id    UUID NOT NULL REFERENCES time_skip_days(id),
+    npc_id              UUID,
+    npc_name            VARCHAR(100),
+    user_id             UUID NOT NULL REFERENCES users(id),
+    slot_number         SMALLINT NOT NULL CHECK (slot_number BETWEEN 1 AND 4),
+    interaction_name    VARCHAR(100),
+    idle_point_cost     SMALLINT NOT NULL DEFAULT 0,
+    solo_activity_type  VARCHAR(20) CHECK (solo_activity_type IN ('TREINO', 'ESTUDO', 'ACAO_GERAL')),
+    description         TEXT,
+    created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+    CHECK ( (npc_id IS NOT NULL AND solo_activity_type IS NULL)
+         OR (npc_id IS NULL AND solo_activity_type IS NOT NULL) ),
+    UNIQUE (time_skip_day_id, npc_id, slot_number)  -- regra central de conflito (NPC); solo checado em app
 );
 
 CREATE TABLE interaction_logs (

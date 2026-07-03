@@ -71,6 +71,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- MongoDB (ficha textual de NPC) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
         <!-- Validation (Bean Validation / @Pattern / @NotBlank) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

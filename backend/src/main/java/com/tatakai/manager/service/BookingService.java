@@ -23,6 +23,7 @@ public class BookingService {
     private final CampaignNpcRepository campaignNpcRepository;
     private final CampaignMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final NpcRepository npcRepository;
     private final SlotEventPublisher slotEventPublisher;
 
     public BookingService(BookingRepository bookingRepository,
@@ -31,6 +32,7 @@ public class BookingService {
                           CampaignNpcRepository campaignNpcRepository,
                           CampaignMemberRepository memberRepository,
                           UserRepository userRepository,
+                          NpcRepository npcRepository,
                           SlotEventPublisher slotEventPublisher) {
         this.bookingRepository = bookingRepository;
         this.timeSkipRepository = timeSkipRepository;
@@ -38,6 +40,7 @@ public class BookingService {
         this.campaignNpcRepository = campaignNpcRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
+        this.npcRepository = npcRepository;
         this.slotEventPublisher = slotEventPublisher;
     }
 
@@ -62,6 +65,29 @@ public class BookingService {
             throw new InvalidBookingException("Não é possível agendar em um dia que já passou");
         }
 
+        Booking booking = req.npcId() != null
+                ? buildNpcBooking(campaignId, role, day, req, requesterId)
+                : buildSoloBooking(day, req, requesterId);
+
+        BookingResponse response;
+        try {
+            response = toResponse(bookingRepository.save(booking));
+        } catch (DataIntegrityViolationException e) {
+            // Dois jogadores passaram pela verificação ao mesmo tempo; o banco rejeitou o segundo
+            throw new SlotTakenException();
+        }
+
+        // US-15: notifica as telas dos demais jogadores em tempo real
+        slotEventPublisher.publish(SlotUpdateMessage.booked(campaignId, response, timeSkipId));
+        return response;
+    }
+
+    private Booking buildNpcBooking(UUID campaignId, Role role, TimeSkipDay day,
+                                    CreateBookingRequest req, UUID requesterId) {
+        if (req.interactionName() == null || req.interactionName().isBlank()) {
+            throw new InvalidBookingException("o tipo de interação é obrigatório");
+        }
+
         CampaignNpc association = campaignNpcRepository
                 .findByCampaignIdAndNpcId(campaignId, req.npcId())
                 .orElseThrow(NpcNotFoundException::new);
@@ -70,7 +96,7 @@ public class BookingService {
             throw new NpcNotFoundException();
         }
 
-        Npc npc = association.getNpc();
+        Npc npc = npcRepository.findById(association.getNpcId()).orElseThrow(NpcNotFoundException::new);
         NpcInteraction interaction = npc.getInteractions().stream()
                 .filter(i -> i.getName().equals(req.interactionName()))
                 .findFirst()
@@ -86,26 +112,45 @@ public class BookingService {
         User user = userRepository.findById(requesterId)
                 .orElseThrow(() -> new UserNotFoundException("Usuário autenticado não encontrado"));
 
-        Booking booking = Booking.builder()
+        return Booking.builder()
                 .timeSkipDay(day)
-                .npc(npc)
+                .npcId(npc.getId())
+                .npcName(npc.getName())
                 .user(user)
                 .slotNumber(req.slotNumber())
                 .interactionName(interaction.getName())
                 .idlePointCost(interaction.getIdlePointCost())
                 .build();
+    }
 
-        BookingResponse response;
-        try {
-            response = toResponse(bookingRepository.save(booking));
-        } catch (DataIntegrityViolationException e) {
-            // Dois jogadores passaram pela verificação ao mesmo tempo; o banco rejeitou o segundo
+    // ---------- treino solo: mesmo slot, sem NPC ----------
+
+    private Booking buildSoloBooking(TimeSkipDay day, CreateBookingRequest req, UUID requesterId) {
+        if (req.soloActivityType() == null) {
+            throw new InvalidBookingException("o tipo da atividade solo é obrigatório");
+        }
+        if (req.description() == null || req.description().isBlank()) {
+            throw new InvalidBookingException("a descrição da atividade solo é obrigatória");
+        }
+
+        // Verificação otimista; sem NPC não há constraint única no banco — o mesmo
+        // jogador não pode ocupar duas vezes o mesmo slot do dia com atividades solo
+        if (bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
+                day.getId(), requesterId, req.slotNumber())) {
             throw new SlotTakenException();
         }
 
-        // US-15: notifica as telas dos demais jogadores em tempo real
-        slotEventPublisher.publish(SlotUpdateMessage.booked(campaignId, response, timeSkipId));
-        return response;
+        User user = userRepository.findById(requesterId)
+                .orElseThrow(() -> new UserNotFoundException("Usuário autenticado não encontrado"));
+
+        return Booking.builder()
+                .timeSkipDay(day)
+                .user(user)
+                .slotNumber(req.slotNumber())
+                .soloActivityType(req.soloActivityType())
+                .description(req.description())
+                .idlePointCost((short) 0)
+                .build();
     }
 
     // ---------- US-14: cancelar ----------
@@ -128,7 +173,7 @@ public class BookingService {
 
         UUID campaignId = timeSkip.getCampaign().getId();
         SlotUpdateMessage message = SlotUpdateMessage.cancelled(
-                campaignId, timeSkip.getId(), booking.getNpc().getId(),
+                campaignId, timeSkip.getId(), booking.getId(), booking.getNpcId(),
                 booking.getTimeSkipDay().getDayNumber(), booking.getSlotNumber());
 
         bookingRepository.delete(booking);
@@ -170,14 +215,16 @@ public class BookingService {
     private BookingResponse toResponse(Booking b) {
         return new BookingResponse(
                 b.getId(),
-                b.getNpc().getId(),
-                b.getNpc().getName(),
+                b.getNpcId(),
+                b.getNpcName(),
                 b.getUser().getId(),
                 b.getUser().getName(),
                 b.getTimeSkipDay().getDayNumber(),
                 b.getSlotNumber(),
                 b.getInteractionName(),
                 b.getIdlePointCost(),
+                b.getSoloActivityType(),
+                b.getDescription(),
                 b.getCreatedAt());
     }
 }

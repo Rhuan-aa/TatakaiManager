@@ -57,9 +57,9 @@ class LogServiceTest {
         TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign)
                 .name("Inverno").totalDays((short) 7).build();
         TimeSkipDay day = TimeSkipDay.builder().id(UUID.randomUUID()).timeSkip(ts).dayNumber((short) 3).build();
-        Npc npc = Npc.builder().id(UUID.randomUUID()).name("Aldric").owner(master).build();
+        Npc npc = Npc.builder().id(UUID.randomUUID()).name("Aldric").ownerId(master.getId()).build();
         playerBooking = Booking.builder().id(UUID.randomUUID())
-                .timeSkipDay(day).npc(npc).user(player)
+                .timeSkipDay(day).npcId(npc.getId()).npcName(npc.getName()).user(player)
                 .slotNumber((short) 1).interactionName("Treino").idlePointCost((short) 2).build();
     }
 
@@ -168,8 +168,9 @@ class LogServiceTest {
         Campaign other = Campaign.builder().id(UUID.randomUUID()).name("Outra").master(master).build();
         TimeSkip ts2 = TimeSkip.builder().id(UUID.randomUUID()).campaign(other).totalDays((short) 3).build();
         TimeSkipDay d2 = TimeSkipDay.builder().id(UUID.randomUUID()).timeSkip(ts2).dayNumber((short) 1).build();
+        Npc alienNpc = Npc.builder().id(UUID.randomUUID()).name("X").ownerId(master.getId()).build();
         Booking alien = Booking.builder().id(UUID.randomUUID()).timeSkipDay(d2)
-                .npc(Npc.builder().id(UUID.randomUUID()).name("X").owner(master).build())
+                .npcId(alienNpc.getId()).npcName(alienNpc.getName())
                 .user(player).slotNumber((short) 1).interactionName("Treino").idlePointCost((short) 2).build();
         when(bookingRepository.findById(alien.getId())).thenReturn(Optional.of(alien));
 
