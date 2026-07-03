@@ -23,6 +23,8 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      # Ficha textual de NPC — aponta pro MongoDB Atlas (sem container local em produção)
+      MONGO_URI: ${MONGO_URI}
       JWT_SECRET: ${JWT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL}
       DDL_AUTO: ${DDL_AUTO}

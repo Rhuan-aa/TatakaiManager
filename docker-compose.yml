@@ -16,16 +16,30 @@ services:
       timeout: 5s
       retries: 10
 
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./backend
     depends_on:
       postgres:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
     environment:
       # Conexão interna ao Postgres (rede do compose, sempre 5432)
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-tatakai}
       DB_USER: ${DB_USER:-postgres}
       DB_PASS: ${DB_PASS:-postgres}
+      # Conexão interna ao Mongo (rede do compose); em produção sobrescreva com a URI do Atlas
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/tatakai}
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production-min-32-chars}
       # Origem do front para CORS / WebSocket (deve bater com a porta publicada do frontend)
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
@@ -46,3 +60,4 @@ services:
 
 volumes:
   pgdata:
+  mongodata:
