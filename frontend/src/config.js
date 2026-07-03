@@ -12,5 +12,9 @@ const runtime = (typeof window !== 'undefined' && window.__ENV__) || {};
 export const API_URL =
   runtime.API_URL || import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+// Derivado do API_URL por padrão (SockJS usa o mesmo esquema http/https, não ws/wss):
+// basta o /ws no mesmo host. Override explícito continua possível se o /ws morar noutro lugar.
 export const WS_URL =
-  runtime.WS_URL || import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
+  runtime.WS_URL ||
+  import.meta.env.VITE_WS_URL ||
+  `${API_URL.replace(/\/$/, '')}/ws`;
