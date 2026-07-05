@@ -1,6 +1,7 @@
 package com.tatakai.manager.controller;
 
 import com.tatakai.manager.dto.request.CreateLogRequest;
+import com.tatakai.manager.dto.request.UpdateLogRequest;
 import com.tatakai.manager.dto.response.LogResponse;
 import com.tatakai.manager.security.AuthenticatedUser;
 import com.tatakai.manager.service.LogService;
@@ -32,5 +33,18 @@ public class LogController {
     @GetMapping
     public ResponseEntity<List<LogResponse>> list(@PathVariable UUID campaignId) {
         return ResponseEntity.ok(logService.listForCampaign(campaignId, AuthenticatedUser.id()));
+    }
+
+    @PutMapping("/{logId}")
+    public ResponseEntity<LogResponse> update(@PathVariable UUID campaignId, @PathVariable UUID logId,
+                                              @Valid @RequestBody UpdateLogRequest request) {
+        LogResponse res = logService.update(campaignId, logId, AuthenticatedUser.id(), request);
+        return ResponseEntity.ok(res);
+    }
+
+    @DeleteMapping("/{logId}")
+    public ResponseEntity<Void> delete(@PathVariable UUID campaignId, @PathVariable UUID logId) {
+        logService.delete(campaignId, logId, AuthenticatedUser.id());
+        return ResponseEntity.noContent().build();
     }
 }

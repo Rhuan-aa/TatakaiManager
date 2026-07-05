@@ -47,6 +47,10 @@ public class InteractionLog {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** Preenchido quando o Mestre edita a narrativa; nulo se nunca editado. */
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) createdAt = Instant.now();

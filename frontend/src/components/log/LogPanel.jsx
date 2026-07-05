@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listLogs, createLog } from '../../api/logs';
+import { listLogs, createLog, updateLog, deleteLog } from '../../api/logs';
 import { listTimeSkips } from '../../api/timeskips';
 import { listBookings } from '../../api/bookings';
 import { parseApiError } from '../../api/parseApiError';
@@ -58,6 +58,15 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  const [editingLogId, setEditingLogId] = useState(null);
+  const [editNarrative, setEditNarrative] = useState('');
+  const [editError, setEditError] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -123,6 +132,51 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
   }
 
   const canSubmit = narrative.trim() && (isMaster || selectedBookingId);
+
+  function startEdit(log) {
+    setConfirmDeleteId(null);
+    setDeleteError('');
+    setEditingLogId(log.id);
+    setEditNarrative(log.narrative);
+    setEditError('');
+  }
+
+  function cancelEdit() {
+    setEditingLogId(null);
+    setEditNarrative('');
+    setEditError('');
+  }
+
+  async function handleSaveEdit(logId) {
+    if (!editNarrative.trim()) return;
+    setEditError('');
+    setSavingEdit(true);
+    try {
+      const updated = await updateLog(campaignId, logId, { narrative: editNarrative });
+      setLogs((prev) => prev.map((l) => (l.id === logId ? updated : l)));
+      setEditingLogId(null);
+      toast('Log editado.');
+    } catch (err) {
+      setEditError(parseApiError(err).message);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function handleDelete(logId) {
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      await deleteLog(campaignId, logId);
+      setLogs((prev) => prev.filter((l) => l.id !== logId));
+      setConfirmDeleteId(null);
+      toast('Log excluído.');
+    } catch (err) {
+      setDeleteError(parseApiError(err).message);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function renderForm() {
     if (isMaster) {
@@ -272,6 +326,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
                       </span>
                       <span className="shrink-0 text-xs text-zinc-600">
                         {formatDate(log.createdAt)}
+                        {log.updatedAt && ' · editado'}
                       </span>
                     </div>
                     {log.bookingId && (
@@ -282,10 +337,84 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
                       </span>
                     )}
                   </div>
+                  {isMaster && editingLogId !== log.id && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(log)}
+                        className="text-xs font-medium text-zinc-500 hover:text-zinc-300"
+                      >
+                        Editar
+                      </button>
+                      {confirmDeleteId === log.id ? (
+                        <span className="flex items-center gap-2">
+                          <span className="text-xs text-red-400">Excluir?</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(log.id)}
+                            disabled={deleting}
+                            className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {deleting ? 'Excluindo...' : 'Confirmar'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-xs text-zinc-500 hover:text-zinc-300"
+                          >
+                            Cancelar
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfirmDeleteId(log.id);
+                            setDeleteError('');
+                          }}
+                          className="text-xs font-medium text-red-400 hover:text-red-300"
+                        >
+                          Excluir
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
-                  {log.narrative}
-                </p>
+                {confirmDeleteId === log.id && deleteError && (
+                  <p className="mt-1.5 text-xs text-red-400">{deleteError}</p>
+                )}
+                {editingLogId === log.id ? (
+                  <div className="mt-2.5">
+                    <textarea
+                      rows={3}
+                      value={editNarrative}
+                      onChange={(e) => setEditNarrative(e.target.value)}
+                      className={textareaClass}
+                    />
+                    {editError && <p className="mt-1 text-xs text-red-400">{editError}</p>}
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="rounded-md px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-300"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEdit(log.id)}
+                        disabled={savingEdit || !editNarrative.trim()}
+                        className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                      >
+                        {savingEdit ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
+                    {log.narrative}
+                  </p>
+                )}
               </div>
             );
           })}

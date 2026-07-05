@@ -1,10 +1,12 @@
 package com.tatakai.manager.log;
 
 import com.tatakai.manager.dto.request.CreateLogRequest;
+import com.tatakai.manager.dto.request.UpdateLogRequest;
 import com.tatakai.manager.dto.response.LogResponse;
 import com.tatakai.manager.entity.*;
 import com.tatakai.manager.exception.AccessDeniedException;
 import com.tatakai.manager.exception.BookingNotFoundException;
+import com.tatakai.manager.exception.LogNotFoundException;
 import com.tatakai.manager.repository.BookingRepository;
 import com.tatakai.manager.repository.CampaignMemberRepository;
 import com.tatakai.manager.repository.InteractionLogRepository;
@@ -206,5 +208,79 @@ class LogServiceTest {
 
         assertThatThrownBy(() -> service.listForCampaign(campaign.getId(), player.getId()))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("Mestre edita a narrativa de um log (texto sanitizado e updatedAt preenchido)")
+    void update_byMaster_persistsSanitizedNarrativeAndTimestamp() {
+        InteractionLog log = InteractionLog.builder().id(UUID.randomUUID())
+                .campaign(campaign).author(player).booking(playerBooking)
+                .narrative("Texto original").build();
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), master.getId(), Role.MASTER))
+                .thenReturn(true);
+        when(logRepository.findByIdAndCampaignId(log.getId(), campaign.getId())).thenReturn(Optional.of(log));
+        when(logRepository.save(any(InteractionLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var req = new UpdateLogRequest("Editado <script>alert('x')</script> pelo Mestre");
+
+        LogResponse res = service.update(campaign.getId(), log.getId(), master.getId(), req);
+
+        assertThat(res.narrative()).doesNotContain("<script>");
+        assertThat(res.updatedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("jogador não pode editar log — AccessDenied")
+    void update_byPlayer_throwsAccessDenied() {
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), player.getId(), Role.MASTER))
+                .thenReturn(false);
+
+        var req = new UpdateLogRequest("tentando editar");
+
+        assertThatThrownBy(() -> service.update(campaign.getId(), UUID.randomUUID(), player.getId(), req))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(logRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("editar log inexistente na campanha — NotFound")
+    void update_logNotInCampaign_throwsNotFound() {
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), master.getId(), Role.MASTER))
+                .thenReturn(true);
+        UUID logId = UUID.randomUUID();
+        when(logRepository.findByIdAndCampaignId(logId, campaign.getId())).thenReturn(Optional.empty());
+
+        var req = new UpdateLogRequest("x");
+
+        assertThatThrownBy(() -> service.update(campaign.getId(), logId, master.getId(), req))
+                .isInstanceOf(LogNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Mestre exclui um log da campanha")
+    void delete_byMaster_removesLog() {
+        InteractionLog log = InteractionLog.builder().id(UUID.randomUUID())
+                .campaign(campaign).author(player).booking(playerBooking)
+                .narrative("Para excluir").build();
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), master.getId(), Role.MASTER))
+                .thenReturn(true);
+        when(logRepository.findByIdAndCampaignId(log.getId(), campaign.getId())).thenReturn(Optional.of(log));
+
+        service.delete(campaign.getId(), log.getId(), master.getId());
+
+        verify(logRepository).delete(log);
+    }
+
+    @Test
+    @DisplayName("jogador não pode excluir log — AccessDenied")
+    void delete_byPlayer_throwsAccessDenied() {
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), player.getId(), Role.MASTER))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.delete(campaign.getId(), UUID.randomUUID(), player.getId()))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(logRepository, never()).delete(any(InteractionLog.class));
     }
 }

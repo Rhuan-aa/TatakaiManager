@@ -9,6 +9,7 @@ public record LogResponse(
         String authorName,
         String narrative,
         Instant createdAt,
+        Instant updatedAt,
         // Dados do agendamento relacionado (nulos em log livre do Mestre)
         UUID bookingId,
         UUID npcId,

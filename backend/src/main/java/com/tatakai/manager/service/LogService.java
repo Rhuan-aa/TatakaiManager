@@ -1,6 +1,7 @@
 package com.tatakai.manager.service;
 
 import com.tatakai.manager.dto.request.CreateLogRequest;
+import com.tatakai.manager.dto.request.UpdateLogRequest;
 import com.tatakai.manager.dto.response.LogResponse;
 import com.tatakai.manager.entity.Booking;
 import com.tatakai.manager.entity.CampaignMember;
@@ -8,6 +9,7 @@ import com.tatakai.manager.entity.InteractionLog;
 import com.tatakai.manager.entity.Role;
 import com.tatakai.manager.exception.AccessDeniedException;
 import com.tatakai.manager.exception.BookingNotFoundException;
+import com.tatakai.manager.exception.LogNotFoundException;
 import com.tatakai.manager.repository.BookingRepository;
 import com.tatakai.manager.repository.CampaignMemberRepository;
 import com.tatakai.manager.repository.InteractionLogRepository;
@@ -15,6 +17,7 @@ import com.tatakai.manager.security.TextSanitizer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -83,6 +86,33 @@ public class LogService {
                 .toList();
     }
 
+    @Transactional
+    public LogResponse update(UUID campaignId, UUID logId, UUID requesterId, UpdateLogRequest req) {
+        requireCampaignMaster(campaignId, requesterId);
+        InteractionLog log = logRepository.findByIdAndCampaignId(logId, campaignId)
+                .orElseThrow(LogNotFoundException::new);
+
+        log.setNarrative(textSanitizer.sanitize(req.narrative()));
+        log.setUpdatedAt(Instant.now());
+
+        return toResponse(logRepository.save(log));
+    }
+
+    @Transactional
+    public void delete(UUID campaignId, UUID logId, UUID requesterId) {
+        requireCampaignMaster(campaignId, requesterId);
+        InteractionLog log = logRepository.findByIdAndCampaignId(logId, campaignId)
+                .orElseThrow(LogNotFoundException::new);
+
+        logRepository.delete(log);
+    }
+
+    private void requireCampaignMaster(UUID campaignId, UUID requesterId) {
+        if (!memberRepository.existsByCampaignIdAndUserIdAndRole(campaignId, requesterId, Role.MASTER)) {
+            throw new AccessDeniedException("Apenas o Mestre da campanha pode realizar esta ação");
+        }
+    }
+
     private LogResponse toResponse(InteractionLog log) {
         Booking b = log.getBooking();
         return new LogResponse(
@@ -91,6 +121,7 @@ public class LogService {
                 log.getAuthor().getName(),
                 log.getNarrative(),
                 log.getCreatedAt(),
+                log.getUpdatedAt(),
                 b == null ? null : b.getId(),
                 b == null ? null : b.getNpcId(),
                 b == null ? null : b.getNpcName(),
