@@ -10,3 +10,6 @@ HANDOFF.md
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# Saída gerada do graphify (grafo de conhecimento local)
+graphify-out/
