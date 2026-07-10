@@ -11,11 +11,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Reserva de um slot (1..4) em um dia de TimeSkip — com um NPC, ou solo (treino,
- * estudo ou ação geral sem NPC). A constraint única (time_skip_day, npc, slot_number)
- * é a regra central para NPCs: dois jogadores não podem ocupar o mesmo slot do mesmo
- * NPC. Para atividades solo (npc_id nulo) o conflito é checado na aplicação: o mesmo
- * jogador não pode ter duas atividades solo no mesmo dia+slot (ver BookingService).
+ * Reserva de slots em um dia de TimeSkip — com um NPC, ou solo (treino, estudo ou
+ * ação geral sem NPC). O {@code slotNumber} é o slot inicial: uma ação de custo N
+ * ocupa N slots consecutivos a partir dele (custo 2 no slot 2 ocupa 2 e 3); ações
+ * de custo zero vão no slot extra do dia ({@link TimeSkipDay#EXTRA_SLOT_NUMBER}).
+ * A constraint única (time_skip_day, npc, slot_number) segue protegendo o slot
+ * inicial de NPCs em concorrência; a sobreposição de faixas e o limite de um slot
+ * extra por jogador por dia são checados na aplicação (ver BookingService).
  */
 @Entity
 @Table(name = "bookings",

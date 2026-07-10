@@ -8,11 +8,14 @@ import java.util.UUID;
 
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
-    boolean existsByTimeSkipDayIdAndNpcIdAndSlotNumber(UUID timeSkipDayId, UUID npcId, short slotNumber);
+    /** Reservas do NPC no dia — usadas para checar sobreposição de faixas de slots. */
+    List<Booking> findByTimeSkipDayIdAndNpcId(UUID timeSkipDayId, UUID npcId);
 
-    /** Conflito de atividade solo: o mesmo jogador não pode ocupar duas vezes o mesmo slot do dia. */
-    boolean existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
-            UUID timeSkipDayId, UUID userId, short slotNumber);
+    /** Reservas solo do jogador no dia — o mesmo jogador não pode sobrepor as próprias faixas. */
+    List<Booking> findByTimeSkipDayIdAndUserIdAndNpcIdIsNull(UUID timeSkipDayId, UUID userId);
+
+    /** Slot extra: cada jogador só pode ter uma ação de custo zero por dia (NPC ou solo). */
+    boolean existsByTimeSkipDayIdAndUserIdAndSlotNumber(UUID timeSkipDayId, UUID userId, short slotNumber);
 
     List<Booking> findByTimeSkipDay_TimeSkipId(UUID timeSkipId);
 

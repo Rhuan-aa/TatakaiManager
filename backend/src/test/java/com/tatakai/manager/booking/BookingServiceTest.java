@@ -98,8 +98,8 @@ class BookingServiceTest {
         when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
                 .thenReturn(Optional.of(day3));
         mockVisibleAssociation();
-        when(bookingRepository.existsByTimeSkipDayIdAndNpcIdAndSlotNumber(
-                day3.getId(), aldric.getId(), (short) 2)).thenReturn(false);
+        when(bookingRepository.findByTimeSkipDayIdAndNpcId(day3.getId(), aldric.getId()))
+                .thenReturn(java.util.List.of());
         when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> {
             Booking b = inv.getArgument(0);
@@ -134,8 +134,12 @@ class BookingServiceTest {
         when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
                 .thenReturn(Optional.of(day3));
         mockVisibleAssociation();
-        when(bookingRepository.existsByTimeSkipDayIdAndNpcIdAndSlotNumber(
-                day3.getId(), aldric.getId(), (short) 1)).thenReturn(true);
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        Booking existing = Booking.builder().id(UUID.randomUUID()).timeSkipDay(day3)
+                .npcId(aldric.getId()).user(master).slotNumber((short) 1)
+                .interactionName("Treino").idlePointCost((short) 1).build();
+        when(bookingRepository.findByTimeSkipDayIdAndNpcId(day3.getId(), aldric.getId()))
+                .thenReturn(java.util.List.of(existing));
 
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 1)))
                 .isInstanceOf(SlotTakenException.class);
@@ -151,10 +155,10 @@ class BookingServiceTest {
         when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
                 .thenReturn(Optional.of(day3));
         mockVisibleAssociation();
-        when(bookingRepository.existsByTimeSkipDayIdAndNpcIdAndSlotNumber(
-                day3.getId(), aldric.getId(), (short) 1)).thenReturn(false);
+        when(bookingRepository.findByTimeSkipDayIdAndNpcId(day3.getId(), aldric.getId()))
+                .thenReturn(java.util.List.of());
         when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
-        // Dois jogadores passaram pelo existsBy; o banco rejeita o segundo via constraint única
+        // Dois jogadores passaram pela checagem de sobreposição; o banco rejeita o segundo via constraint única
         when(bookingRepository.save(any(Booking.class)))
                 .thenThrow(new DataIntegrityViolationException("uk_booking_slot"));
 
@@ -170,9 +174,12 @@ class BookingServiceTest {
         when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
                 .thenReturn(Optional.of(day3));
         mockVisibleAssociation();
-        // slot 3 está livre, mesmo que o jogador já tenha o slot 1
-        when(bookingRepository.existsByTimeSkipDayIdAndNpcIdAndSlotNumber(
-                day3.getId(), aldric.getId(), (short) 3)).thenReturn(false);
+        // a faixa 3-4 está livre: a reserva existente no slot 1 (custo 2) ocupa só 1-2
+        Booking existing = Booking.builder().id(UUID.randomUUID()).timeSkipDay(day3)
+                .npcId(aldric.getId()).user(player).slotNumber((short) 1)
+                .interactionName("Treino").idlePointCost((short) 2).build();
+        when(bookingRepository.findByTimeSkipDayIdAndNpcId(day3.getId(), aldric.getId()))
+                .thenReturn(java.util.List.of(existing));
         when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -246,8 +253,8 @@ class BookingServiceTest {
         when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
         when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
                 .thenReturn(Optional.of(day3));
-        when(bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
-                day3.getId(), player.getId(), (short) 2)).thenReturn(false);
+        when(bookingRepository.findByTimeSkipDayIdAndUserIdAndNpcIdIsNull(
+                day3.getId(), player.getId())).thenReturn(java.util.List.of());
         when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> {
             Booking b = inv.getArgument(0);
@@ -278,8 +285,13 @@ class BookingServiceTest {
         when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
         when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
                 .thenReturn(Optional.of(day3));
-        when(bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
-                day3.getId(), player.getId(), (short) 1)).thenReturn(true);
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        Booking existing = Booking.builder().id(UUID.randomUUID()).timeSkipDay(day3)
+                .user(player).slotNumber((short) 1)
+                .soloActivityType(SoloActivityType.TREINO).description("Treino matinal")
+                .idlePointCost((short) 1).build();
+        when(bookingRepository.findByTimeSkipDayIdAndUserIdAndNpcIdIsNull(
+                day3.getId(), player.getId())).thenReturn(java.util.List.of(existing));
 
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(),
                 soloReq((short) 1, SoloActivityType.ESTUDO, "Estudar táticas de combate")))
@@ -328,8 +340,8 @@ class BookingServiceTest {
         when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
         when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
                 .thenReturn(Optional.of(day3));
-        when(bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
-                day3.getId(), player.getId(), (short) 2)).thenReturn(false);
+        when(bookingRepository.findByTimeSkipDayIdAndUserIdAndNpcIdIsNull(
+                day3.getId(), player.getId())).thenReturn(java.util.List.of());
         when(timeSkipActivityRepository.findByIdAndTimeSkipId(rebuild.getId(), activeSkip.getId()))
                 .thenReturn(Optional.of(rebuild));
         when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
@@ -353,14 +365,168 @@ class BookingServiceTest {
         when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
         when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
                 .thenReturn(Optional.of(day3));
-        when(bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
-                day3.getId(), player.getId(), (short) 2)).thenReturn(false);
         when(timeSkipActivityRepository.findByIdAndTimeSkipId(foreignActivityId, activeSkip.getId()))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(),
                 customActivityReq((short) 2, foreignActivityId)))
                 .isInstanceOf(TimeSkipActivityNotFoundException.class);
+
+        verify(bookingRepository, never()).save(any());
+    }
+
+    // ---------- ocupação por custo: cada ponto de ócio ocupa um slot ----------
+
+    @Test
+    @DisplayName("Ocupação: ação de custo 2 bloqueia também o slot seguinte do NPC (409)")
+    void book_rangeOverlap_throwsConflict() {
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        mockVisibleAssociation();
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        // reserva existente no slot 2 com custo 2 ocupa a faixa 2-3
+        Booking existing = Booking.builder().id(UUID.randomUUID()).timeSkipDay(day3)
+                .npcId(aldric.getId()).user(master).slotNumber((short) 2)
+                .interactionName("Treino").idlePointCost((short) 2).build();
+        when(bookingRepository.findByTimeSkipDayIdAndNpcId(day3.getId(), aldric.getId()))
+                .thenReturn(java.util.List.of(existing));
+
+        // agendar no slot 3 colide com o fim da faixa do existente
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 3)))
+                .isInstanceOf(SlotTakenException.class);
+
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Ocupação: ação que não cabe nos slots restantes do dia é rejeitada (400)")
+    void book_costDoesNotFitDay_rejected() {
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        mockVisibleAssociation();
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+
+        // Treino custa 2: no slot 4 a faixa iria até o slot 5, além dos 4 do dia
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 4)))
+                .isInstanceOf(InvalidBookingException.class);
+
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Slot extra: ação de custo zero só pode usar o slot extra (400)")
+    void book_zeroCost_inNormalSlot_rejected() {
+        aldric.getInteractions().add(new NpcInteraction("Conversa", "Conversa", "Só um papo", (short) 0));
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        mockVisibleAssociation();
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+
+        var zeroReq = new CreateBookingRequest(aldric.getId(), (short) 3, (short) 1, "Conversa", null, null, null);
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), zeroReq))
+                .isInstanceOf(InvalidBookingException.class);
+
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Slot extra: ação com custo maior que zero não pode usar o slot extra (400)")
+    void book_nonZeroCost_inExtraSlot_rejected() {
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        mockVisibleAssociation();
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+
+        // Treino custa 2 — não entra no slot extra (5)
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                req(TimeSkipDay.EXTRA_SLOT_NUMBER)))
+                .isInstanceOf(InvalidBookingException.class);
+
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Slot extra: ação de custo zero agendada no slot extra com sucesso")
+    void book_zeroCost_inExtraSlot_success() {
+        TimeSkipActivity festival = TimeSkipActivity.builder().id(UUID.randomUUID())
+                .timeSkip(activeSkip).name("Festival da colheita")
+                .description("Participar do festival da vila").idlePointCost((short) 0).build();
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        when(timeSkipActivityRepository.findByIdAndTimeSkipId(festival.getId(), activeSkip.getId()))
+                .thenReturn(Optional.of(festival));
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        when(bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumber(
+                day3.getId(), player.getId(), TimeSkipDay.EXTRA_SLOT_NUMBER)).thenReturn(false);
+        when(bookingRepository.findByTimeSkipDayIdAndUserIdAndNpcIdIsNull(
+                day3.getId(), player.getId())).thenReturn(java.util.List.of());
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        BookingResponse res = service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                customActivityReq(TimeSkipDay.EXTRA_SLOT_NUMBER, festival.getId()));
+
+        assertThat(res.slotNumber()).isEqualTo(TimeSkipDay.EXTRA_SLOT_NUMBER);
+        assertThat(res.idlePointCost()).isEqualTo((short) 0);
+    }
+
+    @Test
+    @DisplayName("Slot extra: jogador só pode usar o slot extra uma vez por dia (400)")
+    void book_secondExtraSlotSameDay_rejected() {
+        TimeSkipActivity festival = TimeSkipActivity.builder().id(UUID.randomUUID())
+                .timeSkip(activeSkip).name("Festival da colheita")
+                .description("Participar do festival da vila").idlePointCost((short) 0).build();
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        when(timeSkipActivityRepository.findByIdAndTimeSkipId(festival.getId(), activeSkip.getId()))
+                .thenReturn(Optional.of(festival));
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        when(bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumber(
+                day3.getId(), player.getId(), TimeSkipDay.EXTRA_SLOT_NUMBER)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                customActivityReq(TimeSkipDay.EXTRA_SLOT_NUMBER, festival.getId())))
+                .isInstanceOf(InvalidBookingException.class);
+
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Treino solo: faixas de custo do próprio jogador não podem se sobrepor (409)")
+    void book_soloRangeOverlap_rejected() {
+        TimeSkipActivity rebuild = TimeSkipActivity.builder().id(UUID.randomUUID())
+                .timeSkip(activeSkip).name("Reconstrução da vila")
+                .description("Ajudar a reconstruir as casas destruídas").idlePointCost((short) 3).build();
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        when(timeSkipActivityRepository.findByIdAndTimeSkipId(rebuild.getId(), activeSkip.getId()))
+                .thenReturn(Optional.of(rebuild));
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        // treino existente no slot 3 (custo 1); a atividade de custo 3 no slot 1 ocuparia 1-3
+        Booking existing = Booking.builder().id(UUID.randomUUID()).timeSkipDay(day3)
+                .user(player).slotNumber((short) 3)
+                .soloActivityType(SoloActivityType.TREINO).description("Treino noturno")
+                .idlePointCost((short) 1).build();
+        when(bookingRepository.findByTimeSkipDayIdAndUserIdAndNpcIdIsNull(
+                day3.getId(), player.getId())).thenReturn(java.util.List.of(existing));
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                customActivityReq((short) 1, rebuild.getId())))
+                .isInstanceOf(SlotTakenException.class);
 
         verify(bookingRepository, never()).save(any());
     }

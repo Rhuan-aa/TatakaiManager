@@ -11,7 +11,9 @@ import java.util.UUID;
 
 /**
  * Um dia dentro de um TimeSkip. Cada dia tem 4 slots de ócio (1..4),
- * representados implicitamente pelas reservas (Booking.slotNumber).
+ * representados implicitamente pelas reservas (Booking.slotNumber), mais um
+ * slot extra ({@link #EXTRA_SLOT_NUMBER}) exclusivo para ações de custo zero —
+ * no máximo uma por jogador por dia.
  */
 @Entity
 @Table(name = "time_skip_days",
@@ -24,6 +26,9 @@ import java.util.UUID;
 public class TimeSkipDay {
 
     public static final int SLOTS_PER_DAY = 4;
+
+    /** Slot extra do dia: aceita somente ações de custo zero, uma por jogador por dia. */
+    public static final short EXTRA_SLOT_NUMBER = SLOTS_PER_DAY + 1;
 
     @Id
     @GeneratedValue

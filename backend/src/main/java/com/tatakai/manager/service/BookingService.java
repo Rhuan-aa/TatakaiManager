@@ -72,6 +72,8 @@ public class BookingService {
                 ? buildNpcBooking(campaignId, role, day, req, requesterId)
                 : buildSoloBooking(day, req, requesterId);
 
+        validatePlacementAndConflicts(day, booking, requesterId);
+
         BookingResponse response;
         try {
             response = toResponse(bookingRepository.save(booking));
@@ -106,20 +108,11 @@ public class BookingService {
                 .orElseThrow(() -> new InvalidBookingException(
                         "Este NPC não aceita a interação: " + req.interactionName()));
 
-        // Verificação otimista; a constraint única é a garantia final em concorrência
-        if (bookingRepository.existsByTimeSkipDayIdAndNpcIdAndSlotNumber(
-                day.getId(), npc.getId(), req.slotNumber())) {
-            throw new SlotTakenException();
-        }
-
-        User user = userRepository.findById(requesterId)
-                .orElseThrow(() -> new UserNotFoundException("Usuário autenticado não encontrado"));
-
         return Booking.builder()
                 .timeSkipDay(day)
                 .npcId(npc.getId())
                 .npcName(npc.getName())
-                .user(user)
+                .user(loadUser(requesterId))
                 .slotNumber(req.slotNumber())
                 .interactionName(interaction.getName())
                 .idlePointCost(interaction.getIdlePointCost())
@@ -139,26 +132,14 @@ public class BookingService {
                     "informe o tipo fixo ou a atividade customizada, não os dois");
         }
 
-        // Verificação otimista; sem NPC não há constraint única no banco — o mesmo
-        // jogador não pode ocupar duas vezes o mesmo slot do dia com atividades solo
-        if (bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumberAndNpcIdIsNull(
-                day.getId(), requesterId, req.slotNumber())) {
-            throw new SlotTakenException();
-        }
-
-        User user = userRepository.findById(requesterId)
-                .orElseThrow(() -> new UserNotFoundException("Usuário autenticado não encontrado"));
-
-        Booking.BookingBuilder booking = Booking.builder()
-                .timeSkipDay(day)
-                .user(user)
-                .slotNumber(req.slotNumber());
-
         if (req.activityId() != null) {
             TimeSkipActivity activity = timeSkipActivityRepository
                     .findByIdAndTimeSkipId(req.activityId(), day.getTimeSkip().getId())
                     .orElseThrow(TimeSkipActivityNotFoundException::new);
-            return booking
+            return Booking.builder()
+                    .timeSkipDay(day)
+                    .user(loadUser(requesterId))
+                    .slotNumber(req.slotNumber())
                     .timeSkipActivityId(activity.getId())
                     .activityName(activity.getName())
                     .description(activity.getDescription())
@@ -169,11 +150,71 @@ public class BookingService {
         if (req.description() == null || req.description().isBlank()) {
             throw new InvalidBookingException("a descrição da atividade solo é obrigatória");
         }
-        return booking
+        return Booking.builder()
+                .timeSkipDay(day)
+                .user(loadUser(requesterId))
+                .slotNumber(req.slotNumber())
                 .soloActivityType(req.soloActivityType())
                 .description(req.description())
                 .idlePointCost(FIXED_SOLO_ACTIVITY_COST)
                 .build();
+    }
+
+    private User loadUser(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Usuário autenticado não encontrado"));
+    }
+
+    // ---------- ocupação da agenda: cada ponto de ócio ocupa um slot ----------
+
+    /**
+     * Regras de ocupação: uma ação de custo N >= 1 ocupa N slots consecutivos a partir
+     * do selecionado e precisa caber dentro dos {@link TimeSkipDay#SLOTS_PER_DAY} slots
+     * do dia. Ações de custo zero usam exclusivamente o slot extra
+     * ({@link TimeSkipDay#EXTRA_SLOT_NUMBER}), limitado a uma por jogador por dia.
+     * Verificação otimista; a constraint única (dia, npc, slot) segue como garantia
+     * final em concorrência para o slot inicial de reservas com NPC.
+     */
+    private void validatePlacementAndConflicts(TimeSkipDay day, Booking booking, UUID requesterId) {
+        short slot = booking.getSlotNumber();
+        short cost = booking.getIdlePointCost();
+
+        if (slot == TimeSkipDay.EXTRA_SLOT_NUMBER) {
+            if (cost != 0) {
+                throw new InvalidBookingException("o slot extra aceita apenas ações de custo zero");
+            }
+            if (bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumber(
+                    day.getId(), requesterId, TimeSkipDay.EXTRA_SLOT_NUMBER)) {
+                throw new InvalidBookingException("você já usou o slot extra deste dia");
+            }
+        } else {
+            if (cost == 0) {
+                throw new InvalidBookingException("ações de custo zero devem usar o slot extra do dia");
+            }
+            if (slot + cost - 1 > TimeSkipDay.SLOTS_PER_DAY) {
+                throw new InvalidBookingException(
+                        "a ação custa " + cost + " pontos de ócio e não cabe a partir do slot " + slot);
+            }
+        }
+
+        List<Booking> occupied = booking.getNpcId() != null
+                // Faixa do NPC: nenhum jogador pode sobrepor os slots já tomados do NPC no dia
+                ? bookingRepository.findByTimeSkipDayIdAndNpcId(day.getId(), booking.getNpcId())
+                // Faixa solo: o jogador não pode sobrepor as próprias atividades solo do dia
+                : bookingRepository.findByTimeSkipDayIdAndUserIdAndNpcIdIsNull(day.getId(), requesterId);
+        if (occupied.stream().anyMatch(b -> overlaps(b, slot, cost))) {
+            throw new SlotTakenException();
+        }
+    }
+
+    /** Faixa ocupada por uma reserva: [slot, slot + max(custo,1) - 1]; o slot extra ocupa só ele mesmo. */
+    private static short endSlot(short slot, short cost) {
+        return (short) (slot + Math.max(cost, 1) - 1);
+    }
+
+    private static boolean overlaps(Booking existing, short slot, short cost) {
+        return existing.getSlotNumber() <= endSlot(slot, cost)
+                && slot <= endSlot(existing.getSlotNumber(), existing.getIdlePointCost());
     }
 
     // ---------- US-14: cancelar ----------

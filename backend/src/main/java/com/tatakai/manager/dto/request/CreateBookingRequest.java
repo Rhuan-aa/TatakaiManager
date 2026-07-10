@@ -22,8 +22,8 @@ public record CreateBookingRequest(
         Short dayNumber,
 
         @NotNull(message = "o slot é obrigatório")
-        @Min(value = 1, message = "o slot deve ser de 1 a 4")
-        @Max(value = 4, message = "o slot deve ser de 1 a 4")
+        @Min(value = 1, message = "o slot deve ser de 1 a 5")
+        @Max(value = 5, message = "o slot deve ser de 1 a 5")
         Short slotNumber,
 
         String interactionName,
