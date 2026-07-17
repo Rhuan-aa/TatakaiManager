@@ -16,12 +16,16 @@ repositório só.
 - **NPCs**: acervo reutilizável, associação por campanha, ficha completa (atributos,
   traços, specs, conhecimentos, tipos de interação), imagem (retrato) e visibilidade
   controlada pelo Mestre.
-- **TimeSkip**: 4 slots de interação por dia por NPC (sem conflito), avanço de dia e
+- **TimeSkip**: 4 slots de interação por dia + um slot extra diário, avanço de dia e
   encerramento, com histórico.
 - **Agendamento em tempo real**: grade de NPCs × slots sincronizada via **WebSocket**
   (STOMP) — o que um cliente agenda aparece na hora para os outros.
+- **Ações solo**: jogador ocupa um slot sem NPC (treino, estudo ou ação geral), e o
+  Mestre pode criar **atividades customizadas por TimeSkip** com custo próprio.
+- **Custo em pontos de ociosidade**: uma ação de custo N ocupa N slots consecutivos do
+  dia; ações de custo zero vão para o slot extra (limite de uma por jogador por dia).
 - **Logs narrativos**: feed da campanha; jogadores vinculam o log a um agendamento,
-  Mestre narra livremente. Sanitização de XSS no backend.
+  Mestre narra livremente e pode editar/excluir. Sanitização de XSS no backend.
 - **UI**: tema claro/escuro, layout responsivo, toasts e estados de carregamento.
 
 ---
@@ -30,9 +34,10 @@ repositório só.
 
 | Camada    | Tecnologias |
 |-----------|-------------|
-| Backend   | Java 21, Spring Boot 3.3 (Web, Data JPA, Security, WebSocket), PostgreSQL |
+| Backend   | Java 21, Spring Boot 3.3 (Web, Data JPA, Security, WebSocket) |
+| Bancos    | PostgreSQL (dados relacionais + imagem de NPC) e MongoDB (ficha textual de NPC) |
 | Frontend  | React + Vite, React Router, Tailwind CSS v4, STOMP/SockJS |
-| Infra     | Docker + Docker Compose; Caddy (TLS/WSS) para produção |
+| Infra     | Docker + Docker Compose; Caddy (TLS/WSS) para self-host |
 
 ---
 
@@ -42,45 +47,91 @@ repositório só.
 TatakaiManager/
 ├── backend/                 # API Spring Boot (repo original preservado via git subtree)
 ├── frontend/                # SPA React + Vite
-├── docker-compose.yml       # ambiente de desenvolvimento
-├── docker-compose.prod.yml  # produção (Caddy à frente; back/DB só na rede interna)
-└── Caddyfile                # reverse proxy com TLS/WSS automáticos
+├── docker-compose.yml       # ambiente de desenvolvimento (Postgres + Mongo + back + front)
+├── docker-compose.prod.yml  # self-host (Caddy à frente; back/DB só na rede interna)
+└── Caddyfile                # reverse proxy com TLS/WSS automáticos (self-host)
 ```
 
 ---
 
-## Como rodar
+## Rodando localmente (passo a passo)
 
-### Tudo via Docker (recomendado)
+### Pré-requisitos
+
+- **Docker** com o plugin **Docker Compose** (`docker compose version` deve funcionar).
+- **Git**.
+
+Nada mais — Java, Node, Postgres e Mongo sobem dentro dos containers.
+
+### 1. Clonar o repositório
 
 ```bash
-cp .env.example .env      # ajuste se quiser
+git clone https://github.com/Rhuan-aa/TatakaiManager.git
+cd TatakaiManager
+```
+
+### 2. Criar o arquivo de ambiente
+
+```bash
+cp .env.example .env
+```
+
+Os defaults já funcionam para desenvolvimento local. Ajuste apenas se alguma porta
+estiver ocupada na sua máquina (ver tabela de variáveis abaixo).
+
+### 3. Subir a stack
+
+```bash
 docker compose up --build
 ```
 
-| Serviço  | URL                    |
-|----------|------------------------|
-| Frontend | http://localhost:3001  |
-| Backend  | http://localhost:8080  |
-| Postgres | localhost:5433         |
+Isso constrói e sobe **4 containers**: `postgres`, `mongo`, `backend` e `frontend`.
+Na primeira subida o build do backend (Maven) demora alguns minutos; o backend espera
+os bancos ficarem saudáveis antes de iniciar e cria o schema automaticamente
+(`DDL_AUTO=update`).
 
-As portas de host são configuráveis por env (evitam conflito com serviços locais).
+### 4. Acessar
 
-### Backend isolado (IntelliJ / Maven)
+| Serviço  | URL                   |
+|----------|-----------------------|
+| Frontend | http://localhost:3001 |
+| Backend  | http://localhost:8080 |
+| Postgres | localhost:5433        |
+| MongoDB  | interno ao compose (sem porta publicada por padrão) |
+
+Abra http://localhost:3001, crie uma conta e uma campanha — pronto.
+
+### 5. Parar / resetar
+
+```bash
+docker compose down        # para os containers (dados preservados nos volumes)
+docker compose down -v     # para e APAGA os dados (Postgres + Mongo)
+```
+
+---
+
+## Rodando as partes isoladamente (desenvolvimento)
+
+### Backend (IntelliJ / Maven)
 
 O backend exige **JDK 21**:
 
 ```bash
 cd backend
-./mvnw test                 # suíte de testes
-./mvnw spring-boot:run       # requer Postgres + envs (DB_URL, DB_USER, ...)
+./mvnw test                  # suíte de testes (não requer bancos)
+./mvnw spring-boot:run       # requer Postgres + Mongo + envs (DB_URL, MONGO_URI, ...)
 ```
+
+Para os bancos, o mais simples é reaproveitar os do compose
+(`docker compose up postgres mongo`) apontando `DB_URL` para `localhost:5433` e
+`MONGO_URI` para `mongodb://localhost:27017/tatakai` (publique a porta do Mongo se
+precisar).
 
 > A config fica em `backend/src/main/resources/application.properties`, que **não é
 > versionado**. Use `application.properties.example` como base
 > (`cp application.properties.example application.properties`).
 
-### Frontend isolado
+### Frontend
 
 ```bash
 cd frontend
@@ -97,10 +148,12 @@ Tudo é injetado por env — nada de endpoint hard-coded.
 | Variável | Onde | Descrição |
 |----------|------|-----------|
 | `DB_URL` / `DB_USER` / `DB_PASS` | backend | conexão com o Postgres |
+| `MONGO_URI` | backend | conexão com o MongoDB (com o nome do banco no path) |
 | `JWT_SECRET` | backend | segredo do JWT (≥ 32 caracteres em produção) |
 | `FRONTEND_URL` | backend | origem liberada para CORS e handshake WebSocket |
 | `DDL_AUTO` | backend | `update` no 1º boot (cria schema), depois `validate` |
 | `API_URL` / `WS_URL` | frontend | endpoints que o navegador usa (injetados em runtime) |
+| `DB_HOST_PORT` / `BACKEND_HOST_PORT` / `FRONTEND_HOST_PORT` | compose | portas publicadas no host (mude se houver conflito) |
 
 O frontend gera `/env.js` na subida do container a partir de `API_URL`/`WS_URL`, então
 dá para trocar o endpoint **sem rebuildar a imagem**.
@@ -109,19 +162,15 @@ dá para trocar o endpoint **sem rebuildar a imagem**.
 
 ## Deploy
 
-Alvo de produção: **Oracle Cloud Always Free** (VM ARM Ampere, custo zero e sem
-expiração), com **Caddy** provendo HTTPS e WebSocket seguro (WSS) automaticamente. O
-deploy roda o `docker-compose.prod.yml` — um único `git clone` + `docker compose`.
+Como toda a configuração é por env, o projeto roda em qualquer infraestrutura. Dois
+modelos suportados:
 
-Em resumo, na VM:
+- **Serviços gerenciados** (modelo usado em produção): backend como container, frontend
+  como site estático e bancos Postgres/MongoDB gerenciados — basta apontar as variáveis
+  de ambiente de cada parte.
+- **Self-host**: qualquer servidor Linux com Docker, via `docker-compose.prod.yml` com
+  **Caddy** provendo HTTPS e WebSocket seguro (WSS) automaticamente — um único
+  `git clone` + `docker compose -f docker-compose.prod.yml up --build -d`.
 
-```bash
-git clone https://github.com/Rhuan-aa/TatakaiManager.git
-cd TatakaiManager
-# criar o .env de produção (segredos + FRONTEND_URL/API_URL/WS_URL) e ajustar os
-# domínios no Caddyfile
-docker compose -f docker-compose.prod.yml up --build -d
-```
-
-> O runbook detalhado (provisionamento da VM, DuckDNS, portas, backup) é mantido
+> O runbook detalhado de produção (provisionamento, DNS, credenciais, backup) é mantido
 > **fora do repositório**, apenas localmente.
