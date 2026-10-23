@@ -2,6 +2,7 @@ package com.tatakai.manager.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -38,7 +39,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({CampaignNotFoundException.class, UserNotFoundException.class,
             NpcNotFoundException.class, TimeSkipNotFoundException.class,
             BookingNotFoundException.class, MemberNotFoundException.class,
-            TimeSkipActivityNotFoundException.class, LogNotFoundException.class})
+            TimeSkipActivityNotFoundException.class, LogNotFoundException.class,
+            CharacterSheetNotFoundException.class, SheetEntryNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(body(HttpStatus.NOT_FOUND, ex.getMessage()));
@@ -47,14 +49,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({AlreadyMemberException.class, NpcAlreadyAssociatedException.class,
             ActiveTimeSkipExistsException.class, TimeSkipClosedException.class,
             SlotTakenException.class, BookingAlreadyPassedException.class,
-            InvalidActivityNameException.class})
+            InvalidActivityNameException.class, CharacterSheetAlreadyExistsException.class,
+            NpcSheetAlreadyExistsException.class,
+            SheetLockedException.class, ObjectOptimisticLockingFailureException.class})
     public ResponseEntity<Map<String, Object>> handleConflict(RuntimeException ex) {
+        String msg = ex instanceof ObjectOptimisticLockingFailureException
+                ? "A ficha foi alterada por outra pessoa. Recarregue e tente de novo."
+                : ex.getMessage();
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(body(HttpStatus.CONFLICT, ex.getMessage()));
+                .body(body(HttpStatus.CONFLICT, msg));
     }
 
     @ExceptionHandler({InvalidBookingException.class, InvalidTimeSkipException.class,
-            InvalidImageException.class})
+            InvalidImageException.class, InvalidCharacterSheetException.class,
+            InvalidBuildStepException.class,
+            InvalidRollException.class})
     public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
         return ResponseEntity.badRequest().body(body(HttpStatus.BAD_REQUEST, ex.getMessage()));
     }

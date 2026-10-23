@@ -39,6 +39,8 @@ class NpcServiceTest {
     @Mock private NpcImageRepository npcImageRepository;
     @Mock private BookingRepository bookingRepository;
     @Mock private InteractionLogRepository logRepository;
+    @Mock private CharacterSheetRepository sheetRepository;
+    @Mock private NpcSheetVisibilityRepository npcSheetVisibilityRepository;
 
     private NpcService service;
 
@@ -49,7 +51,7 @@ class NpcServiceTest {
     void setUp() {
         service = new NpcService(npcRepository, campaignRepository,
                 campaignNpcRepository, memberRepository, userRepository, npcImageRepository,
-                bookingRepository, logRepository);
+                bookingRepository, logRepository, sheetRepository, npcSheetVisibilityRepository);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").email("mestre@rpg.com").build();
         player = User.builder().id(UUID.randomUUID()).name("Player").email("player@rpg.com").build();
     }
@@ -376,5 +378,47 @@ class NpcServiceTest {
 
         assertThatThrownBy(() -> service.removeFromCampaign(campaignId, npcId, master.getId()))
                 .isInstanceOf(NpcNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Sprint 9 — F1.1 Ficha de NPC: listOwned e detalhe preenchem sheetId")
+    void sheetId_filledInListAndDetail() {
+        Npc npc = npcOwnedByMaster();
+        UUID sheetId = UUID.randomUUID();
+        CharacterSheet sheet = CharacterSheet.builder().id(sheetId).npcId(npc.getId()).build();
+        when(npcRepository.findByOwnerId(master.getId())).thenReturn(List.of(npc));
+        when(sheetRepository.findByNpcIdIn(any())).thenReturn(List.of(sheet));
+
+        assertThat(service.listOwned(master.getId())).extracting(NpcSummaryResponse::sheetId)
+                .containsExactly(sheetId);
+
+        Campaign campaign = Campaign.builder().id(UUID.randomUUID()).master(master).build();
+        CampaignNpc assoc = CampaignNpc.builder().campaign(campaign).npcId(npc.getId()).visible(true).build();
+        when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), master.getId()))
+                .thenReturn(Optional.of(CampaignMember.builder().campaign(campaign).user(master).role(Role.MASTER).build()));
+        when(campaignNpcRepository.findByCampaignIdAndNpcId(campaign.getId(), npc.getId()))
+                .thenReturn(Optional.of(assoc));
+        when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
+        when(sheetRepository.findByNpcId(npc.getId())).thenReturn(Optional.of(sheet));
+
+        assertThat(service.getForCampaign(campaign.getId(), npc.getId(), master.getId()).sheetId())
+                .isEqualTo(sheetId);
+    }
+
+    @Test
+    @DisplayName("Sprint 9 — F1.1 Ficha de NPC: removeFromCampaign apaga a visibilidade de ficha da associação")
+    void removeFromCampaign_deletesSheetVisibility() {
+        UUID campaignId = UUID.randomUUID();
+        Npc npc = npcOwnedByMaster();
+        CampaignNpc assoc = CampaignNpc.builder().id(UUID.randomUUID()).npcId(npc.getId()).visible(true).build();
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaignId, master.getId(), Role.MASTER))
+                .thenReturn(true);
+        when(campaignNpcRepository.findByCampaignIdAndNpcId(campaignId, npc.getId()))
+                .thenReturn(Optional.of(assoc));
+
+        service.removeFromCampaign(campaignId, npc.getId(), master.getId());
+
+        verify(npcSheetVisibilityRepository).deleteByCampaignNpcId(assoc.getId());
+        verify(campaignNpcRepository).delete(assoc);
     }
 }

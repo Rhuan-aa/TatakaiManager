@@ -20,5 +20,7 @@ public record NpcResponse(
         /** Indica se o NPC tem imagem (retrato) cadastrada. */
         boolean hasImage,
         /** Visibilidade na campanha consultada (nulo fora de contexto de campanha). */
-        Boolean visible
+        Boolean visible,
+        /** Id da ficha digital do NPC (null se o NPC não tem ficha). */
+        UUID sheetId
 ) {}

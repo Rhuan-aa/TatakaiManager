@@ -16,4 +16,6 @@ public interface CampaignNpcRepository extends JpaRepository<CampaignNpc, UUID> 
     Optional<CampaignNpc> findByCampaignIdAndNpcId(UUID campaignId, UUID npcId);
 
     boolean existsByCampaignIdAndNpcId(UUID campaignId, UUID npcId);
+
+    List<CampaignNpc> findByNpcId(UUID npcId);
 }

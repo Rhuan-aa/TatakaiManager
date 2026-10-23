@@ -38,6 +38,8 @@ public class NpcService {
     private final NpcImageRepository npcImageRepository;
     private final BookingRepository bookingRepository;
     private final InteractionLogRepository logRepository;
+    private final CharacterSheetRepository sheetRepository;
+    private final NpcSheetVisibilityRepository npcSheetVisibilityRepository;
 
     public NpcService(NpcRepository npcRepository,
                       CampaignRepository campaignRepository,
@@ -46,7 +48,9 @@ public class NpcService {
                       UserRepository userRepository,
                       NpcImageRepository npcImageRepository,
                       BookingRepository bookingRepository,
-                      InteractionLogRepository logRepository) {
+                      InteractionLogRepository logRepository,
+                      CharacterSheetRepository sheetRepository,
+                      NpcSheetVisibilityRepository npcSheetVisibilityRepository) {
         this.npcRepository = npcRepository;
         this.campaignRepository = campaignRepository;
         this.campaignNpcRepository = campaignNpcRepository;
@@ -55,6 +59,8 @@ public class NpcService {
         this.npcImageRepository = npcImageRepository;
         this.bookingRepository = bookingRepository;
         this.logRepository = logRepository;
+        this.sheetRepository = sheetRepository;
+        this.npcSheetVisibilityRepository = npcSheetVisibilityRepository;
     }
 
     // ---------- US-06: criar ----------
@@ -157,6 +163,7 @@ public class NpcService {
             logRepository.deleteByBookingIn(bookings);
             bookingRepository.deleteAll(bookings);
         }
+        npcSheetVisibilityRepository.deleteByCampaignNpcId(assoc.getId());
         campaignNpcRepository.delete(assoc);
     }
 
@@ -164,10 +171,12 @@ public class NpcService {
 
     @Transactional(readOnly = true)
     public List<NpcSummaryResponse> listOwned(UUID ownerId) {
-        return npcRepository.findByOwnerId(ownerId).stream()
+        List<Npc> npcs = npcRepository.findByOwnerId(ownerId);
+        Map<UUID, UUID> sheets = sheetIdsByNpc(npcs.stream().map(Npc::getId).toList());
+        return npcs.stream()
                 .map(n -> new NpcSummaryResponse(n.getId(), n.getName(), true,
                         npcImageRepository.existsById(n.getId()),
-                        toInteractionDtos(n.getInteractions())))
+                        toInteractionDtos(n.getInteractions()), sheets.get(n.getId())))
                 .toList();
     }
 
@@ -185,13 +194,14 @@ public class NpcService {
                 .findAllById(associations.stream().map(CampaignNpc::getNpcId).toList()).stream()
                 .collect(Collectors.toMap(Npc::getId, Function.identity()));
 
+        Map<UUID, UUID> sheets = sheetIdsByNpc(npcById.keySet());
         return associations.stream()
                 .filter(a -> npcById.containsKey(a.getNpcId()))
                 .map(a -> {
                     Npc npc = npcById.get(a.getNpcId());
                     return new NpcSummaryResponse(a.getNpcId(), npc.getName(),
                             a.isVisible(), npcImageRepository.existsById(a.getNpcId()),
-                            toInteractionDtos(npc.getInteractions()));
+                            toInteractionDtos(npc.getInteractions()), sheets.get(a.getNpcId()));
                 })
                 .toList();
     }
@@ -325,6 +335,11 @@ public class NpcService {
                 .toList();
     }
 
+    private Map<UUID, UUID> sheetIdsByNpc(java.util.Collection<UUID> npcIds) {
+        return sheetRepository.findByNpcIdIn(npcIds).stream()
+                .collect(Collectors.toMap(CharacterSheet::getNpcId, CharacterSheet::getId, (a, b) -> a));
+    }
+
     private NpcResponse toResponse(Npc npc, Boolean visible) {
         return new NpcResponse(
                 npc.getId(),
@@ -337,6 +352,7 @@ public class NpcService {
                 toInteractionDtos(npc.getInteractions()),
                 npc.getOwnerId(),
                 npcImageRepository.existsById(npc.getId()),
-                visible);
+                visible,
+                sheetRepository.findByNpcId(npc.getId()).map(CharacterSheet::getId).orElse(null));
     }
 }

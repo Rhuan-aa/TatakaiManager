@@ -17,5 +17,6 @@ public record NpcSummaryResponse(
         String name,
         boolean visible,
         boolean hasImage,
-        List<NpcInteractionDto> interactions
+        List<NpcInteractionDto> interactions,
+        UUID sheetId // null se o NPC não tem ficha
 ) {}
