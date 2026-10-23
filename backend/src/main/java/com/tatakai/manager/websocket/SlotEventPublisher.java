@@ -1,29 +1,30 @@
 package com.tatakai.manager.websocket;
 
 import com.tatakai.manager.dto.response.SlotUpdateMessage;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
 /**
  * Publica eventos de mudança de slot no canal STOMP da campanha.
- * Encapsula o SimpMessagingTemplate para manter o BookingService testável.
+ * Encapsula o publisher genérico para manter o BookingService testável.
  */
 @Component
 public class SlotEventPublisher {
 
-    private final SimpMessagingTemplate messagingTemplate;
+    private static final String CHANNEL = "slots";
 
-    public SlotEventPublisher(SimpMessagingTemplate messagingTemplate) {
-        this.messagingTemplate = messagingTemplate;
+    private final CampaignEventPublisher publisher;
+
+    public SlotEventPublisher(CampaignEventPublisher publisher) {
+        this.publisher = publisher;
     }
 
     public void publish(SlotUpdateMessage message) {
-        messagingTemplate.convertAndSend(destination(message.campaignId()), message);
+        publisher.publish(message.campaignId(), CHANNEL, message);
     }
 
     public static String destination(UUID campaignId) {
-        return "/topic/campaign/" + campaignId + "/slots";
+        return CampaignEventPublisher.destination(campaignId, CHANNEL);
     }
 }

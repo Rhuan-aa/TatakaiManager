@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import com.tatakai.manager.websocket.CampaignEventPublisher;
 
 import java.util.UUID;
 
@@ -18,12 +18,12 @@ import static org.mockito.Mockito.verify;
 @DisplayName("SlotEventPublisher — Sprint 6 (US-15)")
 class SlotEventPublisherTest {
 
-    @Mock private SimpMessagingTemplate messagingTemplate;
+    @Mock private CampaignEventPublisher campaignPublisher;
 
     @Test
-    @DisplayName("publica no canal /topic/campaign/{id}/slots com a mensagem")
+    @DisplayName("publica no canal \"slots\" do publisher genérico")
     void publish_sendsToCampaignChannel() {
-        var publisher = new SlotEventPublisher(messagingTemplate);
+        var publisher = new SlotEventPublisher(campaignPublisher);
         UUID campaignId = UUID.randomUUID();
         var message = new SlotUpdateMessage(
                 SlotUpdateMessage.SlotEvent.BOOKED, campaignId, UUID.randomUUID(), UUID.randomUUID(),
@@ -32,8 +32,7 @@ class SlotEventPublisherTest {
 
         publisher.publish(message);
 
-        verify(messagingTemplate).convertAndSend(
-                "/topic/campaign/" + campaignId + "/slots", message);
+        verify(campaignPublisher).publish(campaignId, "slots", message);
     }
 
     @Test
