@@ -21,10 +21,17 @@ const svg = (children) => (
 const ICONS = {
   grid: svg(
     <>
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      <rect x="3" y="3" width="7" height="7" rx="0" />
+      <rect x="14" y="3" width="7" height="7" rx="0" />
+      <rect x="3" y="14" width="7" height="7" rx="0" />
+      <rect x="14" y="14" width="7" height="7" rx="0" />
+    </>
+  ),
+  sheet: svg(
+    <>
+      <path d="M6 3h9l4 4v14H6Z" />
+      <path d="M14 3v5h5M9 12h7M9 16h7" />
+      <circle cx="10" cy="9" r="1" fill="currentColor" />
     </>
   ),
   plus: svg(<path d="M12 5v14M5 12h14" />),
@@ -45,6 +52,12 @@ const ICONS = {
     <>
       <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
       <path d="M9 8h6M9 12h6M9 16h4" />
+    </>
+  ),
+  book: svg(
+    <>
+      <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z" />
+      <path d="M4 19a2 2 0 0 1 2-2h13M9 7h6" />
     </>
   ),
   settings: svg(
@@ -72,22 +85,18 @@ const ICONS = {
 
 // Rótulo que só aparece quando a sidebar está expandida (hover)
 const label =
-  'overflow-hidden whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover/sb:opacity-100';
+  'overflow-hidden whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover/sb:opacity-100 group-has-[:focus-visible]/sb:opacity-100';
 const itemBase =
-  'group/item relative flex w-full items-center gap-3 rounded-lg py-2.5 pl-3.5 pr-3 text-sm font-medium transition-colors';
+  'group/item relative flex w-full items-center gap-3 border-2 border-transparent py-2.5 pl-3.5 pr-3 text-sm font-bold uppercase tracking-wide transition-colors focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]';
 
 function NavItem({ item }) {
   const cls = `${itemBase} ${
     item.active
-      ? 'bg-red-950/40 text-red-400 ring-1 ring-inset ring-red-900/40'
-      : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-100'
+      ? 'border-[var(--line)] bg-[var(--accent)] text-white shadow-[3px_3px_0_var(--line)]'
+      : 'text-[var(--text)] hover:border-[var(--line)] hover:bg-[var(--bg)]'
   }`;
   const inner = (
     <>
-      {/* Barra de acento no item ativo */}
-      {item.active && (
-        <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-red-500" />
-      )}
       {ICONS[item.icon] ?? ICONS.grid}
       <span className={label}>{item.label}</span>
     </>
@@ -122,15 +131,15 @@ export default function Sidebar({ items = [] }) {
   }
 
   return (
-    <aside className="group/sb fixed inset-y-0 left-0 z-40 flex w-16 flex-col overflow-hidden border-r border-zinc-800/80 bg-gradient-to-b from-zinc-900 to-zinc-950/95 backdrop-blur transition-[width] duration-200 ease-out hover:w-60 hover:shadow-2xl hover:shadow-black/60">
+    <aside className="group/sb fixed inset-y-0 left-0 z-40 flex w-16 flex-col overflow-hidden border-r-[length:var(--border-w)] border-[var(--line)] bg-[var(--panel-bg)] transition-[width] duration-200 ease-out hover:w-60 hover:shadow-[5px_0_0_var(--line)] has-[:focus-visible]:w-60">
       {/* Logo */}
       <Link to="/dashboard" className="flex h-16 shrink-0 items-center gap-3 px-3.5">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-red-500 to-red-700 text-lg font-black text-white shadow-lg shadow-red-900/50 ring-1 ring-red-400/30">
+        <span className="grid h-9 w-9 shrink-0 place-items-center border-[length:var(--border-w)] border-[var(--line)] bg-[var(--accent)] text-lg font-black text-white shadow-[3px_3px_0_var(--line)]">
           武
         </span>
         <span className={`flex items-baseline gap-1 ${label}`}>
-          <span className="text-base font-black tracking-tight text-red-500">TATAKAI</span>
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+          <span className="panel-title text-xl text-[var(--accent)]">TATAKAI</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text)]">
             Manager
           </span>
         </span>
@@ -140,7 +149,7 @@ export default function Sidebar({ items = [] }) {
       <nav className="flex-1 space-y-1 px-2.5 py-2">
         {items.map((item, i) =>
           item.divider ? (
-            <hr key={`d${i}`} className="my-2 border-zinc-800" />
+            <hr key={`d${i}`} className="my-2 border-t-2 border-[var(--line)]" />
           ) : (
             <NavItem key={item.key ?? item.label} item={item} />
           )
@@ -148,26 +157,26 @@ export default function Sidebar({ items = [] }) {
       </nav>
 
       {/* Tema + Usuário + sair */}
-      <div className="space-y-1 border-t border-zinc-800 p-2.5">
+      <div className="space-y-1 border-t-[length:var(--border-w)] border-[var(--line)] p-2.5">
         <button
           type="button"
           onClick={toggle}
-          className={`${itemBase} text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-100`}
+          className={`${itemBase} text-[var(--text)] hover:border-[var(--line)] hover:bg-[var(--bg)]`}
           title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
         >
           {theme === 'dark' ? ICONS.sun : ICONS.moon}
           <span className={label}>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
         </button>
         <div className="flex items-center gap-3 px-1 py-1">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-zinc-800 text-sm font-semibold text-zinc-300">
+          <span className="grid h-9 w-9 shrink-0 place-items-center border-2 border-[var(--line)] bg-[var(--bg)] text-sm font-bold text-[var(--text)]">
             {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
           </span>
-          <span className={`truncate text-sm text-zinc-300 ${label}`}>{user?.name}</span>
+          <span className={`truncate text-sm text-[var(--text)] ${label}`}>{user?.name}</span>
         </div>
         <button
           type="button"
           onClick={handleLogout}
-          className={`${itemBase} text-zinc-500 hover:bg-zinc-800 hover:text-red-400`}
+          className={`${itemBase} text-[var(--text)] hover:border-[var(--line)] hover:bg-[var(--accent)] hover:text-white`}
         >
           {ICONS.logout}
           <span className={label}>Sair</span>

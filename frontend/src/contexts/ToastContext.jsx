@@ -28,17 +28,16 @@ const ICONS = {
 };
 
 const TONE = {
-  success: 'text-green-400',
-  error: 'text-red-400',
-  info: 'text-zinc-300',
+  success: 'text-green-600',
+  error: 'text-red-600',
+  info: '',
 };
 
 function ToastItem({ toast, onClose }) {
   return (
     <div
-      role="status"
       onClick={onClose}
-      className="pointer-events-auto flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-900/95 p-3.5 shadow-2xl shadow-black/50 ring-1 ring-white/5 backdrop-blur animate-[pop-in_160ms_ease-out]"
+      className="bubble pointer-events-auto mb-3 flex cursor-pointer items-start gap-3 animate-[pop-in_160ms_ease-out]"
     >
       <svg
         width="18"
@@ -46,14 +45,15 @@ function ToastItem({ toast, onClose }) {
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.2"
+        strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"
+        aria-hidden="true"
         className={`mt-0.5 shrink-0 ${TONE[toast.type] ?? TONE.info}`}
       >
         {ICONS[toast.type] ?? ICONS.info}
       </svg>
-      <p className="min-w-0 flex-1 text-sm text-zinc-100">{toast.message}</p>
+      <p className="min-w-0 flex-1 text-sm font-semibold">{toast.message}</p>
     </div>
   );
 }
@@ -81,7 +81,7 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={{ push }}>
       {children}
       {createPortal(
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] mx-auto flex w-full max-w-xs flex-col gap-2 px-4 sm:left-auto sm:right-4 sm:mx-0 sm:px-0">
+        <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] mx-auto flex w-full max-w-xs flex-col px-4 sm:left-auto sm:right-4 sm:mx-0 sm:px-0">
           {toasts.map((t) => (
             <ToastItem key={t.id} toast={t} onClose={() => remove(t.id)} />
           ))}

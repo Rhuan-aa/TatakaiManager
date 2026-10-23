@@ -1,30 +1,62 @@
 @import 'tailwindcss';
 
 /*
- * ─────────────────────────────────────────────────────────────────────────
- * Tatakai Manager — Design tokens
- * Fontes: Inter (corpo/UI) + Space Grotesk (display/títulos). Acento: red-600.
- * Superfície escura em camadas: fundo zinc-950 → surface translúcida → cards.
- * ─────────────────────────────────────────────────────────────────────────
+ * Tatakai Manager — design system quadrinho/mangá brutalista.
+ * Tokens em :root (tinta) e [data-theme='light'] (papel). Fontes: Anton (display) + Inter (corpo).
  */
 @theme {
   --font-sans: 'Inter Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Space Grotesk Variable', 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Anton', Impact, 'Arial Narrow Bold', sans-serif;
 }
 
 :root {
   color-scheme: dark;
+  --ink: #0b0b0c;
+  --paper: #f3ecdc;
+  --bg: #121214;
+  --panel-bg: #1b1b1e;
+  --line: #f3ecdc;
+  --text: #f3ecdc;
+  --accent: #dc2626;
+  --highlight: #facc15;
+  --border-w: 3px;
+  --shadow-hard: 5px 5px 0 var(--line);
   --vignette: rgba(24, 24, 27, 0.6);
+
+  /* Barras de recurso e medidores da ficha — no tema escuro, tons mais claros. */
+  --meter-hp: #f87171;
+  --meter-sp: #c08457;   /* marrom */
+  --meter-kp: #fb923c;   /* laranja */
+  --fatigue-physical-from: #4ade80;  /* verde -> vermelho */
+  --fatigue-physical-to: #ef4444;
+  --fatigue-mental-from: #c084fc;    /* roxo -> vermelho */
+  --fatigue-mental-to: #ef4444;
+  --chip-el: #4ade80;    /* EL: verde */
+  --chip-ps: #facc15;    /* PS: amarelo */
+
+  /* Raridades de traço */
+  --rarity-common: #a1a1aa;     /* cinza */
+  --rarity-rare: #60a5fa;       /* azul */
+  --rarity-epic: #c084fc;       /* roxo */
+  --rarity-legendary: #fb923c;  /* laranja */
+  --rarity-divine: #f472b6;     /* rosa */
+
+  /* Caixas de estatística de bases e técnicas */
+  --stat-function: #f472b6;     /* Função: rosa */
+  --stat-complexity: #c084fc;   /* Complexidade: roxo */
+  --stat-training: #a1a1aa;     /* Pontos de treino: cinza */
+  --stat-assembly: #f87171;     /* Montagem: vermelho */
+  --stat-cost: #c08457;         /* Gasto de SP: marrom */
+  --stat-range: #4ade80;        /* Alcance: verde */
 }
 
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background-color: #09090b; /* zinc-950 */
-  color: #fafafa; /* zinc-50 */
+  background-color: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  /* Algarismos e recursos tipográficos: números tabulares + ligaduras contextuais. */
   font-feature-settings: 'cv11', 'ss01', 'tnum';
   font-variant-numeric: tabular-nums;
 }
@@ -39,6 +71,34 @@ body {
 [data-theme='light'] {
   color-scheme: light;
   --vignette: rgba(244, 244, 245, 0);
+  --bg: #f3ecdc;
+  --panel-bg: #fffaf0;
+  --line: #0b0b0c;
+  --text: #0b0b0c;
+
+  /* No tema claro, os mesmos medidores ficam mais escuros. */
+  --meter-hp: #b91c1c;
+  --meter-sp: #7c4a21;
+  --meter-kp: #c2410c;
+  --fatigue-physical-from: #15803d;
+  --fatigue-physical-to: #b91c1c;
+  --fatigue-mental-from: #7e22ce;
+  --fatigue-mental-to: #b91c1c;
+  --chip-el: #15803d;
+  --chip-ps: #a16207;
+
+  --rarity-common: #52525b;
+  --rarity-rare: #1d4ed8;
+  --rarity-epic: #7e22ce;
+  --rarity-legendary: #c2410c;
+  --rarity-divine: #be185d;
+
+  --stat-function: #be185d;
+  --stat-complexity: #7e22ce;
+  --stat-training: #52525b;
+  --stat-assembly: #b91c1c;
+  --stat-cost: #7c4a21;
+  --stat-range: #15803d;
 
   --color-zinc-950: #fafafa;
   --color-zinc-900: #f4f4f5;
@@ -53,26 +113,16 @@ body {
   --color-zinc-50: #09090b;
 }
 
-[data-theme='light'] body {
-  background-color: #fafafa;
-  color: #18181b;
-}
 
-/* Skeleton no claro: base clara + brilho escuro */
-[data-theme='light'] .skeleton {
-  background-color: rgba(212, 212, 216, 0.55);
-}
-[data-theme='light'] .skeleton::after {
-  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.05), transparent);
-}
-
-/* Títulos e a marca usam a fonte display (mais geométrica/impactante). */
+/* Títulos e a marca: Anton em caixa alta. */
 h1,
 h2,
 h3,
 .font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 400;
 }
 
 /* Seleção de texto no tema (acento vermelho) */
@@ -99,56 +149,252 @@ h3,
   background-color: #52525b; /* zinc-600 */
 }
 
-/*
- * Componentes reutilizáveis — reduzem repetição e mantêm o visual coeso.
- * Adotados nas telas, formulários e painéis.
- */
 @layer components {
-  /* Painel "surface": camada translúcida elevada sobre o fundo. Os cards
-     sólidos (zinc-900) por cima dela ganham leitura de profundidade sem
-     conflitar de cor — resolve o aninhamento apontado no handoff. */
+  .panel,
   .surface {
-    @apply rounded-2xl border border-zinc-800/70 bg-zinc-900/40 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-sm;
+    border: var(--border-w) solid var(--line);
+    box-shadow: var(--shadow-hard);
+    background: var(--panel-bg);
+    color: var(--text);
+    border-radius: 2px;
+  }
+  .panel-title {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    font-weight: 400;
+  }
+  .page-gutter {
+    display: grid;
+    gap: 14px;
   }
 
-  /* Campo de formulário padrão (input / select / textarea). */
-  .field {
-    @apply mt-1 w-full rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 shadow-inner shadow-black/20 transition placeholder:text-zinc-500 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40;
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: transform 80ms, box-shadow 80ms;
   }
-
-  /* Botões */
+  .btn-primary,
+  .btn-secondary {
+    border: 2px solid var(--line);
+    box-shadow: 3px 3px 0 var(--line);
+  }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-b from-red-500 to-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-950/40 transition hover:from-red-500 hover:to-red-700 hover:shadow-red-900/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:pointer-events-none disabled:opacity-50;
+    background: var(--accent);
+    color: #fff;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/40 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:pointer-events-none disabled:opacity-50;
+    background: var(--panel-bg);
+    color: var(--text);
+  }
+  .btn-primary:active,
+  .btn-secondary:active {
+    transform: translate(3px, 3px);
+    box-shadow: none;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 0;
+    color: var(--text);
+  }
+  .btn-ghost:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 4px;
+  }
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-ghost:disabled {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible,
+  .btn-ghost:focus-visible {
+    outline: 3px solid var(--highlight);
+    outline-offset: 2px;
+  }
+
+  .field {
+    margin-top: 0.25rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text);
+    background: var(--bg);
+    border: 2px solid var(--line);
+    border-radius: 2px;
+  }
+  .field::placeholder {
+    color: var(--text);
+    opacity: 0.55;
+  }
+  .field:focus,
+  .field:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .tag,
+  .tag-accent {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border: 2px solid var(--line);
+    border-radius: 0;
+    background: var(--panel-bg);
+    color: var(--text);
+  }
+  .tag-accent {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .bubble {
+    position: relative;
+    padding: 0.75rem 1rem;
+    background: var(--panel-bg);
+    color: var(--text);
+    border: var(--border-w) solid var(--line);
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 var(--line);
+  }
+  .bubble::after {
+    content: '';
+    position: absolute;
+    left: 20px;
+    bottom: -11px;
+    width: 16px;
+    height: 16px;
+    background: var(--panel-bg);
+    border-right: var(--border-w) solid var(--line);
+    border-bottom: var(--border-w) solid var(--line);
+    transform: rotate(45deg) skew(8deg, 8deg);
+  }
+
+  .caption {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    background: var(--highlight);
+    color: var(--ink);
+    border: 2px solid var(--ink);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 0;
+  }
+
+  /* Decorativos: nunca colocar texto sobre eles. */
+  .halftone {
+    background-image: radial-gradient(var(--line) 1.2px, transparent 1.6px);
+    background-size: 8px 8px;
+    opacity: 0.12;
+    pointer-events: none;
+  }
+  /* Explosão de linhas centrada em --burst-at; o miolo fica limpo (máscara)
+     para nunca passar atrás de texto e as pontas somem antes da borda. */
+  .speed-lines {
+    background-image: repeating-conic-gradient(
+      from 0deg at var(--burst-at, 50% 50%),
+      var(--line) 0deg 1deg,
+      transparent 1deg 7deg
+    );
+    -webkit-mask-image: radial-gradient(
+      circle at var(--burst-at, 50% 50%),
+      transparent 0 var(--burst-clear, 30%),
+      #000 calc(var(--burst-clear, 30%) + 15%),
+      transparent 70%
+    );
+    mask-image: radial-gradient(
+      circle at var(--burst-at, 50% 50%),
+      transparent 0 var(--burst-clear, 30%),
+      #000 calc(var(--burst-clear, 30%) + 15%),
+      transparent 70%
+    );
+    opacity: 0.1;
+    pointer-events: none;
+  }
+  /* Retícula que se dissolve a partir de um canto, sem borda reta. */
+  .halftone-fade {
+    -webkit-mask-image: radial-gradient(circle at var(--fade-from, top right), #000 0, transparent 70%);
+    mask-image: radial-gradient(circle at var(--fade-from, top right), #000 0, transparent 70%);
+  }
+
+  .meter {
+    height: 16px;
+    border: var(--border-w) solid var(--line);
+    background: var(--bg);
+    border-radius: 0;
+    overflow: hidden;
+  }
+  .meter-fill {
+    height: 100%;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--meter-color, var(--accent)) 0 8px,
+      transparent 8px 10px
+    );
+  }
+
+  .onomatopoeia {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    color: var(--highlight);
+    -webkit-text-stroke: 2px var(--ink);
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 0 var(--ink);
+    display: inline-block;
+    animation: onomatopoeia-pop 400ms ease-out, onomatopoeia-shake 120ms 2 400ms;
   }
 }
 
-/* Skeleton de carregamento com shimmer */
+/* Skeleton de carregamento com shimmer (cantos retos) */
 .skeleton {
   position: relative;
   overflow: hidden;
-  border-radius: 0.5rem;
-  background-color: rgba(39, 39, 42, 0.6); /* zinc-800/60 */
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--text) 14%, var(--panel-bg));
 }
 .skeleton::after {
   content: '';
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.06),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 12%, transparent), transparent);
   animation: shimmer 1.5s infinite;
 }
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
   }
+}
+@keyframes onomatopoeia-pop {
+  0% { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  70% { transform: scale(1.15) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-2deg); }
+}
+@keyframes onomatopoeia-shake {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -2px 1px; }
+  75% { translate: 2px -1px; }
 }
 
 /* Animação de entrada para modais/overlays */
@@ -178,5 +424,8 @@ h3,
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+  .onomatopoeia {
+    animation: none !important;
   }
 }
