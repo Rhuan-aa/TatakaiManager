@@ -11,7 +11,7 @@ RUN chmod +x mvnw && ./mvnw -B -q dependency:go-offline
 COPY src ./src
 # application.properties não é versionado; num checkout limpo (ex.: deploy) usa o template
 RUN [ -f src/main/resources/application.properties ] || cp src/main/resources/application.properties.example src/main/resources/application.properties
-RUN ./mvnw -B -q clean package -DskipTests
+RUN ./mvnw -B -q clean package -Dmaven.test.skip=true
 
 # ---- runtime ----
 FROM eclipse-temurin:21-jre AS runtime

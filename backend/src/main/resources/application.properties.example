@@ -27,3 +27,6 @@ app.cors.allowed-origins=${FRONTEND_URL:http://localhost:5173}
 # JWT
 security.jwt.secret=${JWT_SECRET:change-this-secret-in-production-min-32-chars}
 security.jwt.expiration-ms=86400000
+
+# E-mails (separados por vírgula) que podem editar o catálogo global de traços e clãs
+app.catalog.editors=${CATALOG_EDITORS:}

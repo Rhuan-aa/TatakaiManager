@@ -26,6 +26,7 @@ services:
       # Ficha textual de NPC — aponta pro MongoDB Atlas (sem container local em produção)
       MONGO_URI: ${MONGO_URI}
       JWT_SECRET: ${JWT_SECRET}
+      CATALOG_EDITORS: ${CATALOG_EDITORS:-}
       FRONTEND_URL: ${FRONTEND_URL}
       DDL_AUTO: ${DDL_AUTO}
     restart: unless-stopped

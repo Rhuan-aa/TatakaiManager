@@ -13,3 +13,8 @@ Thumbs.db
 
 # Saída gerada do graphify (grafo de conhecimento local)
 graphify-out/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
+
+# Material de referência do sistema (fonte dos seeds) — local, não versionar
+contexto/
