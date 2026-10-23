@@ -27,19 +27,19 @@ export default function InteractionListEditor({ items, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-zinc-400">
-          Interações <span className="text-zinc-600">(ao menos uma)</span>
+        <span className="text-sm font-medium text-[var(--text)] opacity-70">
+          Interações <span className="text-[var(--text)] opacity-70">(ao menos uma)</span>
         </span>
         <button
           type="button"
           onClick={add}
-          className="text-sm text-red-400 hover:text-red-300"
+          className="btn-ghost text-sm"
         >
           + Adicionar
         </button>
       </div>
       {items.length === 0 && (
-        <p className="mt-1 text-xs text-zinc-600">
+        <p className="mt-1 text-xs text-[var(--text)] opacity-70">
           Adicione ao menos uma interação (podem existir várias do mesmo tipo).
         </p>
       )}
@@ -48,13 +48,13 @@ export default function InteractionListEditor({ items, onChange }) {
         const isOther = !PREDEFINED_TYPES.includes(item.type);
         const selectValue = isOther ? 'Outro' : item.type;
         return (
-          <div key={i} className="mt-2 rounded-md border border-zinc-700 p-2">
+          <div key={i} className="mt-2 panel p-2">
             <div className="flex gap-2">
               <select
                 value={selectValue}
                 onChange={(e) => changeType(i, e.target.value)}
                 title="Tipo da interação"
-                className="w-36 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-zinc-50 focus:border-red-500 focus:outline-none"
+                className="w-36 field text-sm"
               >
                 {PREDEFINED_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -68,7 +68,7 @@ export default function InteractionListEditor({ items, onChange }) {
                 value={item.name}
                 onChange={(e) => update(i, 'name', e.target.value)}
                 placeholder="Título (ex.: Esgrima avançada)"
-                className="flex-1 rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                className="flex-1 field text-sm"
               />
               <div className="flex items-center gap-1">
                 <input
@@ -79,16 +79,16 @@ export default function InteractionListEditor({ items, onChange }) {
                   onChange={(e) => update(i, 'idlePointCost', e.target.value)}
                   placeholder="0"
                   title="Custo em pontos de ócio"
-                  className="w-20 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-red-500 focus:outline-none"
+                  className="w-20 field text-sm"
                 />
-                <span className="text-xs text-zinc-500" title="pontos de ócio">
+                <span className="text-xs text-[var(--text)] opacity-70" title="pontos de ócio">
                   ócio
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => remove(i)}
-                className="text-sm text-zinc-500 hover:text-red-400"
+                className="btn-ghost text-sm"
               >
                 remover
               </button>
@@ -99,7 +99,7 @@ export default function InteractionListEditor({ items, onChange }) {
                 value={item.type}
                 onChange={(e) => update(i, 'type', e.target.value)}
                 placeholder="Tipo personalizado (ex.: Diplomacia)"
-                className="mt-2 w-full rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                className="mt-2 w-full field text-sm"
               />
             )}
             <input
@@ -107,7 +107,7 @@ export default function InteractionListEditor({ items, onChange }) {
               value={item.description}
               onChange={(e) => update(i, 'description', e.target.value)}
               placeholder="Descrição (opcional)"
-              className="mt-2 w-full rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+              className="mt-2 w-full field text-sm"
             />
           </div>
         );

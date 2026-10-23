@@ -36,15 +36,15 @@ export default function InviteMemberForm({ campaignId }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="e-mail do jogador"
-          className="w-full rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+          className="field w-full"
         />
-        {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
-        {success && <p className="mt-1 text-xs text-green-400">{success}</p>}
+        {error && <p className="caption mt-1">{error}</p>}
+        {success && <p className="caption mt-1">{success}</p>}
       </div>
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+        className="btn-primary"
       >
         {submitting ? 'Convidando...' : 'Convidar'}
       </button>

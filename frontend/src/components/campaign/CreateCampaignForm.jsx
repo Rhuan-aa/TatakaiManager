@@ -36,12 +36,12 @@ export default function CreateCampaignForm({ onCreated, onCancel }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="surface p-6" noValidate>
-      <h2 className="text-base font-semibold text-zinc-50">Nova campanha</h2>
+    <form onSubmit={handleSubmit} className="panel p-6" noValidate>
+      <h2 className="panel-title">Nova campanha</h2>
 
       <div className="mt-4 space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-zinc-400">
+          <label htmlFor="name" className="block text-sm font-medium opacity-80">
             Nome
           </label>
           <input
@@ -53,12 +53,12 @@ export default function CreateCampaignForm({ onCreated, onCancel }) {
             onChange={handleChange}
             className={inputClass}
           />
-          {fieldErrors.name && <p className="mt-1 text-xs text-red-400">{fieldErrors.name}</p>}
+          {fieldErrors.name && <p className="caption mt-1">{fieldErrors.name}</p>}
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-zinc-400">
-            Descrição <span className="text-zinc-600">(opcional)</span>
+          <label htmlFor="description" className="block text-sm font-medium opacity-80">
+            Descrição <span className="opacity-60">(opcional)</span>
           </label>
           <textarea
             id="description"
@@ -69,11 +69,11 @@ export default function CreateCampaignForm({ onCreated, onCancel }) {
             className={inputClass}
           />
           {fieldErrors.description && (
-            <p className="mt-1 text-xs text-red-400">{fieldErrors.description}</p>
+            <p className="caption mt-1">{fieldErrors.description}</p>
           )}
         </div>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="caption">{error}</p>}
       </div>
 
       <div className="mt-5 flex justify-end gap-3">

@@ -116,34 +116,34 @@ export default function TimeSkipActivityManager({ campaignId, timeSkipId, isActi
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-950/30">
+    <div className="panel mb-4">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-zinc-300 hover:text-zinc-100"
+        className="flex w-full items-center justify-between px-3 py-2 text-sm font-bold uppercase text-[var(--text)] hover:underline"
       >
         <span>🛠️ Atividades solo exclusivas deste TimeSkip</span>
-        <span className="text-xs text-zinc-500">{open ? '▲' : '▼'}</span>
+        <span className="text-xs">{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
-        <div className="border-t border-zinc-800 p-3">
+        <div className="border-t-2 border-[var(--line)] p-3">
           {!isActive && (
-            <p className="mb-2 text-xs text-zinc-500">
+            <p className="mb-2 caption">
               TimeSkip encerrado — o catálogo não pode mais ser editado.
             </p>
           )}
-          {error && <p className="mb-2 text-sm text-red-400">{error}</p>}
+          {error && <p className="mb-2 text-sm text-[var(--accent)]">{error}</p>}
 
           {loading ? (
             <div className="space-y-2">
-              <div className="skeleton h-10 w-full rounded-lg" />
-              <div className="skeleton h-10 w-full rounded-lg" />
+              <div className="skeleton h-10 w-full" />
+              <div className="skeleton h-10 w-full" />
             </div>
           ) : (
             <>
               {activities.length === 0 && editingId !== 'new' && (
-                <p className="text-xs text-zinc-600">
+                <p className="text-xs text-[var(--text)] opacity-70">
                   Nenhuma atividade customizada ainda. Ex.: "Reconstrução da vila".
                 </p>
               )}
@@ -164,30 +164,30 @@ export default function TimeSkipActivityManager({ campaignId, timeSkipId, isActi
                   ) : (
                     <li
                       key={a.id}
-                      className="flex items-start justify-between gap-2 rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-2"
+                      className="flex items-start justify-between gap-2 border-2 border-[var(--line)] bg-[var(--bg)] px-2.5 py-2"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-zinc-200">
+                        <p className="text-sm font-bold text-[var(--text)]">
                           {a.name}{' '}
-                          <span className="text-xs font-normal text-red-400">
+                          <span className="tag-accent">
                             · {a.idlePointCost} pts de ócio
                           </span>
                         </p>
-                        <p className="mt-0.5 text-xs text-zinc-500">{a.description}</p>
+                        <p className="mt-0.5 text-xs text-[var(--text)] opacity-70">{a.description}</p>
                       </div>
                       {isActive && (
                         <div className="flex shrink-0 gap-2">
                           <button
                             type="button"
                             onClick={() => startEdit(a)}
-                            className="text-xs text-zinc-400 hover:text-zinc-200"
+                            className="btn-ghost text-xs"
                           >
                             editar
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDelete(a)}
-                            className="text-xs text-red-400 hover:text-red-300"
+                            className="btn-ghost text-xs text-[var(--accent)]"
                           >
                             excluir
                           </button>
@@ -215,7 +215,7 @@ export default function TimeSkipActivityManager({ campaignId, timeSkipId, isActi
                   <button
                     type="button"
                     onClick={startCreate}
-                    className="mt-2 text-sm text-red-400 hover:text-red-300"
+                    className="btn-ghost mt-2 text-sm text-[var(--accent)]"
                   >
                     + Nova atividade
                   </button>
@@ -230,7 +230,7 @@ export default function TimeSkipActivityManager({ campaignId, timeSkipId, isActi
 
 function ActivityForm({ form, setForm, onSubmit, onCancel, saving, formError, formFields }) {
   return (
-    <form onSubmit={onSubmit} noValidate className="rounded-md border border-zinc-700 bg-zinc-900/60 p-2.5">
+    <form onSubmit={onSubmit} noValidate className="border-2 border-[var(--line)] bg-[var(--panel-bg)] p-2.5">
       <input
         type="text"
         required
@@ -239,7 +239,7 @@ function ActivityForm({ form, setForm, onSubmit, onCancel, saving, formError, fo
         placeholder="Nome (ex.: Reconstrução da vila)"
         className="field text-sm"
       />
-      {formFields.name && <p className="mt-1 text-xs text-red-400">{formFields.name}</p>}
+      {formFields.name && <p className="mt-1 text-xs text-[var(--accent)]">{formFields.name}</p>}
       <textarea
         required
         value={form.description}
@@ -248,7 +248,7 @@ function ActivityForm({ form, setForm, onSubmit, onCancel, saving, formError, fo
         rows={2}
         className="field mt-2 text-sm"
       />
-      {formFields.description && <p className="mt-1 text-xs text-red-400">{formFields.description}</p>}
+      {formFields.description && <p className="mt-1 text-xs text-[var(--accent)]">{formFields.description}</p>}
       <div className="mt-2 flex items-center gap-2">
         <input
           type="number"
@@ -259,17 +259,17 @@ function ActivityForm({ form, setForm, onSubmit, onCancel, saving, formError, fo
           onChange={(e) => setForm((f) => ({ ...f, idlePointCost: e.target.value }))}
           className="field w-24 text-sm"
         />
-        <span className="text-xs text-zinc-500">pts de ócio</span>
+        <span className="text-xs text-[var(--text)] opacity-70">pts de ócio</span>
       </div>
       {formFields.idlePointCost && (
-        <p className="mt-1 text-xs text-red-400">{formFields.idlePointCost}</p>
+        <p className="mt-1 text-xs text-[var(--accent)]">{formFields.idlePointCost}</p>
       )}
-      {formError && <p className="mt-1 text-xs text-red-400">{formError}</p>}
+      {formError && <p className="mt-1 text-xs text-[var(--accent)]">{formError}</p>}
       <div className="mt-2 flex gap-2">
         <button
           type="submit"
           disabled={saving}
-          className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          className="btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
         >
           {saving ? 'Salvando...' : 'Salvar'}
         </button>
@@ -277,7 +277,7 @@ function ActivityForm({ form, setForm, onSubmit, onCancel, saving, formError, fo
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-700"
+          className="btn-secondary px-3 py-1.5 text-xs"
         >
           Cancelar
         </button>

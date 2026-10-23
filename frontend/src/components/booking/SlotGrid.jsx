@@ -43,11 +43,11 @@ function SlotGridSkeleton() {
     <div className="mt-4 space-y-3">
       {Array.from({ length: 3 }).map((_, r) => (
         <div key={r} className="flex items-center gap-3">
-          <div className="skeleton h-7 w-7 shrink-0 rounded-md" />
+          <div className="skeleton h-7 w-7 shrink-0" />
           <div className="skeleton h-4 w-24 shrink-0" />
           <div className="ml-auto flex gap-2">
             {COLUMNS.map((s) => (
-              <div key={s} className="skeleton h-9 w-24 rounded-lg" />
+              <div key={s} className="skeleton h-9 w-24" />
             ))}
           </div>
         </div>
@@ -55,6 +55,10 @@ function SlotGridSkeleton() {
     </div>
   );
 }
+
+// Visual: preenchimento "meu" (acento suave) vs. dos outros (painel)
+const fillMine = 'color-mix(in srgb, var(--accent) 22%, var(--panel-bg))';
+const fillOther = 'var(--panel-bg)';
 
 const slotKey = (day, npcId, slot) => `${day}:${npcId}:${slot}`;
 
@@ -262,7 +266,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
   }
 
   if (loading) return <SlotGridSkeleton />;
-  if (error) return <p className="text-sm text-red-400">{error}</p>;
+  if (error) return <p className="text-sm text-[var(--accent)]">{error}</p>;
 
   // O jogador já usou o slot extra deste dia? (uma ação de custo zero por dia,
   // contando agendamentos com NPC e solo)
@@ -289,11 +293,10 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
       // Continuação de uma reserva iniciada em um slot anterior (custo > 1)
       return (
         <div
-          className={`rounded-lg border-l-2 border-dashed px-2.5 py-1.5 text-left opacity-70 ${
-            mine ? 'border-red-500 bg-red-950/15' : 'border-zinc-600 bg-zinc-800/40'
-          }`}
+          className="border-2 border-dashed border-[var(--line)] px-2.5 py-1.5 text-left"
+          style={{ background: mine ? fillMine : fillOther }}
         >
-          <p className="text-[11px] text-zinc-500">{booking.interactionName} · continuação</p>
+          <p className="text-[11px] text-[var(--text)] opacity-70">{booking.interactionName} · continuação</p>
         </div>
       );
     }
@@ -301,22 +304,21 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
     if (booking) {
       return (
         <div
-          className={`rounded-lg border-l-2 px-2.5 py-1.5 text-left shadow-sm shadow-black/20 ${
-            mine ? 'border-red-500 bg-red-950/25' : 'border-zinc-600 bg-zinc-800/80'
-          }`}
+          className="panel px-2.5 py-1.5 text-left"
+          style={{ background: mine ? fillMine : fillOther }}
         >
-          <p className="text-xs font-semibold text-zinc-100">{booking.interactionName}</p>
+          <p className="text-xs font-bold text-[var(--text)]">{booking.interactionName}</p>
           {booking.idlePointCost != null && (
-            <p className="text-[11px] font-medium text-red-400">
+            <p className="text-[11px] font-bold text-[var(--accent)]">
               {booking.idlePointCost} pts de ócio
             </p>
           )}
-          <p className="mt-0.5 text-[11px] text-zinc-500">{booking.userName}</p>
+          <p className="mt-0.5 text-[11px] text-[var(--text)] opacity-70">{booking.userName}</p>
           {mine && canBook && (
             <button
               type="button"
               onClick={() => handleCancel(booking)}
-              className="mt-1 text-[11px] font-medium text-red-400 hover:underline"
+              className="btn-ghost mt-1 text-[11px]"
             >
               Cancelar
             </button>
@@ -331,7 +333,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
       if (interactions.length === 0 || (slot === EXTRA_SLOT && usedExtraToday)) {
         return (
           <span
-            className="text-xs text-zinc-700"
+            className="text-xs text-[var(--text)] opacity-40"
             title={
               slot === EXTRA_SLOT
                 ? usedExtraToday
@@ -352,7 +354,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
               type="button"
               onClick={() => handleBook(npc, slot, it.name)}
               title={it.description || undefined}
-              className="rounded-md bg-gradient-to-b from-red-500 to-red-600 px-2 py-1 text-xs font-medium text-white shadow-sm shadow-red-950/40 transition hover:to-red-700"
+              className="btn-primary px-2 py-1 text-xs"
             >
               {it.type ? `[${it.type}] ` : ''}
               {it.name} · {it.idlePointCost} pts de ócio
@@ -361,7 +363,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
           <button
             type="button"
             onClick={() => setActiveCell(null)}
-            className="text-xs text-zinc-500 hover:text-zinc-300"
+            className="btn-ghost text-xs"
           >
             cancelar
           </button>
@@ -370,14 +372,14 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
         <button
           type="button"
           onClick={() => setActiveCell(cellId)}
-          className="w-full rounded-lg border border-dashed border-zinc-700/70 px-2 py-2 text-xs text-zinc-600 transition hover:border-red-600/70 hover:bg-red-950/10 hover:text-red-400"
+          className="btn-secondary w-full border-dashed px-2 py-2 text-xs"
         >
           + Agendar
         </button>
       );
     }
 
-    return <span className="text-xs text-zinc-700">—</span>;
+    return <span className="text-xs text-[var(--text)] opacity-40">—</span>;
   }
 
   // Célula da linha "Ação solo": ao contrário dos NPCs, vários jogadores podem
@@ -405,17 +407,17 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
           o.slotNumber === slot ? (
             <div
               key={o.id}
-              className="rounded-md border-l-2 border-zinc-600 bg-zinc-800/80 px-2.5 py-1.5 text-left"
+              className="panel px-2.5 py-1.5 text-left"
             >
-              <p className="text-xs font-semibold text-zinc-100">{bookingSoloLabel(o)}</p>
-              <p className="mt-0.5 text-[11px] text-zinc-500">{o.userName}</p>
+              <p className="text-xs font-bold text-[var(--text)]">{bookingSoloLabel(o)}</p>
+              <p className="mt-0.5 text-[11px] text-[var(--text)] opacity-70">{o.userName}</p>
             </div>
           ) : (
             <div
               key={o.id}
-              className="rounded-md border-l-2 border-dashed border-zinc-600 bg-zinc-800/40 px-2.5 py-1.5 text-left opacity-70"
+              className="border-2 border-dashed border-[var(--line)] bg-[var(--panel-bg)] px-2.5 py-1.5 text-left"
             >
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-[var(--text)] opacity-70">
                 {bookingSoloLabel(o)} · continuação · {o.userName}
               </p>
             </div>
@@ -423,15 +425,15 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
         )}
 
         {mineCovering && !mine ? (
-          <div className="rounded-lg border-l-2 border-dashed border-red-500 bg-red-950/15 px-2.5 py-1.5 text-left opacity-70">
-            <p className="text-[11px] text-zinc-500">{bookingSoloLabel(mineCovering)} · continuação</p>
+          <div className="border-2 border-dashed border-[var(--line)] px-2.5 py-1.5 text-left" style={{ background: fillMine }}>
+            <p className="text-[11px] text-[var(--text)] opacity-70">{bookingSoloLabel(mineCovering)} · continuação</p>
           </div>
         ) : mine ? (
-          <div className="rounded-lg border-l-2 border-red-500 bg-red-950/25 px-2.5 py-1.5 text-left shadow-sm shadow-black/20">
-            <p className="text-xs font-semibold text-zinc-100">{bookingSoloLabel(mine)}</p>
-            <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-500">{mine.description}</p>
+          <div className="panel px-2.5 py-1.5 text-left" style={{ background: fillMine }}>
+            <p className="text-xs font-bold text-[var(--text)]">{bookingSoloLabel(mine)}</p>
+            <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--text)] opacity-70">{mine.description}</p>
             {mine.idlePointCost != null && (
-              <p className="mt-0.5 text-[11px] font-medium text-red-400">
+              <p className="mt-0.5 text-[11px] font-bold text-[var(--accent)]">
                 {mine.idlePointCost} pts de ócio
               </p>
             )}
@@ -439,7 +441,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
               <button
                 type="button"
                 onClick={() => handleCancel(mine)}
-                className="mt-1 text-[11px] font-medium text-red-400 hover:underline"
+                className="btn-ghost mt-1 text-[11px]"
               >
                 Cancelar
               </button>
@@ -447,7 +449,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
           </div>
         ) : canBook ? (
           activeCell === cellId ? (
-            <div className="flex flex-col gap-1.5 rounded-lg border border-zinc-700/70 bg-zinc-900/60 p-2">
+            <div className="flex flex-col gap-1.5 border-2 border-[var(--line)] bg-[var(--panel-bg)] p-2">
               <select
                 value={soloForm.option}
                 onChange={(e) => setSoloForm((f) => ({ ...f, option: e.target.value }))}
@@ -465,7 +467,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                 ))}
               </select>
               {soloForm.option.startsWith(CUSTOM_OPTION_PREFIX) ? (
-                <p className="rounded-md border border-zinc-800 bg-zinc-950/50 p-2 text-[11px] text-zinc-400">
+                <p className="border-2 border-[var(--line)] bg-[var(--bg)] p-2 text-[11px] text-[var(--text)]">
                   {customActivities.find((a) => a.id === soloForm.option.slice(CUSTOM_OPTION_PREFIX.length))
                     ?.description}
                 </p>
@@ -482,7 +484,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                 <button
                   type="button"
                   onClick={() => handleBookSolo(slot)}
-                  className="rounded-md bg-gradient-to-b from-red-500 to-red-600 px-2 py-1 text-xs font-medium text-white shadow-sm shadow-red-950/40 transition hover:to-red-700"
+                  className="btn-primary px-2 py-1 text-xs"
                 >
                   Confirmar
                 </button>
@@ -492,7 +494,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                     setActiveCell(null);
                     resetSoloForm();
                   }}
-                  className="text-xs text-zinc-500 hover:text-zinc-300"
+                  className="btn-ghost text-xs"
                 >
                   cancelar
                 </button>
@@ -511,13 +513,13 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                   description: '',
                 });
               }}
-              className="w-full rounded-lg border border-dashed border-zinc-700/70 px-2 py-2 text-xs text-zinc-600 transition hover:border-red-600/70 hover:bg-red-950/10 hover:text-red-400"
+              className="btn-secondary w-full border-dashed px-2 py-2 text-xs"
             >
               + Ação solo
             </button>
           ) : (
             <span
-              className="text-xs text-zinc-700"
+              className="text-xs text-[var(--text)] opacity-40"
               title={
                 isExtra && usedExtraToday
                   ? 'Você já usou o slot extra deste dia'
@@ -530,7 +532,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
             </span>
           )
         ) : (
-          others.length === 0 && <span className="text-xs text-zinc-700">—</span>
+          others.length === 0 && <span className="text-xs text-[var(--text)] opacity-40">—</span>
         )}
       </div>
     );
@@ -544,14 +546,14 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
             type="button"
             onClick={() => setDay((d) => Math.max(1, d - 1))}
             disabled={day <= 1}
-            className="rounded-md border border-zinc-700 px-2 py-1 text-sm text-zinc-400 disabled:opacity-30 hover:bg-zinc-700"
+            className="btn-secondary px-2 py-1 text-sm disabled:opacity-30"
           >
             ←
           </button>
-          <span className="text-sm font-medium text-zinc-300">
+          <span className="text-sm font-bold text-[var(--text)]">
             Dia {day} de {timeSkip.totalDays}
             {day === timeSkip.currentDay && (
-              <span className="ml-2 rounded-full bg-red-950 border border-red-900 px-2 py-0.5 text-xs text-red-400">
+              <span className="tag tag-accent ml-2">
                 hoje
               </span>
             )}
@@ -560,7 +562,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
             type="button"
             onClick={() => setDay((d) => Math.min(timeSkip.totalDays, d + 1))}
             disabled={day >= timeSkip.totalDays}
-            className="rounded-md border border-zinc-700 px-2 py-1 text-sm text-zinc-400 disabled:opacity-30 hover:bg-zinc-700"
+            className="btn-secondary px-2 py-1 text-sm disabled:opacity-30"
           >
             →
           </button>
@@ -568,25 +570,25 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
       </div>
 
       {!isActive && (
-        <p className="mt-2 text-sm text-zinc-500">TimeSkip encerrado — somente leitura.</p>
+        <p className="caption mt-2 inline-block">TimeSkip encerrado — somente leitura.</p>
       )}
       {isActive && isPastDay && (
-        <p className="mt-2 text-sm text-zinc-500">Dia já passado — somente leitura.</p>
+        <p className="caption mt-2 inline-block">Dia já passado — somente leitura.</p>
       )}
-      {actionError && <p className="mt-2 text-sm text-red-400">{actionError}</p>}
+      {actionError && <p className="mt-2 text-sm text-[var(--accent)]">{actionError}</p>}
 
       {/* Desktop: tabela (NPCs + linha de ação solo) */}
       <div className="mt-4 hidden overflow-x-auto md:block">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-separate text-sm" style={{ borderSpacing: 8 }}>
           <thead>
             <tr>
-              <th className="border-b border-zinc-700 p-2 text-left text-xs font-medium text-zinc-500">
+              <th className="panel-title p-2 text-left text-xs">
                 NPC
               </th>
               {COLUMNS.map((slot) => (
                 <th
                   key={slot}
-                  className="border-b border-zinc-700 p-2 text-center text-xs font-medium text-zinc-500"
+                  className={`panel-title p-2 text-center text-xs ${slot === EXTRA_SLOT ? 'caption' : ''}`}
                   title={slot === EXTRA_SLOT ? 'Slot extra: uma ação de custo zero por dia' : undefined}
                 >
                   {slotLabel(slot)}
@@ -595,36 +597,41 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-zinc-800 bg-white/[0.01]">
+            <tr>
               <td className="p-2">
                 <div className="flex items-center gap-2">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-zinc-800 text-xs font-bold text-red-400 ring-1 ring-white/5">
+                  <span className="panel grid h-7 w-7 shrink-0 place-items-center text-xs font-bold">
                     🧘
                   </span>
-                  <span className="text-sm font-medium text-zinc-200">Ação solo</span>
+                  <span className="text-sm font-bold text-[var(--text)]">Ação solo</span>
                 </div>
               </td>
               {COLUMNS.map((slot) => (
-                <td key={slot} className="p-2 text-center align-top">
+                <td
+                  key={slot}
+                  className="border-2 border-[var(--line)] p-2 text-center align-top"
+                  style={slot === EXTRA_SLOT ? { background: 'color-mix(in srgb, var(--highlight) 18%, var(--bg))' } : undefined}
+                >
                   {renderSoloSlot(slot)}
                 </td>
               ))}
             </tr>
             {npcs.map((npc) => (
-              <tr
-                key={npc.id}
-                className="border-b border-zinc-800 transition-colors last:border-0 hover:bg-white/[0.015]"
-              >
+              <tr key={npc.id}>
                 <td className="p-2">
                   <div className="flex items-center gap-2">
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-zinc-800 text-xs font-bold text-zinc-400 ring-1 ring-white/5">
+                    <span className="panel grid h-7 w-7 shrink-0 place-items-center text-xs font-bold">
                       {npc.name?.charAt(0)?.toUpperCase() ?? '?'}
                     </span>
-                    <span className="text-sm font-medium text-zinc-200">{npc.name}</span>
+                    <span className="text-sm font-bold text-[var(--text)]">{npc.name}</span>
                   </div>
                 </td>
                 {COLUMNS.map((slot) => (
-                  <td key={slot} className="p-2 text-center align-top">
+                  <td
+                  key={slot}
+                  className="border-2 border-[var(--line)] p-2 text-center align-top"
+                  style={slot === EXTRA_SLOT ? { background: 'color-mix(in srgb, var(--highlight) 18%, var(--bg))' } : undefined}
+                >
                     {renderSlot(npc, slot)}
                   </td>
                 ))}
@@ -633,7 +640,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
           </tbody>
         </table>
         {npcs.length === 0 && (
-          <p className="mt-3 text-center text-xs text-zinc-600">
+          <p className="mt-3 text-center text-xs text-[var(--text)] opacity-60">
             Nenhum NPC associado à campanha ainda — só a ação solo está disponível.
           </p>
         )}
@@ -641,17 +648,17 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
 
       {/* Mobile: cards empilhados (evita rolagem horizontal) */}
       <div className="mt-4 space-y-3 md:hidden">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+        <div className="panel p-3">
           <div className="mb-2.5 flex items-center gap-2">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-zinc-800 text-xs font-bold text-red-400 ring-1 ring-white/5">
+            <span className="panel grid h-7 w-7 shrink-0 place-items-center text-xs font-bold">
               🧘
             </span>
-            <span className="text-sm font-semibold text-zinc-100">Ação solo</span>
+            <span className="text-sm font-bold text-[var(--text)]">Ação solo</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {COLUMNS.map((slot) => (
-              <div key={slot} className="rounded-lg border border-zinc-800/70 bg-zinc-900/40 p-2">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+              <div key={slot} className="border-2 border-[var(--line)] bg-[var(--bg)] p-2">
+                <p className="panel-title mb-1 text-[10px]">
                   {slotLabel(slot)}
                 </p>
                 {renderSoloSlot(slot)}
@@ -668,20 +675,20 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
           />
         ) : (
           npcs.map((npc) => (
-            <div key={npc.id} className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+            <div key={npc.id} className="panel p-3">
               <div className="mb-2.5 flex items-center gap-2">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-zinc-800 text-xs font-bold text-zinc-400 ring-1 ring-white/5">
+                <span className="panel grid h-7 w-7 shrink-0 place-items-center text-xs font-bold">
                   {npc.name?.charAt(0)?.toUpperCase() ?? '?'}
                 </span>
-                <span className="text-sm font-semibold text-zinc-100">{npc.name}</span>
+                <span className="text-sm font-bold text-[var(--text)]">{npc.name}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {COLUMNS.map((slot) => (
                   <div
                     key={slot}
-                    className="rounded-lg border border-zinc-800/70 bg-zinc-900/40 p-2"
+                    className="border-2 border-[var(--line)] bg-[var(--bg)] p-2"
                   >
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <p className="panel-title mb-1 text-[10px]">
                       {slotLabel(slot)}
                     </p>
                     {renderSlot(npc, slot)}

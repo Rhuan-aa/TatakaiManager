@@ -118,10 +118,10 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     return (
       <div className="space-y-4">
         <div className="flex gap-2">
-          <div className="skeleton h-9 w-28 rounded-lg" />
-          <div className="skeleton h-9 w-24 rounded-lg" />
+          <div className="skeleton h-9 w-28" />
+          <div className="skeleton h-9 w-24" />
         </div>
-        <div className="skeleton h-64 w-full rounded-xl" />
+        <div className="skeleton h-64 w-full" />
       </div>
     );
   }
@@ -138,15 +138,11 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 setSelectedId(t.id);
                 setConfirmingDelete(false);
               }}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                t.id === selectedId
-                  ? 'bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/40'
-                  : 'border border-zinc-700/70 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-              }`}
+              className={`${t.id === selectedId ? 'btn-primary' : 'btn-secondary'} px-3 py-1.5 text-sm`}
             >
               {t.name}
               {t.status === 'CLOSED' && (
-                <span className="ml-1 text-xs opacity-60">(encerrado)</span>
+                <span className="ml-1 text-xs opacity-70">(encerrado)</span>
               )}
             </button>
           ))}
@@ -155,24 +151,24 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="rounded-lg bg-gradient-to-b from-red-500 to-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-lg shadow-red-950/40 transition hover:to-red-700"
+            className="btn-primary px-3 py-1.5 text-sm"
           >
             + Novo TimeSkip
           </button>
         )}
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-[var(--accent)]">{error}</p>}
 
       {creating && (
         <form
           onSubmit={handleCreate}
-          className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
+          className="panel mt-4 p-4"
           noValidate
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <label htmlFor="ts-name" className="block text-sm font-medium text-zinc-400">
+              <label htmlFor="ts-name" className="block text-sm font-bold uppercase text-[var(--text)]">
                 Nome
               </label>
               <input
@@ -184,11 +180,11 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 className={inputClass}
               />
               {createFields.name && (
-                <p className="mt-1 text-xs text-red-400">{createFields.name}</p>
+                <p className="mt-1 text-xs text-[var(--accent)]">{createFields.name}</p>
               )}
             </div>
             <div className="w-full sm:w-32">
-              <label htmlFor="ts-days" className="block text-sm font-medium text-zinc-400">
+              <label htmlFor="ts-days" className="block text-sm font-bold uppercase text-[var(--text)]">
                 Dias
               </label>
               <input
@@ -202,26 +198,26 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 className={inputClass}
               />
               {createFields.totalDays && (
-                <p className="mt-1 text-xs text-red-400">{createFields.totalDays}</p>
+                <p className="mt-1 text-xs text-[var(--accent)]">{createFields.totalDays}</p>
               )}
             </div>
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                className="btn-primary px-3 py-2 text-sm"
               >
                 Criar
               </button>
               <button
                 type="button"
                 onClick={() => setCreating(false)}
-                className="rounded-md border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-700"
+                className="btn-secondary px-3 py-2 text-sm"
               >
                 Cancelar
               </button>
             </div>
           </div>
-          {createError && <p className="mt-2 text-sm text-red-400">{createError}</p>}
+          {createError && <p className="mt-2 text-sm text-[var(--accent)]">{createError}</p>}
         </form>
       )}
 
@@ -240,7 +236,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
               <button
                 type="button"
                 onClick={() => setCreating(true)}
-                className="rounded-lg bg-gradient-to-b from-red-500 to-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-lg shadow-red-950/40 transition hover:to-red-700"
+                className="btn-primary px-3 py-1.5 text-sm"
               >
                 + Novo TimeSkip
               </button>
@@ -248,7 +244,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
           }
         />
       ) : (
-        <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <div className="panel mt-4 p-4">
           {isMaster && (
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {selected.status === 'ACTIVE' && (
@@ -257,14 +253,14 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                     type="button"
                     onClick={handleAdvanceDay}
                     disabled={selected.currentDay >= selected.totalDays}
-                    className="rounded-md border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                    className="btn-secondary px-3 py-1.5 text-sm disabled:opacity-40"
                   >
                     Avançar dia ({selected.currentDay} → {selected.currentDay + 1})
                   </button>
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="rounded-md border border-red-900 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-950/50"
+                    className="btn-secondary px-3 py-1.5 text-sm text-[var(--accent)]"
                   >
                     Encerrar TimeSkip
                   </button>
@@ -272,12 +268,12 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
               )}
               {confirmingDelete ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-red-400">Excluir permanentemente?</span>
+                  <span className="text-sm text-[var(--accent)]">Excluir permanentemente?</span>
                   <button
                     type="button"
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50"
                   >
                     {deleting ? 'Excluindo...' : 'Confirmar exclusão'}
                   </button>
@@ -285,7 +281,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                     type="button"
                     onClick={() => setConfirmingDelete(false)}
                     disabled={deleting}
-                    className="rounded-md border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-400 hover:bg-zinc-700"
+                    className="btn-secondary px-3 py-1.5 text-sm"
                   >
                     Cancelar
                   </button>
@@ -294,7 +290,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 <button
                   type="button"
                   onClick={() => setConfirmingDelete(true)}
-                  className="ml-auto rounded-md border border-red-900 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-950/50"
+                  className="ml-auto btn-secondary px-3 py-1.5 text-sm text-[var(--accent)]"
                 >
                   Excluir TimeSkip
                 </button>

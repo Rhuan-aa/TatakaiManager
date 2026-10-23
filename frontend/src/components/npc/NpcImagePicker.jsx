@@ -57,11 +57,11 @@ export default function NpcImagePicker({ campaignId, npcId, hasImage, onChange }
 
   return (
     <div>
-      <span className="text-sm font-medium text-zinc-400">
-        Imagem <span className="text-zinc-600">(opcional)</span>
+      <span className="text-sm font-medium text-[var(--text)] opacity-70">
+        Imagem <span className="text-[var(--text)] opacity-70">(opcional)</span>
       </span>
       {shownUrl && (
-        <div className="mt-2 w-32 overflow-hidden rounded-lg border border-zinc-800 shadow-md shadow-black/30">
+        <div className="mt-2 w-32 panel overflow-hidden">
           {/* Mesma proporção 3:4 do card e do modal — uma imagem por NPC. */}
           <div className="aspect-[3/4]">
             <img
@@ -73,7 +73,7 @@ export default function NpcImagePicker({ campaignId, npcId, hasImage, onChange }
         </div>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-700">
+        <label className="btn-secondary cursor-pointer text-sm">
           {shownUrl ? 'Trocar imagem' : 'Selecionar imagem'}
           <input
             type="file"
@@ -86,12 +86,12 @@ export default function NpcImagePicker({ campaignId, npcId, hasImage, onChange }
           <button
             type="button"
             onClick={requestRemove}
-            className="text-sm text-zinc-500 hover:text-red-400"
+            className="btn-ghost text-sm"
           >
             Remover imagem
           </button>
         )}
-        {remove && <span className="text-xs text-red-400">A imagem será removida ao salvar.</span>}
+        {remove && <span className="text-xs text-[var(--accent)]">A imagem será removida ao salvar.</span>}
       </div>
     </div>
   );

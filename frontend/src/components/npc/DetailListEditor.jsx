@@ -18,13 +18,13 @@ export default function DetailListEditor({ label, items, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-zinc-400">
-          {label} <span className="text-zinc-600">(opcional)</span>
+        <span className="text-sm font-medium text-[var(--text)] opacity-70">
+          {label} <span className="text-[var(--text)] opacity-70">(opcional)</span>
         </span>
         <button
           type="button"
           onClick={add}
-          className="text-sm text-red-400 hover:text-red-300"
+          className="btn-ghost text-sm"
         >
           + Adicionar
         </button>
@@ -36,19 +36,19 @@ export default function DetailListEditor({ label, items, onChange }) {
             value={item.name}
             onChange={(e) => update(i, 'name', e.target.value)}
             placeholder="Nome"
-            className="w-1/3 rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+            className="w-1/3 field text-sm"
           />
           <input
             type="text"
             value={item.description}
             onChange={(e) => update(i, 'description', e.target.value)}
             placeholder="Descrição"
-            className="flex-1 rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+            className="flex-1 field text-sm"
           />
           <button
             type="button"
             onClick={() => remove(i)}
-            className="text-sm text-zinc-500 hover:text-red-400"
+            className="btn-ghost text-sm"
           >
             remover
           </button>

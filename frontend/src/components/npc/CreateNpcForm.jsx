@@ -93,14 +93,14 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-zinc-700 bg-zinc-800 p-6"
+      className="panel p-6"
       noValidate
     >
-      <h3 className="text-base font-semibold text-zinc-50">Novo NPC</h3>
+      <h3 className="panel-title text-xl">Novo NPC</h3>
 
       <div className="mt-4 space-y-4">
         <div>
-          <label htmlFor="npc-name" className="block text-sm font-medium text-zinc-400">
+          <label htmlFor="npc-name" className="block text-sm font-medium text-[var(--text)] opacity-70">
             Nome
           </label>
           <input
@@ -111,12 +111,12 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
             onChange={(e) => setName(e.target.value)}
             className={inputClass}
           />
-          {fieldErrors.name && <p className="mt-1 text-xs text-red-400">{fieldErrors.name}</p>}
+          {fieldErrors.name && <p className="mt-1 text-xs text-[var(--accent)]">{fieldErrors.name}</p>}
         </div>
 
         <div>
-          <label htmlFor="npc-desc" className="block text-sm font-medium text-zinc-400">
-            Descrição <span className="text-zinc-600">(opcional)</span>
+          <label htmlFor="npc-desc" className="block text-sm font-medium text-[var(--text)] opacity-70">
+            Descrição <span className="text-[var(--text)] opacity-70">(opcional)</span>
           </label>
           <textarea
             id="npc-desc"
@@ -132,13 +132,13 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
         <InteractionListEditor items={interactions} onChange={setInteractions} />
 
         <fieldset>
-          <legend className="text-sm font-medium text-zinc-400">
-            Atributos <span className="text-zinc-600">(opcional, 0–999)</span>
+          <legend className="text-sm font-medium text-[var(--text)] opacity-70">
+            Atributos <span className="text-[var(--text)] opacity-70">(opcional, 0–999)</span>
           </legend>
           <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {ATTRIBUTES.map((a) => (
               <div key={a.key}>
-                <label htmlFor={`attr-${a.key}`} className="block text-xs text-zinc-500">
+                <label htmlFor={`attr-${a.key}`} className="block text-xs text-[var(--text)] opacity-70">
                   {a.label}
                 </label>
                 <input
@@ -161,21 +161,21 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
 
         <DetailListEditor label="Conhecimentos" items={knowledge} onChange={setKnowledge} />
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-[var(--accent)]">{error}</p>}
       </div>
 
       <div className="mt-5 flex justify-end gap-3">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-700"
+          className="btn-secondary text-sm"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          className="btn-primary text-sm disabled:opacity-50"
         >
           {submitting ? 'Criando...' : 'Criar e adicionar'}
         </button>

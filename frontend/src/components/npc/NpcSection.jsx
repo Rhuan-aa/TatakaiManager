@@ -13,6 +13,7 @@ import { EmptyState } from '../../components/layout/AppShell';
 import { useToast } from '../../contexts/ToastContext';
 import CreateNpcForm from './CreateNpcForm';
 import EditNpcForm from './EditNpcForm';
+import NpcSheetPanel from '../sheet/NpcSheetPanel';
 
 const ATTR_LABELS = {
   forca: 'Força',
@@ -58,9 +59,9 @@ function NpcPortrait({ campaignId, npcId, hasImage, name, className = '' }) {
   }
   return (
     <div
-      className={`flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900 ${className}`}
+      className={`flex h-full w-full items-center justify-center bg-[var(--panel-bg)] halftone ${className}`}
     >
-      <span className="select-none text-5xl font-black text-zinc-700">
+      <span className="select-none text-5xl font-black text-[var(--text)] opacity-70">
         {name?.charAt(0)?.toUpperCase() ?? '?'}
       </span>
     </div>
@@ -74,7 +75,7 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
     <button
       type="button"
       onClick={() => onOpen(npc)}
-      className="group relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 text-left shadow-sm ring-red-500/0 transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-700 hover:shadow-lg hover:shadow-black/40 hover:ring-2 hover:ring-red-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+      className="panel group relative overflow-hidden text-left transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-[3px] focus-visible:outline-[var(--accent)]"
     >
       <div className="relative aspect-[3/4] w-full overflow-hidden">
         <div className={hidden ? 'h-full w-full opacity-40 grayscale' : 'h-full w-full'}>
@@ -88,11 +89,12 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
         </div>
 
         {/* Gradiente + nome */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3 pt-8">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t-[length:var(--border-w)] border-[var(--line)] bg-[var(--ink)] p-2">
           {/* Nome sobre overlay escuro da imagem — sempre branco (independe do tema) */}
           <p className="truncate text-sm font-semibold text-white">{npc.name}</p>
+          {npc.sheetId && <span className="tag mt-1">Ficha</span>}
           {npc.interactions?.length > 0 && (
-            <p className="truncate text-[11px] text-zinc-400">
+            <p className="truncate text-[11px] text-white opacity-70">
               {npc.interactions.length} interaç{npc.interactions.length === 1 ? 'ão' : 'ões'}
             </p>
           )}
@@ -115,10 +117,8 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
               }
             }}
             title="Alternar visibilidade para os jogadores"
-            className={`absolute right-2 top-2 cursor-pointer rounded-full px-2 py-0.5 text-[11px] font-semibold backdrop-blur transition ${
-              npc.visible
-                ? 'border border-green-800/60 bg-green-950/70 text-green-400'
-                : 'border border-zinc-700 bg-zinc-900/80 text-zinc-400'
+            className={`absolute right-2 top-2 cursor-pointer ${
+              npc.visible ? 'tag-accent' : 'tag'
             }`}
           >
             {npc.visible ? 'Visível' : 'Oculto'}
@@ -133,8 +133,8 @@ function DetailList({ title, items, render }) {
   if (!items?.length) return null;
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{title}</p>
-      <ul className="mt-1.5 space-y-1 text-sm text-zinc-300">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text)] opacity-70">{title}</p>
+      <ul className="mt-1.5 space-y-1 text-sm text-[var(--text)]">
         {items.map((it, i) => (
           <li key={i}>{render(it)}</li>
         ))}
@@ -145,7 +145,7 @@ function DetailList({ title, items, render }) {
 
 /** Conteúdo do detalhe do NPC exibido no modal. */
 function NpcDetailView({ npc, campaignId }) {
-  const attrs = npc.attributes
+  const attrs = npc.attributes && !npc.sheetId
     ? Object.entries(npc.attributes).filter(([, v]) => v != null)
     : [];
 
@@ -153,7 +153,7 @@ function NpcDetailView({ npc, campaignId }) {
     <div className="flex flex-col gap-5 sm:flex-row">
       {/* Retrato adaptado ao modal: mesma proporção 3:4 do card, porém maior,
           alinhado ao topo e integrado (ring/sombra) — sem "flutuar". */}
-      <div className="w-40 shrink-0 self-start overflow-hidden rounded-xl border border-zinc-800 shadow-lg shadow-black/40 ring-1 ring-white/5 sm:w-52">
+      <div className="w-40 shrink-0 self-start panel overflow-hidden sm:w-52">
         <div className="aspect-[3/4]">
           <NpcPortrait
             campaignId={campaignId}
@@ -165,24 +165,24 @@ function NpcDetailView({ npc, campaignId }) {
       </div>
 
       <div className="min-w-0 flex-1 space-y-4">
-        {npc.description && <p className="text-sm text-zinc-300">{npc.description}</p>}
+        {npc.description && <p className="text-sm text-[var(--text)]">{npc.description}</p>}
 
         {npc.interactions?.length > 0 && (
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Interações</p>
-            <ul className="mt-1.5 space-y-1 text-sm text-zinc-300">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text)] opacity-70">Interações</p>
+            <ul className="mt-1.5 space-y-1 text-sm text-[var(--text)]">
               {npc.interactions.map((it, i) => (
                 <li key={i} className="flex flex-wrap items-baseline gap-x-1.5">
                   {it.type && (
-                    <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] font-medium text-zinc-400">
+                    <span className="tag">
                       {it.type}
                     </span>
                   )}
-                  <strong className="text-zinc-100">{it.name}</strong>
-                  <span className="text-xs font-semibold text-red-400">
+                  <strong className="text-[var(--text)]">{it.name}</strong>
+                  <span className="text-xs font-semibold text-[var(--accent)]">
                     {it.idlePointCost} pts de ócio
                   </span>
-                  {it.description && <span className="text-xs text-zinc-500">— {it.description}</span>}
+                  {it.description && <span className="text-xs text-[var(--text)] opacity-70">— {it.description}</span>}
                 </li>
               ))}
             </ul>
@@ -191,14 +191,14 @@ function NpcDetailView({ npc, campaignId }) {
 
         {attrs.length > 0 && (
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Atributos</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text)] opacity-70">Atributos</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {attrs.map(([k, v]) => (
                 <span
                   key={k}
-                  className="rounded-md border border-zinc-800 bg-zinc-800/60 px-2 py-1 text-xs text-zinc-300"
+                  className="tag"
                 >
-                  {ATTR_LABELS[k] ?? k}: <strong className="text-zinc-50">{v}</strong>
+                  {ATTR_LABELS[k] ?? k}: <strong className="text-[var(--text)]">{v}</strong>
                 </span>
               ))}
             </div>
@@ -210,8 +210,8 @@ function NpcDetailView({ npc, campaignId }) {
           items={npc.traits}
           render={(t) => (
             <>
-              <strong className="text-zinc-100">{t.name}</strong>
-              {t.description ? <span className="text-zinc-500"> — {t.description}</span> : ''}
+              <strong className="text-[var(--text)]">{t.name}</strong>
+              {t.description ? <span className="text-[var(--text)] opacity-70"> — {t.description}</span> : ''}
             </>
           )}
         />
@@ -220,8 +220,8 @@ function NpcDetailView({ npc, campaignId }) {
           items={npc.specs}
           render={(s) => (
             <>
-              <strong className="text-zinc-100">{s.name}</strong>
-              {s.description ? <span className="text-zinc-500"> — {s.description}</span> : ''}
+              <strong className="text-[var(--text)]">{s.name}</strong>
+              {s.description ? <span className="text-[var(--text)] opacity-70"> — {s.description}</span> : ''}
             </>
           )}
         />
@@ -230,8 +230,8 @@ function NpcDetailView({ npc, campaignId }) {
           items={npc.knowledge}
           render={(k) => (
             <>
-              <strong className="text-zinc-100">{k.name}</strong>
-              {k.description ? <span className="text-zinc-500"> — {k.description}</span> : ''}
+              <strong className="text-[var(--text)]">{k.name}</strong>
+              {k.description ? <span className="text-[var(--text)] opacity-70"> — {k.description}</span> : ''}
             </>
           )}
         />
@@ -258,19 +258,19 @@ function Modal({ title, onClose, children }) {
   // (ex.: a .surface), que de outra forma vira o containing block do position:fixed.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm animate-[fade-in_120ms_ease-out] sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 animate-[fade-in_120ms_ease-out] sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-zinc-800 bg-zinc-900 shadow-2xl animate-[pop-in_160ms_ease-out] sm:rounded-2xl"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col panel overflow-hidden animate-[pop-in_160ms_ease-out]"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-5 py-3">
-          <h3 className="truncate text-base font-semibold text-zinc-50">{title}</h3>
+        <div className="flex items-center justify-between gap-3 border-b-[length:var(--border-w)] border-[var(--line)] px-5 py-3">
+          <h3 className="panel-title truncate text-xl">{title}</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+            className="btn-ghost p-1"
             aria-label="Fechar"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -335,12 +335,18 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
     setNpcs((prev) =>
       prev.map((n) =>
         n.id === updated.id
-          ? { ...n, name: updated.name, interactions: updated.interactions, hasImage: updated.hasImage }
+          ? { ...n, name: updated.name, interactions: updated.interactions, hasImage: updated.hasImage, sheetId: updated.sheetId }
           : n
       )
     );
     setEditing(false);
     toast(`NPC "${updated.name}" atualizado.`);
+  }
+
+  function handleSheetChanged(sheet) {
+    const sheetId = sheet?.id ?? null;
+    setDetails((prev) => ({ ...prev, [selectedId]: { ...prev[selectedId], sheetId } }));
+    setNpcs((prev) => prev.map((n) => (n.id === selectedId ? { ...n, sheetId } : n)));
   }
 
   async function toggleVisibility(npc) {
@@ -420,7 +426,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm text-zinc-500">
+        <span className="text-sm text-[var(--text)] opacity-70">
           {npcs.length} NPC{npcs.length === 1 ? '' : 's'} nesta campanha
         </span>
         {isMaster && !creating && !associating && (
@@ -428,14 +434,14 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
             <button
               type="button"
               onClick={handleOpenAssociate}
-              className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-800"
+              className="btn-secondary text-sm"
             >
               Associar do acervo
             </button>
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+              className="btn-primary text-sm"
             >
               + Adicionar NPC
             </button>
@@ -443,7 +449,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
         )}
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-[var(--accent)]">{error}</p>}
 
       {creating && (
         <div className="mt-4">
@@ -456,24 +462,24 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
       )}
 
       {associating && (
-        <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+        <div className="mt-4 panel p-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-zinc-50">Associar NPC do acervo</h4>
+            <h4 className="panel-title text-xl">Associar NPC do acervo</h4>
             <button
               type="button"
               onClick={() => setAssociating(false)}
-              className="text-sm text-zinc-500 hover:text-zinc-300"
+              className="btn-ghost text-sm"
             >
               Fechar
             </button>
           </div>
-          {acervoLoading && <p className="mt-3 text-sm text-zinc-500">Carregando acervo...</p>}
-          {acervoError && <p className="mt-2 text-sm text-red-400">{acervoError}</p>}
+          {acervoLoading && <p className="mt-3 text-sm text-[var(--text)] opacity-70">Carregando acervo...</p>}
+          {acervoError && <p className="mt-2 text-sm text-[var(--accent)]">{acervoError}</p>}
           {!acervoLoading && !acervoError && (() => {
             const available = acervo.filter((n) => !npcs.some((existing) => existing.id === n.id));
             if (available.length === 0) {
               return (
-                <p className="mt-3 text-sm text-zinc-500">
+                <p className="mt-3 text-sm text-[var(--text)] opacity-70">
                   {acervo.length === 0
                     ? 'Você ainda não tem NPCs no acervo.'
                     : 'Todos os NPCs do acervo já estão nesta campanha.'}
@@ -485,11 +491,11 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
                 {available.map((npc) => (
                   <li
                     key={npc.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 px-3 py-2"
+                    className="flex items-center justify-between gap-3 panel px-3 py-2"
                   >
                     <div className="min-w-0">
-                      <span className="text-sm font-medium text-zinc-50">{npc.name}</span>
-                      <span className="ml-2 text-xs text-zinc-500">
+                      <span className="text-sm font-medium text-[var(--text)]">{npc.name}</span>
+                      <span className="ml-2 text-xs text-[var(--text)] opacity-70">
                         {(npc.interactions ?? []).map((i) => i.name).join(', ')}
                       </span>
                     </div>
@@ -497,7 +503,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
                       type="button"
                       disabled={associatingId === npc.id}
                       onClick={() => handleAssociate(npc)}
-                      className="shrink-0 rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                      className="shrink-0 btn-primary text-xs disabled:opacity-50"
                     >
                       {associatingId === npc.id ? 'Associando...' : 'Associar'}
                     </button>
@@ -524,7 +530,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
               <button
                 type="button"
                 onClick={() => setCreating(true)}
-                className="rounded-lg bg-gradient-to-b from-red-500 to-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-lg shadow-red-950/40 transition hover:to-red-700"
+                className="btn-primary text-sm"
               >
                 + Adicionar NPC
               </button>
@@ -558,41 +564,50 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
           ) : selectedDetail ? (
             <>
               <NpcDetailView npc={selectedDetail} campaignId={campaignId} />
+              <div className="mt-5 border-t-[length:var(--border-w)] border-[var(--line)] pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text)] opacity-70">Ficha</p>
+                <NpcSheetPanel
+                  campaignId={campaignId}
+                  npc={selectedDetail}
+                  isMaster={isMaster}
+                  onChanged={handleSheetChanged}
+                />
+              </div>
               {isMaster && (
-                <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-zinc-800 pt-4">
+                <div className="mt-5 flex flex-wrap items-center gap-2 border-t-[length:var(--border-w)] border-[var(--line)] pt-4">
                   <button
                     type="button"
                     onClick={() => setEditing(true)}
-                    className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"
+                    className="btn-primary text-sm"
                   >
                     Editar
                   </button>
                   <button
                     type="button"
                     onClick={() => toggleVisibility(selected)}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    className={`btn-primary text-sm ${
                       selected.visible
-                        ? 'border border-green-800/60 bg-green-950/50 text-green-400'
-                        : 'border border-zinc-700 text-zinc-400 hover:bg-zinc-800'
+                        ? 'btn-primary'
+                        : 'btn-secondary'
                     }`}
                   >
                     {selected.visible ? 'Visível aos jogadores' : 'Oculto dos jogadores'}
                   </button>
                   {confirmRemove ? (
                     <span className="ml-auto flex items-center gap-2">
-                      <span className="text-xs text-red-400">Remover da campanha?</span>
+                      <span className="text-xs text-[var(--accent)]">Remover da campanha?</span>
                       <button
                         type="button"
                         onClick={() => handleRemove(selected)}
                         disabled={removing}
-                        className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                        className="btn-primary text-sm disabled:opacity-50"
                       >
                         {removing ? 'Removendo...' : 'Confirmar'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmRemove(false)}
-                        className="text-sm text-zinc-500 hover:text-zinc-300"
+                        className="btn-ghost text-sm"
                       >
                         Cancelar
                       </button>
@@ -601,7 +616,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
                     <button
                       type="button"
                       onClick={() => setConfirmRemove(true)}
-                      className="ml-auto rounded-lg border border-red-900/60 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-950/40"
+                      className="ml-auto btn-secondary text-sm text-[var(--accent)]"
                     >
                       Remover
                     </button>
@@ -610,7 +625,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
               )}
             </>
           ) : (
-            <p className="py-6 text-center text-sm text-zinc-500">Carregando...</p>
+            <p className="py-6 text-center text-sm text-[var(--text)] opacity-70">Carregando...</p>
           )}
         </Modal>
       )}
