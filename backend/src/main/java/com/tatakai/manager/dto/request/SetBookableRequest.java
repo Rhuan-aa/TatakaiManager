@@ -1,0 +1,5 @@
+package com.tatakai.manager.dto.request;
+
+import jakarta.validation.constraints.NotNull;
+
+public record SetBookableRequest(@NotNull Boolean bookable) {}

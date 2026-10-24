@@ -34,6 +34,11 @@ export async function updateNpc(npcId, body) {
   return data;
 }
 
+export async function setNpcBookable(campaignId, npcId, bookable) {
+  const { data } = await client.patch(`/campaigns/${campaignId}/npcs/${npcId}/bookable`, { bookable });
+  return data;
+}
+
 export async function setNpcVisibility(campaignId, npcId, visible) {
   const { data } = await client.patch(
     `/campaigns/${campaignId}/npcs/${npcId}/visibility`,

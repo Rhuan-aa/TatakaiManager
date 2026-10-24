@@ -161,12 +161,14 @@ class CharacterTechniqueServiceTest {
 
         assertThatThrownBy(() -> service.levelUp(sheet.getId(), tid, new LevelUpRequest(MasteryBonus.DAMAGE), player.getId()))
                 .isInstanceOf(InvalidCharacterSheetException.class);
-        service.addMasteryPoints(sheet.getId(), tid, new PointsRequest(7 + 10 + 14), master.getId());
+        service.addMasteryPoints(sheet.getId(), tid, new PointsRequest(7), master.getId());
 
         assertThatThrownBy(() -> service.levelUp(sheet.getId(), tid, new LevelUpRequest(MasteryBonus.BONUS), player.getId()))
                 .isInstanceOf(InvalidCharacterSheetException.class);
         service.levelUp(sheet.getId(), tid, new LevelUpRequest(MasteryBonus.DAMAGE), player.getId());
+        service.addMasteryPoints(sheet.getId(), tid, new PointsRequest(10), master.getId());
         service.levelUp(sheet.getId(), tid, new LevelUpRequest(MasteryBonus.COST), player.getId());
+        service.addMasteryPoints(sheet.getId(), tid, new PointsRequest(14), master.getId());
         CharacterTechniqueResponse r = only(service.levelUp(sheet.getId(), tid, new LevelUpRequest(MasteryBonus.HIT),
                 player.getId()));
 
@@ -174,6 +176,41 @@ class CharacterTechniqueServiceTest {
         assertThat(r.masteryPoints()).isZero();
         assertThat(r.bonuses()).containsExactly(MasteryBonus.DAMAGE, MasteryBonus.COST, MasteryBonus.HIT, MasteryBonus.APEX);
         assertThat(r.nextLevelCost()).isNull();
+    }
+
+    @Test
+    @DisplayName("pontos de maestria: só positivos e limitados ao custo do próximo nível")
+    void masteryPointsBounds() {
+        UUID caId = activeArt();
+        UUID tid = only(service.learn(sheet.getId(), new LearnMoveRequest(caId, MoveKind.TECHNIQUE, "Mae Geri"),
+                master.getId())).id();
+        service.train(sheet.getId(), tid, new PointsRequest(7), master.getId());
+
+        assertThatThrownBy(() -> service.addMasteryPoints(sheet.getId(), tid, new PointsRequest(-3), master.getId()))
+                .isInstanceOf(InvalidCharacterSheetException.class);
+        assertThat(only(service.addMasteryPoints(sheet.getId(), tid, new PointsRequest(50), master.getId())).masteryPoints())
+                .isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("voltar o degrau de maestria remove as bonificações acima dele e zera os pontos")
+    void setMasteryTrimsBonuses() {
+        UUID caId = activeArt();
+        UUID tid = only(service.learn(sheet.getId(), new LearnMoveRequest(caId, MoveKind.TECHNIQUE, "Mae Geri"),
+                master.getId())).id();
+        service.train(sheet.getId(), tid, new PointsRequest(7), master.getId());
+        service.addMasteryPoints(sheet.getId(), tid, new PointsRequest(7), master.getId());
+        service.levelUp(sheet.getId(), tid, new LevelUpRequest(MasteryBonus.DAMAGE), player.getId());
+        service.addMasteryPoints(sheet.getId(), tid, new PointsRequest(10), master.getId());
+        service.levelUp(sheet.getId(), tid, new LevelUpRequest(MasteryBonus.COST), player.getId());
+        service.addMasteryPoints(sheet.getId(), tid, new PointsRequest(5), master.getId());
+
+        CharacterTechniqueResponse r = only(service.setMastery(sheet.getId(), tid, new MasteryRequest(Mastery.IMPROVED),
+                master.getId()));
+        assertThat(r.bonuses()).containsExactly(MasteryBonus.DAMAGE);
+        assertThat(r.masteryPoints()).isZero();
+        assertThat(only(service.setMastery(sheet.getId(), tid, new MasteryRequest(Mastery.UNCORRECTED), master.getId()))
+                .bonuses()).isEmpty();
     }
 
     @Test

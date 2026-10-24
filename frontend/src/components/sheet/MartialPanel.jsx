@@ -19,13 +19,13 @@ const BONUSES = {
 const BONUS_LABEL = { ...Object.fromEntries([...BONUSES.TECHNIQUE, ...BONUSES.BASE]), APEX: 'Ápice' };
 const GRAD_ORDER = ['GENERIC', 'BEGINNER', 'INTERMEDIATE', 'MASTER'];
 
-function NumberAction({ label, onSubmit, min }) {
+function NumberAction({ label, onSubmit, min, max }) {
   const [v, setV] = useState('');
   return (
     <span className="flex items-center gap-1">
-      <input type="number" min={min} className="field m-0 w-16 px-1 py-0.5 text-xs" aria-label={label} value={v}
+      <input type="number" min={min} max={max} className="field m-0 w-16 px-1 py-0.5 text-xs" aria-label={label} value={v}
         onChange={(e) => setV(e.target.value)} />
-      <button type="button" className="btn-ghost px-1 text-xs" disabled={v === ''}
+      <button type="button" className="btn-ghost px-1 text-xs" disabled={v === '' || Number(v) < min || (max != null && Number(v) > max)}
         onClick={() => { onSubmit(Number(v)); setV(''); }}>{label}</button>
     </span>
   );
@@ -60,7 +60,10 @@ function MoveRow({ t, isMaster, canAct, run }) {
           </>
         )}
         {isMaster && t.state === 'IN_TRAINING' && <NumberAction label="+ treino" min={1} onSubmit={(n) => run(api.trainTechnique, t.id, n)} />}
-        {isMaster && learned && <NumberAction label="± maestria" onSubmit={(n) => run(api.addMasteryPoints, t.id, n)} />}
+        {isMaster && learned && t.nextLevelCost != null && t.masteryPoints < t.nextLevelCost && (
+          <NumberAction label="+ maestria" min={1} max={t.nextLevelCost - t.masteryPoints}
+            onSubmit={(n) => run(api.addMasteryPoints, t.id, n)} />
+        )}
         {canAct && learned && (
           <button type="button" className="btn-secondary px-2 text-xs"
             onClick={() => run(api.setTechniqueState, t.id, t.state === 'ACTIVE' ? 'STORED' : 'ACTIVE')}>

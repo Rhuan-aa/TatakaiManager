@@ -50,6 +50,15 @@ public final class MasteryRules {
         return next == null ? null : levelCost(pt, next);
     }
 
+    /** Bonificações que cabem no degrau: uma por nível acima de Padrão (as primeiras escolhidas) + Ápice em Masterizada. */
+    public static List<MasteryBonus> bonusesFor(Mastery m, List<MasteryBonus> chosen) {
+        int levels = Math.max(0, m.ordinal() - Mastery.STANDARD.ordinal());
+        List<MasteryBonus> out = new java.util.ArrayList<>(chosen.stream()
+                .filter(b -> b != MasteryBonus.APEX).limit(levels).toList());
+        if (m == Mastery.MASTERED) out.add(MasteryBonus.APEX);
+        return out;
+    }
+
     /** RN-MAE-02 / §7.7: ganho por treino = 1 + floor(modQ(TAL)/2). */
     public static int trainingGain(int tal) {
         return 1 + SheetRules.modQ(tal) / 2;

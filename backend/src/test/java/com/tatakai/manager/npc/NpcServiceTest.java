@@ -203,6 +203,21 @@ class NpcServiceTest {
     }
 
     @Test
+    @DisplayName("NPC só de combate: Mestre tira o NPC da Agenda (bookable=false)")
+    void setBookable_byMaster() {
+        Npc npc = npcOwnedByMaster();
+        Campaign campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
+        CampaignNpc assoc = CampaignNpc.builder().id(UUID.randomUUID()).campaign(campaign).npcId(npc.getId()).build();
+        when(campaignNpcRepository.findByCampaignIdAndNpcId(campaign.getId(), npc.getId())).thenReturn(Optional.of(assoc));
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), master.getId(), Role.MASTER))
+                .thenReturn(true);
+
+        assertThat(assoc.isBookable()).isTrue();
+        service.setBookable(campaign.getId(), npc.getId(), master.getId(), false);
+        assertThat(assoc.isBookable()).isFalse();
+    }
+
+    @Test
     @DisplayName("US-20: Mestre oculta NPC para os jogadores")
     void setVisibility_byMaster_hidesNpc() {
         Npc npc = npcOwnedByMaster();

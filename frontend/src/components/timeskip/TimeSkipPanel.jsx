@@ -308,7 +308,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
           <SlotGrid
             campaignId={campaignId}
             timeSkip={selected}
-            npcs={npcs}
+            npcs={npcs.filter((n) => n.bookable !== false)}
             activitiesVersion={activitiesVersion}
           />
         </div>

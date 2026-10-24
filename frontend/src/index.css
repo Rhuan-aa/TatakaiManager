@@ -151,6 +151,28 @@ h3,
 
 /* V-15: todo <select> com seta própria (gradientes seguem o tema via --text). */
 @layer base {
+  /* Campos usam a fonte do site, não a do sistema. */
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+  /* Lista aberta do <select> (nativa): cores do tema; color-scheme em :root deixa a rolagem/borda no tema. */
+  option,
+  optgroup {
+    background-color: var(--bg);
+    color: var(--text);
+  }
+  option:checked {
+    background-color: var(--accent);
+    color: #fff;
+  }
+  optgroup {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+  }
   select {
     appearance: none;
     padding-right: 2rem;
@@ -262,7 +284,7 @@ h3,
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
     color: var(--text);
-    background: var(--bg);
+    background-color: var(--bg);
     border: 2px solid var(--line);
     border-radius: 2px;
   }

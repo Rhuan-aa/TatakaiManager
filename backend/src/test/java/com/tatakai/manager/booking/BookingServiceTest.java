@@ -235,6 +235,21 @@ class BookingServiceTest {
     }
 
     @Test
+    @DisplayName("NPC só de combate (bookable=false) não aceita agendamento (400)")
+    void book_notBookableNpc_throwsInvalid() {
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        when(campaignNpcRepository.findByCampaignIdAndNpcId(campaign.getId(), aldric.getId()))
+                .thenReturn(Optional.of(CampaignNpc.builder()
+                        .campaign(campaign).npcId(aldric.getId()).visible(true).bookable(false).build()));
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 1)))
+                .isInstanceOf(InvalidBookingException.class);
+    }
+
+    @Test
     @DisplayName("US-13: não-membro não pode agendar (403)")
     void book_byNonMember_throwsAccessDenied() {
         when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), player.getId()))

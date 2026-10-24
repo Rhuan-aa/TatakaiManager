@@ -18,5 +18,6 @@ public record NpcSummaryResponse(
         boolean visible,
         boolean hasImage,
         List<NpcInteractionDto> interactions,
-        UUID sheetId // null se o NPC não tem ficha
+        UUID sheetId, // null se o NPC não tem ficha
+        boolean bookable // false = fora da Agenda (só ficha/combate)
 ) {}

@@ -100,6 +100,9 @@ public class BookingService {
         if (!association.isVisible() && role != Role.MASTER) {
             throw new NpcNotFoundException();
         }
+        if (!association.isBookable()) {
+            throw new InvalidBookingException("Este NPC não está disponível para agendamento");
+        }
 
         Npc npc = npcRepository.findById(association.getNpcId()).orElseThrow(NpcNotFoundException::new);
         NpcInteraction interaction = npc.getInteractions().stream()

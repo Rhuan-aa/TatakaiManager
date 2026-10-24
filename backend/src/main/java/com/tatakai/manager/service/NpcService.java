@@ -146,6 +146,17 @@ public class NpcService {
         return new CampaignNpcResponse(campaignId, npcId, assoc.isVisible());
     }
 
+    /** NPC só de ficha/combate: fora da Agenda da campanha. Só o Mestre. */
+    @Transactional
+    public CampaignNpcResponse setBookable(UUID campaignId, UUID npcId, UUID requesterId, boolean bookable) {
+        requireCampaignMaster(campaignId, requesterId);
+        CampaignNpc assoc = campaignNpcRepository.findByCampaignIdAndNpcId(campaignId, npcId)
+                .orElseThrow(NpcNotFoundException::new);
+        assoc.setBookable(bookable);
+        campaignNpcRepository.save(assoc);
+        return new CampaignNpcResponse(campaignId, npcId, assoc.isVisible());
+    }
+
     /**
      * Remove um NPC de uma campanha (desassocia). Só o Mestre. Limpa em cascata os
      * agendamentos daquele NPC na campanha e os logs vinculados a eles. O NPC permanece
@@ -176,7 +187,7 @@ public class NpcService {
         return npcs.stream()
                 .map(n -> new NpcSummaryResponse(n.getId(), n.getName(), true,
                         npcImageRepository.existsById(n.getId()),
-                        toInteractionDtos(n.getInteractions()), sheets.get(n.getId())))
+                        toInteractionDtos(n.getInteractions()), sheets.get(n.getId()), true))
                 .toList();
     }
 
@@ -201,7 +212,7 @@ public class NpcService {
                     Npc npc = npcById.get(a.getNpcId());
                     return new NpcSummaryResponse(a.getNpcId(), npc.getName(),
                             a.isVisible(), npcImageRepository.existsById(a.getNpcId()),
-                            toInteractionDtos(npc.getInteractions()), sheets.get(a.getNpcId()));
+                            toInteractionDtos(npc.getInteractions()), sheets.get(a.getNpcId()), a.isBookable());
                 })
                 .toList();
     }

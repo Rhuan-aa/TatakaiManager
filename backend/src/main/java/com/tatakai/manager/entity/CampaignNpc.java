@@ -38,4 +38,11 @@ public class CampaignNpc {
     @Column(nullable = false)
     @Builder.Default
     private boolean visible = true;
+
+    /** false = NPC só de ficha/combate, fora da Agenda. null (linhas antigas) = true. */
+    private Boolean bookable;
+
+    public boolean isBookable() {
+        return bookable == null || bookable;
+    }
 }

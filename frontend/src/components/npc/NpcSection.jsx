@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   getCampaignNpc,
   setNpcVisibility,
+  setNpcBookable,
   listOwnedNpcs,
   associateNpc,
   removeNpcFromCampaign,
@@ -93,6 +94,7 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
           {/* Nome sobre overlay escuro da imagem — sempre branco (independe do tema) */}
           <p className="truncate text-sm font-semibold text-white">{npc.name}</p>
           {npc.sheetId && <span className="tag mt-1">Ficha</span>}
+          {npc.bookable === false && <span className="tag mt-1">Só combate</span>}
           {npc.interactions?.length > 0 && (
             <p className="truncate text-[11px] text-white opacity-70">
               {npc.interactions.length} interaç{npc.interactions.length === 1 ? 'ão' : 'ões'}
@@ -360,6 +362,18 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
     }
   }
 
+  async function toggleBookable(npc) {
+    setError('');
+    const bookable = npc.bookable === false;
+    try {
+      await setNpcBookable(campaignId, npc.id, bookable);
+      setNpcs((prev) => prev.map((n) => (n.id === npc.id ? { ...n, bookable } : n)));
+      toast(bookable ? 'NPC disponível na Agenda.' : 'NPC só de ficha/combate (fora da Agenda).');
+    } catch (err) {
+      setError(parseApiError(err).message);
+    }
+  }
+
   async function handleRemove(npc) {
     setError('');
     setRemoving(true);
@@ -592,6 +606,14 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
                     }`}
                   >
                     {selected.visible ? 'Visível aos jogadores' : 'Oculto dos jogadores'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleBookable(selected)}
+                    aria-pressed={selected.bookable !== false}
+                    className={`${selected.bookable !== false ? 'btn-primary' : 'btn-secondary'} text-sm`}
+                  >
+                    {selected.bookable !== false ? 'Na Agenda' : 'Só ficha/combate'}
                   </button>
                   {confirmRemove ? (
                     <span className="ml-auto flex items-center gap-2">

@@ -1,6 +1,7 @@
 package com.tatakai.manager.controller;
 
 import com.tatakai.manager.dto.request.CreateNpcRequest;
+import com.tatakai.manager.dto.request.SetBookableRequest;
 import com.tatakai.manager.dto.request.SetVisibilityRequest;
 import com.tatakai.manager.dto.request.UpdateNpcRequest;
 import com.tatakai.manager.dto.response.CampaignNpcResponse;
@@ -102,6 +103,12 @@ public class NpcController {
         CampaignNpcResponse res = npcService.setVisibility(
                 campaignId, npcId, AuthenticatedUser.id(), request.visible());
         return ResponseEntity.ok(res);
+    }
+
+    @PatchMapping("/campaigns/{campaignId}/npcs/{npcId}/bookable")
+    public ResponseEntity<CampaignNpcResponse> setBookable(@PathVariable UUID campaignId, @PathVariable UUID npcId,
+                                                           @Valid @RequestBody SetBookableRequest request) {
+        return ResponseEntity.ok(npcService.setBookable(campaignId, npcId, AuthenticatedUser.id(), request.bookable()));
     }
 
     @GetMapping("/campaigns/{campaignId}/npcs")

@@ -84,7 +84,7 @@ export default function RuleSettings({ campaignId, isMaster }) {
           const busy = saving === rule.ruleKey;
           const id = `rule-${rule.ruleKey}`;
           return (
-            <li key={rule.ruleKey} className="panel flex flex-col gap-2 p-3 sm:flex-row sm:items-center">
+            <li key={rule.ruleKey} className="panel flex flex-col gap-2 p-3">
               <label htmlFor={id} className="flex flex-1 items-start gap-3">
                 <input
                   id={id}

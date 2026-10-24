@@ -213,8 +213,11 @@ public class CharacterTechniqueService {
     public SheetMartialResponse addMasteryPoints(UUID sheetId, UUID techniqueId, PointsRequest req, UUID requesterId) {
         Ctx c = master(sheetId, requesterId);
         CharacterTechnique t = learned(technique(c, techniqueId));
+        if (req.points() <= 0) throw new InvalidCharacterSheetException("Informe pontos de maestria positivos");
+        Integer cap = MasteryRules.nextLevelCost(t.getTrainingPoints(), t.getMastery());
+        if (cap == null) throw new InvalidCharacterSheetException("Este nível de maestria não acumula pontos");
         int before = t.getMasteryPoints();
-        t.setMasteryPoints(Math.max(0, before + req.points()));
+        t.setMasteryPoints(Math.min(cap, before + req.points()));
         return finish(c, "ADJUST_MASTERY_POINTS", "mastery:" + t.getName(), before, t.getMasteryPoints());
     }
 
@@ -248,6 +251,8 @@ public class CharacterTechniqueService {
         CharacterTechnique t = technique(c, techniqueId);
         Mastery before = t.getMastery();
         t.setMastery(req.mastery());
+        t.setMasteryPoints(0);
+        t.setBonuses(MasteryRules.bonusesFor(req.mastery(), t.getBonuses()));
         return finish(c, "SET_MASTERY", "mastery:" + t.getName(), before, req.mastery());
     }
 

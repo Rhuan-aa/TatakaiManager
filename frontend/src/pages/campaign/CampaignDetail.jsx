@@ -133,11 +133,11 @@ export default function CampaignDetail() {
             )}
             {activeTab === 'Catálogo' && <CatalogManager campaignId={id} isMaster={isMaster} />}
             {activeTab === 'Configurações' && isMaster && (
-              <div className="max-w-md">
+              <div>
                 <p className="caption">
                   Adicione um jogador já cadastrado pelo e-mail.
                 </p>
-                <div className="mt-4">
+                <div className="mt-4 max-w-md">
                   <InviteMemberForm campaignId={id} />
                 </div>
                 <h3 className="panel-title mt-8 text-lg">Regras opcionais</h3>
