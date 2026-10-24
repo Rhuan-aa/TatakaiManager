@@ -10,6 +10,7 @@ import { EmptyState } from '../layout/AppShell';
 import CharacterSheetForm from './CharacterSheetForm';
 import CharacterSheetView from './CharacterSheetView';
 import ActivityLogPanel from './ActivityLogPanel';
+import FightClosePanel from './FightClosePanel';
 
 const STATUS = { DRAFT: 'Rascunho', PENDING_APPROVAL: 'Aguardando aprovação', COMPLETED: 'Aprovada', IN_BUILD: 'Em construção' };
 
@@ -156,6 +157,7 @@ export default function SheetsSection({ campaignId, isMaster }) {
           <>
             <button type="button" className={tab === 'sheets' ? 'btn-primary' : 'btn-secondary'} onClick={() => setTab('sheets')}>Fichas</button>
             <button type="button" className={tab === 'log' ? 'btn-primary' : 'btn-secondary'} onClick={() => setTab('log')}>Log de atividade</button>
+            <button type="button" className={tab === 'fight' ? 'btn-primary' : 'btn-secondary'} onClick={() => setTab('fight')}>Fechar luta</button>
           </>
         )}
         {!isMaster && !mine && (
@@ -163,7 +165,9 @@ export default function SheetsSection({ campaignId, isMaster }) {
         )}
       </div>
 
-      {tab === 'log' && isMaster ? (
+      {tab === 'fight' && isMaster ? (
+        <FightClosePanel campaignId={campaignId} sheets={sheets} onDone={() => { setTab('sheets'); reload(); }} />
+      ) : tab === 'log' && isMaster ? (
         <ActivityLogPanel campaignId={campaignId} sheets={sheets} refreshKey={tick} />
       ) : sheets.length === 0 ? (
         <EmptyState title="Nenhuma ficha ainda" description="As fichas dos jogadores aparecerão aqui." />

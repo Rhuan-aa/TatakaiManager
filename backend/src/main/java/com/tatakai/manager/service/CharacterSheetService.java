@@ -62,6 +62,7 @@ import com.tatakai.manager.repository.NpcSheetVisibilityRepository;
 import com.tatakai.manager.repository.UserRepository;
 import com.tatakai.manager.repository.CharacterSheetRepository;
 import com.tatakai.manager.repository.CharacterSheetVisibilityRepository;
+import com.tatakai.manager.service.rules.ProgressionRules;
 import com.tatakai.manager.service.rules.SheetRules;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -768,7 +769,10 @@ public class CharacterSheetService {
                     s.getCurrentHp(), s.getCurrentSp(), s.getCurrentKp(), s.getOpenWounds());
             fatigue = new SheetFatigue(s.getPhysicalFatigue(), SheetRules.fatigueBand(s.getPhysicalFatigue()),
                     s.getMentalFatigue(), SheetRules.fatigueBand(s.getMentalFatigue()));
-            progress = new SheetProgress(s.getFightExperience(), s.getPendingOvercomePoints());
+            int el = s.getFightExperience();
+            progress = new SheetProgress(el, s.getPendingOvercomePoints(), ProgressionRules.keiken(el),
+                    ProgressionRules.nextKeikenAt(el), s.getSparringExperience(), ProgressionRules.sparringCap(el),
+                    s.getBarrierOvercomePoints(), ProgressionRules.instinctSlots(el));
         }
 
         List<InjuryResponse> injuries = showInj ? s.getInjuries().stream()

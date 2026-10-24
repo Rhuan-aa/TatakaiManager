@@ -96,3 +96,25 @@ export function fatigueBand(points) {
 }
 
 export const DICE_REGEX = /^\d{1,2}d(4|6|8|10|12|20|100)([+-]\d{1,3})?$/;
+
+/** Patentes Keiken (RN-PROG-08). */
+export const KEIKEN = {
+  NOVICE: 'Novato', SEASONED: 'Calejado', VETERAN: 'Veterano', HISTORIC: 'Histórico', LEGEND: 'Lenda',
+  MYTHIC: 'Mitológico', DRAGON_GOD: 'Deus-Dragão',
+};
+
+/** Classificação da luta (RN-PROG-07). */
+export const CLASSIFICATIONS = { EASY: 'Fácil', REAL: 'Real', LETHAL: 'Letal', SPARRING: 'Sparring' };
+
+/** EL mínimo de cada patente (RN-PROG-08). */
+export const KEIKEN_MIN = { NOVICE: 0, SEASONED: 5, VETERAN: 15, HISTORIC: 30, LEGEND: 55, MYTHIC: 80, DRAGON_GOD: 120 };
+
+/** Subtítulo de cada patamar de Instintos. */
+export const KEIKEN_FLAVOR = {
+  SEASONED: 'O corpo aprende o básico da sobrevivência.',
+  VETERAN: 'O lutador já sabe como entrar numa luta.',
+  HISTORIC: 'O lutador controla o ritmo do próprio corpo.',
+  LEGEND: 'O lutador consegue o que outros precisariam de anos para entender.',
+  MYTHIC: 'Ele se tornou uma história que os outros contam.',
+  DRAGON_GOD: 'O que poucos ousam ser, e que ninguém ensina.',
+};

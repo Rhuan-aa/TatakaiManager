@@ -82,6 +82,14 @@ public class CharacterSheet {
     private int mentalFatigue;
     private int fightExperience;
     private int pendingOvercomePoints;
+
+    /** EL acumulado vindo de sparring (teto por patente, não reseta). */
+    @Column(name = "sparring_experience", nullable = false, columnDefinition = "integer not null default 0")
+    private int sparringExperience;
+
+    /** Dos PS pendentes, quantos vieram de luta Real/Letal e podem cruzar Barreira. */
+    @Column(name = "barrier_overcome_points", nullable = false, columnDefinition = "integer not null default 0")
+    private int barrierOvercomePoints;
     private int money;
 
     @Version
