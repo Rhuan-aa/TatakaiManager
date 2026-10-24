@@ -148,7 +148,7 @@ function VariationsEditor({ items, onChange }) {
   );
 }
 
-function Effects({ effects }) {
+export function Effects({ effects }) {
   if (!effects?.length) return null;
   return (
     <ul className="flex flex-col gap-2">
@@ -181,7 +181,7 @@ function Requirements({ it }) {
   );
 }
 
-function Variations({ variations }) {
+export function Variations({ variations }) {
   if (!variations?.length) return null;
   return (
     <details className="border-2 border-[var(--line)] p-2">

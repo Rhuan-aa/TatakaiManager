@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { listTraits } from '../../api/catalog';
+import { Effects, Variations } from '../catalog/CatalogManager';
 import { approveSheet, updateResources } from '../../api/characterSheets';
 import { reopenBuild } from '../../api/characterBuild';
 import { parseApiError } from '../../api/parseApiError';
@@ -19,13 +21,39 @@ const Hidden = ({ name }) => (
   <p className="caption inline-block">Seção oculta{name ? `: ${name}` : ''}</p>
 );
 
-function Meter({ name, value, max, color }) {
+// V-11: clique no número edita; Enter ou sair do campo salva, Esc cancela.
+function InlineNumber({ value, label: lbl, onSave }) {
+  const [draft, setDraft] = useState(null);
+  function commit() {
+    if (draft !== '' && Number(draft) !== value) onSave(Number(draft));
+    setDraft(null);
+  }
+  if (!onSave) return <strong className="text-base">{value}</strong>;
+  if (draft == null) {
+    return (
+      <button type="button" className="text-base font-bold underline decoration-dotted" title={`Editar ${lbl}`}
+        aria-label={`${lbl} atual ${value}, clique para editar`} onClick={() => setDraft(String(value))}>
+        {value}
+      </button>
+    );
+  }
+  return (
+    <input type="number" min={0} autoFocus aria-label={`${lbl} atual`} className="field m-0 inline-block w-20 px-1 py-0 text-base"
+      value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') setDraft(null);
+        if (e.key === 'Enter') commit();
+      }} />
+  );
+}
+
+function Meter({ name, value, max, color, onSave }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
     <div>
       <div className="flex items-baseline justify-between text-xs uppercase">
         <span className="font-bold">{name}</span>
-        <span><strong className="text-base">{value}</strong> / {max}</span>
+        <span><InlineNumber value={value} label={name} onSave={onSave} /> / {max}</span>
       </div>
       <div className="meter" role="meter" aria-label={name} aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
         <div className="meter-fill" style={{ width: `${pct}%`, '--meter-color': color }} />
@@ -36,7 +64,7 @@ function Meter({ name, value, max, color }) {
 
 const FATIGUE_MAX = 12;
 // Barra de desgaste: enche de 0 a 12 (>= 12 = Colapso); cor interpola from->to pelo nível.
-function FatigueMeter({ name, points, bandKey, kind }) {
+function FatigueMeter({ name, points, bandKey, kind, onSave }) {
   const pct = Math.round((Math.min(points, FATIGUE_MAX) / FATIGUE_MAX) * 100);
   const from = `var(--fatigue-${kind}-from)`;
   const to = `var(--fatigue-${kind}-to)`;
@@ -44,7 +72,7 @@ function FatigueMeter({ name, points, bandKey, kind }) {
     <div>
       <div className="flex items-baseline justify-between text-xs uppercase">
         <span className="font-bold">{name}</span>
-        <span><strong className="text-base">{points}</strong> / {FATIGUE_MAX} · {FATIGUE_LABELS[bandKey]}</span>
+        <span><InlineNumber value={points} label={`Desgaste ${name.toLowerCase()}`} onSave={onSave} /> / {FATIGUE_MAX} · {FATIGUE_LABELS[bandKey]}</span>
       </div>
       <div className="meter relative" role="meter" aria-label={`Desgaste ${name.toLowerCase()}`}
         aria-valuenow={Math.min(points, FATIGUE_MAX)} aria-valuemin={0} aria-valuemax={FATIGUE_MAX}
@@ -105,10 +133,13 @@ function IdentityChip({ icon, title, value }) {
 
 const fmtMod = (m) => (m == null ? '—' : m > 0 ? `+${m}` : m < 0 ? `−${Math.abs(m)}` : '0');
 
+const INAPT_BANDS = ['COLLAPSE', 'INEPT', 'DEFICIENT', 'UNTRAINED'];
+
 function AttributeCard({ a, v, m, lim, bandKey }) {
+  const inapt = INAPT_BANDS.includes(bandKey);
   const pct = lim > 0 ? Math.min(100, Math.round((v / lim) * 100)) : 0;
   return (
-    <div className="panel flex flex-col gap-1 p-2">
+    <div className="panel flex flex-col gap-1 p-2" style={inapt ? { borderColor: 'var(--accent)' } : undefined}>
       <div className="flex items-start justify-between">
         <span className="text-xs font-bold uppercase">{a.label}</span>
         <span className={m == null ? 'tag-accent tag' : 'tag'} title={m == null ? 'Estado crítico (valor 0)' : 'Modificador'}
@@ -121,57 +152,54 @@ function AttributeCard({ a, v, m, lim, bandKey }) {
         <div>
           <div className="meter" style={{ height: 8, borderWidth: 2 }} role="meter" aria-label={`${a.label} em relação ao limitador`}
             aria-valuenow={v} aria-valuemin={0} aria-valuemax={lim}>
-            <div className="meter-fill" style={{ width: `${pct}%`, '--meter-color': 'var(--text)' }} />
+            <div className="meter-fill" style={{ width: `${pct}%`, '--meter-color': inapt ? 'var(--accent)' : 'var(--text)' }} />
           </div>
           <div className="mt-0.5 text-[10px] uppercase opacity-70">Lim {lim}</div>
         </div>
       )}
-      <div className="text-[10px] uppercase opacity-70">{BAND_LABELS[bandKey]}</div>
+      <div className={`text-[10px] uppercase ${inapt ? 'font-bold text-[var(--accent)]' : 'opacity-70'}`}>{BAND_LABELS[bandKey]}</div>
     </div>
   );
 }
 
-function Block({ title, children }) {
+function Block({ title, aside, children }) {
   return (
     <section className="panel p-4">
-      <h3 className="panel-title mb-3">{title}</h3>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h3 className="panel-title">{title}</h3>
+        {aside}
+      </div>
       {children}
     </section>
   );
 }
 
-function ResourceEditor({ sheet, onChange }) {
-  const toast = useToast();
-  const r = sheet.resources;
-  const [v, setV] = useState({ currentHp: r.currentHp, currentSp: r.currentSp, currentKp: r.currentKp });
-  const [busy, setBusy] = useState(false);
-
-  async function save(e) {
-    e.preventDefault();
-    setBusy(true);
+// V-13: recolhido mostra nome + tags; ao abrir, busca efeitos/variações no catálogo (versão atual, não o snapshot).
+function TraitItem({ t, campaignId }) {
+  const [full, setFull] = useState();
+  async function load(e) {
+    if (!e.currentTarget.open || full !== undefined) return;
     try {
-      onChange(await updateResources(sheet.id, {
-        currentHp: Number(v.currentHp), currentSp: Number(v.currentSp), currentKp: Number(v.currentKp),
-      }));
-      toast('Recursos atualizados.');
-    } catch (err) {
-      toast(parseApiError(err).message, 'error');
-    } finally {
-      setBusy(false);
+      setFull((await listTraits(campaignId)).find((c) => c.id === t.traitId) ?? null);
+    } catch {
+      setFull(null);
     }
   }
-  const inp = (k, lbl) => (
-    <label className="text-xs uppercase">
-      {lbl} atual
-      <input type="number" min={0} className="field mt-1 w-full" value={v[k]}
-        onChange={(e) => setV({ ...v, [k]: e.target.value })} />
-    </label>
-  );
   return (
-    <form onSubmit={save} className="mt-3 grid grid-cols-3 items-end gap-2">
-      {inp('currentHp', 'HP')}{inp('currentSp', 'SP')}{inp('currentKp', 'PQ')}
-      <button type="submit" className="btn-secondary col-span-3 sm:col-span-1" disabled={busy}>Salvar</button>
-    </form>
+    <li>
+      <details className="bubble p-2 text-sm" onToggle={load}>
+        <summary className="flex cursor-pointer flex-wrap items-center gap-2">
+          <strong className="panel-title">{t.name}</strong>
+          <span className="tag" style={rarityTagStyle(t.rarity)}>{RARITY[t.rarity]?.label ?? t.rarity}</span>
+          <span className="tag">{t.acquiredIn === 'CAMPAIGN' ? 'Campanha' : 'Construção'}</span>
+        </summary>
+        <div className="mt-2 flex flex-col gap-2">
+          {t.description && <RichText text={t.description} />}
+          {full && <Effects effects={full.effects} />}
+          {full && <Variations variations={full.variations} />}
+        </div>
+      </details>
+    </li>
   );
 }
 
@@ -225,6 +253,15 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   }
 
   const { resources: r, fatigue: f, progress: p, derived: d } = sheet;
+  const canEditResources = isOwner || isMaster;
+  const saveResource = (key) => canEditResources ? async (n) => {
+    try {
+      onChange(await updateResources(sheet.id, { [key]: n }));
+      toast('Recursos atualizados.');
+    } catch (err) {
+      toast(parseApiError(err).message, 'error');
+    }
+  } : undefined;
 
   return (
     <div className="page-gutter flex flex-col">
@@ -234,7 +271,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         {!isNpc && <span className="tag-accent tag">{STATUS[sheet.buildStatus]}</span>}
         {d?.criticalState && <span className="tag">Estado crítico</span>}
       </div>
-      {!isNpc && <p className="text-sm">Jogador: {sheet.ownerName}</p>}
+      {!isNpc && <p className="caption self-start">Jogador · {sheet.ownerName}</p>}
       <div className="flex flex-wrap gap-2" aria-label="Identidade">
         <IdentityChip icon={ICON.ruler} title="Altura" value={`${sheet.heightM} m`} />
         <IdentityChip icon={<BodyIcon type={sheet.bodyType} />} title="Tipo corporal" value={label(BODY_TYPES, sheet.bodyType)} />
@@ -278,9 +315,9 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         {!r ? <Hidden name="recursos" /> : (
           <>
             <div className="flex flex-col gap-3">
-              <Meter name="HP" value={r.currentHp} max={r.effectiveHpMax} color="var(--meter-hp)" />
-              <Meter name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" />
-              <Meter name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" />
+              <Meter name="HP" value={r.currentHp} max={r.effectiveHpMax} color="var(--meter-hp)" onSave={saveResource('currentHp')} />
+              <Meter name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" onSave={saveResource('currentSp')} />
+              <Meter name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" onSave={saveResource('currentKp')} />
             </div>
             <p className="mt-3 text-sm">
               Feridas abertas: <strong>{r.openWounds}</strong>
@@ -288,8 +325,8 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             </p>
             {f && (
               <div className="mt-3 flex flex-col gap-2">
-                <FatigueMeter name="Físico" points={f.physical} bandKey={f.physicalBand} kind="physical" />
-                <FatigueMeter name="Mental" points={f.mental} bandKey={f.mentalBand} kind="mental" />
+                <FatigueMeter name="Físico" points={f.physical} bandKey={f.physicalBand} kind="physical" onSave={saveResource('physicalFatigue')} />
+                <FatigueMeter name="Mental" points={f.mental} bandKey={f.mentalBand} kind="mental" onSave={saveResource('mentalFatigue')} />
               </div>
             )}
             {p && (
@@ -297,9 +334,6 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
                 <ProgressChip title="EL" value={p.fightExperience} color="var(--chip-el)" />
                 <ProgressChip title="PS pendentes" value={p.pendingOvercomePoints} color="var(--chip-ps)" />
               </div>
-            )}
-            {(isOwner || isMaster) && (
-              <ResourceEditor key={`${sheet.version}`} sheet={sheet} onChange={onChange} />
             )}
           </>
         )}
@@ -327,16 +361,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
           <div className="flex flex-col gap-3">
             {sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
               <ul className="flex flex-col gap-2">
-                {sheet.traits.map((t) => (
-                  <li key={t.id} className="bubble p-2 text-sm">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <strong>{t.name}</strong>
-                      <span className="tag" style={rarityTagStyle(t.rarity)}>{RARITY[t.rarity]?.label ?? t.rarity}</span>
-                      <span className="tag">{t.acquiredIn === 'CAMPAIGN' ? 'Campanha' : 'Construção'}</span>
-                    </div>
-                    {t.description && <RichText className="mt-1" text={t.description} />}
-                  </li>
-                ))}
+                {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} />)}
               </ul>
             )}
             {sheet.clans.map((c) => (
@@ -353,20 +378,19 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         )}
       </Block>
 
-      <Block title="Inventário">
-        {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : (
-          <>
-            <p className="mb-2 text-sm">Dinheiro: <strong>{sheet.money}</strong></p>
-            {sheet.inventory.length === 0 ? <p className="text-sm">Inventário vazio.</p> : (
-              <ul className="flex flex-col gap-1 text-sm">
-                {sheet.inventory.map((i) => (
-                  <li key={i.id}>
-                    {i.quantity}× <strong>{i.name}</strong>{i.description && ` — ${i.description}`}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+      <Block title="Inventário" aside={sheet.money != null && (
+        <span className="tag" style={{ borderColor: 'var(--chip-el)', color: 'var(--chip-el)' }}>Diárias {sheet.money}</span>
+      )}>
+        {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : sheet.inventory.length === 0 ? (
+          <p className="text-sm">Inventário vazio.</p>
+        ) : (
+          <ul className="flex flex-col gap-1 text-sm">
+            {sheet.inventory.map((i) => (
+              <li key={i.id}>
+                {i.quantity}× <strong>{i.name}</strong>{i.description && ` — ${i.description}`}
+              </li>
+            ))}
+          </ul>
         )}
       </Block>
 

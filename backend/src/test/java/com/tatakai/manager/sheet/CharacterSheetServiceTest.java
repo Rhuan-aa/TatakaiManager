@@ -351,7 +351,7 @@ class CharacterSheetServiceTest {
         sheet.setCurrentHp(5);
 
         CharacterSheetResponse r = service.updateResources(sheet.getId(),
-                new UpdateResourcesRequest(500, 3, 999, "descanso"), playerUser.getId());
+                new UpdateResourcesRequest(500, 3, 999, null, null, "descanso"), playerUser.getId());
 
         assertThat(r.resources().currentHp()).isEqualTo(22);
         assertThat(r.resources().currentSp()).isEqualTo(3);
@@ -369,19 +369,31 @@ class CharacterSheetServiceTest {
                 .type(InjuryType.CUTTING).severity(InjurySeverity.MINOR).hpMaxReduction(2).build());
 
         CharacterSheetResponse r = service.updateResources(sheet.getId(),
-                new UpdateResourcesRequest(100, null, null, null), playerUser.getId());
+                new UpdateResourcesRequest(100, null, null, null, null, null), playerUser.getId());
 
         assertThat(r.resources().currentHp()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("dono define o desgaste físico e mental; valores são registrados no log")
+    void updateResources_setsFatigue() {
+        CharacterSheetResponse r = service.updateResources(sheet.getId(),
+                new UpdateResourcesRequest(null, null, null, 4, 7, null), playerUser.getId());
+
+        assertThat(r.fatigue().physical()).isEqualTo(4);
+        assertThat(r.fatigue().mental()).isEqualTo(7);
+        verify(activityLog).record(eq(sheet), eq(playerUser.getId()), eq(ActorRole.PLAYER),
+                eq(ActivityCategory.RESOURCE), eq("UPDATE_RESOURCE"), eq("physicalFatigue"), any(), eq(4), any(), any());
     }
 
     @Test
     @DisplayName("outro jogador não atualiza recursos (403); Mestre pode")
     void updateResources_access() {
         assertThatThrownBy(() -> service.updateResources(sheet.getId(),
-                new UpdateResourcesRequest(1, null, null, null), otherUser.getId()))
+                new UpdateResourcesRequest(1, null, null, null, null, null), otherUser.getId()))
                 .isInstanceOf(AccessDeniedException.class);
 
-        service.updateResources(sheet.getId(), new UpdateResourcesRequest(1, null, null, null),
+        service.updateResources(sheet.getId(), new UpdateResourcesRequest(1, null, null, null, null, null),
                 masterUser.getId());
         verify(activityLog).record(eq(sheet), eq(masterUser.getId()), eq(ActorRole.MASTER),
                 eq(ActivityCategory.RESOURCE), eq("UPDATE_RESOURCE"), eq("HP"), any(), any(), any(), any());

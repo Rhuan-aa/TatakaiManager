@@ -257,6 +257,14 @@ public class CharacterSheetService {
             logResource(sheet, requesterId, role, "KP", sheet.getCurrentKp(), v, req.reason());
             sheet.setCurrentKp(v);
         }
+        if (req.physicalFatigue() != null) {
+            logResource(sheet, requesterId, role, "physicalFatigue", sheet.getPhysicalFatigue(), req.physicalFatigue(), req.reason());
+            sheet.setPhysicalFatigue(req.physicalFatigue());
+        }
+        if (req.mentalFatigue() != null) {
+            logResource(sheet, requesterId, role, "mentalFatigue", sheet.getMentalFatigue(), req.mentalFatigue(), req.reason());
+            sheet.setMentalFatigue(req.mentalFatigue());
+        }
         CharacterSheet saved = sheetRepository.save(sheet);
         publish(SheetEvent.SHEET_UPDATED, saved, ActivityCategory.RESOURCE, "UPDATE_RESOURCES", a.actorName());
         return toResponse(saved, true, Set.of());

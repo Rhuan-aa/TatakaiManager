@@ -149,7 +149,35 @@ h3,
   background-color: #52525b; /* zinc-600 */
 }
 
+/* V-15: todo <select> com seta própria (gradientes seguem o tema via --text). */
+@layer base {
+  select {
+    appearance: none;
+    padding-right: 2rem;
+    color: var(--text);
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--text) 50%),
+      linear-gradient(135deg, var(--text) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+    border: var(--border-w) solid var(--line);
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  select:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 1px;
+  }
+}
+
 @layer components {
+  select.field {
+    border-width: var(--border-w);
+    padding-right: 2rem;
+  }
+
   .panel,
   .surface {
     border: var(--border-w) solid var(--line);

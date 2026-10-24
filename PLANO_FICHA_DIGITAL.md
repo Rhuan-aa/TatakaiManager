@@ -1075,7 +1075,7 @@ Ordem sugerida: primeiro os itens visuais rápidos (14.3), depois a unificação
   interações (com custo em pontos de ócio), conhecimentos, specs, visibilidade na campanha. Avaliar se os cards da aba NPCs
   passam a abrir essa ficha completa.
 
-### 14.3 Ajustes visuais da ficha e do site
+### 14.3 Ajustes visuais da ficha e do site — ✅ feito (24/10/2026)
 | # | Pedido |
 |---|---|
 | V-9 | Nome do jogador na ficha com tratamento visual (hoje texto cru "Jogador: …"). |
