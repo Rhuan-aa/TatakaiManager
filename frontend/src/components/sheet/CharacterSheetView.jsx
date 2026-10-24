@@ -12,7 +12,9 @@ import RollBox from './RollBox';
 import ActivityLogPanel from './ActivityLogPanel';
 import MartialPanel from './MartialPanel';
 import TrainingPanel from './TrainingPanel';
-import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, label } from './sheetRules';
+import ProgressPanel from './ProgressPanel';
+import NotebookPanel from './NotebookPanel';
+import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, KEIKEN, label } from './sheetRules';
 import { RARITY, rarityTagStyle } from '../ui/rarity';
 import RichText from '../ui/RichText';
 
@@ -108,6 +110,7 @@ const ICON = {
   ruler: <svg {...svgProps}><rect x="3" y="8" width="18" height="8" /><path d="M7 8v3M11 8v4M15 8v3M19 8v4" /></svg>,
   scale: <svg {...svgProps}><path d="M12 4v16M6 20h12M5 7h14M5 7l-3 7a3 3 0 006 0zM19 7l-3 7a3 3 0 006 0z" /></svg>,
   hand: <svg {...svgProps}><path d="M8 13V5a1.5 1.5 0 013 0v6M11 11V4a1.5 1.5 0 013 0v7M14 11V6a1.5 1.5 0 013 0v8c0 4-2 6-5 6-3 0-4-2-6-5l-1-2a1.5 1.5 0 012-2l2 2" /></svg>,
+  belt: <svg {...svgProps}><path d="M2 10h20v4H2zM12 14l-3 7M12 14l3 7" /><rect x="10" y="9" width="4" height="6" /></svg>,
   pack: <svg {...svgProps}><path d="M6 8a6 6 0 0112 0v12H6zM9 14h6" /></svg>,
 };
 // Silhueta varia pela largura do tronco: ecto estreito, meso médio, endo largo.
@@ -121,9 +124,9 @@ function BodyIcon({ type }) {
   );
 }
 
-function IdentityChip({ icon, title, value }) {
+function IdentityChip({ icon, title, value, color }) {
   return (
-    <div className="panel flex items-center gap-2 px-3 py-1.5">
+    <div className="panel flex items-center gap-2 px-3 py-1.5" style={color ? { borderColor: color } : undefined}>
       {icon}
       <div className="leading-tight">
         <div className="text-[10px] uppercase opacity-70">{title}</div>
@@ -165,14 +168,21 @@ function AttributeCard({ a, v, m, lim, bandKey }) {
   );
 }
 
-function Block({ title, aside, children }) {
+function Block({ title, aside, collapsible, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(!collapsible || defaultOpen);
   return (
     <section className="panel p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h3 className="panel-title">{title}</h3>
+      <div className={`flex flex-wrap items-center gap-2 ${open ? 'mb-3' : ''}`}>
+        {collapsible ? (
+          <button type="button" className="flex flex-1 items-center gap-2 text-left" aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}>
+            <h3 className="panel-title flex-1">{title}</h3>
+            <span aria-hidden="true" className="text-xs">{open ? '▲' : '▼'}</span>
+          </button>
+        ) : <h3 className="panel-title">{title}</h3>}
         {aside}
       </div>
-      {children}
+      {open && children}
     </section>
   );
 }
@@ -281,6 +291,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         <IdentityChip icon={ICON.hand} title="Dominância" value={label(DOMINANCES, sheet.dominance)} />
         <IdentityChip icon={ICON.scale} title="Peso" value={`${sheet.weightKg} kg`} />
         {d && <IdentityChip icon={ICON.pack} title="Carga" value={`${d.carryKg} kg`} />}
+        {p && <IdentityChip icon={ICON.belt} title="Keiken" value={KEIKEN[p.keiken]} color="var(--keiken)" />}
       </div>
 
       {isOwner && draft && (
@@ -342,6 +353,13 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         )}
       </Block>
 
+      {(isOwner || isMaster) && !isNpc && p && (
+        <Block title="Progresso">
+          <ProgressPanel sheetId={sheet.id} progress={p} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
+            refreshKey={refreshKey + sheet.version} />
+        </Block>
+      )}
+
       <Block title="Ferimentos">
         {!sheet.injuries ? <Hidden name="ferimentos" /> : sheet.injuries.length === 0 ? (
           <p className="text-sm">Nenhum ferimento.</p>
@@ -389,7 +407,13 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
       )}
 
       {(isOwner || isMaster) && !isNpc && (
-        <Block title="Treinos">
+        <Block title="Caderno Marcial e Forja">
+          <NotebookPanel sheetId={sheet.id} isMaster={isMaster} isOwner={isOwner} refreshKey={refreshKey + sheet.version} />
+        </Block>
+      )}
+
+      {(isOwner || isMaster) && !isNpc && (
+        <Block title="Treinos" collapsible defaultOpen>
           <TrainingPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
         </Block>
       )}
@@ -415,7 +439,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
           <Block title="Rolagem de dados">
             <RollBox sheetId={sheet.id} />
           </Block>
-          <Block title="Atividade da ficha">
+          <Block title="Atividade da ficha" collapsible>
             <ActivityLogPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
           </Block>
         </>

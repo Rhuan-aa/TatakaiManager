@@ -48,6 +48,15 @@
   --stat-assembly: #f87171;     /* Montagem: vermelho */
   --stat-cost: #c08457;         /* Gasto de SP: marrom */
   --stat-range: #4ade80;        /* Alcance: verde */
+
+  /* Degraus de maestria e patente Keiken */
+  --mastery-sketch: #b91c1c;       /* Esboço: vermelho escuro */
+  --mastery-uncorrected: #f87171;  /* Não Corrigida: vermelho */
+  --mastery-standard: #a1a1aa;     /* Padrão: cinza */
+  --mastery-improved: #4ade80;     /* Melhorada: verde */
+  --mastery-specialized: #f472b6;  /* Especializada: rosa */
+  --mastery-mastered: #fb923c;     /* Masterizada: laranja */
+  --keiken: #fb923c;               /* Keiken: laranja */
 }
 
 body {
@@ -99,6 +108,14 @@ body {
   --stat-assembly: #b91c1c;
   --stat-cost: #7c4a21;
   --stat-range: #15803d;
+
+  --mastery-sketch: #7f1d1d;
+  --mastery-uncorrected: #dc2626;
+  --mastery-standard: #52525b;
+  --mastery-improved: #15803d;
+  --mastery-specialized: #be185d;
+  --mastery-mastered: #c2410c;
+  --keiken: #c2410c;
 
   --color-zinc-950: #fafafa;
   --color-zinc-900: #f4f4f5;
@@ -326,6 +343,24 @@ h3,
     border-radius: 14px;
     box-shadow: 4px 4px 0 var(--line);
   }
+  /* Texto pequeno padrão (dicas, rótulos e metadados): 10px, negrito, caixa-alta. */
+  .text-fine {
+    font-size: 10px;
+    line-height: 1.5;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Cartão arredondado sem o rabicho de balão (itens dentro da ficha). */
+  .card-round {
+    padding: 0.5rem 0.75rem;
+    background: var(--panel-bg);
+    color: var(--text);
+    border: var(--border-w) solid var(--line);
+    border-radius: 14px;
+  }
+
   .bubble::after {
     content: '';
     position: absolute;

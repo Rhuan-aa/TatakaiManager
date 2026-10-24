@@ -39,7 +39,7 @@ export default function TrainingPanel({ sheetId, refreshKey }) {
             <span>+{e.gain}</span>
             {!e.full && <span className="tag">Parcial</span>}
             <span className={e.status === 'PENDING' ? 'tag-accent tag' : 'tag'}>{STATUS[e.status]}</span>
-            {e.note && <span className="text-xs opacity-70">{e.note}</span>}
+            {e.note && <span className="text-fine opacity-70">{e.note}</span>}
           </li>
         ))}
       </ul>
