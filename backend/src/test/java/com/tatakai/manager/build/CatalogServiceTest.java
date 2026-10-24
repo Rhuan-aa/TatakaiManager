@@ -15,6 +15,13 @@ import com.tatakai.manager.exception.AccessDeniedException;
 import com.tatakai.manager.repository.CampaignMemberRepository;
 import com.tatakai.manager.repository.ClanRepository;
 import com.tatakai.manager.repository.MartialArtRepository;
+import com.tatakai.manager.repository.InstinctRepository;
+import com.tatakai.manager.dto.request.FightMilestonePayload;
+import com.tatakai.manager.dto.request.InstinctPayload;
+import com.tatakai.manager.entity.Instinct;
+import com.tatakai.manager.entity.KeikenRank;
+import com.tatakai.manager.entity.MilestoneCategory;
+import com.tatakai.manager.repository.FightMilestoneRepository;
 import com.tatakai.manager.repository.TraitDefinitionRepository;
 import com.tatakai.manager.repository.UserRepository;
 import com.tatakai.manager.service.CatalogService;
@@ -33,6 +40,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -48,6 +56,8 @@ class CatalogServiceTest {
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private UserRepository userRepository;
     @Mock private MartialArtRepository artRepository;
+    @Mock private InstinctRepository instinctRepository;
+    @Mock private FightMilestoneRepository milestoneRepository;
 
     private CatalogService service;
     private final UUID cid = UUID.randomUUID();
@@ -59,7 +69,7 @@ class CatalogServiceTest {
     @BeforeEach
     void setUp() {
         service = new CatalogService(traitRepository, clanRepository, memberRepository, userRepository,
-                " Admin@Tatakai.com , outro@x.com ,", artRepository);
+                " Admin@Tatakai.com , outro@x.com ,", artRepository, instinctRepository, milestoneRepository);
         lenient().when(userRepository.findById(editor)).thenReturn(Optional.of(
                 User.builder().id(editor).email("  ADMIN@tatakai.COM ").build()));
         lenient().when(userRepository.findById(outsider)).thenReturn(Optional.of(
@@ -100,7 +110,7 @@ class CatalogServiceTest {
         assertThatThrownBy(() -> service.createClan(null,
                 new ClanPayload("Uchiha", 1, null, null, null), outsider))
                 .isInstanceOf(AccessDeniedException.class);
-        assertThatThrownBy(() -> service.importCatalog(null, new CatalogImportRequest(List.of(), List.of(), List.of()), outsider))
+        assertThatThrownBy(() -> service.importCatalog(null, new CatalogImportRequest(List.of(), List.of(), List.of(), null, null), outsider))
                 .isInstanceOf(AccessDeniedException.class);
         verify(traitRepository, never()).save(any());
         verify(clanRepository, never()).save(any());
@@ -109,7 +119,7 @@ class CatalogServiceTest {
     @Test
     @DisplayName("sem lista de editores configurada ninguém edita o global")
     void emptyEditors() {
-        CatalogService s = new CatalogService(traitRepository, clanRepository, memberRepository, userRepository, "", artRepository);
+        CatalogService s = new CatalogService(traitRepository, clanRepository, memberRepository, userRepository, "", artRepository, instinctRepository, milestoneRepository);
         assertThat(s.permissions(editor).globalEditor()).isFalse();
     }
 
@@ -189,7 +199,7 @@ class CatalogServiceTest {
 
         CatalogImportResponse r = service.importCatalog(null, new CatalogImportRequest(
                 List.of(tp("A", TraitRarity.RARE, 1), tp("B", TraitRarity.RARE, 2), tp("A", TraitRarity.COMMON, 3)),
-                List.of(new ClanPayload("Cla A", 1, "x", null, null), new ClanPayload("Cla B", 2, null, null, null)), null),
+                List.of(new ClanPayload("Cla A", 1, "x", null, null), new ClanPayload("Cla B", 2, null, null, null)), null, null, null),
                 editor);
 
         assertThat(r.traits()).isEqualTo(3);
@@ -203,5 +213,26 @@ class CatalogServiceTest {
         assertThat(cap.getAllValues().get(2).getId()).isNotEqualTo(existing.getId());
         verify(clanRepository, times(2)).save(any(Clan.class));
         assertThat(existingClan.getDescription()).isEqualTo("x");
+    }
+
+    @Test
+    @DisplayName("F4b — Instintos e Marcos: importação por nome e item da campanha substitui o global")
+    void instinctsAndMilestones() {
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(cid, master, Role.MASTER)).thenReturn(true);
+        CatalogImportResponse r = service.importCatalog(cid, new CatalogImportRequest(null, null, null,
+                List.of(new InstinctPayload("Aquecido", KeikenRank.SEASONED, "+2 Adrenalina inicial")),
+                List.of(new FightMilestonePayload("Beira do Abismo", MilestoneCategory.DISADVANTAGE, null,
+                        "CRITICAL_STATE", null, null, null))), master);
+        assertThat(r.instincts()).isEqualTo(1);
+        assertThat(r.milestones()).isEqualTo(1);
+        verify(instinctRepository).save(argThat(i -> cid.equals(i.getCampaignId()) && i.getVersion() == 1));
+
+        Instinct global = Instinct.builder().id(UUID.randomUUID()).name("Aquecido").rank(KeikenRank.NOVICE).build();
+        Instinct other = Instinct.builder().id(UUID.randomUUID()).name("Outro").rank(KeikenRank.NOVICE).build();
+        Instinct own = Instinct.builder().id(UUID.randomUUID()).campaignId(cid).name("Aquecido")
+                .rank(KeikenRank.SEASONED).build();
+        when(instinctRepository.findByCampaignIdIsNull()).thenReturn(List.of(global, other));
+        when(instinctRepository.findByCampaignId(cid)).thenReturn(List.of(own));
+        assertThat(service.instinctsFor(cid)).containsExactlyInAnyOrder(own, other);
     }
 }

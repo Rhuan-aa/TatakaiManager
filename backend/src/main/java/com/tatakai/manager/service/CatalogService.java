@@ -2,6 +2,14 @@ package com.tatakai.manager.service;
 
 import com.tatakai.manager.dto.request.CatalogImportRequest;
 import com.tatakai.manager.dto.request.ClanPayload;
+import com.tatakai.manager.dto.request.FightMilestonePayload;
+import com.tatakai.manager.dto.request.InstinctPayload;
+import com.tatakai.manager.dto.response.FightMilestoneResponse;
+import com.tatakai.manager.dto.response.InstinctResponse;
+import com.tatakai.manager.entity.FightMilestone;
+import com.tatakai.manager.entity.Instinct;
+import com.tatakai.manager.repository.FightMilestoneRepository;
+import com.tatakai.manager.repository.InstinctRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tatakai.manager.dto.request.AssemblyCheckRequest;
@@ -61,6 +69,8 @@ public class CatalogService {
     private final UserRepository userRepository;
     private final Set<String> editors;
     private final MartialArtRepository artRepository;
+    private final InstinctRepository instinctRepository;
+    private final FightMilestoneRepository milestoneRepository;
     private List<AssemblyModule> modules;
 
     public CatalogService(TraitDefinitionRepository traitRepository,
@@ -68,8 +78,12 @@ public class CatalogService {
                           CampaignMemberRepository memberRepository,
                           UserRepository userRepository,
                           @Value("${app.catalog.editors:}") String editors,
-                          MartialArtRepository artRepository) {
+                          MartialArtRepository artRepository,
+                          InstinctRepository instinctRepository,
+                          FightMilestoneRepository milestoneRepository) {
         this.artRepository = artRepository;
+        this.instinctRepository = instinctRepository;
+        this.milestoneRepository = milestoneRepository;
         this.traitRepository = traitRepository;
         this.clanRepository = clanRepository;
         this.memberRepository = memberRepository;
@@ -296,6 +310,45 @@ public class CatalogService {
         return memberRepository.existsByCampaignIdAndUserIdAndRole(campaignId, userId, Role.MASTER);
     }
 
+    // ---------- Instintos e Marcos (F4b) ----------
+
+    public List<InstinctResponse> listInstincts(UUID campaignIdOrNull, UUID requesterId) {
+        if (campaignIdOrNull != null) requireMember(campaignIdOrNull, requesterId);
+        return instinctsFor(campaignIdOrNull).stream()
+                .sorted(Comparator.comparing(Instinct::getRank).thenComparing(Instinct::getName))
+                .map(i -> new InstinctResponse(i.getId(), i.getCampaignId(), i.getName(), i.getRank(), i.getDescription()))
+                .toList();
+    }
+
+    public List<FightMilestoneResponse> listMilestones(UUID campaignIdOrNull, UUID requesterId) {
+        if (campaignIdOrNull != null) requireMember(campaignIdOrNull, requesterId);
+        return milestonesFor(campaignIdOrNull).stream()
+                .sorted(Comparator.comparing(FightMilestone::getCategory).thenComparing(FightMilestone::getName))
+                .map(m -> new FightMilestoneResponse(m.getId(), m.getCampaignId(), m.getName(), m.getCategory(),
+                        m.getDescription(), m.getAutoTrigger(), m.isGrantsArtPoint(), m.isSeriousOnly(),
+                        m.getMinOtherDisadvantage()))
+                .toList();
+    }
+
+    /** Globais + da campanha; item da campanha com o mesmo nome substitui o global. */
+    public List<Instinct> instinctsFor(UUID campaignIdOrNull) {
+        List<Instinct> global = instinctRepository.findByCampaignIdIsNull();
+        if (campaignIdOrNull == null) return global;
+        List<Instinct> own = instinctRepository.findByCampaignId(campaignIdOrNull);
+        List<Instinct> result = new ArrayList<>(own);
+        global.stream().filter(g -> own.stream().noneMatch(o -> o.getName().equals(g.getName()))).forEach(result::add);
+        return result;
+    }
+
+    public List<FightMilestone> milestonesFor(UUID campaignIdOrNull) {
+        List<FightMilestone> global = milestoneRepository.findByCampaignIdIsNull();
+        if (campaignIdOrNull == null) return global;
+        List<FightMilestone> own = milestoneRepository.findByCampaignId(campaignIdOrNull);
+        List<FightMilestone> result = new ArrayList<>(own);
+        global.stream().filter(g -> own.stream().noneMatch(o -> o.getName().equals(g.getName()))).forEach(result::add);
+        return result;
+    }
+
     // ---------- import ----------
 
     public CatalogImportResponse importCatalog(UUID campaignIdOrNull, CatalogImportRequest req, UUID requesterId) {
@@ -354,7 +407,46 @@ public class CatalogService {
                 arts++;
             }
         }
-        return new CatalogImportResponse(traits, clans, arts);
+        int instincts = 0;
+        if (req.instincts() != null) {
+            List<Instinct> existing = new ArrayList<>(campaignIdOrNull == null
+                    ? instinctRepository.findByCampaignIdIsNull() : instinctRepository.findByCampaignId(campaignIdOrNull));
+            for (InstinctPayload p : req.instincts()) {
+                Instinct i = existing.stream().filter(e -> e.getName().equals(p.name())).findFirst().orElse(null);
+                if (i == null) {
+                    i = Instinct.builder().id(UUID.randomUUID()).campaignId(campaignIdOrNull).build();
+                    existing.add(i);
+                }
+                i.setName(p.name());
+                i.setRank(p.rank());
+                i.setDescription(p.description());
+                i.setVersion(i.getVersion() + 1);
+                i.setUpdatedAt(Instant.now());
+                instinctRepository.save(i);
+                instincts++;
+            }
+        }
+        int milestones = 0;
+        if (req.milestones() != null) {
+            List<FightMilestone> existing = new ArrayList<>(campaignIdOrNull == null
+                    ? milestoneRepository.findByCampaignIdIsNull() : milestoneRepository.findByCampaignId(campaignIdOrNull));
+            for (FightMilestonePayload p : req.milestones()) {
+                FightMilestone m = existing.stream().filter(e -> e.getName().equals(p.name())).findFirst().orElse(null);
+                if (m == null) {
+                    m = FightMilestone.builder().id(UUID.randomUUID()).campaignId(campaignIdOrNull).build();
+                    existing.add(m);
+                }
+                m.setName(p.name());
+                m.setCategory(p.category());
+                m.setDescription(p.description());
+                apply(m, p);
+                m.setVersion(m.getVersion() + 1);
+                m.setUpdatedAt(Instant.now());
+                milestoneRepository.save(m);
+                milestones++;
+            }
+        }
+        return new CatalogImportResponse(traits, clans, arts, instincts, milestones);
     }
 
     // ---------- visão da campanha ----------
@@ -442,6 +534,14 @@ public class CatalogService {
         t.setUpdatedAt(Instant.now());
     }
 
+    /** Campos de um Marco vindos da importação (também usado pelo seed). */
+    public static void apply(FightMilestone m, FightMilestonePayload p) {
+        m.setAutoTrigger(p.autoTrigger());
+        m.setGrantsArtPoint(Boolean.TRUE.equals(p.grantsArtPoint()));
+        m.setSeriousOnly(Boolean.TRUE.equals(p.seriousOnly()));
+        m.setMinOtherDisadvantage(p.minOtherDisadvantage());
+    }
+
     private static void apply(Clan c, ClanPayload p) {
         c.setName(p.name());
         c.setRollNumber(p.rollNumber());
@@ -477,6 +577,7 @@ public class CatalogService {
         a.setPassives(p.passives());
         a.setBases(p.bases() == null ? new ArrayList<>() : p.bases());
         a.setTechniques(p.techniques() == null ? new ArrayList<>() : p.techniques());
+        a.setBorrowed(p.borrowed() == null ? new ArrayList<>() : p.borrowed());
         a.setVersion(a.getVersion() + 1);
         a.setUpdatedAt(Instant.now());
     }
@@ -496,6 +597,7 @@ public class CatalogService {
                 a.getTechniques() == null ? List.of()
                         : a.getTechniques().stream().map(t -> AssemblyRules.checkTechnique(a.getCategory(), t)).toList(),
                 a.getBases() == null ? List.of()
-                        : a.getBases().stream().map(b -> AssemblyRules.checkBase(a.getCategory(), b)).toList());
+                        : a.getBases().stream().map(b -> AssemblyRules.checkBase(a.getCategory(), b)).toList(),
+                a.getBorrowed() == null ? List.of() : a.getBorrowed());
     }
 }

@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Ápice",
+    "category": "PRESSURE",
+    "description": "A Adrenalina do lutador chegou a 10 pontos."
+  },
+  {
+    "name": "Beira do Abismo",
+    "category": "PRESSURE",
+    "description": "O lutador foi reduzido a Estado Crítico e continuou lutando.",
+    "autoTrigger": "CRITICAL_STATE"
+  },
+  {
+    "name": "Marca na Carne",
+    "category": "PRESSURE",
+    "description": "O lutador recebeu Membro Inútil ou desmembramento e continuou lutando."
+  },
+  {
+    "name": "Assinatura",
+    "category": "PRESSURE",
+    "description": "A luta foi decidida por uma técnica Masterizada do lutador. Além do PS, concede 1 ponto de treino à arte dessa técnica.",
+    "grantsArtPoint": true
+  },
+  {
+    "name": "Cercado",
+    "category": "PRESSURE",
+    "description": "O lutador enfrentou ao menos 3 oponentes ao mesmo tempo e foi superado em número (os oponentes ativos eram pelo menos o dobro do lutador e de seus aliados presentes), por 3 rodadas ou mais, sem que algum deles fosse claramente incapaz de ameaçá-lo."
+  },
+  {
+    "name": "Contra a Corrente",
+    "category": "DISADVANTAGE",
+    "description": "O oponente tinha graduação superior à do lutador na arte principal usada por este na luta."
+  },
+  {
+    "name": "Força Bruta",
+    "category": "DISADVANTAGE",
+    "description": "O lutador era inferior ao oponente nos três modificadores físicos: Força, Destreza e Constituição."
+  },
+  {
+    "name": "Sangue e Suor",
+    "category": "DISADVANTAGE",
+    "description": "O oponente tinha modificador de Talento superior ao do lutador."
+  },
+  {
+    "name": "Elo Fraco",
+    "category": "DISADVANTAGE",
+    "description": "Em uma luta Real ou Letal, o lutador fez ao menos um teste decisivo com um atributo na Faixa de Inaptidão.",
+    "seriousOnly": true
+  },
+  {
+    "name": "Zebra",
+    "category": "DISADVANTAGE",
+    "description": "O lutador venceu uma luta em que atingiu ao menos dois outros Marcos de Desvantagem.",
+    "minOtherDisadvantage": 2
+  }
+]

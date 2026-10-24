@@ -6,6 +6,7 @@ import {
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 import { ATTRS } from '../sheet/sheetRules';
+import ProgressionCatalog from './ProgressionCatalog';
 import ArtsPanel from './ArtsPanel';
 import RichText from '../ui/RichText';
 import { rarityTagStyle, compareTraits, TRAIT_CATEGORIES } from '../ui/rarity';
@@ -345,18 +346,19 @@ function ImportPanel({ campaignId, canGlobal, canCampaign, onDone }) {
     if (!file) return;
     try {
       const json = JSON.parse(await file.text());
-      const data = Array.isArray(json) ? { traits: json, clans: [], arts: [] } : { traits: json.traits ?? [], clans: json.clans ?? [], arts: json.arts ?? [] };
+      const data = Array.isArray(json) ? { traits: json, clans: [], arts: [], instincts: [], milestones: [] }
+        : { traits: json.traits ?? [], clans: json.clans ?? [], arts: json.arts ?? [], instincts: json.instincts ?? [], milestones: json.milestones ?? [] };
       if (!Array.isArray(data.traits) || !Array.isArray(data.clans) || !Array.isArray(data.arts)) throw new Error('formato');
       setParsed(data);
     } catch {
-      toast('Arquivo inválido: esperado JSON com { "traits": [...], "clans": [...], "arts": [...] } ou um array de traços.', 'error');
+      toast('Arquivo inválido: esperado JSON com { "traits", "clans", "arts", "instincts", "milestones" } ou um array de traços.', 'error');
     }
   }
   async function send() {
     setBusy(true);
     try {
       const r = await importCatalog(scope === 'campaign' ? campaignId : null, parsed);
-      toast(`Importado: ${r.traits} traço(s), ${r.clans} clã(s) e ${r.arts ?? 0} arte(s).`, 'success');
+      toast(`Importado: ${r.traits} traço(s), ${r.clans} clã(s), ${r.arts ?? 0} arte(s), ${r.instincts ?? 0} Instinto(s) e ${r.milestones ?? 0} Marco(s).`, 'success');
       setParsed(null);
       onDone();
     } catch (err) {
@@ -371,7 +373,7 @@ function ImportPanel({ campaignId, canGlobal, canCampaign, onDone }) {
       <input type="file" accept=".json,application/json" onChange={pick} aria-label="Arquivo JSON do catálogo" />
       {parsed && (
         <>
-          <p className="caption">Prévia: {parsed.traits.length} traço(s), {parsed.clans.length} clã(s) e {parsed.arts.length} arte(s). Itens com mesmo nome no escopo serão atualizados.</p>
+          <p className="caption">Prévia: {parsed.traits.length} traço(s), {parsed.clans.length} clã(s), {parsed.arts.length} arte(s), {parsed.instincts.length} Instinto(s) e {parsed.milestones.length} Marco(s). Itens com mesmo nome no escopo serão atualizados.</p>
           <label className="flex flex-col gap-1 text-sm">Escopo
             <select className="field" value={scope} onChange={(e) => setScope(e.target.value)}>
               {canCampaign && <option value="campaign">Esta campanha</option>}
@@ -426,6 +428,7 @@ export default function CatalogManager({ campaignId, isMaster }) {
   const canEdit = (it) => (it.campaignId ? isMaster : globalEditor);
   const isTrait = tab === 'trait';
   const isArt = tab === 'art';
+  const isProgression = tab === 'instinct' || tab === 'milestone';
 
   const items = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -452,18 +455,18 @@ export default function CatalogManager({ campaignId, isMaster }) {
   return (
     <div className="flex flex-col gap-4">
       <div role="tablist" aria-label="Catálogo" className="flex gap-2">
-        {[['trait', 'Traços'], ['clan', 'Clãs'], ['art', 'Artes']].map(([k, l]) => (
+        {[['trait', 'Traços'], ['clan', 'Clãs'], ['art', 'Artes'], ['instinct', 'Instintos'], ['milestone', 'Marcos']].map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'btn-primary' : 'btn-secondary'}
             onClick={() => { setTab(k); setForm(null); }}>{l}</button>
         ))}
         {canCreate && (
           <>
-            {!isArt && (
+            {!isArt && !isProgression && (
               <button className="btn-secondary ml-auto" onClick={() => { setShowImport(false); setForm({ initial: emptyForm(tab) }); }}>
                 Novo {isTrait ? 'traço' : 'clã'}
               </button>
             )}
-            <button className={isArt ? 'btn-secondary ml-auto' : 'btn-secondary'} onClick={() => { setForm(null); setShowImport((s) => !s); }}>Importar</button>
+            <button className={isArt || isProgression ? 'btn-secondary ml-auto' : 'btn-secondary'} onClick={() => { setForm(null); setShowImport((s) => !s); }}>Importar</button>
           </>
         )}
       </div>
@@ -481,9 +484,10 @@ export default function CatalogManager({ campaignId, isMaster }) {
           onSaved={saved} onCancel={() => setForm(null)} />
       )}
 
+      {isProgression && <ProgressionCatalog campaignId={campaignId} kind={tab} refreshKey={artsKey} />}
       {isArt && <ArtsPanel campaignId={campaignId} isMaster={isMaster} globalEditor={globalEditor} refreshKey={artsKey} />}
 
-      {!isArt && <div className="panel p-3 flex flex-wrap gap-3 items-end" role="search">
+      {!isArt && !isProgression && <div className="panel p-3 flex flex-wrap gap-3 items-end" role="search">
         <label className="flex flex-col text-xs uppercase gap-1">Buscar
           <input className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome…" />
         </label>
@@ -512,7 +516,7 @@ export default function CatalogManager({ campaignId, isMaster }) {
         </label>
       </div>}
 
-      {isArt ? null : loading ? (
+      {isArt || isProgression ? null : loading ? (
         <div className="skeleton h-24" aria-busy="true" />
       ) : items.length === 0 ? (
         <p className="caption">Nenhum item encontrado.</p>

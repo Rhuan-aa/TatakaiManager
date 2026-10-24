@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Aquecido",
+    "rank": "SEASONED",
+    "description": "O lutador inicia todo combate com 2 pontos de Adrenalina. O corpo já conhece o caminho."
+  },
+  {
+    "name": "Saber Cair",
+    "rank": "SEASONED",
+    "description": "Uma vez por luta, o lutador reduz pela metade o dano de uma queda, projeção ou derrubada."
+  },
+  {
+    "name": "Faro de Perigo",
+    "rank": "SEASONED",
+    "description": "Antes de a luta começar, o narrador informa ao jogador a dificuldade em que ela será classificada."
+  },
+  {
+    "name": "Olho Frio",
+    "rank": "SEASONED",
+    "description": "O lutador ignora penalidades causadas por intimidação e demonstrações de força do oponente, duas vezes por combate."
+  },
+  {
+    "name": "Postura Pronta",
+    "rank": "VETERAN",
+    "description": "O lutador começa todo combate já em uma base que possua, à sua escolha, sem gastar a ação menor para colocá-la."
+  },
+  {
+    "name": "Leitura de Guarda",
+    "rank": "VETERAN",
+    "description": "Uma vez por luta, após passar um turno inteiro observando um oponente sem atacá-lo, o lutador recebe +1 nas rolagens de reação contra ele até o fim da luta."
+  },
+  {
+    "name": "Queixo Duro",
+    "rank": "VETERAN",
+    "description": "Duas vezes por luta, o lutador reduz em 2 (mínimo 0) os Pontos de Queda causados por um único ataque."
+  },
+  {
+    "name": "Economia de Movimento",
+    "rank": "VETERAN",
+    "description": "O primeiro uso de uma técnica na luta custa 3 SP a menos."
+  },
+  {
+    "name": "Sangue Quente",
+    "rank": "HISTORIC",
+    "description": "No início de cada turno, a Adrenalina sobe +3, em vez de +2."
+  },
+  {
+    "name": "Transição Instintiva",
+    "rank": "HISTORIC",
+    "description": "A primeira troca de base em cada turno não consome ação."
+  },
+  {
+    "name": "Olhar de Veterano",
+    "rank": "HISTORIC",
+    "description": "Ao enfrentar um oponente pela primeira vez, o lutador começa com +1 de Leitura de Oponente se já enfrentou alguém da mesma arte marcial. A Leitura continua acumulando normalmente depois."
+  },
+  {
+    "name": "Instinto Predatório",
+    "rank": "HISTORIC",
+    "description": "Contra um oponente em Estado Crítico, o lutador recebe +1 na Margem de Crítico."
+  },
+  {
+    "name": "Bases Unidas",
+    "rank": "LEGEND",
+    "description": "Em vez de uma base, o lutador pode unir dois conceitos de bases em uma única, desde que pertençam a uma arte de mesmo tipo marcial (exceção para Geral), ganhando os efeitos de ambas."
+  },
+  {
+    "name": "Ápice Antecipado",
+    "rank": "LEGEND",
+    "description": "Os efeitos do patamar de Ápice da Adrenalina passam a valer a partir de 8 pontos, em vez de 10."
+  },
+  {
+    "name": "Ás Marcial",
+    "rank": "LEGEND",
+    "description": "O lutador ignora a desvantagem de interação marcial, como se tivesse Coringa, três vezes por luta."
+  },
+  {
+    "name": "Pé Firme",
+    "rank": "LEGEND",
+    "description": "Três vezes, ao receber um efeito de queda, derrubada ou projeção, o lutador ignora o efeito e permanece em pé."
+  },
+  {
+    "name": "Arquivo de Cicatrizes",
+    "rank": "MYTHIC",
+    "description": "Ao tentar uma Cópia Limitada pela Desconstrução Marcial ou Surto de Ideias, o lutador pode copiar uma técnica de qualquer oponente registrado em seu Registro de Rivais, mesmo que esse oponente não esteja presente na luta atual. Além disso, o ND da Desconstrução é reduzido pela Leitura de Oponente acumulada contra o dono original da técnica."
+  },
+  {
+    "name": "Fama que Precede",
+    "rank": "MYTHIC",
+    "description": "Uma vez por luta, ao começar o combate contra um oponente que saiba quem ele é e tenha Keiken inferior à sua, o lutador pode declarar que o nome o precede. O oponente faz um teste de Mental contra o Carisma do lutador e, se falhar, hesita e perde 1 Ponto de Ação dos três primeiros turnos dele."
+  },
+  {
+    "name": "Segundo Fôlego",
+    "rank": "MYTHIC",
+    "description": "Uma vez por luta, o lutador recupera SP igual ao dobro do seu modificador de Constituição como ação menor."
+  },
+  {
+    "name": "Golpe Cirúrgico",
+    "rank": "MYTHIC",
+    "description": "As penalidades de acerto de Ataques Localizados são reduzidas pela metade, arredondando para baixo (olhos −4, ouvido, genitálias e diafragma −3, queixo −2, joelho −1). Além disso, uma vez por luta, o lutador pode declarar um Ataque Localizado depois de ver o resultado do seu próprio teste de acerto."
+  },
+  {
+    "name": "Corpo que se Refaz",
+    "rank": "DRAGON_GOD",
+    "description": "Ao fazer um Repouso, o corpo do lutador recebe +2d6 seja para HP ou SP."
+  },
+  {
+    "name": "Corpo Inteiro",
+    "rank": "DRAGON_GOD",
+    "description": "Uma vez por luta, o lutador transforma um dano que causaria um Membro Inútil em dano comum, e reduz esse dano pela metade."
+  },
+  {
+    "name": "Brado de Guerra",
+    "rank": "DRAGON_GOD",
+    "description": "Uma vez por luta, como ação menor, o lutador concede a um aliado presente 3 pontos de Adrenalina e restaura nele SP igual ao modificador de Carisma do lutador."
+  },
+  {
+    "name": "Ler a Intenção",
+    "rank": "DRAGON_GOD",
+    "description": "Uma vez por rodada, o lutador pode declarar sua reação (Defender, Esquiva ou Contra-Ataque) depois de ver o resultado do teste de ataque do oponente, em vez de antes."
+  }
+]

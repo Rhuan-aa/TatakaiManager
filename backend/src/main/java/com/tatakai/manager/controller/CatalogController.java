@@ -137,6 +137,16 @@ public class CatalogController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/catalog/instincts")
+    public ResponseEntity<List<InstinctResponse>> listInstincts(@RequestParam(required = false) UUID campaignId) {
+        return ResponseEntity.ok(catalog.listInstincts(campaignId, AuthenticatedUser.id()));
+    }
+
+    @GetMapping("/catalog/milestones")
+    public ResponseEntity<List<FightMilestoneResponse>> listMilestones(@RequestParam(required = false) UUID campaignId) {
+        return ResponseEntity.ok(catalog.listMilestones(campaignId, AuthenticatedUser.id()));
+    }
+
     @PostMapping("/catalog/import")
     public ResponseEntity<CatalogImportResponse> importGlobal(@Valid @RequestBody CatalogImportRequest request) {
         return ResponseEntity.ok(catalog.importCatalog(null, request, AuthenticatedUser.id()));
