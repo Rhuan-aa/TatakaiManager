@@ -35,13 +35,16 @@ public record CreateBookingRequest(
 
         String description,
 
-        /** TREINO: STR, DEX, CON, INT, CHA, MEN, HP, SP, KP ou TECHNIQUE. */
+        /** TREINO: STR, DEX, CON, INT, CHA, MEN, HP, SP, KP, TECHNIQUE ou GRADUATION. */
         String trainingTarget,
 
         /** TREINO de técnica: id da técnica na ficha. */
         UUID techniqueId,
 
         /** REPOUSO: qualidade. */
-        RestQuality restQuality
+        RestQuality restQuality,
+
+        /** TREINO de graduação: id da arte na ficha. */
+        UUID characterArtId
 
 ) {}

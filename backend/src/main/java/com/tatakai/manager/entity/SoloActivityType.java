@@ -6,5 +6,7 @@ public enum SoloActivityType {
     ESTUDO,
     ACAO_GERAL,
     /** Repouso (RN-PROG-06): consolida treinos pendentes e recupera recursos ao avançar o dia. */
-    REPOUSO
+    REPOUSO,
+    /** Sessão de Forja (F4c): avança a Forja em andamento ao avançar o dia. */
+    FORJA
 }

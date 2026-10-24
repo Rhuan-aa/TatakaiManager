@@ -79,15 +79,15 @@ class BookingServiceTest {
     }
 
     private CreateBookingRequest req(short slot) {
-        return new CreateBookingRequest(aldric.getId(), (short) 3, slot, "Treino", null, null, null, null, null, null);
+        return new CreateBookingRequest(aldric.getId(), (short) 3, slot, "Treino", null, null, null, null, null, null, null);
     }
 
     private CreateBookingRequest soloReq(short slot, SoloActivityType type, String description) {
-        return new CreateBookingRequest(null, (short) 3, slot, null, type, null, description, null, null, null);
+        return new CreateBookingRequest(null, (short) 3, slot, null, type, null, description, null, null, null, null);
     }
 
     private CreateBookingRequest customActivityReq(short slot, UUID activityId) {
-        return new CreateBookingRequest(null, (short) 3, slot, null, null, activityId, null, null, null, null);
+        return new CreateBookingRequest(null, (short) 3, slot, null, null, activityId, null, null, null, null, null);
     }
 
     @Test
@@ -211,7 +211,7 @@ class BookingServiceTest {
                 .thenReturn(Optional.of(day3));
         mockVisibleAssociation();
 
-        var badReq = new CreateBookingRequest(aldric.getId(), (short) 3, (short) 1, "Trabalho", null, null, null, null, null, null);
+        var badReq = new CreateBookingRequest(aldric.getId(), (short) 3, (short) 1, "Trabalho", null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), badReq))
                 .isInstanceOf(InvalidBookingException.class);
@@ -258,12 +258,16 @@ class BookingServiceTest {
                 .thenReturn(Optional.of(day3));
 
         var bad = new CreateBookingRequest(null, (short) 3, (short) 1, null, SoloActivityType.TREINO, null, null,
-                "TAL", null, null);
+                "TAL", null, null, null);
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), bad))
                 .isInstanceOf(InvalidBookingException.class);
         var rest = new CreateBookingRequest(null, (short) 3, (short) 1, null, SoloActivityType.REPOUSO, null, null,
-                null, null, null);
+                null, null, null, null);
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), rest))
+                .isInstanceOf(InvalidBookingException.class);
+        var grad = new CreateBookingRequest(null, (short) 3, (short) 1, null, SoloActivityType.TREINO, null, null,
+                "GRADUATION", null, null, null);
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), grad))
                 .isInstanceOf(InvalidBookingException.class);
     }
 
@@ -461,7 +465,7 @@ class BookingServiceTest {
         mockVisibleAssociation();
         when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
 
-        var zeroReq = new CreateBookingRequest(aldric.getId(), (short) 3, (short) 1, "Conversa", null, null, null, null, null, null);
+        var zeroReq = new CreateBookingRequest(aldric.getId(), (short) 3, (short) 1, "Conversa", null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), zeroReq))
                 .isInstanceOf(InvalidBookingException.class);

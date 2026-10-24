@@ -3,6 +3,7 @@ package com.tatakai.manager.sheet;
 import com.tatakai.manager.entity.*;
 import com.tatakai.manager.repository.*;
 import com.tatakai.manager.service.CharacterTechniqueService;
+import com.tatakai.manager.service.MartialNotebookService;
 import com.tatakai.manager.service.RollService;
 import com.tatakai.manager.service.SheetActivityLogService;
 import com.tatakai.manager.service.TrainingService;
@@ -16,6 +17,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TrainingService — F4a treino e Repouso ao avançar o dia")
@@ -33,7 +36,9 @@ class TrainingServiceTest {
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private TrainingEntryRepository entryRepository;
     @Mock private CharacterTechniqueRepository techniqueRepository;
+    @Mock private CharacterArtRepository characterArtRepository;
     @Mock private CharacterTechniqueService techniqueService;
+    @Mock private MartialNotebookService notebookService;
     @Mock private RollService rollService;
     @Mock private SheetActivityLogService activityLog;
     @Mock private ApplicationEventPublisher events;
@@ -48,7 +53,8 @@ class TrainingServiceTest {
     @BeforeEach
     void setUp() {
         service = new TrainingService(bookingRepository, sheetRepository, memberRepository, entryRepository,
-                techniqueRepository, techniqueService, rollService, activityLog, events);
+                techniqueRepository, characterArtRepository, techniqueService, notebookService, rollService,
+                activityLog, events);
         Campaign campaign = Campaign.builder().id(UUID.randomUUID()).build();
         player = User.builder().id(UUID.randomUUID()).name("Ana").build();
         CampaignMember m = CampaignMember.builder().id(UUID.randomUUID()).campaign(campaign).user(player)
@@ -122,5 +128,38 @@ class TrainingServiceTest {
         service.processUpTo(ts, (short) 2);
 
         assertThat(sheet.getStr()).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("F4b — treino de graduação: 1 ponto na arte (sem TAL), aplicado na hora")
+    void graduationTraining() {
+        CharacterArt ca = CharacterArt.builder().id(UUID.randomUUID()).sheet(sheet).artName("Karatê")
+                .graduation(Graduation.BEGINNER).status(CharacterArtStatus.ACTIVE).build();
+        when(characterArtRepository.findById(ca.getId())).thenReturn(Optional.of(ca));
+        when(techniqueService.applyGraduationTraining(ca)).thenReturn("graduação 1");
+        TimeSkipDay d = TimeSkipDay.builder().id(UUID.randomUUID()).timeSkip(ts).dayNumber((short) 1).build();
+        bookings.add(Booking.builder().id(UUID.randomUUID()).timeSkipDay(d).user(player).slotNumber((short) 1)
+                .soloActivityType(SoloActivityType.TREINO).trainingTarget("GRADUATION").characterArtId(ca.getId())
+                .idlePointCost((short) 1).build());
+
+        service.processUpTo(ts, (short) 2);
+
+        assertThat(entries.get(0).getStatus()).isEqualTo(TrainingEntryStatus.APPLIED);
+        assertThat(entries.get(0).getGain()).isEqualTo(1);
+        assertThat(entries.get(0).getNote()).isEqualTo("Karatê: graduação 1");
+    }
+
+    @Test
+    @DisplayName("F4c — sessão de Forja: avança a Forja e dá +2 Desgaste Mental; sem Forja a sessão é perdida")
+    void forgeSession() {
+        when(notebookService.applySession(sheet)).thenReturn("Forja Golpe 1/9", (String) null);
+        book((short) 1, (short) 1, SoloActivityType.FORJA, null, null);
+        book((short) 1, (short) 2, SoloActivityType.FORJA, null, null);
+
+        service.processUpTo(ts, (short) 2);
+
+        assertThat(entries).extracting(TrainingEntry::getStatus)
+                .containsExactly(TrainingEntryStatus.APPLIED, TrainingEntryStatus.LOST);
+        assertThat(sheet.getMentalFatigue()).isEqualTo(4);
     }
 }

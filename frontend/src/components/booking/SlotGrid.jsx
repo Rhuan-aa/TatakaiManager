@@ -30,6 +30,7 @@ const SOLO_TYPES = [
   { value: 'ESTUDO', label: 'Estudo' },
   { value: 'ACAO_GERAL', label: 'Ação geral' },
   { value: 'REPOUSO', label: 'Repouso' },
+  { value: 'FORJA', label: 'Forja' },
 ];
 
 // Treino (F4a): alvo de atributo/recurso ou técnica da ficha; Repouso: qualidade.
@@ -40,7 +41,7 @@ const TRAINING_TARGETS = [
 const REST_QUALITIES = [
   ['PRECARIOUS', 'Precário (d6)'], ['SIMPLE', 'Simples (d8)'], ['COMFORTABLE', 'Confortável (d10)'], ['TREATED', 'Tratado (d12)'],
 ];
-const targetLabel = (t) => TRAINING_TARGETS.find(([k]) => k === t)?.[1] ?? (t === 'TECHNIQUE' ? 'Técnica' : t);
+const targetLabel = (t) => TRAINING_TARGETS.find(([k]) => k === t)?.[1] ?? ({ TECHNIQUE: 'Técnica', GRADUATION: 'Graduação' }[t] ?? t);
 const emptySoloForm = () => ({ option: 'fixed:TREINO', description: '', target: 'STR', quality: 'SIMPLE' });
 
 const soloLabel = (type) => SOLO_TYPES.find((t) => t.value === type)?.label ?? type;
@@ -92,6 +93,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
   const [activeCell, setActiveCell] = useState(null);
   const [soloForm, setSoloForm] = useState(emptySoloForm);
   const [myTechniques, setMyTechniques] = useState([]);
+  const [myArts, setMyArts] = useState([]);
 
   // Técnicas da minha ficha (alvo de treino). Sem ficha: lista vazia.
   useEffect(() => {
@@ -99,7 +101,11 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
     listSheets(campaignId)
       .then((sheets) => sheets.find((sh) => sh.ownerUserId === user?.userId))
       .then((mine) => (mine ? getMartial(mine.id) : null))
-      .then((m) => active && m && setMyTechniques(m.techniques.filter((t) => t.state !== 'REQUESTED')))
+      .then((m) => {
+        if (!active || !m) return;
+        setMyTechniques(m.techniques.filter((t) => t.state !== 'REQUESTED'));
+        setMyArts(m.arts.filter((a) => a.status === 'ACTIVE' && a.graduationCost != null));
+      })
       .catch(() => {});
     return () => { active = false; };
   }, [campaignId, user?.userId]);
@@ -245,11 +251,11 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
     const isCustom = soloForm.option.startsWith(CUSTOM_OPTION_PREFIX);
 
     const type = soloForm.option.slice(FIXED_OPTION_PREFIX.length);
-    if (!isCustom && type !== 'TREINO' && type !== 'REPOUSO' && !soloForm.description.trim()) {
+    if (!isCustom && type !== 'TREINO' && type !== 'REPOUSO' && type !== 'FORJA' && !soloForm.description.trim()) {
       setActionError('A descrição da atividade solo é obrigatória');
       return;
     }
-    const [target, techniqueId] = soloForm.target.split(':');
+    const [target, refId] = soloForm.target.split(':');
 
     try {
       const booking = isCustom
@@ -264,7 +270,8 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
             soloActivityType: type,
             description: soloForm.description.trim() || null,
             trainingTarget: type === 'TREINO' ? target : null,
-            techniqueId: type === 'TREINO' ? techniqueId ?? null : null,
+            techniqueId: type === 'TREINO' && target === 'TECHNIQUE' ? refId : null,
+            characterArtId: type === 'TREINO' && target === 'GRADUATION' ? refId : null,
             restQuality: type === 'REPOUSO' ? soloForm.quality : null,
           });
       setSoloBookings((prev) => ({ ...prev, [booking.id]: booking }));
@@ -505,6 +512,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                   onChange={(e) => setSoloForm((f) => ({ ...f, target: e.target.value }))}>
                   {TRAINING_TARGETS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                   {myTechniques.map((t) => <option key={t.id} value={`TECHNIQUE:${t.id}`}>Técnica · {t.name}</option>)}
+                  {myArts.map((a) => <option key={a.id} value={`GRADUATION:${a.id}`}>Graduação · {a.artName}</option>)}
                 </select>
               )}
               {soloForm.option === `${FIXED_OPTION_PREFIX}REPOUSO` ? (

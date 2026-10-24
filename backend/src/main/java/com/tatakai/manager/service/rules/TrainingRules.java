@@ -12,8 +12,9 @@ import java.util.Set;
 public final class TrainingRules {
 
     public static final String TECHNIQUE = "TECHNIQUE";
+    public static final String GRADUATION = "GRADUATION";
     public static final List<String> TARGETS =
-            List.of("STR", "DEX", "CON", "INT", "CHA", "MEN", "HP", "SP", "KP", TECHNIQUE);
+            List.of("STR", "DEX", "CON", "INT", "CHA", "MEN", "HP", "SP", "KP", TECHNIQUE, GRADUATION);
     private static final Set<String> MENTAL = Set.of("INT", "CHA", "MEN");
 
     private TrainingRules() {

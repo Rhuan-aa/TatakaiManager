@@ -97,6 +97,10 @@ public class Booking {
     @Column(name = "rest_quality", length = 20)
     private RestQuality restQuality;
 
+    /** TREINO de graduação: id da arte na ficha (CharacterArt). */
+    @Column(name = "character_art_id")
+    private UUID characterArtId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

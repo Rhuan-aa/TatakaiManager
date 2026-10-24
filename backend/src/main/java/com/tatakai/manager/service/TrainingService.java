@@ -7,6 +7,7 @@ import com.tatakai.manager.exception.AccessDeniedException;
 import com.tatakai.manager.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.repository.BookingRepository;
 import com.tatakai.manager.repository.CampaignMemberRepository;
+import com.tatakai.manager.repository.CharacterArtRepository;
 import com.tatakai.manager.repository.CharacterSheetRepository;
 import com.tatakai.manager.repository.CharacterTechniqueRepository;
 import com.tatakai.manager.repository.TrainingEntryRepository;
@@ -35,22 +36,27 @@ public class TrainingService {
     private final CampaignMemberRepository memberRepository;
     private final TrainingEntryRepository entryRepository;
     private final CharacterTechniqueRepository techniqueRepository;
+    private final CharacterArtRepository characterArtRepository;
     private final CharacterTechniqueService techniqueService;
+    private final MartialNotebookService notebookService;
     private final RollService rollService;
     private final SheetActivityLogService activityLog;
     private final ApplicationEventPublisher events;
 
     public TrainingService(BookingRepository bookingRepository, CharacterSheetRepository sheetRepository,
                            CampaignMemberRepository memberRepository, TrainingEntryRepository entryRepository,
-                           CharacterTechniqueRepository techniqueRepository, CharacterTechniqueService techniqueService,
-                           RollService rollService, SheetActivityLogService activityLog,
+                           CharacterTechniqueRepository techniqueRepository,
+                           CharacterArtRepository characterArtRepository, CharacterTechniqueService techniqueService,
+                           MartialNotebookService notebookService, RollService rollService, SheetActivityLogService activityLog,
                            ApplicationEventPublisher events) {
         this.bookingRepository = bookingRepository;
         this.sheetRepository = sheetRepository;
         this.memberRepository = memberRepository;
         this.entryRepository = entryRepository;
         this.techniqueRepository = techniqueRepository;
+        this.characterArtRepository = characterArtRepository;
         this.techniqueService = techniqueService;
+        this.notebookService = notebookService;
         this.rollService = rollService;
         this.activityLog = activityLog;
         this.events = events;
@@ -84,7 +90,8 @@ public class TrainingService {
                 .filter(s -> s.getBuildStatus() == BuildStatus.COMPLETED).toList();
         List<Booking> bookings = bookingRepository.findByTimeSkipDay_TimeSkipId(ts.getId()).stream()
                 .filter(b -> b.getNpcId() == null && (b.getSoloActivityType() == SoloActivityType.TREINO
-                        || b.getSoloActivityType() == SoloActivityType.REPOUSO))
+                        || b.getSoloActivityType() == SoloActivityType.REPOUSO
+                        || b.getSoloActivityType() == SoloActivityType.FORJA))
                 .sorted(Comparator.comparingInt(Booking::getSlotNumber)).toList();
         for (short day = (short) (processed + 1); day < newCurrentDay; day++) {
             for (CharacterSheet sheet : sheets) {
@@ -104,6 +111,8 @@ public class TrainingService {
         for (Booking b : bookings) {
             if (b.getSoloActivityType() == SoloActivityType.TREINO && b.getTrainingTarget() != null) {
                 train(ts, sheet, day, b);
+            } else if (b.getSoloActivityType() == SoloActivityType.FORJA) {
+                forge(ts, sheet, day, b);
             } else if (b.getSoloActivityType() == SoloActivityType.REPOUSO && b.getRestQuality() != null) {
                 rest(sheet, b.getRestQuality());
                 rested = true;
@@ -140,6 +149,21 @@ public class TrainingService {
             return;
         }
 
+        if (TrainingRules.GRADUATION.equals(target)) {
+            CharacterArt ca = b.getCharacterArtId() == null ? null
+                    : characterArtRepository.findById(b.getCharacterArtId())
+                    .filter(x -> x.getSheet().getId().equals(sheet.getId())).orElse(null);
+            String result = ca == null ? null : techniqueService.applyGraduationTraining(ca);
+            addFatigue(sheet, false, 1);
+            entryRepository.save(entry.gain(result == null ? 0 : 1).full(true)
+                    .status(result == null ? TrainingEntryStatus.LOST : TrainingEntryStatus.APPLIED)
+                    .note(result == null ? "Arte indisponível para graduação" : (ca.getArtName() + ": " + result))
+                    .build());
+            log(sheet, ActivityCategory.PROGRESSION, "TRAINING", "graduation", null, result == null ? 0 : 1,
+                    ca == null ? null : ca.getArtName());
+            return;
+        }
+
         List<TrainingEntry> sameTs = entryRepository.findBySheetIdAndTimeSkipId(sheet.getId(), ts.getId());
         int week = (day - 1) / 7;
         int nthToday = 1 + (int) sameTs.stream().filter(e -> e.getTarget().equals(target) && e.getDayNumber() == day).count();
@@ -155,6 +179,17 @@ public class TrainingService {
         entryRepository.save(entry.gain(o.gain()).full(o.full())
                 .status(o.lost() ? TrainingEntryStatus.LOST : TrainingEntryStatus.PENDING).note(o.note()).build());
         log(sheet, ActivityCategory.PROGRESSION, "TRAINING", target, null, o.gain(), o.note());
+    }
+
+    /** Sessão de Forja (§9.3): pontos na Forja em andamento e +2 Desgaste Mental (treino + 1 extra). */
+    private void forge(TimeSkip ts, CharacterSheet sheet, short day, Booking b) {
+        String result = notebookService.applySession(sheet);
+        addFatigue(sheet, true, 2);
+        entryRepository.save(TrainingEntry.builder().sheet(sheet).timeSkipId(ts.getId()).bookingId(b.getId())
+                .dayNumber(day).target("FORGE").gain(result == null ? 0 : MasteryRules.trainingGain(sheet.getTal()))
+                .full(true).status(result == null ? TrainingEntryStatus.LOST : TrainingEntryStatus.APPLIED)
+                .note(result == null ? "Nenhuma Forja em andamento" : result).build());
+        log(sheet, ActivityCategory.PROGRESSION, "FORGE_SESSION", "forge", null, result, null);
     }
 
     private void addFatigue(CharacterSheet s, boolean mental, int amount) {

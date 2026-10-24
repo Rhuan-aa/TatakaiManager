@@ -153,6 +153,7 @@ public class BookingService {
 
         String target = null;
         UUID techniqueId = null;
+        UUID characterArtId = null;
         RestQuality quality = null;
         if (req.soloActivityType() == SoloActivityType.TREINO && req.trainingTarget() != null) {
             target = req.trainingTarget();
@@ -161,6 +162,12 @@ public class BookingService {
                 if (req.techniqueId() == null) throw new InvalidBookingException("escolha a técnica a treinar");
                 techniqueId = req.techniqueId();
             }
+            if (TrainingRules.GRADUATION.equals(target)) {
+                if (req.characterArtId() == null) throw new InvalidBookingException("escolha a arte a graduar");
+                characterArtId = req.characterArtId();
+            }
+        } else if (req.soloActivityType() == SoloActivityType.FORJA) {
+            // a Forja em andamento é resolvida ao avançar o dia (sem Forja, a sessão é perdida)
         } else if (req.soloActivityType() == SoloActivityType.REPOUSO) {
             if (req.restQuality() == null) throw new InvalidBookingException("escolha a qualidade do Repouso");
             quality = req.restQuality();
@@ -176,6 +183,7 @@ public class BookingService {
                 .trainingTarget(target)
                 .techniqueId(techniqueId)
                 .restQuality(quality)
+                .characterArtId(characterArtId)
                 .idlePointCost(FIXED_SOLO_ACTIVITY_COST)
                 .build();
     }
@@ -314,6 +322,6 @@ public class BookingService {
                 b.getCreatedAt(),
                 b.getTrainingTarget(),
                 b.getTechniqueId(),
-                b.getRestQuality());
+                b.getRestQuality(), b.getCharacterArtId());
     }
 }

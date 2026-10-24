@@ -23,5 +23,6 @@ public record BookingResponse(
         Instant createdAt,
         String trainingTarget,
         UUID techniqueId,
-        RestQuality restQuality
+        RestQuality restQuality,
+        UUID characterArtId
 ) {}
