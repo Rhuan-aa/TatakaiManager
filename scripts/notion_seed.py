@@ -518,6 +518,119 @@ def build_art(index_path):
     return art
 
 
+# ---------- montagem estruturada (F3a, PLANO §15) ----------
+CORES = {"golpe": "STRIKE", "controle": "CONTROL", "reacao": "REACTION", "preparacao": "PREPARATION"}
+MODULES = json.loads((OUT / "modules.json").read_text(encoding="utf-8"))
+assembly_report = []  # itens sem módulo no catálogo e divergências de Complexidade
+
+
+def split_top(s, sep=","):
+    """Divide por `sep` fora de parênteses."""
+    out, depth, cur = [], 0, ""
+    for i, ch in enumerate(s):
+        depth += ch == "("
+        depth -= ch == ")"
+        decimal = i > 0 and s[i - 1].isdigit() and s[i + 1:i + 2].isdigit()  # "+1,5 m"
+        if ch == sep and depth == 0 and not decimal:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    out.append(cur)
+    return [x.strip() for x in out if x.strip()]
+
+
+def parse_item(tok, applies, where):
+    m = re.match(r"^(.*?)\s*\((.*)\)\s*$", tok)
+    if not m:
+        core = CORES.get(noacc(tok))
+        if core:
+            return "core", core
+        assembly_report.append(f"{where}: item sem custo '{tok}'")
+        return None, None
+    label, inside = m.group(1).strip(), m.group(2)
+    num = re.search(r"[−-]?\d+", inside)
+    cost = int(num.group(0).replace("−", "-")) if num else 0
+    head = noacc(inside.split(";")[0].split(":")[0])
+    unique = any(w in head for w in ("unico", "unica", "bruta"))
+    non_affine = "nao afim" in head
+    qualifier = [w.strip() for w in inside.split(";")[0].split(",")
+                 if w.strip() and not re.fullmatch(r"[−-]?\d+", w.strip())
+                 and not any(f in noacc(w) for f in ("unico", "unica", "bruta", "nao afim"))]
+    if qualifier and not unique:
+        label = f"{label} ({qualifier[0]})"
+    on_die = noacc(label).endswith(" no dado")
+    item = {"module": None, "label": label, "qty": 1, "cost": cost,
+            "kind": "LIMITATION" if cost < 0 else "UNIQUE" if unique else "MODULE",
+            "nonAffine": non_affine, "onDie": on_die, "note": None}
+    if not unique:
+        cands = [mo for mo in MODULES if mo["appliesTo"] == applies and noacc(label).startswith(noacc(mo["name"]))]
+        if cands:
+            mo = max(cands, key=lambda x: len(x["name"]))
+            item["module"] = mo["name"]
+            if mo["kind"] == "EFFECT":
+                item["kind"] = "EFFECT"
+            if mo["perUnit"] and mo["cost"]:
+                item["qty"] = max(1, abs(cost) // abs(mo["cost"]))
+        else:
+            assembly_report.append(f"{where}: sem módulo no catálogo '{label}'")
+    return "item", item
+
+
+def parse_items(text, applies, where):
+    core, items = None, []
+    for tok in split_top(text):
+        kind, val = parse_item(tok, applies, where)
+        if kind == "core":
+            core = val
+        elif kind == "item":
+            items.append(val)
+    return core, items
+
+
+def final_of(items):
+    raw = sum(i["cost"] for i in items if i["cost"] > 0)
+    lim = sum(-i["cost"] for i in items if i["cost"] < 0)
+    return raw - min(lim, raw // 2)
+
+
+def structure_technique(t, where):
+    text = t.get("assembly")
+    t["variations"], t["extras"] = [], []
+    if not text:
+        return
+    m = re.search(r"Variações:\s*\d+\s*\+\s*\d+\.?\s*", text)
+    if m:
+        t["extras"] = parse_items(text[m.end():].rstrip(". "), "TECHNIQUE", where)[1]
+        for seg in re.split(r"\.\s+", text[:m.start()].strip().rstrip(".")):
+            name, _, rest = seg.partition(":")
+            core, items = parse_items(rest, "TECHNIQUE", where)
+            t["variations"].append({"name": name.strip(), "core": core, "items": items})
+        fin = max(final_of(v["items"]) for v in t["variations"]) + 1
+    else:
+        core, items = parse_items(text.rstrip(". "), "TECHNIQUE", where)
+        t["variations"].append({"name": None, "core": core, "items": items})
+        fin = final_of(items)
+    fin += sum(i["cost"] for i in t["extras"] if i["cost"] > 0)
+    if t.get("complexity") is not None and fin != t["complexity"]:
+        assembly_report.append(f"{where}: Complexidade calculada {fin} ≠ livro {t['complexity']}")
+
+
+def structure_base(b, where):
+    text = b.get("assembly")
+    b["items"] = parse_items(text.rstrip(". "), "BASE", where)[1] if text else []
+    if text and b.get("complexity") is not None and final_of(b["items"]) != b["complexity"]:
+        assembly_report.append(f"{where}: Complexidade calculada {final_of(b['items'])} ≠ livro {b['complexity']}")
+
+
+def structure_arts(arts):
+    for a in arts:
+        for t in a["techniques"]:
+            structure_technique(t, f"{a['name']} / {t['name']}")
+        for b in a["bases"]:
+            structure_base(b, f"{a['name']} / {b['name']}")
+
+
 def dump(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -527,6 +640,7 @@ def main():
     traits, tstats = build_traits()
     arts = [build_art(f) for f in sorted(ARTES.glob("*.md"), key=lambda p: noacc(p.name))]
     dump(OUT / "traits.json", traits)
+    structure_arts(arts)
     dump(OUT / "arts.json", arts)
     print(f"traits.json: {len(traits)} traços")
     for r, s in tstats.items():
@@ -537,6 +651,9 @@ def main():
     for a in arts:
         print(f"  {a['name']}: bases={len(a['bases'])} técnicas={len(a['techniques'])} "
               f"passivas={len(a['passives'])} seções={len(a['sections'])}")
+    print(f"montagens: {len(assembly_report)} aviso(s)")
+    for r in assembly_report:
+        print("  -", r)
     print(f"textos soltos não classificados: {len(unclassified)}")
     for u in unclassified:
         print("  -", u)

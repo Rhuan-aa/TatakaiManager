@@ -1095,3 +1095,63 @@ Ordem sugerida: primeiro os itens visuais rápidos (14.3), depois a unificação
 ### 14.4 Depois disso
 - F3 — editor de Criação Marcial e técnicas na ficha (§2).
 - F4 — progressão no TimeSkip (§2).
+
+---
+
+## 15. F3a — Montagem estruturada e editor de Criação Marcial (contrato, 24/10/2026)
+
+Decisões do usuário: jogador cria **Arte Criada** (rascunho → enviar → Mestre aprova/devolve); Mestre/editores editam direto.
+Montagens em texto das clássicas são **convertidas no seed** (`notion_seed.py`). F3b = técnicas na ficha + maestria.
+F3c (contadores de arte, §8.1) vai para a F6 (depende dos eventos do motor).
+
+### 15.1 Modelo (Mongo, embutido em `MartialArt`)
+```
+enum TechniqueCore { STRIKE, CONTROL, REACTION, PREPARATION }        // Golpe, Controle, Reação, Preparação
+enum AssemblyItemKind { MODULE, EFFECT, UNIQUE, LIMITATION }          // LIMITATION = limitação (técnica) ou redução (base)
+enum ArtStatus { DRAFT, PENDING_APPROVAL, APPROVED }                  // null = APPROVED (artes antigas)
+AssemblyItem      { String module /* nome no catálogo de módulos; null = único/livre */; String label; int qty = 1;
+                    int cost /* custo final do item, negativo em LIMITATION */; AssemblyItemKind kind;
+                    boolean nonAffine; boolean onDie; String note }
+AssemblyVariation { String name; TechniqueCore core; List<AssemblyItem> items }
+ArtTechnique  += List<AssemblyVariation> variations; List<AssemblyItem> extras   // extras somam direto no final (ex.: Chute Fantasma)
+ArtBase       += List<AssemblyItem> items
+MartialArt    += ArtStatus status; UUID authorId; String reviewNote
+```
+O texto `assembly` continua (exibição/legado); `complexity`, `trainingPoints`, `spCostBase` guardados são os do livro.
+
+### 15.2 Regras puras — `service/rules/AssemblyRules`
+- `C_bruta = Σ custo > 0`; `C_final = C_bruta − min(Σ|limitações|, floor(C_bruta/2))` (RN-TEC-01 / RN-BASE-01).
+- Técnica: 1 variação → `C_final`; 2 → `max(C_final_i) + 1`; `+ Σ extras`. Mais de 2 variações → issue.
+- Gasto por variação (RN-TEC-02, §20): CLASSIC/CREATED/VARIATION `4 + C_bruta`; LOST/CLAN `max(0, 2 + C_bruta)`. Base: 0.
+- PT = `max(2, C_final)` (RN-TEC-04).
+- Teto (RN-TEC-03, RN-ART-05): técnica GENERIC 3; CREATED 6/10/14; CLASSIC 8/12/16; LOST/CLAN 10/14/18; base GENERIC 2;
+  CREATED 4/6/8; CLASSIC 5/7/9; LOST/CLAN 6/8/10. ponytail: VARIATION usa o teto de CREATED (piso da regra) até existir `parentArtId`.
+- Issues (texto pt-BR): acima do teto; > 2 EFFECT numa variação (salvo item "Pés no Ar"); dependências RN-TEC-05 por nome:
+  Ímpeto→Investida, Arremesso→Derrubar, Cravar→Arremesso, Empurrão Contínuo→Sequência+Empurrar, Acompanhar→Empurrar,
+  Sufocar→núcleo CONTROL, Círculo proíbe Varredura, Paralisar→graduação MASTER, Mutilar→≥ INTERMEDIATE.
+- `AssemblyCheck(int rawComplexity, int finalComplexity, List<Integer> spCosts, int trainingPoints, int ceiling, List<String> issues)`.
+
+### 15.3 Catálogo de módulos
+`backend/src/main/resources/catalog/modules.json` (estático, §7.4 + módulos/reduções de base):
+`{ name, group, kind, cost, perUnit, maxQty, appliesTo: "TECHNIQUE"|"BASE" }`. `GET /catalog/modules`.
+O editor calcula o custo do item (`cost × qty`, +1 se não afim, efeito no dado = ceil(custo/2) mín. 1); o usuário pode ajustar.
+
+### 15.4 Rotas
+| Método | Rota | Quem | Efeito |
+|---|---|---|---|
+| GET | `/catalog/modules` | auth | lista de módulos |
+| POST | `/catalog/assembly/check` | auth | `{category, technique?, base?}` → `AssemblyCheck` |
+| POST | `/campaigns/{cid}/catalog/arts` | membro | Mestre: qualquer categoria, APPROVED. Jogador: CREATED, DRAFT, `authorId` |
+| POST | `/catalog/arts` | editor global | APPROVED |
+| PUT | `/catalog/arts/{id}` | autor (DRAFT) ou escrita do escopo | substitui o conteúdo |
+| POST | `/catalog/arts/{id}/submit` | autor, DRAFT, sem issues | → PENDING_APPROVAL (issues → 400) |
+| POST | `/catalog/arts/{id}/review` | Mestre do escopo, PENDING | `{approved, reason}` → APPROVED ou DRAFT + `reviewNote` |
+Visibilidade: APPROVED (ou null) para membros; rascunho só para o autor; pendente para autor e Mestre; senão 404.
+`DELETE` também vale para o autor no próprio rascunho. `MartialArtResponse` ganha no final
+`ArtStatus status, UUID authorId, String reviewNote, List<AssemblyCheck> techniqueChecks, List<AssemblyCheck> baseChecks`;
+`MartialArtSummaryResponse` ganha no final `ArtStatus status, UUID authorId`. Nova exceção `InvalidMartialArtException` (400).
+
+### 15.5 Frontend
+`components/catalog/ArtEditor.jsx` (cabeçalho da arte + listas de técnicas/bases; editor de variações/itens com módulo do
+catálogo ou item único; `AssemblyCheck` ao vivo via `/catalog/assembly/check` com debounce). `ArtsPanel`: "Nova arte",
+editar, enviar, aprovar/devolver, tags de status, e no detalhe o check calculado vs. números do livro.

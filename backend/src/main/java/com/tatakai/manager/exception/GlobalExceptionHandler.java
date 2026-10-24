@@ -62,7 +62,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({InvalidBookingException.class, InvalidTimeSkipException.class,
             InvalidImageException.class, InvalidCharacterSheetException.class,
-            InvalidBuildStepException.class,
+            InvalidBuildStepException.class, InvalidMartialArtException.class,
             InvalidRollException.class})
     public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
         return ResponseEntity.badRequest().body(body(HttpStatus.BAD_REQUEST, ex.getMessage()));

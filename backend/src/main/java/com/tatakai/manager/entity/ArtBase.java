@@ -23,4 +23,6 @@ public class ArtBase {
     private String assembly;
     private Integer complexity;
     private Integer trainingPoints;
+    /** Montagem estruturada (F3a). */
+    private List<AssemblyItem> items = new ArrayList<>();
 }

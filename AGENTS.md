@@ -695,3 +695,16 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
 - **Front compartilhado:** `components/ui/RichText` (parágrafos, listas `- `, tabelas `|`) e
   `components/ui/rarity` (cores por raridade via tokens `--rarity-*`; caixas de base/técnica
   usam `--stat-*`).
+
+## 14. Criação Marcial (F3a)
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §15.
+- **Montagem estruturada** nas artes (Mongo): `ArtTechnique.variations[]` (núcleo + `AssemblyItem[]`) + `extras[]`;
+  `ArtBase.items[]`. O texto `assembly` e os números do livro continuam guardados.
+- **Regras puras:** `service/rules/AssemblyRules` (Complexidade bruta/final, gasto por categoria, PT, tetos, dependências
+  RN-TEC-05). Sem espelho no front: o editor chama `POST /catalog/assembly/check` (debounce).
+- **Módulos:** `catalog/modules.json` estático (`GET /catalog/modules`), gerado a partir da §7.4 da spec.
+- **Fluxo:** jogador cria Arte Criada (`DRAFT`, `authorId`) → `submit` (bloqueado se houver issues) → Mestre `review`.
+  Rascunho só o autor vê; pendente, autor e Mestre (outros → 404).
+- **Seed:** `scripts/notion_seed.py` converte o texto das montagens e imprime divergências de Complexidade vs. livro.
+- **Front:** `components/catalog/ArtEditor.jsx`, `ArtsPanel.jsx` (novo/editar/enviar/aprovar), `artLabels.js`.

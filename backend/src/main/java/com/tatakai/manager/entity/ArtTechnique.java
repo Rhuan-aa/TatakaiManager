@@ -28,4 +28,8 @@ public class ArtTechnique {
     private String spCost;
     /** Valor inteiro inicial do custo de SP. */
     private Integer spCostBase;
+    /** Montagem estruturada (F3a). */
+    private List<AssemblyVariation> variations = new ArrayList<>();
+    /** Itens sobre a escolha entre variações; somam direto no final (ex.: Chute Fantasma). */
+    private List<AssemblyItem> extras = new ArrayList<>();
 }

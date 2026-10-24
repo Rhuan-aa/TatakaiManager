@@ -67,3 +67,33 @@ export async function deleteArt(id) {
   const { data } = await client.delete(`/catalog/arts/${id}`);
   return data;
 }
+
+export async function createArt(campaignId, body) {
+  const { data } = await client.post(`${base(campaignId)}/arts`, body);
+  return data;
+}
+
+export async function updateArt(id, body) {
+  const { data } = await client.put(`/catalog/arts/${id}`, body);
+  return data;
+}
+
+export async function submitArt(id) {
+  const { data } = await client.post(`/catalog/arts/${id}/submit`);
+  return data;
+}
+
+export async function reviewArt(id, { approved, reason }) {
+  const { data } = await client.post(`/catalog/arts/${id}/review`, { approved, reason });
+  return data;
+}
+
+export async function listModules() {
+  const { data } = await client.get('/catalog/modules');
+  return data;
+}
+
+export async function checkAssembly(body) {
+  const { data } = await client.post('/catalog/assembly/check', body);
+  return data;
+}

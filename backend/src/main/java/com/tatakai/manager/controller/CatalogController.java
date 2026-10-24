@@ -92,6 +92,45 @@ public class CatalogController {
         return ResponseEntity.ok(catalog.getArt(id, AuthenticatedUser.id()));
     }
 
+    @PostMapping("/catalog/arts")
+    public ResponseEntity<MartialArtResponse> createGlobalArt(@Valid @RequestBody MartialArtPayload payload) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(catalog.createArt(null, payload, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/campaigns/{campaignId}/catalog/arts")
+    public ResponseEntity<MartialArtResponse> createCampaignArt(@PathVariable UUID campaignId,
+                                                                @Valid @RequestBody MartialArtPayload payload) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(catalog.createArt(campaignId, payload, AuthenticatedUser.id()));
+    }
+
+    @PutMapping("/catalog/arts/{id}")
+    public ResponseEntity<MartialArtResponse> updateArt(@PathVariable UUID id,
+                                                        @Valid @RequestBody MartialArtPayload payload) {
+        return ResponseEntity.ok(catalog.updateArt(id, payload, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/catalog/arts/{id}/submit")
+    public ResponseEntity<MartialArtResponse> submitArt(@PathVariable UUID id) {
+        return ResponseEntity.ok(catalog.submitArt(id, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/catalog/arts/{id}/review")
+    public ResponseEntity<MartialArtResponse> reviewArt(@PathVariable UUID id,
+                                                        @Valid @RequestBody ReviewArtRequest request) {
+        return ResponseEntity.ok(catalog.reviewArt(id, request, AuthenticatedUser.id()));
+    }
+
+    @GetMapping("/catalog/modules")
+    public ResponseEntity<List<AssemblyModule>> modules() {
+        return ResponseEntity.ok(catalog.modules());
+    }
+
+    @PostMapping("/catalog/assembly/check")
+    public ResponseEntity<AssemblyCheck> checkAssembly(@Valid @RequestBody AssemblyCheckRequest request) {
+        return ResponseEntity.ok(catalog.checkAssembly(request));
+    }
+
     @DeleteMapping("/catalog/arts/{id}")
     public ResponseEntity<Void> deleteArt(@PathVariable UUID id) {
         catalog.deleteArt(id, AuthenticatedUser.id());

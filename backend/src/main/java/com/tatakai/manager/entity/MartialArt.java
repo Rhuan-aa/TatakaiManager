@@ -61,4 +61,9 @@ public class MartialArt {
     private int version;
 
     private Instant updatedAt;
+    /** null = APPROVED. */
+    private ArtStatus status;
+    /** Autor de uma Arte Criada por jogador. */
+    private UUID authorId;
+    private String reviewNote;
 }

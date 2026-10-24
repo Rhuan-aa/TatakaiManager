@@ -1,0 +1,1054 @@
+[
+ {
+  "name": "Dado Maior",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": 8,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Atributo Alternativo",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Fôlego",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Fôlego (só no SP)",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 0,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Dano Persistente",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Impacto na Cabeça",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Massa",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Montinho",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Arremesso",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Cravar",
+  "group": "Potência",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Alcance Médio",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Alcance Longo",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Alcance Muito Longo",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Precisão",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": 3,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Ponto Vital",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Técnica Rápida",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Investida",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Ímpeto",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Encadear",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Contragolpe",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Sequência",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Varredura",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Círculo",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 4,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Romper Guarda (armada)",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Romper Guarda (desarmada)",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Atravessar",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Pressão Fixa",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Crítico Implacável",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Empurrão Contínuo",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Acompanhar",
+  "group": "Execução",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Reforço",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": 4,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Redução Escalonada",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Absorção",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Reposicionar",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Fôlego Tático",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Leitura",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Sustentação",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Bloqueio Punitivo",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Abertura",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Resposta Segura",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Carga",
+  "group": "Defesa/Prep.",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE",
+  "note": "1 por +2"
+ },
+ {
+  "name": "Empurrar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Derrubar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Quebrar Base",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Prender",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Desorientar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Expor",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Roubar Tempo",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 2,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE",
+  "note": "por PA"
+ },
+ {
+  "name": "Sufocar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Cegar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Interromper",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Aleijar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Enfraquecer",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Esmagar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Abrir Ferida",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Aprofundar Ferida",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Marcar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Atordoar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 5,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Paralisar",
+  "group": "Efeito",
+  "kind": "EFFECT",
+  "cost": 6,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Desarmar",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Puxar",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Mutilar",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Quebrar Arma",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Aparar",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Arremessar",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Disparo Rápido",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Disparo Estendido",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Transpassar",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Supressão",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Golpe Pesado",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": true,
+  "maxQty": 2,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Abrangência Versátil",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Arma Única",
+  "group": "Armado",
+  "kind": "MODULE",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Exige Base",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Exige Posição",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Gatilho",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Gatilho raro",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Previsível",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Risco",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Risco alto",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Lenta",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Duas Etapas",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Desguarnecida",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Exposta",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Uso Restrito",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Tardia",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Tardia (2)",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Tardia (3)",
+  "group": "Limitação",
+  "kind": "LIMITATION",
+  "cost": -3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "TECHNIQUE"
+ },
+ {
+  "name": "Guarda",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": 3,
+  "appliesTo": "BASE",
+  "note": "afim: Postura (Deslocamento só p/ Esquiva)"
+ },
+ {
+  "name": "Precisão",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Leitura de Estilo",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Passada",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "BASE",
+  "note": "+1,5 m por ponto"
+ },
+ {
+  "name": "Alcance",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Troca Fluida",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Atributo Alternativo",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE",
+  "note": "exige Penalidade ≥ −2; proíbe Força do Golpe e Enraizado"
+ },
+ {
+  "name": "Força do Golpe",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Enraizado",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "BASE",
+  "note": "+2 por ponto"
+ },
+ {
+  "name": "Tração",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "BASE",
+  "note": "+2 por ponto"
+ },
+ {
+  "name": "Punição",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Avanço Pesado",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Economia",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Fôlego",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Calma",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "BASE",
+  "note": "+2 por ponto"
+ },
+ {
+  "name": "Absorção",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Calejamento",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 2,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Resiliência",
+  "group": "Módulo de base",
+  "kind": "MODULE",
+  "cost": 1,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Exclusiva de Tipo",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Exclusiva de Arte",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Exclusiva de Técnicas",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -4,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Penalidade",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": true,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Agressão Obrigatória",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -3,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Fraqueza",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -2,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Posição",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Pesada",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Sem Recuo",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Reação Proibida",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -4,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ },
+ {
+  "name": "Exaustiva",
+  "group": "Redução",
+  "kind": "LIMITATION",
+  "cost": -1,
+  "perUnit": false,
+  "maxQty": null,
+  "appliesTo": "BASE"
+ }
+]

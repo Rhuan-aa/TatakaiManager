@@ -2,7 +2,18 @@ package com.tatakai.manager.service;
 
 import com.tatakai.manager.dto.request.CatalogImportRequest;
 import com.tatakai.manager.dto.request.ClanPayload;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tatakai.manager.dto.request.AssemblyCheckRequest;
 import com.tatakai.manager.dto.request.MartialArtPayload;
+import com.tatakai.manager.dto.request.ReviewArtRequest;
+import com.tatakai.manager.dto.response.AssemblyCheck;
+import com.tatakai.manager.dto.response.AssemblyModule;
+import com.tatakai.manager.entity.ArtCategory;
+import com.tatakai.manager.entity.ArtStatus;
+import com.tatakai.manager.exception.InvalidMartialArtException;
+import com.tatakai.manager.service.rules.AssemblyRules;
+import org.springframework.core.io.ClassPathResource;
 import com.tatakai.manager.dto.request.TraitPayload;
 import com.tatakai.manager.dto.response.CatalogImportResponse;
 import com.tatakai.manager.dto.response.CatalogPermissionsResponse;
@@ -12,6 +23,8 @@ import com.tatakai.manager.dto.response.MartialArtSummaryResponse;
 import com.tatakai.manager.dto.response.TraitDefinitionResponse;
 import com.tatakai.manager.entity.Clan;
 import com.tatakai.manager.entity.MartialArt;
+import com.tatakai.manager.entity.ArtBase;
+import com.tatakai.manager.entity.ArtTechnique;
 import com.tatakai.manager.entity.Role;
 import com.tatakai.manager.entity.TraitDefinition;
 import com.tatakai.manager.entity.TraitRarity;
@@ -48,6 +61,7 @@ public class CatalogService {
     private final UserRepository userRepository;
     private final Set<String> editors;
     private final MartialArtRepository artRepository;
+    private List<AssemblyModule> modules;
 
     public CatalogService(TraitDefinitionRepository traitRepository,
                           ClanRepository clanRepository,
@@ -154,8 +168,10 @@ public class CatalogService {
             list = artRepository.findByCampaignIdIsNull();
         } else {
             requireMember(campaignIdOrNull, requesterId);
-            List<MartialArt> own = artRepository.findByCampaignId(campaignIdOrNull);
-            Set<String> ownNames = own.stream().map(MartialArt::getName).collect(Collectors.toSet());
+            List<MartialArt> own = artRepository.findByCampaignId(campaignIdOrNull).stream()
+                    .filter(a -> visible(a, requesterId)).toList();
+            Set<String> ownNames = own.stream().filter(CatalogService::approved).map(MartialArt::getName)
+                    .collect(Collectors.toSet());
             list = new ArrayList<>(own);
             for (MartialArt g : artRepository.findByCampaignIdIsNull()) {
                 if (!ownNames.contains(g.getName())) list.add(g);
@@ -169,13 +185,115 @@ public class CatalogService {
     public MartialArtResponse getArt(UUID id, UUID requesterId) {
         MartialArt a = artRepository.findById(id).orElseThrow(SheetEntryNotFoundException::new);
         if (a.getCampaignId() != null) requireMember(a.getCampaignId(), requesterId);
+        if (!visible(a, requesterId)) throw new SheetEntryNotFoundException();
         return toResponse(a);
     }
 
     public void deleteArt(UUID id, UUID requesterId) {
         MartialArt a = artRepository.findById(id).orElseThrow(SheetEntryNotFoundException::new);
-        requireWrite(a.getCampaignId(), requesterId);
+        if (!ownDraft(a, requesterId)) requireWrite(a.getCampaignId(), requesterId);
         artRepository.delete(a);
+    }
+
+    // ---------- Criação Marcial (F3a) ----------
+
+    /** Global: editor, aprovada. Campanha: Mestre cria aprovada; jogador cria Arte Criada em rascunho. */
+    public MartialArtResponse createArt(UUID campaignIdOrNull, MartialArtPayload p, UUID requesterId) {
+        boolean asPlayer = false;
+        if (campaignIdOrNull == null) {
+            requireWrite(null, requesterId);
+        } else {
+            requireMember(campaignIdOrNull, requesterId);
+            asPlayer = !isMaster(campaignIdOrNull, requesterId);
+        }
+        MartialArt a = new MartialArt();
+        a.setId(UUID.randomUUID());
+        a.setCampaignId(campaignIdOrNull);
+        a.setVersion(0);
+        apply(a, p);
+        a.setStatus(asPlayer ? ArtStatus.DRAFT : ArtStatus.APPROVED);
+        if (asPlayer) {
+            a.setAuthorId(requesterId);
+            a.setCategory(ArtCategory.CREATED);
+        }
+        return toResponse(artRepository.save(a));
+    }
+
+    public MartialArtResponse updateArt(UUID id, MartialArtPayload p, UUID requesterId) {
+        MartialArt a = artRepository.findById(id).orElseThrow(SheetEntryNotFoundException::new);
+        if (!ownDraft(a, requesterId)) requireWrite(a.getCampaignId(), requesterId);
+        apply(a, p);
+        if (a.getAuthorId() != null) a.setCategory(ArtCategory.CREATED);
+        return toResponse(artRepository.save(a));
+    }
+
+    public MartialArtResponse submitArt(UUID id, UUID requesterId) {
+        MartialArt a = artRepository.findById(id).orElseThrow(SheetEntryNotFoundException::new);
+        if (!ownDraft(a, requesterId)) {
+            throw new InvalidMartialArtException("Só o autor envia um rascunho para aprovação");
+        }
+        List<String> issues = new ArrayList<>();
+        for (ArtTechnique t : a.getTechniques()) {
+            AssemblyRules.checkTechnique(a.getCategory(), t).issues().forEach(i -> issues.add(t.getName() + ": " + i));
+        }
+        for (ArtBase b : a.getBases()) {
+            AssemblyRules.checkBase(a.getCategory(), b).issues().forEach(i -> issues.add(b.getName() + ": " + i));
+        }
+        if (!issues.isEmpty()) {
+            throw new InvalidMartialArtException("Corrija a montagem antes de enviar: " + String.join("; ", issues));
+        }
+        a.setStatus(ArtStatus.PENDING_APPROVAL);
+        a.setReviewNote(null);
+        return toResponse(artRepository.save(a));
+    }
+
+    public MartialArtResponse reviewArt(UUID id, ReviewArtRequest req, UUID requesterId) {
+        MartialArt a = artRepository.findById(id).orElseThrow(SheetEntryNotFoundException::new);
+        requireWrite(a.getCampaignId(), requesterId);
+        if (a.getStatus() != ArtStatus.PENDING_APPROVAL) {
+            throw new InvalidMartialArtException("A arte não está aguardando aprovação");
+        }
+        a.setStatus(Boolean.TRUE.equals(req.approved()) ? ArtStatus.APPROVED : ArtStatus.DRAFT);
+        a.setReviewNote(req.reason());
+        return toResponse(artRepository.save(a));
+    }
+
+    public List<AssemblyModule> modules() {
+        if (modules == null) {
+            try (var in = new ClassPathResource("catalog/modules.json").getInputStream()) {
+                modules = List.copyOf(new ObjectMapper().readValue(in, new TypeReference<List<AssemblyModule>>() { }));
+            } catch (java.io.IOException e) {
+                throw new IllegalStateException("catalog/modules.json ilegível", e);
+            }
+        }
+        return modules;
+    }
+
+    public AssemblyCheck checkAssembly(AssemblyCheckRequest req) {
+        if ((req.technique() == null) == (req.base() == null)) {
+            throw new InvalidMartialArtException("Informe uma técnica ou uma base");
+        }
+        return req.technique() != null
+                ? AssemblyRules.checkTechnique(req.category(), req.technique())
+                : AssemblyRules.checkBase(req.category(), req.base());
+    }
+
+    private static boolean approved(MartialArt a) {
+        return a.getStatus() == null || a.getStatus() == ArtStatus.APPROVED;
+    }
+
+    private static boolean ownDraft(MartialArt a, UUID requesterId) {
+        return a.getStatus() == ArtStatus.DRAFT && requesterId.equals(a.getAuthorId());
+    }
+
+    private boolean visible(MartialArt a, UUID requesterId) {
+        if (approved(a) || requesterId.equals(a.getAuthorId())) return true;
+        return a.getStatus() == ArtStatus.PENDING_APPROVAL && a.getCampaignId() != null
+                && isMaster(a.getCampaignId(), requesterId);
+    }
+
+    private boolean isMaster(UUID campaignId, UUID userId) {
+        return memberRepository.existsByCampaignIdAndUserIdAndRole(campaignId, userId, Role.MASTER);
     }
 
     // ---------- import ----------
@@ -357,8 +475,8 @@ public class CatalogService {
         a.setDescription(p.description());
         a.setSections(p.sections());
         a.setPassives(p.passives());
-        a.setBases(p.bases());
-        a.setTechniques(p.techniques());
+        a.setBases(p.bases() == null ? new ArrayList<>() : p.bases());
+        a.setTechniques(p.techniques() == null ? new ArrayList<>() : p.techniques());
         a.setVersion(a.getVersion() + 1);
         a.setUpdatedAt(Instant.now());
     }
@@ -367,13 +485,17 @@ public class CatalogService {
         return new MartialArtSummaryResponse(a.getId(), a.getCampaignId(), a.getName(), a.getCategory(),
                 a.getMartialType(), a.getAttackSpecializations(), a.getReactionSpecializations(),
                 a.getBases() == null ? 0 : a.getBases().size(),
-                a.getTechniques() == null ? 0 : a.getTechniques().size(), a.getVersion());
+                a.getTechniques() == null ? 0 : a.getTechniques().size(), a.getVersion(), a.getStatus(), a.getAuthorId());
     }
 
     private static MartialArtResponse toResponse(MartialArt a) {
         return new MartialArtResponse(a.getId(), a.getCampaignId(), a.getName(), a.getCategory(), a.getRank(),
                 a.getMartialType(), a.getAttackSpecializations(), a.getReactionSpecializations(), a.getRequirement(),
                 a.getDescription(), a.getSections(), a.getPassives(), a.getBases(), a.getTechniques(),
-                a.getVersion(), a.getUpdatedAt());
+                a.getVersion(), a.getUpdatedAt(), a.getStatus(), a.getAuthorId(), a.getReviewNote(),
+                a.getTechniques() == null ? List.of()
+                        : a.getTechniques().stream().map(t -> AssemblyRules.checkTechnique(a.getCategory(), t)).toList(),
+                a.getBases() == null ? List.of()
+                        : a.getBases().stream().map(b -> AssemblyRules.checkBase(a.getCategory(), b)).toList());
     }
 }
