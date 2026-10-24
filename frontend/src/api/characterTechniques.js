@@ -8,6 +8,8 @@ export const getMartial = (sheetId) => call('get', `${base(sheetId)}/martial`);
 export const requestArt = (sheetId, artId) => call('post', `${base(sheetId)}/arts`, { artId });
 export const reviewCharacterArt = (sheetId, id, approved) => call('post', `${base(sheetId)}/arts/${id}/review`, { approved });
 export const setArtGraduation = (sheetId, id, graduation) => call('patch', `${base(sheetId)}/arts/${id}/graduation`, { graduation });
+export const graduateArt = (sheetId, id, duelWon) => call('post', `${base(sheetId)}/arts/${id}/graduate`, { duelWon });
+export const addGraduationPoints = (sheetId, id, points) => call('post', `${base(sheetId)}/arts/${id}/graduation-points`, { points });
 export const removeCharacterArt = (sheetId, id) => call('delete', `${base(sheetId)}/arts/${id}`);
 export const learnMove = (sheetId, body) => call('post', `${base(sheetId)}/techniques`, body);
 export const reviewTechnique = (sheetId, id, approved) => call('post', `${base(sheetId)}/techniques/${id}/review`, { approved });

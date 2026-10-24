@@ -2,14 +2,9 @@ import { useEffect, useState } from 'react';
 import { checkAssembly, createArt, listModules, submitArt, updateArt } from '../../api/catalog';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
-import { ART_CATEGORIES, BASE_FUNCTIONS, CORES, GRADS } from './artLabels';
+import { ART_CATEGORIES, BASE_FUNCTIONS, CORES, GRADS, emptyBase, emptyTechnique } from './artLabels';
 
 const emptyItem = () => ({ module: null, label: '', qty: 1, cost: 1, kind: 'UNIQUE', nonAffine: false, onDie: false, note: null });
-const emptyTechnique = () => ({
-  name: '', graduation: 'BEGINNER', description: '', effect: '', range: 'Curto',
-  variations: [{ name: null, core: 'STRIKE', items: [] }], extras: [],
-});
-const emptyBase = () => ({ name: '', graduation: 'BEGINNER', function: 'Postura', description: '', effect: '', items: [] });
 const splitList = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
 
 /** Custo do item pelo módulo: unidade × qtd, +1 não afim, efeito no dado = ceil(custo/2) mín. 1. */
@@ -152,7 +147,7 @@ function MoveFields({ m, onChange, technique }) {
   );
 }
 
-function TechniqueEditor({ t, category, modules, onChange, onRemove }) {
+export function TechniqueEditor({ t, category, modules, onChange, onRemove }) {
   const setVar = (i, patch) => onChange({ ...t, variations: t.variations.map((v, j) => (j === i ? { ...v, ...patch } : v)) });
   const two = t.variations.length > 1;
   return (
@@ -201,7 +196,7 @@ function TechniqueEditor({ t, category, modules, onChange, onRemove }) {
   );
 }
 
-function BaseEditor({ b, category, modules, onChange, onRemove }) {
+export function BaseEditor({ b, category, modules, onChange, onRemove }) {
   return (
     <details className="panel p-3" open={!b.name}>
       <summary className="cursor-pointer panel-title">{b.name || 'Nova base'}</summary>
@@ -250,6 +245,7 @@ export default function ArtEditor({ campaignId, art, canChooseCategory, onSaved,
       attackSpecializations: splitList(f.attack), reactionSpecializations: splitList(f.reaction),
       requirement: f.requirement ?? null, description: f.description || null,
       sections: f.sections ?? [], passives: f.passives ?? [], bases: f.bases, techniques: f.techniques,
+      borrowed: f.borrowed ?? [],
     };
   }
 

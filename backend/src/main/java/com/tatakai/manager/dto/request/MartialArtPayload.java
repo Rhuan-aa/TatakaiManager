@@ -5,6 +5,7 @@ import com.tatakai.manager.entity.ArtCategory;
 import com.tatakai.manager.entity.ArtPassive;
 import com.tatakai.manager.entity.ArtRule;
 import com.tatakai.manager.entity.ArtTechnique;
+import com.tatakai.manager.entity.BorrowedTechnique;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -23,5 +24,6 @@ public record MartialArtPayload(
         List<ArtRule> sections,
         List<ArtPassive> passives,
         List<ArtBase> bases,
-        List<ArtTechnique> techniques
+        List<ArtTechnique> techniques,
+        List<BorrowedTechnique> borrowed
 ) {}

@@ -1029,6 +1029,13 @@
         ],
         "extras": []
       }
+    ],
+    "borrowed": [
+      {
+        "art": "Muay Thai",
+        "name": "Overhand",
+        "graduation": "INTERMEDIATE"
+      }
     ]
   },
   {
@@ -2003,7 +2010,8 @@
         ],
         "extras": []
       }
-    ]
+    ],
+    "borrowed": []
   },
   {
     "name": "Entertainment Wrestling",
@@ -3013,7 +3021,8 @@
         ],
         "extras": []
       }
-    ]
+    ],
+    "borrowed": []
   },
   {
     "name": "Jiu-Jitsu Brasileiro",
@@ -3192,7 +3201,8 @@
         "variations": [],
         "extras": []
       }
-    ]
+    ],
+    "borrowed": []
   },
   {
     "name": "Judô",
@@ -4148,7 +4158,8 @@
         ],
         "extras": []
       }
-    ]
+    ],
+    "borrowed": []
   },
   {
     "name": "Karatê",
@@ -5344,7 +5355,8 @@
         ],
         "extras": []
       }
-    ]
+    ],
+    "borrowed": []
   },
   {
     "name": "MMA",
@@ -5455,7 +5467,8 @@
         "variations": [],
         "extras": []
       }
-    ]
+    ],
+    "borrowed": []
   },
   {
     "name": "Muay Thai",
@@ -6614,6 +6627,28 @@
         ],
         "extras": []
       }
+    ],
+    "borrowed": [
+      {
+        "art": "Boxe",
+        "name": "Jab",
+        "graduation": "BEGINNER"
+      },
+      {
+        "art": "Boxe",
+        "name": "Cruzado",
+        "graduation": "BEGINNER"
+      },
+      {
+        "art": "Boxe",
+        "name": "Uppercut",
+        "graduation": "INTERMEDIATE"
+      },
+      {
+        "art": "Boxe",
+        "name": "Liver Shot",
+        "graduation": "MASTER"
+      }
     ]
   },
   {
@@ -7626,7 +7661,8 @@
         ],
         "extras": []
       }
-    ]
+    ],
+    "borrowed": []
   },
   {
     "name": "Taekwondo",
@@ -8699,6 +8735,23 @@
         ],
         "extras": []
       }
+    ],
+    "borrowed": [
+      {
+        "art": "Karatê",
+        "name": "Oi-Zuki (Soco de Perseguição)",
+        "graduation": "BEGINNER"
+      },
+      {
+        "art": "Karatê",
+        "name": "Gyaku Zuki (Soco Contrário)",
+        "graduation": "INTERMEDIATE"
+      },
+      {
+        "art": "Karatê",
+        "name": "Kakato Otoshi (O Machado do Verdugo)",
+        "graduation": "MASTER"
+      }
     ]
   },
   {
@@ -9698,6 +9751,7 @@
         ],
         "extras": []
       }
-    ]
+    ],
+    "borrowed": []
   }
 ]

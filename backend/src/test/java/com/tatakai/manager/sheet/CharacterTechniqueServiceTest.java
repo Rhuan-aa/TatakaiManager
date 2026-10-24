@@ -231,4 +231,103 @@ class CharacterTechniqueServiceTest {
         assertThatThrownBy(() -> service.setState(sheet.getId(), tid, new TechniqueStateRequest(TechniqueState.ACTIVE),
                 player.getId())).isInstanceOf(InvalidCharacterSheetException.class);
     }
+
+    @Test
+    @DisplayName("F4b — RN-PROG-09: requisitos na resposta; graduar zera pontos e concede as bases da nova graduação")
+    void graduate() {
+        ArtBase kiba = new ArtBase();
+        kiba.setName("Kiba Dachi");
+        kiba.setGraduation(Graduation.INTERMEDIATE);
+        kiba.setComplexity(4);
+        kiba.setTrainingPoints(4);
+        karate.getBases().add(kiba);
+        UUID caId = activeArt();
+        CharacterArt ca = arts.get(0);
+
+        var art = service.get(sheet.getId(), player.getId()).arts().get(0);
+        assertThat(art.graduationCost()).isEqualTo(8);
+        assertThat(art.requirements()).extracting(r -> r.key())
+                .containsExactly("COMPLETENESS", "SPECIALIZATION", "KEIKEN", "POINTS");
+        assertThatThrownBy(() -> service.graduate(sheet.getId(), caId, new GraduateRequest(null), master.getId()))
+                .isInstanceOf(InvalidCharacterSheetException.class).hasMessageContaining("COMPLETENESS");
+
+        for (Mastery m : List.of(Mastery.IMPROVED, Mastery.IMPROVED, Mastery.SPECIALIZED)) {
+            techniques.add(CharacterTechnique.builder().id(UUID.randomUUID()).sheet(sheet).characterArt(ca)
+                    .kind(MoveKind.TECHNIQUE).name("T" + techniques.size()).graduation(Graduation.BEGINNER)
+                    .state(TechniqueState.ACTIVE).mastery(m).bonuses(new ArrayList<>()).build());
+        }
+        sheet.setFightExperience(5);
+        service.addGraduationPoints(sheet.getId(), caId, new PointsRequest(8), master.getId());
+        assertThatThrownBy(() -> service.graduate(sheet.getId(), caId, new GraduateRequest(null), player.getId()))
+                .isInstanceOf(AccessDeniedException.class);
+
+        SheetMartialResponse r = service.graduate(sheet.getId(), caId, new GraduateRequest(null), master.getId());
+
+        assertThat(r.arts().get(0).graduation()).isEqualTo(Graduation.INTERMEDIATE);
+        assertThat(r.arts().get(0).graduationPoints()).isZero();
+        assertThat(r.arts().get(0).graduationCost()).isEqualTo(12);
+        assertThat(r.techniques()).anyMatch(t -> t.name().equals("Kiba Dachi") && t.state() == TechniqueState.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("F4b — treino de graduação do TimeSkip: +1 ponto só em arte ativa com próxima graduação")
+    void graduationTraining() {
+        activeArt();
+        CharacterArt ca = arts.get(0);
+        assertThat(service.applyGraduationTraining(ca)).isEqualTo("graduação 1");
+        ca.setGraduation(Graduation.MASTER);
+        assertThat(service.applyGraduationTraining(ca)).isNull();
+    }
+
+    @Test
+    @DisplayName("F4c — aprovar a arte concede as bases até a graduação; o Mestre pode remover uma depois")
+    void artGrantsBases() {
+        ArtBase kokutsu = new ArtBase();
+        kokutsu.setName("Kokutsu Dachi");
+        kokutsu.setGraduation(Graduation.BEGINNER);
+        kokutsu.setTrainingPoints(4);
+        ArtBase kiba = new ArtBase();
+        kiba.setName("Kiba Dachi");
+        kiba.setGraduation(Graduation.INTERMEDIATE);
+        karate.getBases().addAll(List.of(kokutsu, kiba));
+
+        activeArt();
+
+        assertThat(techniques).singleElement().satisfies(t -> {
+            assertThat(t.getName()).isEqualTo("Kokutsu Dachi");
+            assertThat(t.getState()).isEqualTo(TechniqueState.ACTIVE);
+        });
+        service.removeTechnique(sheet.getId(), techniques.get(0).getId(), master.getId());
+        assertThat(techniques).isEmpty();
+    }
+
+    @Test
+    @DisplayName("F4c — técnica emprestada: aprende pela arte que empresta, na graduação da tabela; só 1 ativa por graduação")
+    void borrowed() {
+        ArtTechnique jab = new ArtTechnique();
+        jab.setName("Jab");
+        jab.setGraduation(Graduation.BEGINNER);
+        jab.setComplexity(3);
+        jab.setTrainingPoints(3);
+        ArtTechnique cruzado = new ArtTechnique();
+        cruzado.setName("Cruzado");
+        cruzado.setGraduation(Graduation.BEGINNER);
+        cruzado.setTrainingPoints(3);
+        MartialArt boxe = MartialArt.builder().id(UUID.randomUUID()).name("Boxe").category(ArtCategory.CLASSIC)
+                .techniques(new ArrayList<>(List.of(jab, cruzado))).bases(new ArrayList<>()).build();
+        lenient().when(martialArtRepository.findByCampaignIdIsNull()).thenReturn(List.of(boxe, karate));
+        karate.setBorrowed(new ArrayList<>(List.of(new BorrowedTechnique("Boxe", "Jab", Graduation.BEGINNER),
+                new BorrowedTechnique("Boxe", "Cruzado", Graduation.BEGINNER))));
+        UUID caId = activeArt();
+
+        service.learn(sheet.getId(), new LearnMoveRequest(caId, MoveKind.TECHNIQUE, "Jab"), master.getId());
+        service.learn(sheet.getId(), new LearnMoveRequest(caId, MoveKind.TECHNIQUE, "Cruzado"), master.getId());
+        assertThat(techniques).extracting(CharacterTechnique::getBorrowedFrom).containsOnly("Boxe");
+        assertThat(techniques.get(0).getComplexity()).isEqualTo(3);
+
+        service.train(sheet.getId(), techniques.get(0).getId(), new PointsRequest(3), master.getId());
+        assertThat(techniques.get(0).getState()).isEqualTo(TechniqueState.ACTIVE);
+        service.train(sheet.getId(), techniques.get(1).getId(), new PointsRequest(3), master.getId());
+        assertThat(techniques.get(1).getState()).isEqualTo(TechniqueState.STORED); // 1 emprestada ativa por graduação
+    }
 }

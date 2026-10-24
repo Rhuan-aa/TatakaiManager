@@ -5,6 +5,7 @@ import com.tatakai.manager.entity.ArtCategory;
 import com.tatakai.manager.entity.ArtPassive;
 import com.tatakai.manager.entity.ArtRule;
 import com.tatakai.manager.entity.ArtTechnique;
+import com.tatakai.manager.entity.BorrowedTechnique;
 
 import java.time.Instant;
 import java.util.List;
@@ -18,5 +19,6 @@ public record MartialArtResponse(
         String description, List<ArtRule> sections, List<ArtPassive> passives, List<ArtBase> bases,
         List<ArtTechnique> techniques, int version, Instant updatedAt,
         ArtStatus status, UUID authorId, String reviewNote, List<AssemblyCheck> techniqueChecks,
-        List<AssemblyCheck> baseChecks
+        List<AssemblyCheck> baseChecks,
+        List<BorrowedTechnique> borrowed
 ) {}

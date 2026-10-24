@@ -1,6 +1,7 @@
 package com.tatakai.manager.service;
 
 import com.tatakai.manager.dto.request.CharacterArtRequest;
+import com.tatakai.manager.dto.request.GraduateRequest;
 import com.tatakai.manager.dto.request.GraduationRequest;
 import com.tatakai.manager.dto.request.LearnMoveRequest;
 import com.tatakai.manager.dto.request.LevelUpRequest;
@@ -25,6 +26,7 @@ import com.tatakai.manager.repository.CharacterTechniqueRepository;
 import com.tatakai.manager.repository.MartialArtRepository;
 import com.tatakai.manager.service.rules.AssemblyRules;
 import com.tatakai.manager.service.rules.MasteryRules;
+import com.tatakai.manager.service.rules.ProgressionRules;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,9 +89,10 @@ public class CharacterTechniqueService {
         if (characterArtRepository.existsBySheetIdAndArtId(sheetId, art.getId())) {
             throw new InvalidCharacterSheetException("A ficha já possui esta arte");
         }
-        characterArtRepository.save(CharacterArt.builder().sheet(c.sheet()).artId(art.getId()).artName(art.getName())
-                .category(art.getCategory()).graduation(Graduation.BEGINNER)
+        CharacterArt ca = characterArtRepository.save(CharacterArt.builder().sheet(c.sheet()).artId(art.getId())
+                .artName(art.getName()).category(art.getCategory()).graduation(Graduation.BEGINNER)
                 .status(c.master() ? CharacterArtStatus.ACTIVE : CharacterArtStatus.REQUESTED).build());
+        if (c.master()) grantBases(c.sheet(), ca, art, Graduation.GENERIC, Graduation.BEGINNER);
         return finish(c, c.master() ? "ADD_ART" : "REQUEST_ART", "art", null, art.getName());
     }
 
@@ -102,6 +105,8 @@ public class CharacterTechniqueService {
         }
         if (Boolean.TRUE.equals(req.approved())) {
             ca.setStatus(CharacterArtStatus.ACTIVE);
+            martialArtRepository.findById(ca.getArtId())
+                    .ifPresent(art -> grantBases(c.sheet(), ca, art, Graduation.GENERIC, ca.getGraduation()));
             return finish(c, "APPROVE_ART", "art", null, ca.getArtName());
         }
         characterArtRepository.delete(ca);
@@ -114,7 +119,54 @@ public class CharacterTechniqueService {
         CharacterArt ca = art(c, characterArtId);
         Graduation before = ca.getGraduation();
         ca.setGraduation(req.graduation());
+        if (ca.getStatus() == CharacterArtStatus.ACTIVE && req.graduation().compareTo(before) > 0) {
+            Graduation from = Graduation.values()[before.ordinal() + 1];
+            martialArtRepository.findById(ca.getArtId())
+                    .ifPresent(art -> grantBases(c.sheet(), ca, art, from, req.graduation()));
+        }
         return finish(c, "SET_ART_GRADUATION", "art:" + ca.getArtName(), before, req.graduation());
+    }
+
+    /** RN-PROG-09: gradua se todos os requisitos fecham; zera os pontos e concede as bases da nova graduação. */
+    @Transactional
+    public SheetMartialResponse graduate(UUID sheetId, UUID characterArtId, GraduateRequest req, UUID requesterId) {
+        Ctx c = master(sheetId, requesterId);
+        CharacterArt ca = art(c, characterArtId);
+        Graduation next = ca.getStatus() == CharacterArtStatus.ACTIVE
+                ? ProgressionRules.nextGraduation(ca.getGraduation()) : null;
+        if (next == null) throw new InvalidCharacterSheetException("Esta arte não tem próxima graduação");
+        MartialArt art = martialArtRepository.findById(ca.getArtId()).orElseThrow(SheetEntryNotFoundException::new);
+        List<CharacterTechnique> all = techniqueRepository.findBySheetIdOrderByCreatedAt(sheetId);
+        List<String> missing = requirements(c.sheet(), ca, art, all, Boolean.TRUE.equals(req.duelWon())).stream()
+                .filter(r -> !r.met()).map(r -> r.key() + " (" + r.detail() + ")").toList();
+        if (!missing.isEmpty()) {
+            throw new InvalidCharacterSheetException("Requisitos de graduação pendentes: " + String.join(", ", missing));
+        }
+        Graduation before = ca.getGraduation();
+        ca.setGraduation(next);
+        ca.setGraduationPoints(0);
+        grantBases(c.sheet(), ca, art, next, next);
+        return finish(c, "GRADUATE", "art:" + ca.getArtName(), before, next);
+    }
+
+    /** Ajuste manual dos pontos de graduação (ex.: instrutor Educador +1 / Sábio +2). */
+    @Transactional
+    public SheetMartialResponse addGraduationPoints(UUID sheetId, UUID characterArtId, PointsRequest req,
+                                                    UUID requesterId) {
+        Ctx c = master(sheetId, requesterId);
+        CharacterArt ca = art(c, characterArtId);
+        int before = ca.getGraduationPoints();
+        ca.setGraduationPoints(Math.max(0, before + req.points()));
+        return finish(c, "ADJUST_GRADUATION_POINTS", "graduation:" + ca.getArtName(), before, ca.getGraduationPoints());
+    }
+
+    /** Treino de graduação vindo do TimeSkip: 1 ponto, sem TAL (§7.7). Devolve o texto, ou null se não rendeu. */
+    public String applyGraduationTraining(CharacterArt ca) {
+        if (ca.getStatus() != CharacterArtStatus.ACTIVE || ProgressionRules.nextGraduation(ca.getGraduation()) == null) {
+            return null;
+        }
+        ca.setGraduationPoints(ca.getGraduationPoints() + 1);
+        return "graduação " + ca.getGraduationPoints();
     }
 
     @Transactional
@@ -136,12 +188,14 @@ public class CharacterTechniqueService {
             throw new InvalidCharacterSheetException("A arte ainda não foi aprovada pelo Mestre");
         }
         MartialArt art = martialArtRepository.findById(ca.getArtId()).orElseThrow(SheetEntryNotFoundException::new);
-        Move move = findMove(art, req.kind(), req.name());
+        BorrowedTechnique borrowed = req.kind() != MoveKind.TECHNIQUE || art.getBorrowed() == null ? null
+                : art.getBorrowed().stream().filter(b -> b.getName().equals(req.name())).findFirst().orElse(null);
+        Move move = borrowed == null ? findMove(art, req.kind(), req.name()) : borrowedMove(c.sheet(), borrowed);
         if (move.graduation().ordinal() > ca.getGraduation().ordinal()) {
             throw new InvalidCharacterSheetException("Graduação da arte insuficiente para " + move.name());
         }
         boolean already = techniqueRepository.findBySheetIdOrderByCreatedAt(sheetId).stream()
-                .anyMatch(t -> t.getCharacterArt().getId().equals(ca.getId()) && t.getKind() == req.kind()
+                .anyMatch(t -> ca.getId().equals(t.artIdOrNull()) && t.getKind() == req.kind()
                         && t.getName().equals(move.name()));
         if (already) throw new InvalidCharacterSheetException("A ficha já possui " + move.name());
 
@@ -149,7 +203,8 @@ public class CharacterTechniqueService {
                 .name(move.name()).graduation(move.graduation()).complexity(move.complexity())
                 .trainingPoints(move.trainingPoints()).trainingProgress(0)
                 .state(c.master() ? TechniqueState.IN_TRAINING : TechniqueState.REQUESTED)
-                .mastery(Mastery.STANDARD).masteryPoints(0).bonuses(new ArrayList<>()).build());
+                .mastery(Mastery.STANDARD).masteryPoints(0).bonuses(new ArrayList<>())
+                .borrowedFrom(borrowed == null ? null : borrowed.getArt()).build());
         return finish(c, c.master() ? "ADD_TECHNIQUE" : "REQUEST_TECHNIQUE", "technique", null, move.name());
     }
 
@@ -312,6 +367,50 @@ public class CharacterTechniqueService {
         throw new SheetEntryNotFoundException();
     }
 
+    private List<ProgressionRules.Requirement> requirements(CharacterSheet s, CharacterArt ca, MartialArt art,
+                                                            List<CharacterTechnique> all, boolean duelWon) {
+        Graduation next = ProgressionRules.nextGraduation(ca.getGraduation());
+        List<Mastery> learned = all.stream().filter(t -> ca.getId().equals(t.artIdOrNull())
+                        && t.getKind() == MoveKind.TECHNIQUE && t.getGraduation() == ca.getGraduation()
+                        && (t.getState() == TechniqueState.ACTIVE || t.getState() == TechniqueState.STORED))
+                .map(CharacterTechnique::getMastery).toList();
+        int masters = (int) characterArtRepository.findBySheetIdOrderByCreatedAt(s.getId()).stream()
+                .filter(a -> a.getGraduation() == Graduation.MASTER).count();
+        return ProgressionRules.graduationRequirements(next, learned, s.getFightExperience(), masters,
+                ca.getGraduationPoints(), general(art), duelWon);
+    }
+
+    /** Arte "Geral" (ex.: Combate Desarmado - Geral) tem custo de graduação maior. */
+    private static boolean general(MartialArt art) {
+        return art != null && art.getMartialType() != null && art.getMartialType().contains("Geral");
+    }
+
+    /** Bases da arte com graduação entre `from` e `to` (inclusive) que a ficha ainda não tem: ACTIVE, Padrão. */
+    private void grantBases(CharacterSheet s, CharacterArt ca, MartialArt art, Graduation from, Graduation to) {
+        List<CharacterTechnique> all = techniqueRepository.findBySheetIdOrderByCreatedAt(s.getId());
+        for (ArtBase b : art.getBases()) {
+            Graduation g = grad(b.getGraduation());
+            boolean has = all.stream().anyMatch(t -> ca.getId().equals(t.artIdOrNull())
+                    && t.getKind() == MoveKind.BASE && t.getName().equals(b.getName()));
+            if (has || g.compareTo(from) < 0 || g.compareTo(to) > 0) continue;
+            Move m = findMove(art, MoveKind.BASE, b.getName());
+            techniqueRepository.save(CharacterTechnique.builder().sheet(s).characterArt(ca).kind(MoveKind.BASE)
+                    .name(m.name()).graduation(g).complexity(m.complexity()).trainingPoints(m.trainingPoints())
+                    .trainingProgress(m.trainingPoints()).state(TechniqueState.ACTIVE).mastery(Mastery.STANDARD)
+                    .masteryPoints(0).bonuses(new ArrayList<>()).build());
+        }
+    }
+
+    /** Técnica emprestada: números da arte de origem, graduação da tabela da arte que empresta. */
+    private Move borrowedMove(CharacterSheet s, BorrowedTechnique b) {
+        List<MartialArt> pool = new ArrayList<>(martialArtRepository.findByCampaignIdIsNull());
+        if (!s.isNpcSheet()) pool.addAll(martialArtRepository.findByCampaignId(s.getCampaignMember().getCampaign().getId()));
+        MartialArt source = pool.stream().filter(a -> a.getName().equals(b.getArt())).findFirst()
+                .orElseThrow(SheetEntryNotFoundException::new);
+        Move m = findMove(source, MoveKind.TECHNIQUE, b.getName());
+        return new Move(m.name(), grad(b.getGraduation()), m.complexity(), m.trainingPoints());
+    }
+
     private static Graduation grad(Graduation g) {
         return g == null ? Graduation.GENERIC : g;
     }
@@ -320,15 +419,18 @@ public class CharacterTechniqueService {
         return v == null ? fallback : v;
     }
 
-    /** Espaço livre para `target` na mesma arte e graduação (bases não têm limite). */
+    /** Espaço livre para `target` na mesma arte e graduação (bases e avulsas não têm limite). */
     private static boolean hasRoom(List<CharacterTechnique> all, CharacterTechnique t, TechniqueState target) {
-        if (t.getKind() == MoveKind.BASE) return true;
+        if (t.getKind() == MoveKind.BASE || t.getCharacterArt() == null) return true;
         int max = target == TechniqueState.ACTIVE
                 ? MasteryRules.MAX_ACTIVE_PER_GRADUATION : MasteryRules.MAX_STORED_PER_GRADUATION;
-        long used = all.stream().filter(o -> !o.getId().equals(t.getId()) && o.getKind() == MoveKind.TECHNIQUE
-                && o.getState() == target && o.getGraduation() == t.getGraduation()
-                && o.getCharacterArt().getId().equals(t.getCharacterArt().getId())).count();
-        return used < max;
+        List<CharacterTechnique> same = all.stream().filter(o -> !o.getId().equals(t.getId())
+                && o.getKind() == MoveKind.TECHNIQUE && o.getState() == target && o.getGraduation() == t.getGraduation()
+                && t.artIdOrNull().equals(o.artIdOrNull())).toList();
+        // RN: só 1 técnica emprestada ativa por graduação
+        if (target == TechniqueState.ACTIVE && t.getBorrowedFrom() != null
+                && same.stream().anyMatch(o -> o.getBorrowedFrom() != null)) return false;
+        return same.size() < max;
     }
 
     private static CharacterTechnique learned(CharacterTechnique t) {
@@ -390,14 +492,24 @@ public class CharacterTechniqueService {
     }
 
     private SheetMartialResponse response(CharacterSheet sheet) {
+        List<CharacterTechnique> all = techniqueRepository.findBySheetIdOrderByCreatedAt(sheet.getId());
         List<CharacterArtResponse> arts = characterArtRepository.findBySheetIdOrderByCreatedAt(sheet.getId()).stream()
-                .map(a -> new CharacterArtResponse(a.getId(), a.getArtId(), a.getArtName(), a.getCategory(),
-                        a.getGraduation(), a.getStatus())).toList();
-        List<CharacterTechniqueResponse> techniques = techniqueRepository.findBySheetIdOrderByCreatedAt(sheet.getId())
-                .stream().map(t -> new CharacterTechniqueResponse(t.getId(), t.getCharacterArt().getId(), t.getKind(),
+                .map(a -> {
+                    Graduation next = ProgressionRules.nextGraduation(a.getGraduation());
+                    if (next == null || a.getStatus() != CharacterArtStatus.ACTIVE) {
+                        return new CharacterArtResponse(a.getId(), a.getArtId(), a.getArtName(), a.getCategory(),
+                                a.getGraduation(), a.getStatus(), a.getGraduationPoints(), null, null);
+                    }
+                    MartialArt art = martialArtRepository.findById(a.getArtId()).orElse(null);
+                    return new CharacterArtResponse(a.getId(), a.getArtId(), a.getArtName(), a.getCategory(),
+                            a.getGraduation(), a.getStatus(), a.getGraduationPoints(),
+                            ProgressionRules.graduationCost(next, general(art)),
+                            requirements(sheet, a, art, all, false));
+                }).toList();
+        List<CharacterTechniqueResponse> techniques = all.stream().map(t -> new CharacterTechniqueResponse(t.getId(), t.artIdOrNull(), t.getKind(),
                         t.getName(), t.getGraduation(), t.getComplexity(), t.getTrainingPoints(),
                         t.getTrainingProgress(), t.getState(), t.getMastery(), t.getMasteryPoints(),
-                        MasteryRules.nextLevelCost(t.getTrainingPoints(), t.getMastery()), t.getBonuses())).toList();
+                        MasteryRules.nextLevelCost(t.getTrainingPoints(), t.getMastery()), t.getBonuses(), t.getBorrowedFrom())).toList();
         return new SheetMartialResponse(arts, techniques);
     }
 }

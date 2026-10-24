@@ -47,6 +47,18 @@ public class CharacterTechniqueController {
         return ResponseEntity.ok(service.reviewArt(sheetId, artId, request, AuthenticatedUser.id()));
     }
 
+    @PostMapping("/arts/{artId}/graduate")
+    public ResponseEntity<SheetMartialResponse> graduate(@PathVariable UUID sheetId, @PathVariable UUID artId,
+                                                         @RequestBody GraduateRequest request) {
+        return ResponseEntity.ok(service.graduate(sheetId, artId, request, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/arts/{artId}/graduation-points")
+    public ResponseEntity<SheetMartialResponse> graduationPoints(@PathVariable UUID sheetId, @PathVariable UUID artId,
+                                                                 @Valid @RequestBody PointsRequest request) {
+        return ResponseEntity.ok(service.addGraduationPoints(sheetId, artId, request, AuthenticatedUser.id()));
+    }
+
     @PatchMapping("/arts/{artId}/graduation")
     public ResponseEntity<SheetMartialResponse> setGraduation(@PathVariable UUID sheetId, @PathVariable UUID artId,
                                                               @Valid @RequestBody GraduationRequest request) {

@@ -13,4 +13,4 @@ import java.util.UUID;
 public record CharacterTechniqueResponse(UUID id, UUID characterArtId, MoveKind kind, String name, Graduation graduation,
                                          int complexity, int trainingPoints, int trainingProgress, TechniqueState state,
                                          Mastery mastery, int masteryPoints, Integer nextLevelCost,
-                                         List<MasteryBonus> bonuses) {}
+                                         List<MasteryBonus> bonuses, String borrowedFrom) {}

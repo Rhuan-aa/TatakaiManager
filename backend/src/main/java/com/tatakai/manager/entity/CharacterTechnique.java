@@ -32,9 +32,14 @@ public class CharacterTechnique {
     @JoinColumn(name = "sheet_id", nullable = false)
     private CharacterSheet sheet;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "character_art_id", nullable = false)
+    /** null = técnica/base avulsa (vinda da Forja, F4c). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "character_art_id")
     private CharacterArt characterArt;
+
+    public UUID artIdOrNull() {
+        return characterArt == null ? null : characterArt.getId();
+    }
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
@@ -70,6 +75,10 @@ public class CharacterTechnique {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<MasteryBonus> bonuses = new ArrayList<>();
+
+    /** Arte de origem de uma técnica emprestada (null = da própria arte). */
+    @Column(name = "borrowed_from", length = 100)
+    private String borrowedFrom;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

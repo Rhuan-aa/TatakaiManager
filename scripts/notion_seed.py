@@ -631,6 +631,36 @@ def structure_arts(arts):
             structure_base(b, f"{a['name']} / {b['name']}")
 
 
+GRAD_BY_LABEL = {"iniciante": "BEGINNER", "intermediario": "INTERMEDIATE", "mestre": "MASTER", "generica": "GENERIC"}
+
+
+def structure_borrowed(arts):
+    """Tabela "Graduação | Emprestadas (Arte)" da seção Técnicas Emprestadas -> borrowed[{art, name, graduation}]."""
+    by_name = {noacc(a["name"]).lower(): a for a in arts}
+    for a in arts:
+        a["borrowed"] = []
+        sec = next((x for x in a["sections"] if "emprestad" in noacc(x["name"]).lower()), None)
+        m = sec and re.search(r"\|\s*Gradua\S*\s*\|\s*Emprestadas\s*\(([^)]+)\)", sec["text"])
+        if not m:
+            continue
+        source = by_name.get(noacc(m.group(1).strip()).lower())
+        if not source:
+            unclassified.append(f"{a['name']}: arte de origem das emprestadas não encontrada ({m.group(1)})")
+            continue
+        for row in sec["text"].splitlines():
+            cells = [c.strip() for c in row.strip().strip("|").split("|")]
+            grad = GRAD_BY_LABEL.get(noacc(cells[0]).lower()) if len(cells) == 2 else None
+            if not grad:
+                continue
+            for short in [x.strip() for x in cells[1].split(",") if x.strip() and x.strip() != "—"]:
+                t = next((t for t in source["techniques"]
+                          if noacc(t["name"]).lower().startswith(noacc(short).lower())), None)
+                if t is None:
+                    unclassified.append(f"{a['name']}: técnica emprestada não encontrada em {source['name']}: {short}")
+                    continue
+                a["borrowed"].append({"art": source["name"], "name": t["name"], "graduation": grad})
+
+
 def dump(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -641,6 +671,7 @@ def main():
     arts = [build_art(f) for f in sorted(ARTES.glob("*.md"), key=lambda p: noacc(p.name))]
     dump(OUT / "traits.json", traits)
     structure_arts(arts)
+    structure_borrowed(arts)
     dump(OUT / "arts.json", arts)
     print(f"traits.json: {len(traits)} traços")
     for r, s in tstats.items():
@@ -650,7 +681,7 @@ def main():
     print(f"arts.json: {len(arts)} artes")
     for a in arts:
         print(f"  {a['name']}: bases={len(a['bases'])} técnicas={len(a['techniques'])} "
-              f"passivas={len(a['passives'])} seções={len(a['sections'])}")
+              f"passivas={len(a['passives'])} seções={len(a['sections'])} emprestadas={len(a['borrowed'])}")
     print(f"montagens: {len(assembly_report)} aviso(s)")
     for r in assembly_report:
         print("  -", r)

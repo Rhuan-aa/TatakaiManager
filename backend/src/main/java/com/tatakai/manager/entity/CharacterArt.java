@@ -46,6 +46,10 @@ public class CharacterArt {
     @Column(length = 20)
     private CharacterArtStatus status;
 
+    /** Pontos para a próxima graduação (RN-PROG-09): treino de graduação + EL de luta com a arte. */
+    @Column(name = "graduation_points", nullable = false, columnDefinition = "integer not null default 0")
+    private int graduationPoints;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

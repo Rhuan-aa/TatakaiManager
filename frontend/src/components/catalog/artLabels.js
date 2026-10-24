@@ -15,3 +15,10 @@ export const BASE_FUNCTIONS = ['Postura', 'Deslocamento', 'Transferência de Pes
 export const ART_STATUS = { DRAFT: 'Rascunho', PENDING_APPROVAL: 'Aguardando aprovação', APPROVED: 'Aprovada' };
 
 export const lab = (list, v) => list.find((i) => i.value === v)?.label ?? v ?? '—';
+
+/** Técnica/base vazias para o editor de montagem. */
+export const emptyTechnique = () => ({
+  name: '', graduation: 'BEGINNER', description: '', effect: '', range: 'Curto',
+  variations: [{ name: null, core: 'STRIKE', items: [] }], extras: [],
+});
+export const emptyBase = () => ({ name: '', graduation: 'BEGINNER', function: 'Postura', description: '', effect: '', items: [] });

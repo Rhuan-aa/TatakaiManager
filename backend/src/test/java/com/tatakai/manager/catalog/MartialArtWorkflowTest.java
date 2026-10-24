@@ -20,6 +20,8 @@ import com.tatakai.manager.exception.SheetEntryNotFoundException;
 import com.tatakai.manager.repository.CampaignMemberRepository;
 import com.tatakai.manager.repository.ClanRepository;
 import com.tatakai.manager.repository.MartialArtRepository;
+import com.tatakai.manager.repository.InstinctRepository;
+import com.tatakai.manager.repository.FightMilestoneRepository;
 import com.tatakai.manager.repository.TraitDefinitionRepository;
 import com.tatakai.manager.repository.UserRepository;
 import com.tatakai.manager.service.CatalogService;
@@ -50,6 +52,8 @@ class MartialArtWorkflowTest {
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private UserRepository userRepository;
     @Mock private MartialArtRepository artRepository;
+    @Mock private InstinctRepository instinctRepository;
+    @Mock private FightMilestoneRepository milestoneRepository;
 
     private CatalogService service;
     private final UUID cid = UUID.randomUUID();
@@ -59,7 +63,7 @@ class MartialArtWorkflowTest {
 
     @BeforeEach
     void setUp() {
-        service = new CatalogService(traitRepository, clanRepository, memberRepository, userRepository, "", artRepository);
+        service = new CatalogService(traitRepository, clanRepository, memberRepository, userRepository, "", artRepository, instinctRepository, milestoneRepository);
         lenient().when(memberRepository.existsByCampaignIdAndUserId(any(), any())).thenReturn(true);
         lenient().when(memberRepository.existsByCampaignIdAndUserIdAndRole(cid, master, Role.MASTER)).thenReturn(true);
         lenient().when(artRepository.save(any(MartialArt.class))).thenAnswer(i -> i.getArgument(0));
@@ -83,7 +87,7 @@ class MartialArtWorkflowTest {
 
     private static MartialArtPayload payload(ArtCategory category, ArtTechnique... techniques) {
         return new MartialArtPayload("Punho do Vento", category, null, "Trocação", List.of(), List.of(), null, "d",
-                List.of(), List.of(), List.of(), new ArrayList<>(List.of(techniques)));
+                List.of(), List.of(), List.of(), new ArrayList<>(List.of(techniques)), null);
     }
 
     private MartialArt stored(MartialArtResponse r) {

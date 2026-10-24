@@ -58,6 +58,10 @@ public class MartialArt {
     @Builder.Default
     private List<ArtTechnique> techniques = new ArrayList<>();
 
+    /** Técnicas emprestadas de outras artes (máx. 1 ativa por graduação). */
+    @Builder.Default
+    private List<BorrowedTechnique> borrowed = new ArrayList<>();
+
     private int version;
 
     private Instant updatedAt;
