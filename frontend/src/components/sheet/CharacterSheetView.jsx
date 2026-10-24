@@ -10,6 +10,7 @@ import CharacterSheetForm from './CharacterSheetForm';
 import GmAdjustmentPanel from './GmAdjustmentPanel';
 import RollBox from './RollBox';
 import ActivityLogPanel from './ActivityLogPanel';
+import MartialPanel from './MartialPanel';
 import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, label } from './sheetRules';
 import { RARITY, rarityTagStyle } from '../ui/rarity';
 import RichText from '../ui/RichText';
@@ -378,6 +379,13 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
           </div>
         )}
       </Block>
+
+      {(isOwner || isMaster) && (
+        <Block title="Artes marciais">
+          <MartialPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
+            refreshKey={refreshKey + sheet.version} />
+        </Block>
+      )}
 
       <Block title="Inventário" aside={sheet.money != null && (
         <span className="tag" style={{ borderColor: 'var(--chip-el)', color: 'var(--chip-el)' }}>Diárias {sheet.money}</span>

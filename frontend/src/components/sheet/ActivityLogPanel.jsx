@@ -53,6 +53,22 @@ const ACTION_VERBS = {
   REMOVE_ITEM: 'removeu um item',
   ADD_TRAIT: 'adicionou um traço',
   REMOVE_TRAIT: 'removeu um traço',
+  REQUEST_ART: 'pediu uma arte marcial',
+  ADD_ART: 'adicionou uma arte marcial',
+  APPROVE_ART: 'aprovou uma arte marcial',
+  REJECT_ART: 'recusou uma arte marcial',
+  SET_ART_GRADUATION: 'mudou a graduação',
+  REMOVE_ART: 'removeu uma arte marcial',
+  REQUEST_TECHNIQUE: 'pediu uma técnica',
+  ADD_TECHNIQUE: 'ensinou uma técnica',
+  APPROVE_TECHNIQUE: 'aprovou uma técnica',
+  REJECT_TECHNIQUE: 'recusou uma técnica',
+  TRAIN_TECHNIQUE: 'lançou treino',
+  SET_TECHNIQUE_STATE: 'alternou ativa/guardada',
+  ADJUST_MASTERY_POINTS: 'ajustou pontos de maestria',
+  LEVEL_UP: 'subiu a maestria',
+  SET_MASTERY: 'definiu o degrau de maestria',
+  REMOVE_TECHNIQUE: 'removeu uma técnica',
 };
 const ROLES = { PLAYER: 'Jogador', MASTER: 'Mestre', SYSTEM: 'Sistema' };
 
@@ -63,7 +79,7 @@ const val = (v) => (v == null ? '—' : v);
 /** Frase em pt-BR para uma entrada do log (sem o nome do ator). */
 function sentence(e) {
   const fieldKey = (e.field ?? '').split(':')[0];
-  const field = FIELDS[fieldKey] ?? e.field;
+  const field = FIELDS[fieldKey] ?? (e.field?.includes(':') ? e.field.split(':').slice(1).join(':') : e.field);
   const change = e.beforeValue != null || e.afterValue != null;
   let text;
   if (e.action === 'ROLL') text = `rolou ${val(e.afterValue)}`;

@@ -708,3 +708,11 @@ Contrato em `PLANO_FICHA_DIGITAL.md` §15.
   Rascunho só o autor vê; pendente, autor e Mestre (outros → 404).
 - **Seed:** `scripts/notion_seed.py` converte o texto das montagens e imprime divergências de Complexidade vs. livro.
 - **Front:** `components/catalog/ArtEditor.jsx`, `ArtsPanel.jsx` (novo/editar/enviar/aprovar), `artLabels.js`.
+
+## 15. Artes e técnicas na ficha (F3b)
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §16. Tabelas `character_arts` e `character_techniques` (snapshot de nome, graduação,
+complexidade e PT do catálogo). `CharacterTechniqueService` + `CharacterTechniqueController` (`/character-sheets/{sid}/martial`,
+`/arts`, `/techniques/...`): jogador pede arte/técnica, Mestre aprova, lança treino e pontos de maestria; dono/Mestre alternam
+ativa/guardada (máx. 3 ativas e 2 guardadas por arte e graduação) e sobem nível escolhendo bonificação (`MasteryRules`).
+Front: `components/sheet/MartialPanel.jsx` no bloco "Artes marciais" da ficha.

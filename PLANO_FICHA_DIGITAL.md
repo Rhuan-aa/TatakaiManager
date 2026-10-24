@@ -1155,3 +1155,51 @@ Visibilidade: APPROVED (ou null) para membros; rascunho só para o autor; penden
 `components/catalog/ArtEditor.jsx` (cabeçalho da arte + listas de técnicas/bases; editor de variações/itens com módulo do
 catálogo ou item único; `AssemblyCheck` ao vivo via `/catalog/assembly/check` com debounce). `ArtsPanel`: "Nova arte",
 editar, enviar, aprovar/devolver, tags de status, e no detalhe o check calculado vs. números do livro.
+
+---
+
+## 16. F3b — Artes e técnicas na ficha, maestria (contrato, 24/10/2026)
+
+Decisão do usuário: **jogador escolhe, Mestre aprova** (antes do treino no TimeSkip, que é F4). Ficha de NPC: o dono age como Mestre.
+
+### 16.1 Banco (PostgreSQL)
+```
+enum CharacterArtStatus { REQUESTED, ACTIVE }
+enum MoveKind { TECHNIQUE, BASE }
+enum TechniqueState { REQUESTED, IN_TRAINING, ACTIVE, STORED }
+enum Mastery { SKETCH, UNCORRECTED, STANDARD, IMPROVED, SPECIALIZED, MASTERED }          // RN-MAE-04
+enum MasteryBonus { DAMAGE, HIT, COST, IMPACT, POWER, JOKER, REFINE, TRACTION, BONUS, REDUCTION, APEX }
+character_arts       (id, sheet_id, art_id, art_name, category, graduation, status, created_at)  unique(sheet_id, art_id)
+character_techniques (id, sheet_id, character_art_id, kind, name, graduation, complexity, training_points,
+                      training_progress, state, mastery, mastery_points, bonuses jsonb, created_at)
+```
+`name`, `graduation`, `complexity`, `training_points` são snapshot da arte (número do livro; sem ele, o calculado pela montagem).
+
+### 16.2 Regras puras — `service/rules/MasteryRules`
+- Custo do próximo nível (RN-MAE-01): Melhorada `PT`; Especializada `PT + floor(PT/2)`; Masterizada `2·PT`. Só sobe por pontos a
+  partir de Padrão; Esboço/Não Corrigida mudam por ação do Mestre (correção).
+- Ganho de treino (RN-MAE-02 / §7.7): `1 + floor(modQ(TAL)/2)` (usado pela F4; aqui o Mestre lança os pontos).
+- Bonificações (RN-MAE-03): técnica {DAMAGE, HIT, COST, IMPACT, POWER, JOKER, REFINE, TRACTION}; base {BONUS, JOKER, REFINE,
+  TRACTION, REDUCTION}; JOKER no máx. 2; APEX automático ao chegar em Masterizada.
+- Espaços: no máx. **3 ACTIVE** e **2 STORED** técnicas por (arte, graduação). Bases sem limite.
+
+### 16.3 Rotas (`/character-sheets/{sid}/...`, só dono e Mestre; outros 403)
+| Método | Rota | Quem | Efeito |
+|---|---|---|---|
+| GET | `/martial` | dono/M | `{arts[], techniques[]}` |
+| POST | `/arts` `{artId}` | dono/M | dono → REQUESTED; Mestre → ACTIVE (graduação Iniciante) |
+| POST | `/arts/{caId}/review` `{approved}` | M | ACTIVE ou remove |
+| PATCH | `/arts/{caId}/graduation` `{graduation}` | M | muda a graduação na arte |
+| DELETE | `/arts/{caId}` | M | remove a arte e as técnicas dela |
+| POST | `/techniques` `{characterArtId, kind, name}` | dono/M | arte ACTIVE, movimento existe, graduação ≤ a da arte; dono → REQUESTED, Mestre → IN_TRAINING |
+| POST | `/techniques/{tid}/review` `{approved}` | M | IN_TRAINING ou remove |
+| POST | `/techniques/{tid}/training` `{points>0}` | M | progresso; ao atingir PT → ACTIVE (Padrão) se houver espaço, senão STORED |
+| PATCH | `/techniques/{tid}/state` `{state: ACTIVE\|STORED}` | dono/M | troca respeitando espaços |
+| POST | `/techniques/{tid}/mastery-points` `{points}` | M | soma pontos de maestria (pode ser negativo, mín. 0) |
+| POST | `/techniques/{tid}/level-up` `{bonus}` | dono/M | consome o custo e sobe um nível; bônus válido para o tipo |
+| PATCH | `/techniques/{tid}/mastery` `{mastery}` | M | define o degrau (correção de Esboço/Não Corrigida) |
+| DELETE | `/techniques/{tid}` | M | remove |
+Toda mutação grava `sheet_activity_logs` (PROGRESSION) e publica `SHEET_UPDATED`. Erros de regra → `InvalidCharacterSheetException` (400).
+
+### 16.4 Frontend
+`components/sheet/MartialPanel.jsx` como bloco "Artes marciais" em `CharacterSheetView` (dono/Mestre).
