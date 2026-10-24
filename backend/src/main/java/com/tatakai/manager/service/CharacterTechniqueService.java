@@ -189,6 +189,28 @@ public class CharacterTechniqueService {
         return finish(c, "TRAIN_TECHNIQUE", "training:" + t.getName(), before, t.getTrainingProgress());
     }
 
+    /**
+     * Treino de técnica vindo do TimeSkip (F4a), sem checagem de acesso: progresso se em treino (ativa ao completar),
+     * pontos de maestria se aprendida. Devolve o texto do que aconteceu, ou null se não rendeu.
+     */
+    public String applyTraining(CharacterTechnique t, int points) {
+        if (t.getState() == TechniqueState.IN_TRAINING) {
+            t.setTrainingProgress(Math.min(t.getTrainingPoints(), t.getTrainingProgress() + points));
+            if (t.getTrainingProgress() >= t.getTrainingPoints()) {
+                List<CharacterTechnique> all = techniqueRepository.findBySheetIdOrderByCreatedAt(t.getSheet().getId());
+                if (hasRoom(all, t, TechniqueState.ACTIVE)) t.setState(TechniqueState.ACTIVE);
+                else if (hasRoom(all, t, TechniqueState.STORED)) t.setState(TechniqueState.STORED);
+            }
+            return "treino " + t.getTrainingProgress() + "/" + t.getTrainingPoints();
+        }
+        Integer cap = MasteryRules.nextLevelCost(t.getTrainingPoints(), t.getMastery());
+        if ((t.getState() == TechniqueState.ACTIVE || t.getState() == TechniqueState.STORED) && cap != null) {
+            t.setMasteryPoints(Math.min(cap, t.getMasteryPoints() + points));
+            return "maestria " + t.getMasteryPoints() + "/" + cap;
+        }
+        return null;
+    }
+
     @Transactional
     public SheetMartialResponse setState(UUID sheetId, UUID techniqueId, TechniqueStateRequest req, UUID requesterId) {
         Ctx c = load(sheetId, requesterId);

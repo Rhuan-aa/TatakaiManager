@@ -15,6 +15,11 @@ export async function closeTimeSkip(timeSkipId) {
   return data;
 }
 
+export async function setVenue(timeSkipId, venue) {
+  const { data } = await client.patch(`/timeskips/${timeSkipId}/venue`, { venue });
+  return data;
+}
+
 export async function setCurrentDay(timeSkipId, currentDay) {
   const { data } = await client.patch(`/timeskips/${timeSkipId}/current-day`, { currentDay });
   return data;

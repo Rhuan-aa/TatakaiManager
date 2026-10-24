@@ -48,6 +48,15 @@ public class TimeSkip {
     @Builder.Default
     private TimeSkipStatus status = TimeSkipStatus.ACTIVE;
 
+    /** Local de treino (RN-PROG-03); null = Academia Comum. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private TrainingVenue venue;
+
+    /** Último dia já processado (treinos/Repouso); null em TimeSkips antigos = currentDay − 1. */
+    @Column(name = "processed_day")
+    private Short processedDay;
+
     @OneToMany(mappedBy = "timeSkip", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TimeSkipDay> days = new ArrayList<>();

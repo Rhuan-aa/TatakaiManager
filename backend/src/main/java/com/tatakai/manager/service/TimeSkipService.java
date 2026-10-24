@@ -6,6 +6,7 @@ import com.tatakai.manager.entity.Booking;
 import com.tatakai.manager.entity.Campaign;
 import com.tatakai.manager.entity.Role;
 import com.tatakai.manager.entity.TimeSkip;
+import com.tatakai.manager.entity.TrainingVenue;
 import com.tatakai.manager.entity.TimeSkipStatus;
 import com.tatakai.manager.exception.AccessDeniedException;
 import com.tatakai.manager.exception.ActiveTimeSkipExistsException;
@@ -34,11 +35,15 @@ public class TimeSkipService {
     private final BookingRepository bookingRepository;
     private final InteractionLogRepository logRepository;
 
+    private final TrainingService trainingService;
+
     public TimeSkipService(TimeSkipRepository timeSkipRepository,
                            CampaignRepository campaignRepository,
                            CampaignMemberRepository memberRepository,
                            BookingRepository bookingRepository,
-                           InteractionLogRepository logRepository) {
+                           InteractionLogRepository logRepository,
+                           TrainingService trainingService) {
+        this.trainingService = trainingService;
         this.timeSkipRepository = timeSkipRepository;
         this.campaignRepository = campaignRepository;
         this.memberRepository = memberRepository;
@@ -120,7 +125,17 @@ public class TimeSkipService {
                     "O dia deve estar entre 1 e " + timeSkip.getTotalDays());
         }
 
+        trainingService.processUpTo(timeSkip, day);
         timeSkip.setCurrentDay(day);
+        return toResponse(timeSkipRepository.save(timeSkip));
+    }
+
+    /** Local de treino do TimeSkip (RN-PROG-03). Só o Mestre. */
+    @Transactional
+    public TimeSkipResponse setVenue(UUID timeSkipId, UUID requesterId, TrainingVenue venue) {
+        TimeSkip timeSkip = timeSkipRepository.findById(timeSkipId).orElseThrow(TimeSkipNotFoundException::new);
+        requireCampaignMaster(timeSkip.getCampaign().getId(), requesterId);
+        timeSkip.setVenue(venue);
         return toResponse(timeSkipRepository.save(timeSkip));
     }
 
@@ -149,6 +164,7 @@ public class TimeSkipService {
                 ts.getCurrentDay(),
                 ts.getStatus(),
                 ts.getCreatedAt(),
-                ts.getClosedAt());
+                ts.getClosedAt(),
+                ts.getVenue());
     }
 }

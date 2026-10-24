@@ -716,3 +716,14 @@ complexidade e PT do catálogo). `CharacterTechniqueService` + `CharacterTechniq
 `/arts`, `/techniques/...`): jogador pede arte/técnica, Mestre aprova, lança treino e pontos de maestria; dono/Mestre alternam
 ativa/guardada (máx. 3 ativas e 2 guardadas por arte e graduação) e sobem nível escolhendo bonificação (`MasteryRules`).
 Front: `components/sheet/MartialPanel.jsx` no bloco "Artes marciais" da ficha.
+
+## 16. Treino e Repouso no TimeSkip (F4a)
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §17. Reserva solo `TREINO` com `trainingTarget` (atributo, recurso ou `TECHNIQUE` +
+`techniqueId`) e `REPOUSO` com `restQuality`. Ao **avançar o dia**, `TimeSkipService.setCurrentDay` chama
+`TrainingService.processUpTo`: cada treino vira `training_entries` (pendente; técnica é aplicada na hora), o Repouso rola
+HP/SP no servidor, recupera Desgaste e consolida os pendentes contra Barreiras e Limitador (`limiterCarry` = meio-ponto);
+dia sem Repouso dá +1 Desgaste Físico. `TimeSkip.processedDay` impede reprocessar. Regras puras em `TrainingRules`.
+`TimeSkip.venue` (local de treino) via `PATCH /timeskips/{id}/venue`; livro em `GET /character-sheets/{sid}/training`.
+Bancos existentes: dropar `bookings_solo_activity_type_check` (valor novo `REPOUSO`, ver §11.11).
+`/error` é público no `SecurityConfig` (antes um 500 virava 401 e o front deslogava).

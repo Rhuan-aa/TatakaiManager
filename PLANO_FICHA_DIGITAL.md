@@ -1203,3 +1203,48 @@ Toda mutação grava `sheet_activity_logs` (PROGRESSION) e publica `SHEET_UPDATE
 
 ### 16.4 Frontend
 `components/sheet/MartialPanel.jsx` como bloco "Artes marciais" em `CharacterSheetView` (dono/Mestre).
+
+---
+
+## 17. F4a — Treino e Repouso no TimeSkip (contrato, 24/10/2026)
+
+Decisões do usuário: o treino vira ganho pendente **ao avançar o dia**; o **Repouso é agendado** na Agenda (ação solo de
+1 ponto, com qualidade); o **local de treino é por TimeSkip**. F4b = EL/PS/Keiken/graduação; F4c = Forja/Caderno/Rivais.
+
+### 17.1 Modelo
+- `TimeSkip` + `TrainingVenue venue` (`FIELD | COMMON_GYM | FIGHT_GYM | HIGH_PERFORMANCE`, null = COMMON_GYM) e
+  `short processedDay` (último dia já processado; evita reprocessar se o Mestre voltar e avançar de novo).
+- `SoloActivityType` + `REPOUSO` (custo 1). `Booking` + `trainingTarget` (`STR|DEX|CON|INT|CHA|MEN|HP|SP|KP|TECHNIQUE`),
+  `techniqueId` (CharacterTechnique), `restQuality` (`PRECARIOUS|SIMPLE|COMFORTABLE|TREATED`).
+  TREINO exige `trainingTarget` (e `techniqueId` se TECHNIQUE; a técnica tem de ser da ficha do jogador); descrição opcional.
+  REPOUSO exige `restQuality`.
+- `training_entries`: `id, sheet_id, time_skip_id, booking_id, day_number, target, technique_id, gain, full (bool),
+  status (PENDING | CONSOLIDATED | APPLIED | LOST), note, created_at`. Técnica é `APPLIED` na hora (progresso/maestria).
+- `CharacterSheet` + `limiterCarry` (jsonb `Map<String,Integer>`): meio-ponto guardado além do Limitador por alvo.
+
+### 17.2 Regras puras — `service/rules/TrainingRules`
+- Ganho (RN-PROG-01): base FOR/DES/CON/INT/MEN 1, CAR 2, HP/SP 2; `+ floor(modQ(TAL)/2)`; `+1` do tipo corporal
+  (Endo CON, Meso FOR, Ecto DES). PQ: 1 a cada 4º treino de PQ, sem TAL. TAL não treina.
+- Sobrecarga (RN-PROG-02): 1º treino do dia no alvo normal; 2º normal +1 Desgaste extra; 3º+ ganho 0.
+- Plenos por semana (semana = 7 dias do TimeSkip) e alvo físico (FOR, DES, CON, HP, SP, PQ): Campo 2, Academias 3,
+  Centro 4. Excedente = Parcial `floor(ganho/2)`; Parcial de PQ = 0. ponytail: Platô, Lotada e teste de CON ND 12 ficam para depois.
+- Desgaste (RN-PROG-05): +1 do tipo (mental: INT, CAR, MEN; resto físico). Esgotado: físico −1 Pleno na semana,
+  mental −1 de ganho. Exaurido: todo treino Parcial. Colapso: treino do tipo bloqueado (ganho 0, `LOST`).
+- Repouso (RN-PROG-06): dado d6/d8/d10/d12; HP += 2 dados + modQ(CON); SP += 4 dados + modQ(CON); PQ = máximo;
+  Desgaste físico e mental −0/1/1/2. Rolagens via `RollService.rollInternal`. Dia sem Repouso: +1 Desgaste Físico.
+- Consolidação (RN-PROG-04) no Repouso: Precário −1 por entrada (mín. 1); Barreiras (RN-ATR-06) truncam em 3/6/9 (excedente
+  perdido); além do Limitador cada entrada vale meio ponto (`limiterCarry`). Máximo de recurso sobe; o atual acompanha se estava cheio.
+- Técnica (§7.7): `1 + floor(modQ(TAL)/2)` no progresso (IN_TRAINING, ativa ao completar) ou nos pontos de maestria (aprendida).
+
+### 17.3 Processamento — `TrainingService.processDays(timeSkip, toDayExclusive)`
+Chamado por `TimeSkipService.setCurrentDay` quando o dia avança além de `processedDay`. Para cada dia e ficha de jogador
+COMPLETED da campanha, em ordem de slot: treinos → entradas; Repouso → consolida + recupera; sem Repouso → +1 Desgaste Físico.
+Tudo vai para o log de atividade (PROGRESSION/RESOURCE) e publica `SHEET_UPDATED`.
+
+### 17.4 Rotas
+`PATCH /timeskips/{id}/venue {venue}` (M). `GET /character-sheets/{sid}/training` (dono/M) → entradas.
+`CreateBookingRequest` e `BookingResponse` ganham no final `trainingTarget, techniqueId, restQuality`.
+
+### 17.5 Frontend
+`SlotGrid`: TREINO com alvo (atributos, recursos, técnicas da ficha) e REPOUSO com qualidade. `TimeSkipPanel`: local de treino
+(Mestre). Ficha: bloco "Treinos" com pendentes e histórico.

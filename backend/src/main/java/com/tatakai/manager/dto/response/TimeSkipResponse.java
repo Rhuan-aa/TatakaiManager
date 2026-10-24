@@ -13,5 +13,6 @@ public record TimeSkipResponse(
         short currentDay,
         TimeSkipStatus status,
         Instant createdAt,
-        Instant closedAt
+        Instant closedAt,
+        com.tatakai.manager.entity.TrainingVenue venue
 ) {}

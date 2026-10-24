@@ -2,6 +2,7 @@ package com.tatakai.manager.controller;
 
 import com.tatakai.manager.dto.request.CreateTimeSkipRequest;
 import com.tatakai.manager.dto.request.SetCurrentDayRequest;
+import com.tatakai.manager.dto.request.SetVenueRequest;
 import com.tatakai.manager.dto.response.TimeSkipResponse;
 import com.tatakai.manager.security.AuthenticatedUser;
 import com.tatakai.manager.service.TimeSkipService;
@@ -43,6 +44,12 @@ public class TimeSkipController {
     public ResponseEntity<Void> delete(@PathVariable UUID timeSkipId) {
         timeSkipService.delete(timeSkipId, AuthenticatedUser.id());
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/timeskips/{timeSkipId}/venue")
+    public ResponseEntity<TimeSkipResponse> setVenue(@PathVariable UUID timeSkipId,
+                                                     @Valid @RequestBody SetVenueRequest request) {
+        return ResponseEntity.ok(timeSkipService.setVenue(timeSkipId, AuthenticatedUser.id(), request.venue()));
     }
 
     @PatchMapping("/timeskips/{timeSkipId}/current-day")

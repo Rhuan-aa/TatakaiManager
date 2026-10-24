@@ -1,5 +1,6 @@
 package com.tatakai.manager.dto.response;
 
+import com.tatakai.manager.entity.RestQuality;
 import com.tatakai.manager.entity.SoloActivityType;
 
 import java.time.Instant;
@@ -19,5 +20,8 @@ public record BookingResponse(
         UUID activityId,
         String activityName,
         String description,
-        Instant createdAt
+        Instant createdAt,
+        String trainingTarget,
+        UUID techniqueId,
+        RestQuality restQuality
 ) {}

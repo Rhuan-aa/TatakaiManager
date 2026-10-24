@@ -4,6 +4,7 @@ import {
   createTimeSkip,
   closeTimeSkip,
   setCurrentDay,
+  setVenue,
   deleteTimeSkip,
 } from '../../api/timeskips';
 import { parseApiError } from '../../api/parseApiError';
@@ -79,6 +80,15 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     try {
       const updated = await setCurrentDay(selected.id, selected.currentDay + 1);
       upsert(updated);
+      toast(`Dia ${updated.currentDay}: treinos e Repousos do dia anterior processados.`);
+    } catch (err) {
+      setError(parseApiError(err).message);
+    }
+  }
+
+  async function handleVenue(venue) {
+    try {
+      upsert(await setVenue(selected.id, venue));
     } catch (err) {
       setError(parseApiError(err).message);
     }
@@ -264,6 +274,16 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                   >
                     Encerrar TimeSkip
                   </button>
+                  <label className="flex items-center gap-2 text-xs uppercase">
+                    Local de treino
+                    <select className="field m-0 w-auto py-1 text-sm" value={selected.venue ?? 'COMMON_GYM'}
+                      onChange={(e) => handleVenue(e.target.value)}>
+                      <option value="FIELD">Campo (2 Plenos/semana)</option>
+                      <option value="COMMON_GYM">Academia Comum (3)</option>
+                      <option value="FIGHT_GYM">Academia de Luta (3)</option>
+                      <option value="HIGH_PERFORMANCE">Centro de Alto Rendimento (4)</option>
+                    </select>
+                  </label>
                 </>
               )}
               {confirmingDelete ? (

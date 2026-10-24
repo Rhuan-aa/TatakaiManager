@@ -6,6 +6,7 @@ import com.tatakai.manager.dto.response.SlotUpdateMessage;
 import com.tatakai.manager.entity.*;
 import com.tatakai.manager.exception.*;
 import com.tatakai.manager.repository.*;
+import com.tatakai.manager.service.rules.TrainingRules;
 import com.tatakai.manager.websocket.SlotEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -150,7 +151,20 @@ public class BookingService {
                     .build();
         }
 
-        if (req.description() == null || req.description().isBlank()) {
+        String target = null;
+        UUID techniqueId = null;
+        RestQuality quality = null;
+        if (req.soloActivityType() == SoloActivityType.TREINO && req.trainingTarget() != null) {
+            target = req.trainingTarget();
+            if (!TrainingRules.TARGETS.contains(target)) throw new InvalidBookingException("alvo de treino inválido");
+            if (TrainingRules.TECHNIQUE.equals(target)) {
+                if (req.techniqueId() == null) throw new InvalidBookingException("escolha a técnica a treinar");
+                techniqueId = req.techniqueId();
+            }
+        } else if (req.soloActivityType() == SoloActivityType.REPOUSO) {
+            if (req.restQuality() == null) throw new InvalidBookingException("escolha a qualidade do Repouso");
+            quality = req.restQuality();
+        } else if (req.description() == null || req.description().isBlank()) {
             throw new InvalidBookingException("a descrição da atividade solo é obrigatória");
         }
         return Booking.builder()
@@ -159,6 +173,9 @@ public class BookingService {
                 .slotNumber(req.slotNumber())
                 .soloActivityType(req.soloActivityType())
                 .description(req.description())
+                .trainingTarget(target)
+                .techniqueId(techniqueId)
+                .restQuality(quality)
                 .idlePointCost(FIXED_SOLO_ACTIVITY_COST)
                 .build();
     }
@@ -294,6 +311,9 @@ public class BookingService {
                 b.getTimeSkipActivityId(),
                 b.getActivityName(),
                 b.getDescription(),
-                b.getCreatedAt());
+                b.getCreatedAt(),
+                b.getTrainingTarget(),
+                b.getTechniqueId(),
+                b.getRestQuality());
     }
 }

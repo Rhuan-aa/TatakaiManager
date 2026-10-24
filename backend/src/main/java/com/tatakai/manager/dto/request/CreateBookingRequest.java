@@ -1,5 +1,6 @@
 package com.tatakai.manager.dto.request;
 
+import com.tatakai.manager.entity.RestQuality;
 import com.tatakai.manager.entity.SoloActivityType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -32,6 +33,15 @@ public record CreateBookingRequest(
 
         UUID activityId,
 
-        String description
+        String description,
+
+        /** TREINO: STR, DEX, CON, INT, CHA, MEN, HP, SP, KP ou TECHNIQUE. */
+        String trainingTarget,
+
+        /** TREINO de técnica: id da técnica na ficha. */
+        UUID techniqueId,
+
+        /** REPOUSO: qualidade. */
+        RestQuality restQuality
 
 ) {}

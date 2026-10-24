@@ -109,6 +109,12 @@ public class CharacterSheet {
     @Builder.Default
     private Map<String, Integer> limiterAdjustments = new HashMap<>();
 
+    /** Meio-ponto de treino guardado além do Limitador, por alvo (RN-PROG-04). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "limiter_carry", columnDefinition = "jsonb")
+    @Builder.Default
+    private Map<String, Integer> limiterCarry = new HashMap<>();
+
     @OneToMany(mappedBy = "sheet", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CharacterTrait> traits = new ArrayList<>();

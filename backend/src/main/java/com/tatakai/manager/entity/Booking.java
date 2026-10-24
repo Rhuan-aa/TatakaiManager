@@ -84,6 +84,19 @@ public class Booking {
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
+    /** TREINO: alvo (STR..MEN, HP, SP, KP ou TECHNIQUE). */
+    @Column(name = "training_target", length = 20)
+    private String trainingTarget;
+
+    /** TREINO de técnica: CharacterTechnique da ficha do jogador. */
+    @Column(name = "technique_id")
+    private UUID techniqueId;
+
+    /** REPOUSO: qualidade. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rest_quality", length = 20)
+    private RestQuality restQuality;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

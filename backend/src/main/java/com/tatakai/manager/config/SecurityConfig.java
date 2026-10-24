@@ -44,6 +44,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
                 .requestMatchers("/ws/**").permitAll()  // handshake; auth via STOMP headers
+                .requestMatchers("/error").permitAll()  // senão um 500 vira 401 e o front desloga
                 .anyRequest().authenticated()
             )
             // Requisição não autenticada -> 401 (US-18); o front redireciona ao login

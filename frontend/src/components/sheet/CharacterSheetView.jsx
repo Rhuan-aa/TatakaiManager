@@ -11,6 +11,7 @@ import GmAdjustmentPanel from './GmAdjustmentPanel';
 import RollBox from './RollBox';
 import ActivityLogPanel from './ActivityLogPanel';
 import MartialPanel from './MartialPanel';
+import TrainingPanel from './TrainingPanel';
 import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, label } from './sheetRules';
 import { RARITY, rarityTagStyle } from '../ui/rarity';
 import RichText from '../ui/RichText';
@@ -384,6 +385,12 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         <Block title="Artes marciais">
           <MartialPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
             refreshKey={refreshKey + sheet.version} />
+        </Block>
+      )}
+
+      {(isOwner || isMaster) && !isNpc && (
+        <Block title="Treinos">
+          <TrainingPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
         </Block>
       )}
 

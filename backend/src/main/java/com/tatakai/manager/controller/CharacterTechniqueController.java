@@ -16,9 +16,18 @@ import java.util.UUID;
 public class CharacterTechniqueController {
 
     private final CharacterTechniqueService service;
+    private final com.tatakai.manager.service.TrainingService trainingService;
 
-    public CharacterTechniqueController(CharacterTechniqueService service) {
+    public CharacterTechniqueController(CharacterTechniqueService service,
+                                        com.tatakai.manager.service.TrainingService trainingService) {
         this.service = service;
+        this.trainingService = trainingService;
+    }
+
+    @GetMapping("/training")
+    public ResponseEntity<java.util.List<com.tatakai.manager.dto.response.TrainingEntryResponse>> training(
+            @PathVariable UUID sheetId) {
+        return ResponseEntity.ok(trainingService.list(sheetId, AuthenticatedUser.id()));
     }
 
     @GetMapping("/martial")

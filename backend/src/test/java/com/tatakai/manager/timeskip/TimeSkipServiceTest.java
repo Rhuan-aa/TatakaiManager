@@ -36,6 +36,7 @@ import static org.mockito.Mockito.*;
 class TimeSkipServiceTest {
 
     @Mock private TimeSkipRepository timeSkipRepository;
+    @Mock private com.tatakai.manager.service.TrainingService trainingService;
     @Mock private CampaignRepository campaignRepository;
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private BookingRepository bookingRepository;
@@ -50,7 +51,7 @@ class TimeSkipServiceTest {
     @BeforeEach
     void setUp() {
         service = new TimeSkipService(timeSkipRepository, campaignRepository, memberRepository,
-                bookingRepository, logRepository);
+                bookingRepository, logRepository, trainingService);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Player").build();
         campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();

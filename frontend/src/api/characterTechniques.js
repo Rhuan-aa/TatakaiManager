@@ -3,6 +3,7 @@ import client from './client';
 const base = (sheetId) => `/character-sheets/${sheetId}`;
 const call = async (method, url, body) => (await client[method](url, body)).data;
 
+export const getTraining = (sheetId) => call('get', `${base(sheetId)}/training`);
 export const getMartial = (sheetId) => call('get', `${base(sheetId)}/martial`);
 export const requestArt = (sheetId, artId) => call('post', `${base(sheetId)}/arts`, { artId });
 export const reviewCharacterArt = (sheetId, id, approved) => call('post', `${base(sheetId)}/arts/${id}/review`, { approved });

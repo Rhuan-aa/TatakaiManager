@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { listBookings, createBooking, cancelBooking } from '../../api/bookings';
+import { listSheets } from '../../api/characterSheets';
+import { getMartial } from '../../api/characterTechniques';
 import { listTimeSkipActivities } from '../../api/timeSkipActivities';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,13 +29,28 @@ const SOLO_TYPES = [
   { value: 'TREINO', label: 'Treino' },
   { value: 'ESTUDO', label: 'Estudo' },
   { value: 'ACAO_GERAL', label: 'Ação geral' },
+  { value: 'REPOUSO', label: 'Repouso' },
 ];
+
+// Treino (F4a): alvo de atributo/recurso ou técnica da ficha; Repouso: qualidade.
+const TRAINING_TARGETS = [
+  ['STR', 'Força'], ['DEX', 'Destreza'], ['CON', 'Constituição'], ['INT', 'Inteligência'], ['CHA', 'Carisma'],
+  ['MEN', 'Mental'], ['HP', 'HP máx.'], ['SP', 'SP máx.'], ['KP', 'PQ máx.'],
+];
+const REST_QUALITIES = [
+  ['PRECARIOUS', 'Precário (d6)'], ['SIMPLE', 'Simples (d8)'], ['COMFORTABLE', 'Confortável (d10)'], ['TREATED', 'Tratado (d12)'],
+];
+const targetLabel = (t) => TRAINING_TARGETS.find(([k]) => k === t)?.[1] ?? (t === 'TECHNIQUE' ? 'Técnica' : t);
+const emptySoloForm = () => ({ option: 'fixed:TREINO', description: '', target: 'STR', quality: 'SIMPLE' });
 
 const soloLabel = (type) => SOLO_TYPES.find((t) => t.value === type)?.label ?? type;
 
 // Rótulo de um agendamento solo: atividade customizada do TimeSkip (se houver) ou
 // um dos tipos fixos (Treino/Estudo/Ação geral).
-const bookingSoloLabel = (b) => b.activityName ?? soloLabel(b.soloActivityType);
+const bookingSoloLabel = (b) => b.activityName
+  ?? (b.trainingTarget ? `Treino · ${targetLabel(b.trainingTarget)}`
+    : b.restQuality ? `Repouso · ${REST_QUALITIES.find(([k]) => k === b.restQuality)?.[1] ?? ''}`
+      : soloLabel(b.soloActivityType));
 
 const FIXED_OPTION_PREFIX = 'fixed:';
 const CUSTOM_OPTION_PREFIX = 'custom:';
@@ -73,7 +90,19 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [activeCell, setActiveCell] = useState(null);
-  const [soloForm, setSoloForm] = useState({ option: `${FIXED_OPTION_PREFIX}TREINO`, description: '' });
+  const [soloForm, setSoloForm] = useState(emptySoloForm);
+  const [myTechniques, setMyTechniques] = useState([]);
+
+  // Técnicas da minha ficha (alvo de treino). Sem ficha: lista vazia.
+  useEffect(() => {
+    let active = true;
+    listSheets(campaignId)
+      .then((sheets) => sheets.find((sh) => sh.ownerUserId === user?.userId))
+      .then((mine) => (mine ? getMartial(mine.id) : null))
+      .then((m) => active && m && setMyTechniques(m.techniques.filter((t) => t.state !== 'REQUESTED')))
+      .catch(() => {});
+    return () => { active = false; };
+  }, [campaignId, user?.userId]);
 
   const isActive = timeSkip.status === 'ACTIVE';
   const isPastDay = day < timeSkip.currentDay;
@@ -208,17 +237,19 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
   }
 
   function resetSoloForm() {
-    setSoloForm({ option: `${FIXED_OPTION_PREFIX}TREINO`, description: '' });
+    setSoloForm(emptySoloForm());
   }
 
   async function handleBookSolo(slot) {
     setActionError('');
     const isCustom = soloForm.option.startsWith(CUSTOM_OPTION_PREFIX);
 
-    if (!isCustom && !soloForm.description.trim()) {
+    const type = soloForm.option.slice(FIXED_OPTION_PREFIX.length);
+    if (!isCustom && type !== 'TREINO' && type !== 'REPOUSO' && !soloForm.description.trim()) {
       setActionError('A descrição da atividade solo é obrigatória');
       return;
     }
+    const [target, techniqueId] = soloForm.target.split(':');
 
     try {
       const booking = isCustom
@@ -230,8 +261,11 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
         : await createBooking(campaignId, timeSkip.id, {
             dayNumber: day,
             slotNumber: slot,
-            soloActivityType: soloForm.option.slice(FIXED_OPTION_PREFIX.length),
-            description: soloForm.description.trim(),
+            soloActivityType: type,
+            description: soloForm.description.trim() || null,
+            trainingTarget: type === 'TREINO' ? target : null,
+            techniqueId: type === 'TREINO' ? techniqueId ?? null : null,
+            restQuality: type === 'REPOUSO' ? soloForm.quality : null,
           });
       setSoloBookings((prev) => ({ ...prev, [booking.id]: booking }));
       setActiveCell(null);
@@ -466,7 +500,19 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                   </option>
                 ))}
               </select>
-              {soloForm.option.startsWith(CUSTOM_OPTION_PREFIX) ? (
+              {soloForm.option === `${FIXED_OPTION_PREFIX}TREINO` && (
+                <select value={soloForm.target} aria-label="Alvo do treino" className="field text-xs"
+                  onChange={(e) => setSoloForm((f) => ({ ...f, target: e.target.value }))}>
+                  {TRAINING_TARGETS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                  {myTechniques.map((t) => <option key={t.id} value={`TECHNIQUE:${t.id}`}>Técnica · {t.name}</option>)}
+                </select>
+              )}
+              {soloForm.option === `${FIXED_OPTION_PREFIX}REPOUSO` ? (
+                <select value={soloForm.quality} aria-label="Qualidade do Repouso" className="field text-xs"
+                  onChange={(e) => setSoloForm((f) => ({ ...f, quality: e.target.value }))}>
+                  {REST_QUALITIES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                </select>
+              ) : soloForm.option.startsWith(CUSTOM_OPTION_PREFIX) ? (
                 <p className="border-2 border-[var(--line)] bg-[var(--bg)] p-2 text-[11px] text-[var(--text)]">
                   {customActivities.find((a) => a.id === soloForm.option.slice(CUSTOM_OPTION_PREFIX.length))
                     ?.description}
@@ -475,7 +521,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                 <textarea
                   value={soloForm.description}
                   onChange={(e) => setSoloForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="O que seu personagem faz nesse período?"
+                  placeholder={soloForm.option.endsWith("TREINO") ? "Detalhes do treino (opcional)" : "O que seu personagem faz nesse período?"}
                   rows={2}
                   className="field text-xs"
                 />
@@ -507,10 +553,8 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                 setActiveCell(cellId);
                 // No slot extra só há atividades customizadas de custo zero
                 setSoloForm({
-                  option: isExtra
-                    ? `${CUSTOM_OPTION_PREFIX}${customOptions[0].id}`
-                    : `${FIXED_OPTION_PREFIX}TREINO`,
-                  description: '',
+                  ...emptySoloForm(),
+                  option: isExtra ? `${CUSTOM_OPTION_PREFIX}${customOptions[0].id}` : `${FIXED_OPTION_PREFIX}TREINO`,
                 });
               }}
               className="btn-secondary w-full border-dashed px-2 py-2 text-xs"
