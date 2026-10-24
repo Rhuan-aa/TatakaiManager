@@ -1063,12 +1063,18 @@ Imprime ao final uma tabela de contas/senhas e os ids úteis.
 
 Ordem sugerida: primeiro os itens visuais rápidos (14.3), depois a unificação NPC/ficha (14.1–14.2), depois F3/F4.
 
-### 14.1 NPC ligado ao catálogo
+### 14.1 NPC ligado ao catálogo — ✅ feito (24/10/2026)
+> Criação "Completa" usa `TraitPicker` (catálogo + "Novo traço de campanha"). Ficha de NPC aceita traço de campanha
+> em que o NPC esteja associado. Sem migração automática: traços livres antigos continuam só leitura.
+
 - **Traços dos NPCs vindos do catálogo:** hoje o NPC (Mongo `npcs`) tem `traits` como texto livre `{name, description}`.
   Trocar por referência ao catálogo (`ADD_TRAIT`/`REMOVE_TRAIT` na ficha de NPC, com snapshot como na ficha de jogador) e
   migrar os traços livres existentes (casar por nome; o que não casar vira traço de campanha ou fica como nota).
 
-### 14.2 Ficha de NPC = ficha de jogador
+### 14.2 Ficha de NPC = ficha de jogador — ✅ feito (24/10/2026)
+> `CreateNpcForm` tem modos Simples/Completa e "NPC aleatório" (`npc/randomNpc.js`: nome, corpo, 7d12, traços pela tabela).
+> O modal do NPC já mostra o card + `CharacterSheetView`.
+
 - **Criar ficha como Mestre cria o NPC automaticamente:** novo fluxo "Nova ficha de NPC" na aba Fichas/NPCs → cria o `Npc`
   (nome, descrição, interações) + a `CharacterSheet` (npcId) numa ação só.
 - **Mesma visualização da ficha de jogador** para NPC, somando as informações que hoje ficam nos cards: retrato, descrição,

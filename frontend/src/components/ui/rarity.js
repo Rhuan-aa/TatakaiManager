@@ -7,6 +7,11 @@ export const RARITY = {
   DIVINE: { label: 'Divino', color: 'var(--rarity-divine)', order: 4 },
 };
 
+export const TRAIT_CATEGORIES = [
+  { value: 'PHYSICAL', label: 'Físico' }, { value: 'MENTAL', label: 'Mental' }, { value: 'SPIRITUAL', label: 'Espiritual' },
+  { value: 'HYBRID', label: 'Híbrido' }, { value: 'HEREDITARY', label: 'Hereditário' },
+];
+
 /** Estilo de `.tag` colorida pela raridade. */
 export function rarityTagStyle(rarity) {
   const color = RARITY[rarity]?.color ?? 'var(--line)';

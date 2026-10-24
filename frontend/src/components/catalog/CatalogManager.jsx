@@ -8,16 +8,13 @@ import { useToast } from '../../contexts/ToastContext';
 import { ATTRS } from '../sheet/sheetRules';
 import ArtsPanel from './ArtsPanel';
 import RichText from '../ui/RichText';
-import { rarityTagStyle, compareTraits } from '../ui/rarity';
+import { rarityTagStyle, compareTraits, TRAIT_CATEGORIES } from '../ui/rarity';
 
 const RARITIES = [
   { value: 'COMMON', label: 'Comum' }, { value: 'RARE', label: 'Raro' }, { value: 'EPIC', label: 'Épico' },
   { value: 'LEGENDARY', label: 'Lendário' }, { value: 'DIVINE', label: 'Divino' },
 ];
-const CATEGORIES = [
-  { value: 'PHYSICAL', label: 'Físico' }, { value: 'MENTAL', label: 'Mental' }, { value: 'SPIRITUAL', label: 'Espiritual' },
-  { value: 'HYBRID', label: 'Híbrido' }, { value: 'HEREDITARY', label: 'Hereditário' },
-];
+const CATEGORIES = TRAIT_CATEGORIES;
 const ACTIVATIONS = [{ value: 'PASSIVE', label: 'Passivo' }, { value: 'ACTIVE', label: 'Ativo' }];
 const ATTR_NAMES = { STR: 'Força', DEX: 'Destreza', CON: 'Constituição', INT: 'Inteligência', CHA: 'Carisma', MEN: 'Mental', TAL: 'Talento' };
 const RESOURCES = ['HP', 'SP', 'KP'];

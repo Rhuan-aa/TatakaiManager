@@ -139,10 +139,11 @@ function AttributeCard({ a, v, m, lim, bandKey }) {
   const inapt = INAPT_BANDS.includes(bandKey);
   const pct = lim > 0 ? Math.min(100, Math.round((v / lim) * 100)) : 0;
   return (
-    <div className="panel flex flex-col gap-1 p-2" style={inapt ? { borderColor: 'var(--accent)' } : undefined}>
+    <div className="panel flex flex-col gap-1 p-2">
       <div className="flex items-start justify-between">
         <span className="text-xs font-bold uppercase">{a.label}</span>
-        <span className={m == null ? 'tag-accent tag' : 'tag'} title={m == null ? 'Estado crítico (valor 0)' : 'Modificador'}
+        <span className={m == null ? 'tag-accent tag' : 'tag'}
+          style={inapt && m != null ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : undefined} title={m == null ? 'Estado crítico (valor 0)' : 'Modificador'}
           aria-label={m == null ? 'Modificador crítico' : `Modificador ${fmtMod(m)}`}>
           {fmtMod(m)}
         </span>

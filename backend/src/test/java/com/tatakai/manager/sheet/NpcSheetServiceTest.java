@@ -194,6 +194,26 @@ class NpcSheetServiceTest {
     }
 
     @Test
+    @DisplayName("ficha de NPC: ADD_TRAIT aceita traço de campanha à qual o NPC está associado; outra campanha -> 404")
+    void npcSheet_addCampaignTrait() {
+        TraitDefinition own = TraitDefinition.builder().id(UUID.randomUUID()).campaignId(campaign.getId())
+                .name("Olho de Águia").rarity(TraitRarity.COMMON).category(TraitCategory.values()[0]).version(1).build();
+        TraitDefinition foreign = TraitDefinition.builder().id(UUID.randomUUID()).campaignId(UUID.randomUUID())
+                .name("Estranho").rarity(TraitRarity.COMMON).category(TraitCategory.values()[0]).version(1).build();
+        when(catalogService.findTrait(own.getId())).thenReturn(Optional.of(own));
+        when(catalogService.findTrait(foreign.getId())).thenReturn(Optional.of(foreign));
+        when(campaignNpcRepository.existsByCampaignIdAndNpcId(campaign.getId(), npc.getId())).thenReturn(true);
+
+        service.applyGmAdjustment(sheet.getId(), new GmAdjustmentRequest(GmAction.ADD_TRAIT, null, null,
+                "criação", null, null, own.getId()), owner.getId());
+        assertThat(sheet.getTraits()).extracting(CharacterTrait::getTraitId).containsExactly(own.getId());
+
+        assertThatThrownBy(() -> service.applyGmAdjustment(sheet.getId(), new GmAdjustmentRequest(
+                GmAction.ADD_TRAIT, null, null, "criação", null, null, foreign.getId()), owner.getId()))
+                .isInstanceOf(com.tatakai.manager.exception.SheetEntryNotFoundException.class);
+    }
+
+    @Test
     @DisplayName("ficha de NPC: submit e approve -> InvalidCharacterSheetException")
     void npcSheet_submitApprove_invalid() {
         assertThatThrownBy(() -> service.submit(sheet.getId(), owner.getId()))

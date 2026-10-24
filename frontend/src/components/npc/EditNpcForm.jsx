@@ -181,7 +181,8 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
         </fieldset>
         )}
 
-        <DetailListEditor label="Traços" items={traits} onChange={setTraits} />
+        {/* Com ficha, os traços vêm do catálogo (Ajustes do Mestre na ficha). */}
+        {!npc.sheetId && <DetailListEditor label="Traços" items={traits} onChange={setTraits} />}
 
         <DetailListEditor label="Specs (habilidades)" items={specs} onChange={setSpecs} />
 

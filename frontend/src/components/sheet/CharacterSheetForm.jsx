@@ -9,7 +9,7 @@ import {
 
 const num = (v) => (v === '' ? 0 : Number(v));
 
-function initial(sheet, preset) {
+export function initialSheetFields(sheet, preset) {
   const a = sheet?.attributes ?? {};
   return {
     name: sheet?.name ?? '',
@@ -23,59 +23,29 @@ function initial(sheet, preset) {
   };
 }
 
-/** Criação (sem `sheet`) ou edição. Modo NPC: `npcId` (sem aprovação); `initialValues` pré-preenche a criação. */
-export default function CharacterSheetForm({ campaignId, npcId, initialValues, sheet, onSaved, onCancel }) {
-  const toast = useToast();
-  const [f, setF] = useState(() => initial(sheet, initialValues));
-  const [errors, setErrors] = useState({});
-  const [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
+export function sheetPayload(f) {
+  return {
+    name: f.name.trim(),
+    bodyType: f.bodyType,
+    dominance: f.dominance,
+    heightM: Number(f.heightM),
+    weightKg: f.weightKg === '' || f.weightKg == null ? null : Number(f.weightKg),
+    attributes: Object.fromEntries(ATTRS.map((a) => [a.key, num(f[a.key])])),
+  };
+}
 
+/** Campos da ficha (sem o nome) — usados aqui e na criação de NPC completo. */
+export function SheetFields({ f, set, errors = {} }) {
+  const err = (k) => errors[k] && <span className="text-xs" style={{ color: 'var(--accent)' }}>{errors[k]}</span>;
   const con = num(f.con);
   const tal = num(f.tal);
   const hpMax = initialHpMax(con) + (f.bodyType === 'ENDOMORPH' ? 10 : f.bodyType === 'MESOMORPH' ? 5 : 0);
   const spMax = initialSpMax(con) + (f.bodyType === 'MESOMORPH' ? 5 : f.bodyType === 'ECTOMORPH' ? 10 : 0);
   const kpMax = initialKpMax(con);
   // ponytail: bônus de corpo em HP/SP inferido da §8.5; o servidor é a fonte da verdade.
-
-  function payload() {
-    return {
-      name: f.name.trim(),
-      bodyType: f.bodyType,
-      dominance: f.dominance,
-      heightM: Number(f.heightM),
-      weightKg: f.weightKg === '' ? null : Number(f.weightKg),
-      attributes: Object.fromEntries(ATTRS.map((a) => [a.key, num(f[a.key])])),
-    };
-  }
-
-  async function save(andSubmit) {
-    setBusy(true);
-    setErrors({});
-    try {
-      let saved = sheet ? await updateSheet(sheet.id, payload()) : await (npcId ? createNpcSheet(npcId, payload()) : createSheet(campaignId, payload()));
-      if (andSubmit) saved = await submitSheet(saved.id);
-      toast(andSubmit ? 'Ficha enviada para aprovação.' : 'Ficha salva.');
-      onSaved?.(saved);
-    } catch (err) {
-      const { message, fields } = parseApiError(err);
-      setErrors(fields);
-      toast(message, 'error');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const err = (k) => errors[k] && <span className="text-xs" style={{ color: 'var(--accent)' }}>{errors[k]}</span>;
-
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save(false); }} className="flex flex-col gap-4">
+    <>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs uppercase sm:col-span-2">
-          Nome
-          <input required maxLength={100} className="field mt-1 w-full" value={f.name} onChange={set('name')} />
-          {err('name')}
-        </label>
         <label className="text-xs uppercase">
           Tipo corporal
           <select className="field mt-1 w-full" value={f.bodyType} onChange={set('bodyType')}>
@@ -127,6 +97,49 @@ export default function CharacterSheetForm({ campaignId, npcId, initialValues, s
       <div className="caption" aria-live="polite">
         Prévia inicial — HP {hpMax} (lim. {statusLimiter('HP', tal, f.bodyType)}) · SP {spMax} (lim. {statusLimiter('SP', tal, f.bodyType)}) · PQ {kpMax} (lim. {statusLimiter('KP', tal, f.bodyType)})
       </div>
+    </>
+  );
+}
+
+/** Criação (sem `sheet`) ou edição. Modo NPC: `npcId` (sem aprovação); `initialValues` pré-preenche a criação. */
+export default function CharacterSheetForm({ campaignId, npcId, initialValues, sheet, onSaved, onCancel }) {
+  const toast = useToast();
+  const [f, setF] = useState(() => initialSheetFields(sheet, initialValues));
+  const [errors, setErrors] = useState({});
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
+
+  const payload = () => sheetPayload(f);
+
+  async function save(andSubmit) {
+    setBusy(true);
+    setErrors({});
+    try {
+      let saved = sheet ? await updateSheet(sheet.id, payload()) : await (npcId ? createNpcSheet(npcId, payload()) : createSheet(campaignId, payload()));
+      if (andSubmit) saved = await submitSheet(saved.id);
+      toast(andSubmit ? 'Ficha enviada para aprovação.' : 'Ficha salva.');
+      onSaved?.(saved);
+    } catch (err) {
+      const { message, fields } = parseApiError(err);
+      setErrors(fields);
+      toast(message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const err = (k) => errors[k] && <span className="text-xs" style={{ color: 'var(--accent)' }}>{errors[k]}</span>;
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); save(false); }} className="flex flex-col gap-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-xs uppercase sm:col-span-2">
+          Nome
+          <input required maxLength={100} className="field mt-1 w-full" value={f.name} onChange={set('name')} />
+          {err('name')}
+        </label>
+      </div>
+      <SheetFields f={f} set={set} errors={errors} />
 
       <div className="flex flex-wrap gap-2">
         <button type="submit" className="btn-secondary" disabled={busy}>{npcId ? 'Salvar ficha' : 'Salvar rascunho'}</button>

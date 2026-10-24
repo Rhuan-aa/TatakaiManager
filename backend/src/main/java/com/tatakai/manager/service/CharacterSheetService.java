@@ -458,8 +458,11 @@ public class CharacterSheetService {
                 if (req.targetId() == null) throw new InvalidCharacterSheetException("Informe o traço");
                 TraitDefinition t = catalogService.findTrait(req.targetId())
                         .orElseThrow(SheetEntryNotFoundException::new);
-                UUID campaignId = s.isNpcSheet() ? null : campaignIdOf(s);
-                if (t.getCampaignId() != null && !t.getCampaignId().equals(campaignId)) {
+                // Ficha de NPC: vale o traço de qualquer campanha em que o NPC esteja associado.
+                boolean inScope = t.getCampaignId() == null || (s.isNpcSheet()
+                        ? campaignNpcRepository.existsByCampaignIdAndNpcId(t.getCampaignId(), s.getNpcId())
+                        : t.getCampaignId().equals(campaignIdOf(s)));
+                if (!inScope) {
                     throw new SheetEntryNotFoundException(); // fora do catálogo desta campanha
                 }
                 if (s.getTraits().stream().anyMatch(x -> t.getId().equals(x.getTraitId()))) {
