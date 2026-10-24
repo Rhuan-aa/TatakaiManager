@@ -1248,3 +1248,16 @@ Tudo vai para o log de atividade (PROGRESSION/RESOURCE) e publica `SHEET_UPDATED
 ### 17.5 Frontend
 `SlotGrid`: TREINO com alvo (atributos, recursos, técnicas da ficha) e REPOUSO com qualidade. `TimeSkipPanel`: local de treino
 (Mestre). Ficha: bloco "Treinos" com pendentes e histórico.
+
+---
+
+## 18. Próximo passo (24/10/2026): F4b
+
+F3 (a, b) e F4a concluídas. **Próximo: F4b — lutas e graduação** (spec §9.2):
+- EL por luta (Fácil 1 / Real 2 / Letal 3; Fácil 1×/dia; sparring até o limite da patente) e PS pendentes até o Repouso
+  (`base + min(marcos, 4) + (Real/Letal ? floor(modQ(TAL)/2) : 0)`); distribuição de PS no Repouso (1 atributo / 3 status;
+  INT/CAR máx. 2 por Repouso; TAL e PQ não recebem; PS cruza Barreira se vier de luta Real/Letal) — RN-PROG-07.
+- Patente Keiken pelo EL total (Novato 0 … Deus-Dragão 120) e escolha de 1 Instinto por patamar — RN-PROG-08.
+- Requisitos de graduação em paralelo (completude, especialização, Keiken, pontos de graduação, duelo do Mestre) — RN-PROG-09.
+Depois: F4c (Forja, Caderno Marcial, Rivais). Pendências abertas: divergências de Complexidade de 7 técnicas (§15) e
+simplificações da F4a (Platô, Lotada, teste de CON ND 12, ferimento prejudicial, 1 Barreira por Repouso).
