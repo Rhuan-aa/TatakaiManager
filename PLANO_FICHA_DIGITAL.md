@@ -1251,13 +1251,118 @@ Tudo vai para o log de atividade (PROGRESSION/RESOURCE) e publica `SHEET_UPDATED
 
 ---
 
-## 18. Próximo passo (24/10/2026): F4b
+## 18. F4b — Lutas, Keiken e graduação (contrato, 24/10/2026)
 
-F3 (a, b) e F4a concluídas. **Próximo: F4b — lutas e graduação** (spec §9.2):
-- EL por luta (Fácil 1 / Real 2 / Letal 3; Fácil 1×/dia; sparring até o limite da patente) e PS pendentes até o Repouso
-  (`base + min(marcos, 4) + (Real/Letal ? floor(modQ(TAL)/2) : 0)`); distribuição de PS no Repouso (1 atributo / 3 status;
-  INT/CAR máx. 2 por Repouso; TAL e PQ não recebem; PS cruza Barreira se vier de luta Real/Letal) — RN-PROG-07.
-- Patente Keiken pelo EL total (Novato 0 … Deus-Dragão 120) e escolha de 1 Instinto por patamar — RN-PROG-08.
-- Requisitos de graduação em paralelo (completude, especialização, Keiken, pontos de graduação, duelo do Mestre) — RN-PROG-09.
-Depois: F4c (Forja, Caderno Marcial, Rivais). Pendências abertas: divergências de Complexidade de 7 técnicas (§15) e
+Decisões do usuário: o **Mestre registra a luta** num menu pós-luta com os jogadores; para cada um, "Dar Pontos de
+Superação" abre a lista de **Marcos** (catálogo Mongo, pressão/desvantagem, máx. 4 contam). PS base por classificação
+**Fácil 1 / Real 2 / Letal 3** (Fácil = luta entre amigos/que ambos querem evitar; **não é sparring**). O **jogador
+distribui** os PS e o **Mestre aprova** (aplica na aprovação). **Instintos** e **Marcos** vêm de catálogos no Mongo.
+Pontos de graduação: **1 por treino** da graduação (TimeSkip) + **1 por EL** de luta com a arte (distribuído entre as artes,
+nunca duplicado). Sparring dá 1 EL até um teto **acumulado** (não reseta) por patente: 3/5/10/14/18/23/30.
+
+### 18.1 Modelo
+- Mongo `instincts` (`Instinct`: id, campaignId, name, rank `KeikenRank`, description, version, updatedAt) e
+  `fightMilestones` (`FightMilestone`: id, campaignId, name, category `PRESSURE|DISADVANTAGE`, description,
+  `autoTrigger` `CRITICAL_STATE|null`, version, updatedAt). Global + extensão da campanha (mesmo nome substitui).
+  Entram no `CatalogImportRequest` (`instincts`, `milestones`). Leitura: `GET /catalog/instincts|milestones?campaignId`.
+  Marco também tem `grantsArtPoint` (Assinatura: +1 ponto de graduação à arte escolhida para o EL), `seriousOnly`
+  (Elo Fraco: só Real/Letal) e `minOtherDisadvantage` (Zebra: 2). Seed global: `catalog/instincts.json` (24, 4 por
+  patente de Calejado a Deus-Dragão) e `catalog/milestones.json` (5 de Pressão, 5 de Desvantagem).
+- `KeikenRank` = `NOVICE 0, SEASONED 5, VETERAN 15, HISTORIC 30, LEGEND 55, MYTHIC 80, DRAGON_GOD 120` (EL total).
+- `CharacterSheet` + `sparringExperience` (EL acumulado vindo de sparring) e `barrierOvercomePoints` (dos PS pendentes,
+  quantos vieram de luta Real/Letal e podem cruzar Barreira).
+- `fight_records`: id, fight_id (agrupa os participantes de uma luta), campaign_id, sheet_id, classification
+  (`EASY|REAL|LETHAL|SPARRING`), el_gained, ps_gained, milestones (jsonb `List<String>`), art_el (jsonb
+  `Map<UUID,Integer>` characterArtId→EL), time_skip_id, day_number (dia atual do TimeSkip ativo, se houver), fight_date,
+  note, created_at.
+- `overcome_distributions`: id, sheet_id, allocations (jsonb `Map<String,Integer>` alvo→PS), status
+  (`PENDING|APPROVED|REJECTED`), review_note, created_at, reviewed_at. Só 1 PENDING por ficha.
+- `character_instincts`: id, sheet_id, instinct_id, name, rank, description (snapshot), created_at.
+- `CharacterArt` + `graduationPoints`. `Booking` + `characterArtId` (TREINO com alvo `GRADUATION`).
+
+### 18.2 Regras puras — `service/rules/ProgressionRules`
+- EL por arte: o pedido `artEl` é cortado no EL que a luta rendeu (Fácil repetida/sparring no teto → 0).
+- EL (RN-PROG-07): Fácil 1 (0 se a ficha já teve luta Fácil no mesmo dia — dia do TimeSkip ativo, senão data), Real 2,
+  Letal 3; Sparring 1 se `sparringExperience < teto(patente atual)`, senão 0.
+- PS: `base(1/2/3; sparring 0) + min(marcos, 4) + floor(modQ(TAL)/2)` (sparring: 0). Real/Letal somam em
+  `barrierOvercomePoints`.
+- Distribuição: alvos `STR, DEX, CON, INT, CHA, MEN` (1 PS = +1) e `HP, SP` (1 PS = +3 no máximo); TAL e KP não recebem;
+  INT e CAR máx. 2 PS por distribuição; soma ≤ PS pendentes. Cruzar Barreira (3→4, 6→7, 9→10) consome PS de Real/Letal
+  (sem eles → 400). Além do Limitador: só numa distribuição de alvo único com **todos** os PS pendentes, e vale +1.
+- Keiken (RN-PROG-08): patente pelo EL; vagas de Instinto = ordinal da patente (Novato 0, Calejado 1 …); Instinto
+  escolhido tem patente ≤ a atual.
+- Graduação (RN-PROG-09): custo Iniciante→Intermediário 8, Intermediário→Mestre 12 (arte "Geral" 9/18). Requisitos:
+  (1) 3 técnicas aprendidas da graduação atual na arte; (2) entre elas ≥ 3 Melhoradas+ e ≥ 1 Especializada+;
+  (3) Keiken: Intermediário ≥ Calejado; Mestre: n-ésima arte Mestre exige Veterano/Histórico/Lenda/Mitológico/Deus-Dragão;
+  (4) pontos ≥ custo; (5) Mestre: duelo vencido (o Mestre confirma). Graduar zera os pontos e concede as bases da nova
+  graduação (ACTIVE, Padrão). ponytail: bônus de instrutor (Educador +1 / Sábio +2) é lançado à mão pelo Mestre.
+
+### 18.3 Rotas
+| Método | Rota | Quem | Efeito |
+|---|---|---|---|
+| POST | `/campaigns/{cid}/fights` `{note, participants[{sheetId, classification, milestones[], artEl{caid:n}}]}` | M | grava os registros, soma EL/PS pendentes e pontos de graduação |
+| GET | `/character-sheets/{sid}/progression` | dono/M | `{fights, distributions, instincts}` (todas as mutações abaixo devolvem isso) |
+| POST | `/character-sheets/{sid}/overcome` `{allocations}` | dono/M | pede distribuição (fica PENDING) |
+| POST | `/character-sheets/{sid}/overcome/{id}/review` `{approved, note}` | M | aplica ou recusa |
+| POST/DELETE | `/character-sheets/{sid}/instincts` `{instinctId}` / `.../instincts/{id}` | dono/M · M | escolhe / remove |
+| POST | `/character-sheets/{sid}/arts/{caid}/graduate` `{duelWon}` | M | gradua se os requisitos fecham |
+| POST | `/character-sheets/{sid}/arts/{caid}/graduation-points` `{points}` | M | ajuste (instrutor) |
+`SheetProgress` ganha `keiken, nextKeikenAt, sparringExperience, sparringCap, barrierOvercomePoints, instinctSlots`.
+`CharacterArtResponse` ganha `graduationPoints, graduationCost, requirements[{key, met, detail}]`.
+Toda mutação: `sheet_activity_logs` (PROGRESSION) + `SHEET_UPDATED`.
+
+### 18.4 Frontend
+`SheetsSection` (Mestre): "Fechar luta" → `FightClosePanel` (jogadores, classificação, Marcos com sugestão
+`CRITICAL_STATE` = HP ≤ 25%, EL por arte, prévia). Ficha: bloco "Progresso" (EL verde, PS amarelo, Keiken, Instintos,
+distribuição de PS, lutas). `MartialPanel`: pontos/requisitos de graduação e "Graduar". `SlotGrid`: TREINO de graduação.
+
+Pendências abertas: divergências de Complexidade de 7 técnicas (§15) e
 simplificações da F4a (Platô, Lotada, teste de CON ND 12, ferimento prejudicial, 1 Barreira por Repouso).
+
+---
+
+## 19. F4c — Caderno Marcial, Forja e Rivais (contrato, 24/10/2026)
+
+Decisões do usuário: o que sai da Forja é **avulso** (fora das artes); a sessão de Forja é a **ação solo FORJA** na
+Agenda; o Caderno **reusa o editor de Criação Marcial**; Rivais são registrados no **Fechar luta**.
+
+### 19.1 Modelo
+- `CharacterTechnique.characterArt` passa a ser **opcional** (null = avulsa). Avulsas não ocupam espaços de arte e não
+  contam para Completude/Especialização. Bancos existentes: `ALTER TABLE character_techniques ALTER COLUMN
+  character_art_id DROP NOT NULL` (§11.11).
+- `notebook_drafts` (máx. 3 por ficha): id, sheet_id, kind (`TECHNIQUE|BASE`), `technique` (jsonb `ArtTechnique`) ou
+  `base` (jsonb `ArtBase`), status (`DRAFT|PENDING_APPROVAL|APPROVED`), review_note, created_at. Montagem checada por
+  `AssemblyRules` com categoria **CREATED** (tetos de Arte Criada). Só rascunho aprovado vai à Forja; consumido ao
+  concluir. ponytail: a criação em combate (Improviso) fica para a F6.
+- `forges` (máx. 1 em andamento por ficha): id, sheet_id, draft_id, name, required_points (= 3 × C_final),
+  accumulated_points, started_at, completed_at.
+- `SoloActivityType.FORJA` (custo 1). Bancos existentes: dropar `bookings_solo_activity_type_check`.
+- `rivals`: id, sheet_id, name, npc_id (opcional), art, fights, read_bonus (0–3), known_techniques (jsonb `List<String>`),
+  created_at; único (sheet_id, name).
+
+### 19.2 Regras
+- Iniciar Forja: rascunho APPROVED e sem Forja em andamento; graduação do rascunho ≤ maior graduação das artes ativas
+  (Genérica sempre); Keiken mínima: Genérica nenhuma, Iniciante Calejado, Intermediário Veterano, Mestre Histórico.
+- Sessão (ao avançar o dia, como o Treino): `+1 + floor(modQ(TAL)/2)` pontos e **+2 Desgaste Mental** (1 do treino + 1
+  extra). Sem Forja em andamento → entrada `LOST`. Ao completar: técnica/base avulsa ACTIVE em **Esboço**, rascunho apagado.
+- Rival: no Fechar luta, cada participante pode indicar o oponente (NPC da campanha ou nome livre); cria o Rival se não
+  existir; `fights + 1`, `readBonus = min(3, readBonus + 1)`. Dono/Mestre editam arte e técnicas conhecidas; Mestre remove.
+
+### 19.3 Rotas
+| Método | Rota | Quem | Efeito |
+|---|---|---|---|
+| GET | `/character-sheets/{sid}/notebook` | dono/M | `{drafts, forge}` (todas as mutações abaixo devolvem isso) |
+| POST/PUT | `/character-sheets/{sid}/notebook[/{id}]` `{kind, technique, base}` | dono/M | cria/edita rascunho (só DRAFT) |
+| DELETE | `/character-sheets/{sid}/notebook/{id}` | dono/M | apaga (não se estiver na Forja) |
+| POST | `/character-sheets/{sid}/notebook/{id}/submit` | dono | DRAFT → PENDING_APPROVAL (bloqueado com issues) |
+| POST | `/character-sheets/{sid}/notebook/{id}/review` `{approved, reason}` | M | APPROVED ou volta a DRAFT |
+| POST | `/character-sheets/{sid}/forge` `{draftId}` | dono/M | inicia a Forja |
+| DELETE | `/character-sheets/{sid}/forge` | M | abandona a Forja em andamento |
+| PUT/DELETE | `/character-sheets/{sid}/rivals/{id}` `{art, knownTechniques}` | dono/M · M | edita / remove |
+`FightRequest.Participant` ganha `rival {name, npcId}`; `SheetProgressionResponse` ganha `rivals`.
+
+### 19.4 Frontend
+Ficha: bloco "Caderno Marcial e Forja" (rascunhos com o editor de técnica/base da Criação Marcial, envio, aprovação,
+Forja com medidor). `MartialPanel`: grupo "Avulsas". `SlotGrid`: ação solo Forja. `FightClosePanel`: oponente por
+jogador. `ProgressPanel`: Rivais (lutas, Leitura 0–3, técnicas conhecidas).
+

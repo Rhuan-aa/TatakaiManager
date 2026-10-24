@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 379 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 439 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -631,6 +631,9 @@ no `*ServiceTest` correspondente primeiro.
 12. **Dockerfile** empacota com `-Dmaven.test.skip=true` (não compila testes): com
     `-DskipTests`, um teste quebrado fazia o build da imagem falhar e o container antigo
     continuava rodando sem aviso.
+13. **Getter derivado em entidade quebra o Spring Data** — um `getXxxId()` extra numa entidade JPA faz
+    `findByXxxId` virar propriedade `xxxId` e o contexto não sobe (os testes Mockito não pegam). Use nome que não seja
+    getter (ex.: `CharacterTechnique.artIdOrNull()`).
 10. JWT em `localStorage`, sem refresh; expira em 24h → próximo request dá 401 e
     o front redireciona para `/login`.
 
@@ -715,6 +718,11 @@ Contrato em `PLANO_FICHA_DIGITAL.md` §16. Tabelas `character_arts` e `character
 complexidade e PT do catálogo). `CharacterTechniqueService` + `CharacterTechniqueController` (`/character-sheets/{sid}/martial`,
 `/arts`, `/techniques/...`): jogador pede arte/técnica, Mestre aprova, lança treino e pontos de maestria; dono/Mestre alternam
 ativa/guardada (máx. 3 ativas e 2 guardadas por arte e graduação) e sobem nível escolhendo bonificação (`MasteryRules`).
+Ao a arte ficar ativa (aprovação ou Mestre), a ficha recebe as bases até a graduação dela (ACTIVE, Padrão); o Mestre
+pode remover bases (acesso limitado). Subir a graduação concede as bases dos novos níveis. **Técnicas emprestadas**:
+`MartialArt.borrowed[{art, name, graduation}]` (gerado por `scripts/notion_seed.py` a partir da tabela da seção
+"Técnicas Emprestadas"); aprendidas pela arte que empresta, com `CharacterTechnique.borrowedFrom`, máx. 1 ativa por
+graduação. Bancos existentes: reimportar `arts.json` via `/catalog/import`.
 Front: `components/sheet/MartialPanel.jsx` no bloco "Artes marciais" da ficha.
 
 ## 16. Treino e Repouso no TimeSkip (F4a)
@@ -727,3 +735,30 @@ dia sem Repouso dá +1 Desgaste Físico. `TimeSkip.processedDay` impede reproces
 `TimeSkip.venue` (local de treino) via `PATCH /timeskips/{id}/venue`; livro em `GET /character-sheets/{sid}/training`.
 Bancos existentes: dropar `bookings_solo_activity_type_check` (valor novo `REPOUSO`, ver §11.11).
 `/error` é público no `SecurityConfig` (antes um 500 virava 401 e o front deslogava).
+
+## 17. Lutas, Keiken e graduação (F4b)
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §18. O Mestre fecha a luta (`POST /campaigns/{cid}/fights`, aba Fichas → "Fechar
+luta"): por jogador, classificação (`EASY|REAL|LETHAL|SPARRING`), Marcos do catálogo e arte que recebe o EL como ponto de
+graduação. EL entra na hora (Keiken derivada, `ProgressionRules.keiken`); PS ficam pendentes e o jogador pede a
+distribuição (`/character-sheets/{sid}/overcome`), aplicada quando o Mestre aprova. Instintos (`character_instincts`)
+1 por patamar acima de Novato. Catálogos Mongo `instincts` e `fightMilestones`: seed global em `catalog/instincts.json` / `milestones.json`
+(carregado no boot se não houver globais) e importação (`{"instincts": [...], "milestones": [...]}`). Regras de Marco
+conferidas no servidor: `seriousOnly`, `minOtherDisadvantage`, `grantsArtPoint`. Graduação: `CharacterArt.graduationPoints` (treino
+`GRADUATION` no TimeSkip = +1, EL de luta, ajuste do Mestre) + requisitos RN-PROG-09 na resposta de `/martial`;
+`POST /character-sheets/{sid}/arts/{caid}/graduate {duelWon}` (Mestre) gradua e concede as bases da nova graduação.
+Regras puras em `ProgressionRules`; serviço em `ProgressionService` (lutas/PS/Instintos) e `CharacterTechniqueService`
+(graduação). Front: `FightClosePanel`, `ProgressPanel` (bloco "Progresso" da ficha), `GraduationBox` no `MartialPanel`.
+
+## 18. Caderno Marcial, Forja e Rivais (F4c)
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §19. Rascunhos (`notebook_drafts`, máx. 3, montagem jsonb `ArtTechnique`/`ArtBase`
+checada por `AssemblyRules` com categoria CREATED) → envio → Mestre aprova → `POST /character-sheets/{sid}/forge`
+(1 em andamento; graduação ≤ maior das artes, Keiken mínima em `ProgressionRules.forgeKeiken`; 3 × C_final pontos).
+Sessão = ação solo `FORJA` na Agenda, processada em `TrainingService` ao avançar o dia (`MartialNotebookService.applySession`:
++1 + floor(modQ(TAL)/2), +2 Desgaste Mental). Ao concluir vira técnica/base **avulsa** (`CharacterTechnique.characterArt`
+null) em Esboço. Rivais (`rivals`) nascem no Fechar luta (`participants[].rival {name, npcId}`), +1 luta e +1 Leitura
+(máx. 3). Bancos existentes: `character_techniques.character_art_id DROP NOT NULL` e dropar
+`bookings_solo_activity_type_check`. Front: `NotebookPanel` (reusa `TechniqueEditor`/`BaseEditor` do `ArtEditor`),
+grupo "Avulsas" no `MartialPanel`, Rivais no `ProgressPanel`, oponente no `FightClosePanel`.
+
