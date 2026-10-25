@@ -673,6 +673,7 @@ public class CharacterSheetService {
                 npcVisibilityRepository.save(NpcSheetVisibility.builder().campaignNpc(cn).section(sec).visible(true).build());
             }
         }
+        events.publishEvent(new com.tatakai.manager.dto.response.CampaignUpdateMessage(campaignId, "NPCS", npc.getId()));
         return createForNpc(npc.getId(), req.sheet(), requesterId);
     }
 

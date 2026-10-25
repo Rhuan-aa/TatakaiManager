@@ -20,6 +20,8 @@ import com.tatakai.manager.repository.CampaignRepository;
 import com.tatakai.manager.repository.InteractionLogRepository;
 import com.tatakai.manager.repository.TimeSkipRepository;
 import org.springframework.stereotype.Service;
+import com.tatakai.manager.dto.response.CampaignUpdateMessage;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -37,12 +39,15 @@ public class TimeSkipService {
 
     private final TrainingService trainingService;
 
+    private final ApplicationEventPublisher events;
+
     public TimeSkipService(TimeSkipRepository timeSkipRepository,
                            CampaignRepository campaignRepository,
                            CampaignMemberRepository memberRepository,
                            BookingRepository bookingRepository,
                            InteractionLogRepository logRepository,
-                           TrainingService trainingService) {
+                           TrainingService trainingService, ApplicationEventPublisher events) {
+        this.events = events;
         this.trainingService = trainingService;
         this.timeSkipRepository = timeSkipRepository;
         this.campaignRepository = campaignRepository;
@@ -70,7 +75,7 @@ public class TimeSkipService {
                 .build();
         timeSkip.generateDays();
 
-        return toResponse(timeSkipRepository.save(timeSkip));
+        return changed(timeSkipRepository.save(timeSkip));
     }
 
     @Transactional
@@ -85,7 +90,7 @@ public class TimeSkipService {
 
         timeSkip.setStatus(TimeSkipStatus.CLOSED);
         timeSkip.setClosedAt(Instant.now());
-        return toResponse(timeSkipRepository.save(timeSkip));
+        return changed(timeSkipRepository.save(timeSkip));
     }
 
     /**
@@ -105,6 +110,13 @@ public class TimeSkipService {
             bookingRepository.deleteAll(bookings);
         }
         timeSkipRepository.delete(timeSkip);
+        events.publishEvent(new CampaignUpdateMessage(timeSkip.getCampaign().getId(), "TIMESKIP", timeSkipId));
+    }
+
+    /** Resposta + aviso em tempo real aos outros clientes da campanha. */
+    private TimeSkipResponse changed(TimeSkip ts) {
+        events.publishEvent(new CampaignUpdateMessage(ts.getCampaign().getId(), "TIMESKIP", ts.getId()));
+        return toResponse(ts);
     }
 
     /**
@@ -127,7 +139,7 @@ public class TimeSkipService {
 
         trainingService.processUpTo(timeSkip, day);
         timeSkip.setCurrentDay(day);
-        return toResponse(timeSkipRepository.save(timeSkip));
+        return changed(timeSkipRepository.save(timeSkip));
     }
 
     /** Local de treino do TimeSkip (RN-PROG-03). Só o Mestre. */
@@ -136,7 +148,7 @@ public class TimeSkipService {
         TimeSkip timeSkip = timeSkipRepository.findById(timeSkipId).orElseThrow(TimeSkipNotFoundException::new);
         requireCampaignMaster(timeSkip.getCampaign().getId(), requesterId);
         timeSkip.setVenue(venue);
-        return toResponse(timeSkipRepository.save(timeSkip));
+        return changed(timeSkipRepository.save(timeSkip));
     }
 
     @Transactional(readOnly = true)

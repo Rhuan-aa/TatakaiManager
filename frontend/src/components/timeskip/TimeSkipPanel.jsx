@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   listTimeSkips,
   createTimeSkip,
@@ -11,6 +11,7 @@ import { parseApiError } from '../../api/parseApiError';
 import { EmptyState } from '../../components/layout/AppShell';
 import { useToast } from '../../contexts/ToastContext';
 import SlotGrid from '../booking/SlotGrid';
+import { useCampaignTopic } from '../../hooks/useWebSocket';
 import TimeSkipActivityManager from './TimeSkipActivityManager';
 
 const inputClass = 'field';
@@ -28,6 +29,10 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [activitiesVersion, setActivitiesVersion] = useState(0);
+  const [tick, setTick] = useState(0);
+  // outro cliente mudou dia, encerrou, criou ou excluiu um TimeSkip: recarrega a lista
+  const onCampaign = useCallback((msg) => { if (msg?.type === 'TIMESKIP') setTick((t) => t + 1); }, []);
+  useCampaignTopic(campaignId, 'campaign', onCampaign);
 
   useEffect(() => {
     let active = true;
@@ -36,7 +41,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
         const list = await listTimeSkips(campaignId);
         if (!active) return;
         setTimeSkips(list);
-        setSelectedId((prev) => prev ?? list[0]?.id ?? null);
+        setSelectedId((prev) => (list.some((t) => t.id === prev) ? prev : list[0]?.id ?? null));
       } catch (err) {
         if (active) setError(parseApiError(err).message);
       } finally {
@@ -46,7 +51,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     return () => {
       active = false;
     };
-  }, [campaignId]);
+  }, [campaignId, tick]);
 
   const selected = timeSkips.find((t) => t.id === selectedId) ?? null;
 

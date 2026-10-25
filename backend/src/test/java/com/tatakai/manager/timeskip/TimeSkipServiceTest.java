@@ -48,10 +48,13 @@ class TimeSkipServiceTest {
     private User player;
     private Campaign campaign;
 
+    private final org.springframework.context.ApplicationEventPublisher events =
+            org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class);
+
     @BeforeEach
     void setUp() {
         service = new TimeSkipService(timeSkipRepository, campaignRepository, memberRepository,
-                bookingRepository, logRepository, trainingService);
+                bookingRepository, logRepository, trainingService, events);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Player").build();
         campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
@@ -275,6 +278,8 @@ class TimeSkipServiceTest {
 
         assertThat(res.currentDay()).isEqualTo((short) 4);
         assertThat(ts.getCurrentDay()).isEqualTo((short) 4);
+        // §37: os outros clientes da campanha recebem o aviso em tempo real
+        verify(events).publishEvent(new com.tatakai.manager.dto.response.CampaignUpdateMessage(campaign.getId(), "TIMESKIP", ts.getId()));
     }
 
     @Test

@@ -17,6 +17,8 @@ import com.tatakai.manager.exception.NpcNotFoundException;
 import com.tatakai.manager.exception.UserNotFoundException;
 import com.tatakai.manager.repository.*;
 import org.springframework.stereotype.Service;
+import com.tatakai.manager.dto.response.CampaignUpdateMessage;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -41,6 +43,8 @@ public class NpcService {
     private final CharacterSheetRepository sheetRepository;
     private final NpcSheetVisibilityRepository npcSheetVisibilityRepository;
 
+    private final ApplicationEventPublisher events;
+
     public NpcService(NpcRepository npcRepository,
                       CampaignRepository campaignRepository,
                       CampaignNpcRepository campaignNpcRepository,
@@ -50,7 +54,9 @@ public class NpcService {
                       BookingRepository bookingRepository,
                       InteractionLogRepository logRepository,
                       CharacterSheetRepository sheetRepository,
-                      NpcSheetVisibilityRepository npcSheetVisibilityRepository) {
+                      NpcSheetVisibilityRepository npcSheetVisibilityRepository,
+                      ApplicationEventPublisher events) {
+        this.events = events;
         this.npcRepository = npcRepository;
         this.campaignRepository = campaignRepository;
         this.campaignNpcRepository = campaignNpcRepository;
@@ -105,7 +111,14 @@ public class NpcService {
         npc.getInteractions().clear();
         npc.getInteractions().addAll(toInteractions(req.interactions()));
 
-        return toResponse(npcRepository.save(npc), null);
+        NpcResponse out = toResponse(npcRepository.save(npc), null);
+        campaignNpcRepository.findByNpcId(npcId).forEach(a -> notifyNpcs(a.getCampaign().getId(), npcId));
+        return out;
+    }
+
+    /** Avisa os clientes da campanha que a lista de NPCs mudou (após o commit). */
+    private void notifyNpcs(UUID campaignId, UUID npcId) {
+        events.publishEvent(new CampaignUpdateMessage(campaignId, "NPCS", npcId));
     }
 
     // ---------- US-08: associar a campanha ----------
@@ -129,6 +142,7 @@ public class NpcService {
                 .visible(true)
                 .build());
 
+        notifyNpcs(campaignId, npcId);
         return new CampaignNpcResponse(campaignId, npcId, assoc.isVisible());
     }
 
@@ -143,6 +157,7 @@ public class NpcService {
 
         assoc.setVisible(visible);
         campaignNpcRepository.save(assoc);
+        notifyNpcs(campaignId, npcId);
         return new CampaignNpcResponse(campaignId, npcId, assoc.isVisible());
     }
 
@@ -154,6 +169,7 @@ public class NpcService {
                 .orElseThrow(NpcNotFoundException::new);
         assoc.setBookable(bookable);
         campaignNpcRepository.save(assoc);
+        notifyNpcs(campaignId, npcId);
         return new CampaignNpcResponse(campaignId, npcId, assoc.isVisible());
     }
 
@@ -176,6 +192,7 @@ public class NpcService {
         }
         npcSheetVisibilityRepository.deleteByCampaignNpcId(assoc.getId());
         campaignNpcRepository.delete(assoc);
+        notifyNpcs(campaignId, npcId);
     }
 
     // ---------- acervo do dono ----------

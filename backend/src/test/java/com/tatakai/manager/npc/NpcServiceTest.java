@@ -47,11 +47,14 @@ class NpcServiceTest {
     private User master;
     private User player;
 
+    private final org.springframework.context.ApplicationEventPublisher events =
+            org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class);
+
     @BeforeEach
     void setUp() {
         service = new NpcService(npcRepository, campaignRepository,
                 campaignNpcRepository, memberRepository, userRepository, npcImageRepository,
-                bookingRepository, logRepository, sheetRepository, npcSheetVisibilityRepository);
+                bookingRepository, logRepository, sheetRepository, npcSheetVisibilityRepository, events);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").email("mestre@rpg.com").build();
         player = User.builder().id(UUID.randomUUID()).name("Player").email("player@rpg.com").build();
     }
@@ -365,6 +368,7 @@ class NpcServiceTest {
         verify(logRepository).deleteByBookingIn(List.of(b));
         verify(bookingRepository).deleteAll(List.of(b));
         verify(campaignNpcRepository).delete(assoc);
+        verify(events).publishEvent(new com.tatakai.manager.dto.response.CampaignUpdateMessage(campaignId, "NPCS", npc.getId()));
     }
 
     @Test

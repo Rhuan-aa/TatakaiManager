@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getCampaign } from '../../api/campaigns';
 import { listCampaignNpcs } from '../../api/npcs';
@@ -13,11 +13,17 @@ import RuleSettings from '../../components/campaign/RuleSettings';
 import RollFeed from '../../components/rolls/RollFeed';
 import CombatPanel from '../../components/combat/CombatPanel';
 import SheetsSection from '../../components/sheet/SheetsSection';
+import { useCampaignTopic } from '../../hooks/useWebSocket';
 
 export default function CampaignDetail() {
   const { id } = useParams();
   const [campaign, setCampaign] = useState(null);
   const [npcs, setNpcs] = useState([]);
+  // NPC associado, removido, editado ou com visibilidade trocada em outro cliente
+  const onCampaign = useCallback((msg) => {
+    if (msg?.type === 'NPCS') listCampaignNpcs(id).then(setNpcs).catch(() => {});
+  }, [id]);
+  useCampaignTopic(id, 'campaign', onCampaign);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('NPCs');
