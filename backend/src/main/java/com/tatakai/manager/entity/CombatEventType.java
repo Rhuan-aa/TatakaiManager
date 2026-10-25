@@ -1,0 +1,6 @@
+package com.tatakai.manager.entity;
+
+public enum CombatEventType {
+    START, INITIATIVE, TURN_START, TURN_END, ROUND_END, ACTION, CONDITION_ADDED, CONDITION_EXPIRED,
+    CONDITION_REMOVED, TURN_LOST, END, GM
+}

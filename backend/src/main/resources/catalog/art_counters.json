@@ -1,0 +1,23 @@
+[
+  {"key": "FOCO", "art": "Karatê", "name": "Foco", "min": 0, "max": 1, "perTarget": false,
+   "increments": [{"event": "DEFEND_SUCCESS", "delta": 1}], "resets": [{"event": "COMBAT_END", "value": 0}],
+   "note": "Defesa bem-sucedida; gastar manualmente (+2 acerto e dano no próximo ataque contra quem bloqueou)"},
+  {"key": "RITMO", "art": "Capoeira", "name": "Ritmo", "min": 0, "max": 5, "perTarget": false,
+   "increments": [{"event": "DODGE_SUCCESS", "delta": 1}, {"event": "COUNTER_SUCCESS", "delta": 1},
+                  {"event": "HIT", "delta": 1}, {"event": "GOT_HIT", "delta": -2}],
+   "resets": [{"event": "KNOCKED_DOWN", "value": 0}, {"event": "GRAPPLED", "value": 0}, {"event": "COMBAT_END", "value": 0}],
+   "note": "Limiares 1–5; gasto manual"},
+  {"key": "POP", "art": "Entertainment Wrestling", "name": "Pop", "min": 0, "max": 5, "perTarget": false,
+   "increments": [], "resets": [{"event": "COMBAT_END", "value": 0}], "note": "Manual"},
+  {"key": "EMBALO", "art": "Boxe", "name": "Embalo", "min": 0, "max": 5, "perTarget": false,
+   "increments": [{"event": "DODGE_SUCCESS", "delta": 1}, {"event": "HIT", "delta": 1, "sameArt": true}],
+   "resets": [{"event": "GOT_HIT", "value": 0}, {"event": "COMBAT_END", "value": 0}],
+   "note": "Soma ao acerto e dano; 5 = Crítico Garantido (manual)"},
+  {"key": "FORCA_CENTRIFUGA", "art": "Taekwondo", "name": "Força Centrífuga", "min": 0, "max": 10, "perTarget": false,
+   "increments": [{"event": "ART_TECHNIQUE_USED", "delta": 2, "sameArt": true}], "resets": [{"event": "COMBAT_END", "value": 0}],
+   "note": "Gasto manual"},
+  {"key": "TERRENO_PERDIDO", "art": "Sumo", "name": "Terreno Perdido", "min": 0, "max": 5, "perTarget": true,
+   "increments": [], "resets": [{"event": "COMBAT_END", "value": 0}], "note": "Manual, por alvo"},
+  {"key": "LUTA_EM_CADEIA", "art": "Wrestling", "name": "Luta em Cadeia", "min": 0, "max": 6, "perTarget": true,
+   "increments": [], "resets": [{"event": "COMBAT_END", "value": 0}], "note": "Manual, por alvo"}
+]

@@ -40,7 +40,8 @@ public class GlobalExceptionHandler {
             NpcNotFoundException.class, TimeSkipNotFoundException.class,
             BookingNotFoundException.class, MemberNotFoundException.class,
             TimeSkipActivityNotFoundException.class, LogNotFoundException.class,
-            CharacterSheetNotFoundException.class, SheetEntryNotFoundException.class})
+            CharacterSheetNotFoundException.class, SheetEntryNotFoundException.class,
+            RollNotFoundException.class, EncounterNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(body(HttpStatus.NOT_FOUND, ex.getMessage()));
@@ -50,8 +51,8 @@ public class GlobalExceptionHandler {
             ActiveTimeSkipExistsException.class, TimeSkipClosedException.class,
             SlotTakenException.class, BookingAlreadyPassedException.class,
             InvalidActivityNameException.class, CharacterSheetAlreadyExistsException.class,
-            NpcSheetAlreadyExistsException.class,
-            SheetLockedException.class, ObjectOptimisticLockingFailureException.class})
+            NpcSheetAlreadyExistsException.class, RollChannelNameTakenException.class,
+            SheetLockedException.class, CombatConflictException.class, ObjectOptimisticLockingFailureException.class})
     public ResponseEntity<Map<String, Object>> handleConflict(RuntimeException ex) {
         String msg = ex instanceof ObjectOptimisticLockingFailureException
                 ? "A ficha foi alterada por outra pessoa. Recarregue e tente de novo."
@@ -63,7 +64,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({InvalidBookingException.class, InvalidTimeSkipException.class,
             InvalidImageException.class, InvalidCharacterSheetException.class,
             InvalidBuildStepException.class, InvalidMartialArtException.class,
-            InvalidRollException.class})
+            InvalidRollException.class, InvalidCombatException.class})
     public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
         return ResponseEntity.badRequest().body(body(HttpStatus.BAD_REQUEST, ex.getMessage()));
     }

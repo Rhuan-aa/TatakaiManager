@@ -1,0 +1,202 @@
+[
+  {
+    "key": "AGARRADO",
+    "name": "Agarrado",
+    "effect": "Ataques contra: vantagem",
+    "exit": "Ação Menor + FOR vs FOR com desvantagem (DES em artes de Derrubada/Raspagem)",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "IMOBILIZADO",
+    "name": "Imobilizado",
+    "effect": "Agarrado + deslocamento 0, ataques com desvantagem, sem Esquiva",
+    "exit": "Ação Maior + FOR/DES com desvantagem",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "CLINCH",
+    "name": "Clinch",
+    "effect": "Alcance Mínimo mútuo; sem golpes Médio+",
+    "exit": "Ação Menor + FOR, sem desvantagem",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "DERRUBADO",
+    "name": "Derrubado",
+    "effect": "Desvantagem em Esquiva e Contra; mod. de ataque ÷2; Guarda Frontal",
+    "exit": "Levantar-se",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "QUEBRA_DE_BASE",
+    "name": "Quebra de Base",
+    "effect": "Sem base; não pode entrar em base",
+    "exit": "—",
+    "defaultExpiresAt": "START_OF_TARGET_TURN",
+    "stack": "RENEW"
+  },
+  {
+    "key": "DESORIENTADO",
+    "name": "Desorientado",
+    "effect": "Desvantagem em DES e Esquiva",
+    "exit": "—",
+    "defaultExpiresAt": "END_OF_TARGET_TURN",
+    "stack": "RENEW"
+  },
+  {
+    "key": "VULNERAVEL",
+    "name": "Vulnerável",
+    "effect": "Não pode reagir",
+    "exit": "—",
+    "defaultExpiresAt": "START_OF_TARGET_TURN",
+    "stack": "RENEW"
+  },
+  {
+    "key": "ATORDOADO",
+    "name": "Atordoado",
+    "effect": "Perde próximo turno; sem Contra; Defender/Esquiva com desvantagem",
+    "exit": "Fim do turno perdido",
+    "defaultExpiresAt": "END_OF_TARGET_TURN",
+    "stack": "RENEW"
+  },
+  {
+    "key": "PARALISADO",
+    "name": "Paralisado",
+    "effect": "Deslocamento 0, sem ações físicas, falha automática FOR/DES, ataques contra com vantagem",
+    "exit": "Conforme causa",
+    "defaultExpiresAt": "COUNTER",
+    "stack": "RENEW"
+  },
+  {
+    "key": "INCONSCIENTE",
+    "name": "Inconsciente",
+    "effect": "Não age nem reage; só aliado adjacente reage por ele; acerto = Crítico Garantido (exceto se inconsciente por HP)",
+    "exit": "Conforme causa",
+    "defaultExpiresAt": "COUNTER",
+    "stack": "RENEW"
+  },
+  {
+    "key": "FURTIVO",
+    "name": "Furtivo",
+    "effect": "Não pode ser alvo direto; 1º ataque: vantagem + desvantagem na reação do alvo",
+    "exit": "Atacar ou ser detectado",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "OLHO_IRRITADO",
+    "name": "Olho Irritado",
+    "effect": "Escala de visão: desvantagem em precisão",
+    "exit": "1 PA",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "MEIO_CEGO",
+    "name": "Meio-Cego",
+    "effect": "Escala de visão (Desvantagem Absoluta em casos definidos)",
+    "exit": "Causa",
+    "defaultExpiresAt": "END_OF_ROUND",
+    "stack": "RENEW"
+  },
+  {
+    "key": "CEGO",
+    "name": "Cego",
+    "effect": "Escala de visão (Desvantagem Absoluta em casos definidos)",
+    "exit": "Causa",
+    "defaultExpiresAt": "END_OF_ROUND",
+    "stack": "RENEW"
+  },
+  {
+    "key": "OUVIDO_DANIFICADO",
+    "name": "Ouvido Danificado",
+    "effect": "Desvantagem em percepção auditiva e iniciativa",
+    "exit": "Tratamento",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "QUEIMANDO",
+    "name": "Queimando",
+    "effect": "Dano no início do turno; desvantagem em foco/precisão",
+    "exit": "Ação Maior + DES vs ND 13/15/17; água apaga",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "CONGELANDO",
+    "name": "Congelando",
+    "effect": "Movimento ÷2; desvantagem FOR/DES; teste CON ND 14 +2/turno, falha: 1d3 + 1 Desgaste Físico",
+    "exit": "2 turnos longe do frio",
+    "defaultExpiresAt": "COUNTER",
+    "stack": "RENEW"
+  },
+  {
+    "key": "ENVENENADO",
+    "name": "Envenenado",
+    "effect": "Dano no início; desvantagem em CON; teste no fim",
+    "exit": "2 sucessos ou antídoto",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "SUM"
+  },
+  {
+    "key": "SUFOCANDO",
+    "name": "Sufocando",
+    "effect": "−1d6 SP/turno; SP 0 → Inconsciente sem teste",
+    "exit": "Voltar a respirar",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "DESEQUILIBRADO",
+    "name": "Desequilibrado",
+    "effect": "Usado por técnicas (Derrubar sem teste)",
+    "exit": "Duração não definida na spec",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "BEIRA_DA_MORTE",
+    "name": "Beira da Morte",
+    "effect": "Inconsciente; salvaguarda de CON (ND 12) no início do turno; dano = falha (crítico = 2)",
+    "exit": "3 sucessos estabilizam; 3 falhas matam",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "ESTABILIZADO",
+    "name": "Estabilizado",
+    "effect": "Inconsciente com HP 0, fora de risco de morte",
+    "exit": "Cura / Repouso",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "MORTO",
+    "name": "Morto",
+    "effect": "Fora do combate definitivamente",
+    "exit": "—",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "EXAUSTO",
+    "name": "Exausto",
+    "effect": "Sem técnicas nem ações com custo de SP; teste de Vontade a cada turno com ND crescente",
+    "exit": "Recuperar SP (Recuperar Fôlego)",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "DISSOCIADO",
+    "name": "Dissociado",
+    "effect": "Desgaste Mental ≥ 12: sem Ações Menores; −1 vantagem em ataque e reação; SP de técnicas ×2; zerar HP/SP/PQ derruba sem teste",
+    "exit": "Reduzir o Desgaste Mental abaixo de 12",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  }
+]

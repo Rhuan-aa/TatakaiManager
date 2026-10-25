@@ -121,7 +121,7 @@ function Participant({ sheet, row, milestones, update, npcListId }) {
 }
 
 /** Menu pós-luta do Mestre (F4b): quem lutou, classificação, Marcos (PS) e arte que recebe o EL. */
-export default function FightClosePanel({ campaignId, sheets, onDone }) {
+export default function FightClosePanel({ campaignId, sheets, onDone, preselected = [] }) {
   const toast = useToast();
   const [milestones, setMilestones] = useState([]);
   const [note, setNote] = useState('');
@@ -137,11 +137,11 @@ export default function FightClosePanel({ campaignId, sheets, onDone }) {
     return () => { active = false; };
   }, [campaignId]);
 
-  const row = (s) => rows[s.id] ?? { on: false, classification: 'REAL', milestones: [], artId: null };
+  const row = (s) => rows[s.id] ?? { on: preselected.includes(s.id), classification: 'REAL', milestones: [], artId: null };
   const update = useCallback((s, patch) => setRows((r) => {
-    const cur = r[s.id] ?? { on: false, classification: 'REAL', milestones: suggested(s, milestones), artId: null };
+    const cur = r[s.id] ?? { on: preselected.includes(s.id), classification: 'REAL', milestones: suggested(s, milestones), artId: null };
     return { ...r, [s.id]: { ...cur, ...patch } };
-  }), [milestones]);
+  }), [milestones, preselected]);
   const chosen = fighters.filter((s) => row(s).on);
 
   async function submit() {

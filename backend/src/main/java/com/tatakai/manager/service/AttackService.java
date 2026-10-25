@@ -1,0 +1,810 @@
+package com.tatakai.manager.service;
+
+import com.tatakai.manager.dto.request.CreateAttackRequest;
+import com.tatakai.manager.dto.response.AttackResponse;
+import com.tatakai.manager.dto.response.AttackResponse.Option;
+import com.tatakai.manager.dto.response.AttackResponse.TargetResponse;
+import com.tatakai.manager.dto.response.CombatUpdateMessage;
+import com.tatakai.manager.dto.response.RollMessage;
+import com.tatakai.manager.entity.ActivityCategory;
+import com.tatakai.manager.entity.ActorRole;
+import com.tatakai.manager.entity.AttackActionKind;
+import com.tatakai.manager.entity.AttackOutcome;
+import com.tatakai.manager.entity.AttackStatus;
+import com.tatakai.manager.entity.AttackTarget;
+import com.tatakai.manager.entity.BasicAttack;
+import com.tatakai.manager.entity.CharacterSheet;
+import com.tatakai.manager.entity.CharacterTechnique;
+import com.tatakai.manager.entity.CombatCondition;
+import com.tatakai.manager.entity.CombatEvent;
+import com.tatakai.manager.entity.CombatEventType;
+import com.tatakai.manager.entity.Encounter;
+import com.tatakai.manager.entity.EncounterParticipant;
+import com.tatakai.manager.entity.EncounterStatus;
+import com.tatakai.manager.entity.PendingAttack;
+import com.tatakai.manager.entity.Dominance;
+import com.tatakai.manager.entity.StrikeSide;
+import com.tatakai.manager.entity.Guard;
+import com.tatakai.manager.entity.LateCounter;
+import com.tatakai.manager.entity.MartialType;
+import com.tatakai.manager.entity.ReactionType;
+import com.tatakai.manager.entity.Hysteria;
+import com.tatakai.manager.entity.Role;
+import com.tatakai.manager.dto.request.LateCounterRequest;
+import com.tatakai.manager.service.rules.MartialRules;
+import com.tatakai.manager.service.rules.SheetRules;
+import com.tatakai.manager.service.rules.VitalRules;
+import com.tatakai.manager.entity.RollPart;
+import com.tatakai.manager.entity.RollSourceType;
+import com.tatakai.manager.entity.TechniqueState;
+import com.tatakai.manager.exception.AccessDeniedException;
+import com.tatakai.manager.exception.CharacterSheetNotFoundException;
+import com.tatakai.manager.exception.CombatConflictException;
+import com.tatakai.manager.exception.EncounterNotFoundException;
+import com.tatakai.manager.exception.InvalidCombatException;
+import com.tatakai.manager.repository.AttackTargetRepository;
+import com.tatakai.manager.repository.CampaignMemberRepository;
+import com.tatakai.manager.repository.CharacterSheetRepository;
+import com.tatakai.manager.repository.CharacterTechniqueRepository;
+import com.tatakai.manager.repository.CombatConditionRepository;
+import com.tatakai.manager.repository.CombatEventRepository;
+import com.tatakai.manager.repository.EncounterParticipantRepository;
+import com.tatakai.manager.repository.EncounterRepository;
+import com.tatakai.manager.repository.PendingAttackRepository;
+import com.tatakai.manager.service.RollProfileService.Calc;
+import com.tatakai.manager.service.rules.AttackRules;
+import com.tatakai.manager.service.rules.CombatRules;
+import com.tatakai.manager.service.rules.RollRules;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.Random;
+import java.util.stream.Collectors;
+
+/** Transação de ataque e reação (F6b): declarar, reagir, cancelar e resolver. */
+@Service
+@Transactional
+public class AttackService {
+
+    private static final String FURTIVE = "FURTIVO";
+    private static final String KNOCKED_DOWN = "DERRUBADO";
+    private static final String DISORIENTED = "DESORIENTADO";
+    private static final String RESTRAINED = "IMOBILIZADO";
+    private static final Set<String> NO_REACTION = Set.of("VULNERAVEL", "ATORDOADO", "INCONSCIENTE", "MORTO");
+    private static final Random DICE = new java.security.SecureRandom();
+    private static final Set<String> EASY_TARGET = Set.of("AGARRADO", "IMOBILIZADO", "PARALISADO");
+
+    private final EncounterRepository encounters;
+    private final EncounterParticipantRepository participants;
+    private final CombatConditionRepository conditions;
+    private final CombatEventRepository timeline;
+    private final PendingAttackRepository attacks;
+    private final AttackTargetRepository targets;
+    private final CharacterSheetRepository sheets;
+    private final CharacterTechniqueRepository techniques;
+    private final CampaignMemberRepository members;
+    private final RollService rolls;
+    private final RollProfileService profiles;
+    private final SheetActivityLogService activityLog;
+    private final ApplicationEventPublisher publisher;
+    private final VitalService vital;
+    private final MartialService martial;
+
+    public AttackService(EncounterRepository encounters, EncounterParticipantRepository participants,
+                         CombatConditionRepository conditions, CombatEventRepository timeline,
+                         PendingAttackRepository attacks, AttackTargetRepository targets,
+                         CharacterSheetRepository sheets, CharacterTechniqueRepository techniques,
+                         CampaignMemberRepository members, RollService rolls, RollProfileService profiles,
+                         SheetActivityLogService activityLog, ApplicationEventPublisher publisher,
+                         VitalService vital, MartialService martial) {
+        this.encounters = encounters;
+        this.participants = participants;
+        this.conditions = conditions;
+        this.timeline = timeline;
+        this.attacks = attacks;
+        this.targets = targets;
+        this.sheets = sheets;
+        this.techniques = techniques;
+        this.members = members;
+        this.rolls = rolls;
+        this.profiles = profiles;
+        this.activityLog = activityLog;
+        this.publisher = publisher;
+        this.vital = vital;
+        this.martial = martial;
+    }
+
+    // ---------- contexto ----------
+
+    private Encounter load(UUID id) {
+        return encounters.findById(id).orElseThrow(() -> new EncounterNotFoundException("Encontro não encontrado"));
+    }
+
+    private Role requireMembership(UUID campaignId, UUID userId) {
+        return members.findByCampaignIdAndUserId(campaignId, userId)
+                .orElseThrow(() -> new AccessDeniedException("Você não pertence a esta campanha")).getRole();
+    }
+
+    private static UUID ownerUserId(CharacterSheet s) {
+        return s.isNpcSheet() ? null : s.getCampaignMember().getUser().getId();
+    }
+
+    /** Participantes, fichas e condições do encontro, carregados uma vez por requisição. */
+    private final class Ctx {
+        final Encounter enc;
+        final Map<UUID, EncounterParticipant> ps;
+        final List<EncounterParticipant> ordered;
+        final Map<UUID, CharacterSheet> sheetOf;
+        final Map<UUID, Set<String>> keys;
+
+        Ctx(Encounter e) {
+            enc = e;
+            ordered = participants.findByEncounterIdOrderByOrderIndex(e.getId());
+            ps = ordered.stream().collect(Collectors.toMap(EncounterParticipant::getId, Function.identity()));
+            Map<UUID, CharacterSheet> bySheet = sheets.findAllById(
+                    ordered.stream().map(EncounterParticipant::getSheetId).toList())
+                    .stream().collect(Collectors.toMap(CharacterSheet::getId, Function.identity()));
+            sheetOf = new java.util.HashMap<>();
+            ordered.forEach(p -> sheetOf.put(p.getId(), bySheet.get(p.getSheetId())));
+            keys = new java.util.HashMap<>();
+            if (!ps.isEmpty()) {
+                for (CombatCondition c : conditions.findByParticipantIdIn(ps.keySet())) {
+                    keys.computeIfAbsent(c.getParticipantId(), k -> new HashSet<>()).add(c.getConditionKey());
+                }
+            }
+        }
+
+        EncounterParticipant participant(UUID id) {
+            EncounterParticipant p = ps.get(id);
+            if (p == null) throw new EncounterNotFoundException("Participante não encontrado");
+            return p;
+        }
+
+        boolean has(UUID participantId, String key) {
+            return keys.getOrDefault(participantId, Set.of()).contains(key);
+        }
+
+        boolean hasAny(UUID participantId, Set<String> any) {
+            return keys.getOrDefault(participantId, Set.of()).stream().anyMatch(any::contains);
+        }
+    }
+
+    // ---------- declarar ----------
+
+    public AttackResponse declare(UUID encounterId, CreateAttackRequest req, UUID userId) {
+        Encounter e = load(encounterId);
+        boolean master = requireMembership(e.getCampaignId(), userId) == Role.MASTER;
+        if (e.getStatus() != EncounterStatus.ACTIVE) throw new CombatConflictException("O encontro não está em andamento");
+        Ctx ctx = new Ctx(e);
+        EncounterParticipant att = ctx.participant(req.attackerId());
+        CharacterSheet s = ctx.sheetOf.get(att.getId());
+        if (!master && !userId.equals(ownerUserId(s))) {
+            throw new AccessDeniedException("Você só pode agir pelo seu próprio personagem");
+        }
+        if (!ctx.ordered.get(e.getCurrentIndex()).getId().equals(att.getId())) {
+            throw new InvalidCombatException("Não é o turno de " + att.getName());
+        }
+        List<UUID> targetIds = req.targetIds().stream().distinct().toList();
+        for (UUID tid : targetIds) {
+            EncounterParticipant t = ctx.participant(tid);
+            if (t.getId().equals(att.getId())) throw new InvalidCombatException("Não é possível atacar a si mesmo");
+            if (ctx.has(t.getId(), FURTIVE)) throw new InvalidCombatException(t.getName() + " está Furtivo e não pode ser alvo");
+        }
+        if (req.sourceType() != RollSourceType.TECHNIQUE && req.sourceType() != RollSourceType.BASIC_ATTACK) {
+            throw new InvalidCombatException("Fonte de ataque inválida");
+        }
+        PendingAttack a = PendingAttack.builder().encounterId(e.getId()).attackerId(att.getId())
+                .sourceType(req.sourceType()).sourceId(req.sourceId()).variation(req.variation())
+                .basicAttack(req.basicAttack()).actionKind(req.actionKind()).region(req.region())
+                .regionPenalty(req.regionPenalty() == null ? 0 : req.regionPenalty()).strikeSide(req.strikeSide())
+                .status(AttackStatus.AWAITING_REACTIONS).round(e.getRound()).sourceName("").build();
+        if (ctx.hasAny(att.getId(), Set.of("INCONSCIENTE", "MORTO"))) {
+            throw new InvalidCombatException(att.getName() + " está fora de combate e não pode agir");
+        }
+        Calc calc = calcFor(s, a, ctx.has(att.getId(), KNOCKED_DOWN), att, s);
+        a.setVariation(calc.variation());
+        String name = calc.variation() == null ? calc.name() : calc.name() + " (" + calc.variation() + ")";
+        a.setSourceName(name.length() > 100 ? name.substring(0, 100) : name);
+
+        boolean slow = false;
+        boolean quick = a.getBasicAttack() == BasicAttack.SOCO;
+        if (a.getSourceType() == RollSourceType.TECHNIQUE) {
+            CharacterTechnique t = technique(s, a);
+            slow = profiles.hasModule(s, t, a.getVariation(), "Lenta");
+            quick = profiles.hasModule(s, t, a.getVariation(), "Técnica Rápida");
+        }
+        if (a.getActionKind() == AttackActionKind.MINOR_OFFENSIVE && ctx.has(att.getId(), "DISSOCIADO")) {
+            throw new InvalidCombatException("Dissociado: Ações Menores estão bloqueadas");
+        }
+        if (a.getActionKind() == AttackActionKind.MINOR_OFFENSIVE && !quick) {
+            throw new InvalidCombatException("Ação Menor Ofensiva exige Técnica Rápida ou o ataque básico Soco");
+        }
+        int pa = AttackRules.paCost(a.getActionKind(), slow);
+        int sp = a.getSourceType() == RollSourceType.BASIC_ATTACK
+                ? VitalRules.adjustSp(1, VitalRules.tier(att.getAdrenaline()), ctx.has(att.getId(), "DISSOCIADO"))
+                : calc.spCost();
+        if (sp > 0 && ctx.has(att.getId(), "EXAUSTO")) {
+            throw new InvalidCombatException("Exausto: sem técnicas nem ações com custo de SP");
+        }
+        if (att.getPaCurrent() < pa) {
+            throw new InvalidCombatException("PA insuficiente: custa " + pa + " e restam " + att.getPaCurrent());
+        }
+        if (s.getCurrentSp() < sp) {
+            throw new InvalidCombatException("SP insuficiente: custa " + sp + " e restam " + s.getCurrentSp());
+        }
+        ActorRole role = master ? ActorRole.MASTER : ActorRole.PLAYER;
+        att.setPaCurrent(att.getPaCurrent() - pa);
+        att.setEngagedThisRound(true);
+        vital.applySp(e, att, s, -sp, VitalService.Ctx.of(userId, role, "Ataque: " + a.getSourceName()));
+        a.setReservedPa(pa);
+        a.setReservedSp(sp);
+        a = attacks.save(a);
+
+        List<AttackTarget> ts = new ArrayList<>();
+        for (UUID tid : targetIds) {
+            ctx.participant(tid).setEngagedThisRound(true);
+            boolean auto = ctx.hasAny(tid, NO_REACTION);
+            ts.add(targets.save(AttackTarget.builder().attackId(a.getId()).targetId(tid)
+                    .reaction(auto ? ReactionType.NONE : null).autoResolved(auto)
+                    .respondedAt(auto ? Instant.now() : null).build()));
+        }
+        log(e, att.getId(), att.getName() + " declara " + a.getSourceName() + " contra "
+                + names(ctx, ts) + " (" + pa + " PA" + (sp > 0 ? ", " + sp + " SP" : "") + ")");
+        if (ts.stream().allMatch(t -> t.getReaction() != null)) resolve(e, a, ts, ctx, userId, role);
+        return done(e, a, ts, ctx, userId, master);
+    }
+
+    // ---------- reagir ----------
+
+    public AttackResponse respond(UUID attackId, UUID targetRowId, ReactionType reaction, UUID userId) {
+        PendingAttack a = attacks.findById(attackId).orElseThrow(() -> new EncounterNotFoundException("Ataque não encontrado"));
+        Encounter e = load(a.getEncounterId());
+        boolean master = requireMembership(e.getCampaignId(), userId) == Role.MASTER;
+        if (a.getStatus() != AttackStatus.AWAITING_REACTIONS) throw new CombatConflictException("O ataque já foi encerrado");
+        Ctx ctx = new Ctx(e);
+        List<AttackTarget> ts = targets.findByAttackIdIn(List.of(a.getId()));
+        AttackTarget t = ts.stream().filter(x -> x.getId().equals(targetRowId)).findFirst()
+                .orElseThrow(() -> new EncounterNotFoundException("Alvo não encontrado"));
+        CharacterSheet ts0 = ctx.sheetOf.get(t.getTargetId());
+        if (!master && !userId.equals(ownerUserId(ts0))) {
+            throw new AccessDeniedException("Apenas o dono do alvo ou o Mestre pode reagir");
+        }
+        if (t.getReaction() != null) throw new CombatConflictException("Este alvo já respondeu");
+        if (reaction == ReactionType.COUNTER && ts0.getCurrentSp() < 1) {
+            throw new InvalidCombatException("Contra-ataque exige 1 SP");
+        }
+        t.setReaction(reaction);
+        t.setRespondedAt(Instant.now());
+        targets.save(t);
+        if (ts.stream().allMatch(x -> x.getReaction() != null)) {
+            resolve(e, a, ts, ctx, userId, master ? ActorRole.MASTER : ActorRole.PLAYER);
+        }
+        return done(e, a, ts, ctx, userId, master);
+    }
+
+    // ---------- cancelar ----------
+
+    public AttackResponse cancel(UUID attackId, UUID userId) {
+        PendingAttack a = attacks.findById(attackId).orElseThrow(() -> new EncounterNotFoundException("Ataque não encontrado"));
+        Encounter e = load(a.getEncounterId());
+        boolean master = requireMembership(e.getCampaignId(), userId) == Role.MASTER;
+        Ctx ctx = new Ctx(e);
+        EncounterParticipant att = ctx.participant(a.getAttackerId());
+        CharacterSheet s = ctx.sheetOf.get(att.getId());
+        if (!master && !userId.equals(ownerUserId(s))) {
+            throw new AccessDeniedException("Apenas o atacante ou o Mestre pode cancelar");
+        }
+        List<AttackTarget> ts = targets.findByAttackIdIn(List.of(a.getId()));
+        if (a.getStatus() != AttackStatus.AWAITING_REACTIONS
+                || ts.stream().anyMatch(t -> t.getReaction() != null && !t.isAutoResolved())) {
+            throw new CombatConflictException("O ataque não pode mais ser cancelado");
+        }
+        att.setPaCurrent(att.getPaCurrent() + a.getReservedPa());
+        vital.applySp(e, att, s, a.getReservedSp(), VitalService.Ctx.of(userId,
+                master ? ActorRole.MASTER : ActorRole.PLAYER, "Ataque cancelado: " + a.getSourceName()));
+        a.setStatus(AttackStatus.CANCELLED);
+        attacks.save(a);
+        log(e, att.getId(), att.getName() + " cancelou " + a.getSourceName());
+        return done(e, a, ts, ctx, userId, master);
+    }
+
+    // ---------- consulta ----------
+
+    @Transactional(readOnly = true)
+    public List<AttackResponse> list(UUID encounterId, AttackStatus status, UUID userId) {
+        Encounter e = load(encounterId);
+        boolean master = requireMembership(e.getCampaignId(), userId) == Role.MASTER;
+        Ctx ctx = new Ctx(e);
+        List<PendingAttack> as = status == null ? attacks.findByEncounterIdOrderByCreatedAtDesc(e.getId())
+                : attacks.findByEncounterIdAndStatusOrderByCreatedAtDesc(e.getId(), status);
+        if (as.isEmpty()) return List.of();
+        Map<UUID, List<AttackTarget>> byAttack = targets.findByAttackIdIn(as.stream().map(PendingAttack::getId).toList())
+                .stream().collect(Collectors.groupingBy(AttackTarget::getAttackId));
+        return as.stream().map(a -> view(a, byAttack.getOrDefault(a.getId(), List.of()), ctx, userId, master)).toList();
+    }
+
+    private AttackResponse done(Encounter e, PendingAttack a, List<AttackTarget> ts, Ctx ctx, UUID userId, boolean master) {
+        publisher.publishEvent(new CombatUpdateMessage(e.getCampaignId(), e.getId(), "ATTACK"));
+        return view(a, ts, ctx, userId, master);
+    }
+
+    private AttackResponse view(PendingAttack a, List<AttackTarget> ts, Ctx ctx, UUID userId, boolean master) {
+        EncounterParticipant att = ctx.ps.get(a.getAttackerId());
+        List<TargetResponse> out = new ArrayList<>();
+        for (AttackTarget t : ts) {
+            EncounterParticipant tp = ctx.ps.get(t.getTargetId());
+            CharacterSheet tsh = ctx.sheetOf.get(t.getTargetId());
+            boolean can = a.getStatus() == AttackStatus.AWAITING_REACTIONS && t.getReaction() == null
+                    && tsh != null && (master || userId.equals(ownerUserId(tsh)));
+            out.add(new TargetResponse(t.getId(), t.getTargetId(), tp == null ? null : tp.getName(), t.getReaction(),
+                    t.isAutoResolved(), can, can ? options(a, att, tp, tsh, ctx) : null,
+                    t.getReactionRollId() == null ? null : rolls.message(t.getReactionRollId()), t.getOutcome(),
+                    t.getMitigationPct(), t.getDamage(), t.getCounterDamage(), t.getLateCounter(),
+                    t.getLateCounterDamage(), canLateCounter(a, t, ctx, tsh, userId, master)));
+        }
+        return new AttackResponse(a.getId(), a.getEncounterId(), a.getAttackerId(), att == null ? null : att.getName(),
+                a.getSourceName(), a.getActionKind(), a.getRegion(), a.getReservedPa(), a.getReservedSp(), a.getStatus(),
+                a.getRound(), a.getAttackRollId() == null ? null : rolls.message(a.getAttackRollId()), out);
+    }
+
+    /** Janela do Contra-Ataque Tardio: alvo Defendeu/Esquivou e o turno ainda não acabou (RN-REA-04). */
+    private static boolean canLateCounter(PendingAttack a, AttackTarget t, Ctx ctx, CharacterSheet tsh, UUID userId,
+                                          boolean master) {
+        return a.getStatus() == AttackStatus.RESOLVED && t.getLateCounter() == null
+                && (t.getOutcome() == AttackOutcome.DEFENDED || t.getOutcome() == AttackOutcome.DODGED)
+                && ctx.enc.getStatus() == EncounterStatus.ACTIVE && a.getResolvedTurn() != null
+                && a.getResolvedTurn() == ctx.enc.getTurnCounter()
+                && tsh != null && (master || userId.equals(ownerUserId(tsh)));
+    }
+
+    private List<Option> options(PendingAttack a, EncounterParticipant att, EncounterParticipant tp, CharacterSheet tsh,
+                                 Ctx ctx) {
+        int common = hysteriaReaction(tp) - CombatRules.fatiguePenalty(tsh.getPhysicalFatigue())
+                + AttackRules.groupPenalty(countAttackers(tp, att.getId()))
+                + AttackRules.timingBonus(uses(a, att, tp))
+                + martial.read(tsh, att, ctx.sheetOf.get(att.getId()))
+                + (incomum(att, ctx.sheetOf.get(att.getId()), tp, tsh, ctx) ? 1 : 0);
+        boolean sp = tsh.getCurrentSp() >= 1;
+        return List.of(
+                new Option(ReactionType.DEFEND, true, null, RollRules.modOrZero(tsh.getCon()) + common),
+                new Option(ReactionType.DODGE, true, null, RollRules.modOrZero(tsh.getDex()) + common),
+                new Option(ReactionType.COUNTER, sp, sp ? null : "SP insuficiente",
+                        RollRules.modOrZero(tsh.getDex()) + common),
+                new Option(ReactionType.NONE, true, null, 0));
+    }
+
+    // ---------- resolver ----------
+
+    /** Interação marcial de um alvo: +1 atacante, −1 defensor, 0 nada; label vai para o breakdown. */
+    private record Inter(int result, String label) {
+        static final Inter NONE = new Inter(0, null);
+    }
+
+    /** Defensor de um alvo: seu lutador marcial e a interação com o atacante. */
+    private record Matchup(MartialService.Fighter defender, Inter inter) {}
+
+    private Inter interaction(MartialService.Fighter fa, CharacterTechnique tech, EncounterParticipant att,
+                              CharacterSheet attSheet, MartialService.Fighter fd, EncounterParticipant tp,
+                              CharacterSheet tsh) {
+        MartialType at = martial.attackType(fa, tech);
+        MartialType dt = fd.type();
+        int w = MartialRules.winner(at, dt);
+        if (w == 0) return Inter.NONE;
+        CharacterTechnique atkBase = martial.baseOrNull(attSheet, att.getActiveBaseId());
+        CharacterTechnique defBase = martial.baseOrNull(tsh, tp.getActiveBaseId());
+        boolean atkJoker = martial.hasJoker(tech) || martial.hasJoker(atkBase);
+        int r = MartialRules.interaction(at, dt, atkJoker, martial.hasJoker(defBase));
+        if (r == 0) return new Inter(0, "Interação anulada por Coringa");
+        return new Inter(r, "Interação: " + (r == 1 ? at.label() + " > " + dt.label() : dt.label() + " > " + at.label()));
+    }
+
+    private void resolve(Encounter e, PendingAttack a, List<AttackTarget> ts, Ctx ctx, UUID userId, ActorRole role) {
+        EncounterParticipant att = ctx.participant(a.getAttackerId());
+        CharacterSheet attSheet = ctx.sheetOf.get(att.getId());
+        boolean downed = ctx.has(att.getId(), KNOCKED_DOWN);
+        Calc calc = calcFor(attSheet, a, downed, att, attSheet);
+        VitalService.Ctx vctx = VitalService.Ctx.of(userId, role, "Ataque de " + att.getName() + ": " + a.getSourceName());
+        CharacterTechnique tech = a.getSourceType() == RollSourceType.TECHNIQUE ? technique(attSheet, a) : null;
+        boolean breaksGuard = tech != null && profiles.hasModule(attSheet, tech, a.getVariation(), "Romper Guarda");
+
+        MartialService.Fighter fa = martial.fighter(att, attSheet);
+        Map<UUID, Matchup> matchups = new java.util.HashMap<>();
+        for (AttackTarget t : ts) {
+            EncounterParticipant tp = ctx.participant(t.getTargetId());
+            CharacterSheet tsh = ctx.sheetOf.get(tp.getId());
+            MartialService.Fighter fd = martial.fighter(tp, tsh);
+            matchups.put(tp.getId(), new Matchup(fd, interaction(fa, tech, att, attSheet, fd, tp, tsh)));
+        }
+        calc = withMartial(calc, a, att, attSheet, downed, fa, tech, matchups.get(ts.get(0).getTargetId()).inter());
+
+        int adv = (ctx.has(att.getId(), RESTRAINED) ? -1 : 0) + (ctx.has(att.getId(), DISORIENTED) ? -1 : 0)
+                + (ctx.hasAny(ts.get(0).getTargetId(), EASY_TARGET) ? 1 : 0)
+                + (ctx.has(att.getId(), "DISSOCIADO") ? -1 : 0);
+        String targetNames = names(ctx, ts);
+        RollMessage atk = rolls.rollCalc(attSheet, e.getCampaignId(), calc, adv,
+                "Ataque: " + att.getName() + " → " + targetNames, userId, role);
+        a.setAttackRollId(atk.id());
+        String moveArt = tech == null || tech.getCharacterArt() == null ? null : tech.getCharacterArt().getArtName();
+        if (tech != null) martial.fire(e, att, attSheet, "ART_TECHNIQUE_USED", null, moveArt);
+        int attackerCalejo = profiles.calejo(attSheet, att.getActiveBaseId());
+
+        for (AttackTarget t : ts) {
+            EncounterParticipant tp = ctx.participant(t.getTargetId());
+            CharacterSheet tsh = ctx.sheetOf.get(tp.getId());
+            List<UUID> group = new ArrayList<>(tp.getAttackersThisRound() == null ? List.of() : tp.getAttackersThisRound());
+            if (!group.contains(att.getId())) group.add(att.getId());
+            tp.setAttackersThisRound(group);
+
+            RollMessage rmsg = null;
+            if (t.getReaction() != ReactionType.NONE && !atk.fumble()) {
+                rmsg = reactionRoll(e, a, att, attSheet, tp, tsh, t.getReaction(), group.size(), ctx, matchups.get(tp.getId()),
+                        userId, role);
+                t.setReactionRollId(rmsg.id());
+                if (t.getReaction() == ReactionType.COUNTER) {
+                    vital.applySp(e, tp, tsh, -1, VitalService.Ctx.of(userId, role, "Contra-ataque"));
+                }
+            }
+            AttackRules.Result r = AttackRules.resolve(t.getReaction(), atk.total(), atk.critical(), atk.fumble(),
+                    rmsg == null ? 0 : rmsg.total(), rmsg != null && rmsg.critical(), breaksGuard);
+            int calejo = profiles.calejo(tsh, tp.getActiveBaseId());
+            int dmg = r.outcome() == AttackOutcome.MISS || r.outcome() == AttackOutcome.DODGED ? 0
+                    : AttackRules.damage(atk.damageTotal() == null ? 0 : atk.damageTotal(), r.mitigationPct(), calejo);
+            int counter = 0;
+            if (r.counterHits()) {
+                RollMessage c = rolls.rollCalc(tsh, e.getCampaignId(), profiles.basic(tsh, BasicAttack.SOCO,
+                        RollProfileService.Opts.NONE), 0, "Contra-ataque: " + tp.getName() + " → " + att.getName(),
+                        userId, role);
+                int raw = c.damageTotal() == null ? 0 : c.damageTotal();
+                counter = raw <= 0 ? 0 : AttackRules.damage(raw, 0, attackerCalejo);
+                attacksAttacker(e, att, attSheet, counter, new VitalService.Ctx(userId, role,
+                        "Contra-ataque de " + tp.getName(), c.critical()));
+            }
+            if (dmg > 0) {
+                vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(atk.critical()));
+                int kp = VitalRules.kpLoss(a.getRegion(), headBonus(attSheet, a), 0, atk.critical(),
+                        VitalRules.activeHysteria(tp.getAdrenaline(), tp.getHysteria()) == Hysteria.WALL);
+                if (kp > 0) vital.applyKp(e, tp, tsh, -kp, vctx);
+                warnPermanentInjury(e, att, tp, atk, calc);
+                martial.fire(e, att, attSheet, "HIT", tp.getId(), moveArt);
+                martial.fire(e, tp, tsh, "GOT_HIT", att.getId(), null);
+            }
+            switch (r.outcome()) {
+                case DEFENDED -> martial.fire(e, tp, tsh, "DEFEND_SUCCESS", att.getId(), null);
+                case DODGED -> martial.fire(e, tp, tsh, "DODGE_SUCCESS", att.getId(), null);
+                case COUNTERED -> martial.fire(e, tp, tsh, "COUNTER_SUCCESS", att.getId(), null);
+                default -> { }
+            }
+            t.setOutcome(r.outcome());
+            t.setMitigationPct(r.mitigationPct());
+            t.setDamage(dmg);
+            t.setCounterDamage(counter);
+            targets.save(t);
+            log(e, att.getId(), summary(att, tp, a, t, counter));
+        }
+        a.setStatus(AttackStatus.RESOLVED);
+        a.setResolvedAt(Instant.now());
+        a.setResolvedTurn(e.getTurnCounter());
+        attacks.save(a);
+    }
+
+    /** Parcelas marciais do atacante: especialização (básico), guarda e interação (RN-INT-03, RN-GUA, RN-ATQ-01). */
+    private Calc withMartial(Calc c, PendingAttack a, EncounterParticipant att, CharacterSheet s, boolean downed,
+                             MartialService.Fighter fa, CharacterTechnique tech, Inter inter) {
+        List<RollPart> hit = new ArrayList<>(c.hit());
+        List<RollPart> damage = new ArrayList<>(c.damage());
+        int adv = c.advantage();
+        boolean basic = a.getSourceType() == RollSourceType.BASIC_ATTACK && a.getBasicAttack() != null;
+        if (basic && !downed && (!fa.hasArt() || !fa.attack().contains(MartialRules.family(a.getBasicAttack())))) {
+            halve(hit, "DES", "Fora da especialização: DES/2");
+        }
+        StrikeSide side = a.getStrikeSide();
+        if (side != null && (tech != null || (basic && MartialRules.oneSided(a.getBasicAttack())))) {
+            Guard g = MartialRules.effectiveGuard(att.getGuard(), downed);
+            int gh = MartialRules.guardHit(g, side, s.getDominance() == Dominance.AMBIDEXTROUS);
+            if (gh != 0) hit.add(new RollPart("HIT", gh > 0 ? "Guarda: frente +1" : "Guarda invertida: trás −1", gh, null, false));
+            if (MartialRules.guardBackDamage(g, side)) {
+                int face = DICE.nextInt(2) + 1;
+                damage.add(new RollPart("DAMAGE", "Guarda: trás +1d2", face, List.of(face), false));
+            }
+        }
+        if (inter.label() != null) hit.add(new RollPart("HIT", inter.label(), 0, null, false));
+        if (inter.result() == 1) adv++;
+        return new Calc(c.type(), c.sourceId(), c.name(), c.variation(), c.basic(), c.spCost(), c.critMargin(), adv,
+                hit, c.dice(), damage);
+    }
+
+    /** Troca a parcela `source` pela metade do valor (RN-ATR-04: só se > 0). */
+    private static void halve(List<RollPart> hit, String source, String label) {
+        for (int i = 0; i < hit.size(); i++) {
+            if (source.equals(hit.get(i).source())) {
+                hit.set(i, new RollPart("HIT", label, SheetRules.half(hit.get(i).value()), null, false));
+                return;
+            }
+        }
+    }
+
+    private static boolean knocked(Ctx ctx, EncounterParticipant p) {
+        return ctx.has(p.getId(), KNOCKED_DOWN);
+    }
+
+    /** Vantagem do Incomum (+1 na reação do defensor), RN-GUA-01. */
+    private boolean incomum(EncounterParticipant att, CharacterSheet attSheet, EncounterParticipant tp,
+                            CharacterSheet tsh, Ctx ctx) {
+        Guard ga = MartialRules.effectiveGuard(att.getGuard(), knocked(ctx, att));
+        Guard gd = MartialRules.effectiveGuard(tp.getGuard(), knocked(ctx, tp));
+        return MartialRules.incomum(MartialRules.leadFoot(tsh.getDominance(), tp.getGuard()),
+                MartialRules.leadFoot(attSheet.getDominance(), att.getGuard()), gd, ga,
+                attSheet.getDominance() == Dominance.AMBIDEXTROUS, martial.read(attSheet, tp, tsh) > 0);
+    }
+
+    private RollMessage reactionRoll(Encounter e, PendingAttack a, EncounterParticipant att, CharacterSheet attSheet,
+                                     EncounterParticipant tp, CharacterSheet tsh, ReactionType reaction, int attackers,
+                                     Ctx ctx, Matchup mu, UUID userId, ActorRole role) {
+        boolean defend = reaction == ReactionType.DEFEND;
+        List<RollPart> hit = new ArrayList<>();
+        int mod = RollRules.modOrZero(defend ? tsh.getCon() : tsh.getDex());
+        String attr = defend ? "CON" : "DES";
+        if (!mu.defender().hasArt() || !mu.defender().reaction().contains(reaction)) {
+            hit.add(new RollPart("HIT", "Fora da especialização: " + attr + "/2", SheetRules.half(mod), null, false));
+        } else {
+            hit.add(new RollPart("HIT", attr, mod, null, false));
+        }
+        int fatigue = CombatRules.fatiguePenalty(tsh.getPhysicalFatigue());
+        if (fatigue > 0) hit.add(new RollPart("HIT", "Desgaste Físico", -fatigue, null, false));
+        int group = AttackRules.groupPenalty(attackers);
+        if (group != 0) hit.add(new RollPart("HIT", "Luta contra Grupo", group, null, false));
+        int timing = AttackRules.timingBonus(uses(a, att, tp));
+        if (timing > 0) hit.add(new RollPart("HIT", "Timing", timing, null, false));
+        Hysteria h = VitalRules.activeHysteria(tp.getAdrenaline(), tp.getHysteria());
+        if (h == Hysteria.WALL) hit.add(new RollPart("HIT", "Muralha", 4, null, false));
+        if (h == Hysteria.FURY) hit.add(new RollPart("HIT", "Fúria", -2, null, false));
+        if (h == Hysteria.LIGHTNING) hit.add(new RollPart("HIT", "Relâmpago", 2, null, false));
+        int read = martial.read(tsh, att, attSheet);
+        if (read > 0) hit.add(new RollPart("HIT", "Leitura de Oponente +" + read, read, null, false));
+        if (incomum(att, attSheet, tp, tsh, ctx)) hit.add(new RollPart("HIT", "Vantagem do Incomum +1", 1, null, false));
+        int adv = ctx.has(tp.getId(), "DISSOCIADO") ? -1 : 0;
+        if (!defend && ctx.has(tp.getId(), KNOCKED_DOWN)) adv--;
+        if (reaction == ReactionType.DODGE && ctx.has(tp.getId(), DISORIENTED)) adv--;
+        if (mu.inter().label() != null) hit.add(new RollPart("HIT", mu.inter().label(), 0, null, false));
+        if (mu.inter().result() == -1) adv++;
+        String label = switch (reaction) {
+            case DEFEND -> "Defender";
+            case DODGE -> "Esquiva";
+            default -> "Contra-ataque";
+        };
+        Calc rc = new Calc(RollSourceType.ATTRIBUTE_TEST, null, label, null, null, 0, RollRules.CRIT_MARGIN, 0, hit,
+                null, List.of());
+        return rolls.rollCalc(tsh, e.getCampaignId(), rc, adv, label + ": " + tp.getName() + " vs " + att.getName(),
+                userId, role);
+    }
+
+    // ---------- Contra-Ataque Tardio (RN-REA-04) ----------
+
+    public AttackResponse lateCounter(UUID attackId, UUID targetRowId, LateCounterRequest req, UUID userId) {
+        PendingAttack a = attacks.findById(attackId).orElseThrow(() -> new EncounterNotFoundException("Ataque não encontrado"));
+        Encounter e = load(a.getEncounterId());
+        boolean master = requireMembership(e.getCampaignId(), userId) == Role.MASTER;
+        ActorRole role = master ? ActorRole.MASTER : ActorRole.PLAYER;
+        if (e.getStatus() != EncounterStatus.ACTIVE) throw new CombatConflictException("O encontro não está em andamento");
+        Ctx ctx = new Ctx(e);
+        List<AttackTarget> ts = targets.findByAttackIdIn(List.of(a.getId()));
+        AttackTarget t = ts.stream().filter(x -> x.getId().equals(targetRowId)).findFirst()
+                .orElseThrow(() -> new EncounterNotFoundException("Alvo não encontrado"));
+        EncounterParticipant tp = ctx.participant(t.getTargetId());
+        CharacterSheet tsh = ctx.sheetOf.get(tp.getId());
+        if (!master && !userId.equals(ownerUserId(tsh))) {
+            throw new AccessDeniedException("Apenas o dono do alvo ou o Mestre pode contra-atacar");
+        }
+        if (t.getLateCounter() != null) throw new CombatConflictException("Este alvo já usou o Contra-Ataque Tardio");
+        if (a.getStatus() != AttackStatus.RESOLVED || a.getResolvedTurn() == null
+                || a.getResolvedTurn() != e.getTurnCounter()) {
+            throw new CombatConflictException("A janela do Contra-Ataque Tardio já fechou");
+        }
+        if (t.getOutcome() != AttackOutcome.DEFENDED && t.getOutcome() != AttackOutcome.DODGED) {
+            throw new InvalidCombatException("O Contra-Ataque Tardio exige Defender ou Esquiva bem-sucedidos");
+        }
+        if (ctx.hasAny(tp.getId(), Set.of("INCONSCIENTE", "MORTO"))) {
+            throw new InvalidCombatException(tp.getName() + " está fora de combate e não pode agir");
+        }
+        if (req.sourceType() != RollSourceType.TECHNIQUE && req.sourceType() != RollSourceType.BASIC_ATTACK) {
+            throw new InvalidCombatException("Fonte de ataque inválida");
+        }
+        EncounterParticipant att = ctx.participant(a.getAttackerId());
+        CharacterSheet attSheet = ctx.sheetOf.get(att.getId());
+        PendingAttack probe = PendingAttack.builder().sourceType(req.sourceType()).sourceId(req.sourceId())
+                .variation(req.variation()).basicAttack(req.basicAttack()).build();
+        boolean downed = ctx.has(tp.getId(), KNOCKED_DOWN);
+        Calc calc = calcFor(tsh, probe, downed, tp, tsh);
+        CharacterTechnique tech = req.sourceType() == RollSourceType.TECHNIQUE ? technique(tsh, probe) : null;
+        calc = withMartial(calc, probe, tp, tsh, downed, martial.fighter(tp, tsh), tech, Inter.NONE);
+        int sp = req.sourceType() == RollSourceType.BASIC_ATTACK
+                ? VitalRules.adjustSp(1, VitalRules.tier(tp.getAdrenaline()), ctx.has(tp.getId(), "DISSOCIADO"))
+                : calc.spCost();
+        if (sp > 0 && ctx.has(tp.getId(), "EXAUSTO")) {
+            throw new InvalidCombatException("Exausto: sem técnicas nem ações com custo de SP");
+        }
+        if (tsh.getCurrentSp() < sp) {
+            throw new InvalidCombatException("SP insuficiente: custa " + sp + " e restam " + tsh.getCurrentSp());
+        }
+        vital.applySp(e, tp, tsh, -sp, VitalService.Ctx.of(userId, role, "Contra-ataque tardio"));
+        RollMessage original = rolls.message(a.getAttackRollId());
+        RollMessage msg = rolls.rollCalc(tsh, e.getCampaignId(), calc, ctx.has(tp.getId(), "DISSOCIADO") ? -1 : 0,
+                "Contra-ataque tardio: " + tp.getName() + " → " + att.getName(), userId, role);
+        if (msg.total() > original.total()) {
+            int raw = msg.damageTotal() == null ? 0 : msg.damageTotal();
+            int dmg = raw <= 0 ? 0 : AttackRules.damage(raw, 0, profiles.calejo(attSheet, att.getActiveBaseId()));
+            attacksAttacker(e, att, attSheet, dmg, new VitalService.Ctx(userId, role,
+                    "Contra-ataque tardio de " + tp.getName(), msg.critical()));
+            t.setLateCounter(LateCounter.SUCCESS);
+            t.setLateCounterDamage(dmg);
+            if (dmg > 0) {
+                martial.fire(e, tp, tsh, "HIT", att.getId(), null);
+                martial.fire(e, att, attSheet, "GOT_HIT", tp.getId(), null);
+            }
+            log(e, tp.getId(), tp.getName() + " contra-atacou tarde " + att.getName() + ": " + dmg + " de dano");
+        } else if (tech != null && profiles.hasModule(tsh, tech, req.variation(), "Resposta Segura")) {
+            t.setLateCounter(LateCounter.SAFE);
+            t.setLateCounterDamage(0);
+            log(e, tp.getId(), tp.getName() + " falhou no contra-ataque tardio (Resposta Segura: sem punição)");
+        } else {
+            // a reação vira falha crítica: dano integral do ataque original, sem a mitigação da reação
+            int full = original.damageTotal() == null || original.damageTotal() <= 0 ? 0
+                    : AttackRules.damage(original.damageTotal(), 0, profiles.calejo(tsh, tp.getActiveBaseId()));
+            int already = t.getDamage() == null ? 0 : t.getDamage();
+            int extra = Math.max(0, full - already);
+            if (extra > 0) {
+                vital.applyHp(e, tp, tsh, -extra, new VitalService.Ctx(userId, role,
+                        "Contra-ataque tardio falhou: " + a.getSourceName(), original.critical()));
+            }
+            t.setDamage(already + extra);
+            t.setOutcome(AttackOutcome.HIT);
+            t.setMitigationPct(0);
+            t.setLateCounter(LateCounter.FAIL);
+            t.setLateCounterDamage(extra);
+            log(e, tp.getId(), tp.getName() + " falhou no contra-ataque tardio e recebeu " + extra + " de dano extra");
+        }
+        targets.save(t);
+        return done(e, a, ts, ctx, userId, master);
+    }
+
+    // ---------- helpers ----------
+
+    private CharacterTechnique technique(CharacterSheet s, PendingAttack a) {
+        return technique(s, a.getSourceId());
+    }
+
+    private CharacterTechnique technique(CharacterSheet s, UUID sourceId) {
+        if (sourceId == null) throw new InvalidCombatException("Informe a técnica");
+        return techniques.findById(sourceId)
+                .filter(t -> t.getSheet().getId().equals(s.getId()) && t.getState() == TechniqueState.ACTIVE)
+                .orElseThrow(() -> new InvalidCombatException("Técnica não encontrada ou inativa"));
+    }
+
+    private Calc calcFor(CharacterSheet s, PendingAttack a, boolean downed, EncounterParticipant att, CharacterSheet attSheet) {
+        var o = new RollProfileService.Opts(martial.validBase(attSheet, att.getActiveBaseId()), downed, a.getRegion(),
+                a.getRegionPenalty());
+        Calc c;
+        if (a.getSourceType() == RollSourceType.TECHNIQUE) c = profiles.technique(s, technique(s, a), a.getVariation(), o);
+        else {
+            if (a.getBasicAttack() == null) throw new InvalidCombatException("Informe o ataque básico");
+            c = profiles.basic(s, a.getBasicAttack(), o);
+        }
+        return withAdrenaline(c, att, attSheet);
+    }
+
+    /** Parcelas nomeadas de Adrenalina/Histeria/Dissociação no Calc (F6c). */
+    private Calc withAdrenaline(Calc c, EncounterParticipant att, CharacterSheet s) {
+        VitalRules.Tier tier = VitalRules.tier(att.getAdrenaline());
+        boolean dissociated = VitalRules.dissociated(s.getMentalFatigue());
+        List<RollPart> hit = new ArrayList<>(c.hit());
+        List<RollPart> damage = new ArrayList<>(c.damage());
+        Hysteria h = VitalRules.activeHysteria(att.getAdrenaline(), att.getHysteria());
+        if (h == Hysteria.FURY) {
+            hit.add(new RollPart("HIT", "Fúria", 4, null, false));
+            int face = DICE.nextInt(6) + 1; // +1d6, não dobra no crítico
+            damage.add(new RollPart("DAMAGE", "Fúria +1d6", face, List.of(face), false));
+        }
+        if (h == Hysteria.LIGHTNING) hit.add(new RollPart("HIT", "Relâmpago", 2, null, false));
+        if (tier != VitalRules.Tier.NONE) hit.add(new RollPart("HIT", "Adrenalina: Fluxo −1 SP", 0, null, false));
+        if (dissociated) hit.add(new RollPart("HIT", "Dissociação: SP ×2, −1 vantagem", 0, null, false));
+        int sp = c.type() == RollSourceType.BASIC_ATTACK ? c.spCost()
+                : VitalRules.adjustSp(c.spCost(), tier, dissociated);
+        return new Calc(c.type(), c.sourceId(), c.name(), c.variation(), c.basic(), sp,
+                VitalRules.critMargin(tier), c.advantage(), hit, c.dice(), damage);
+    }
+
+    private static int hysteriaReaction(EncounterParticipant tp) {
+        Hysteria h = VitalRules.activeHysteria(tp.getAdrenaline(), tp.getHysteria());
+        return h == Hysteria.WALL ? 4 : h == Hysteria.FURY ? -2 : h == Hysteria.LIGHTNING ? 2 : 0;
+    }
+
+    private int headBonus(CharacterSheet attSheet, PendingAttack a) {
+        if (a.getSourceType() != RollSourceType.TECHNIQUE || VitalRules.normalizeRegion(a.getRegion()).isEmpty()) return 0;
+        return profiles.headImpactAndPower(attSheet, technique(attSheet, a), a.getVariation());
+    }
+
+    private void attacksAttacker(Encounter e, EncounterParticipant att, CharacterSheet attSheet, int dmg,
+                                 VitalService.Ctx c) {
+        if (dmg > 0) vital.applyHp(e, att, attSheet, -dmg, c);
+    }
+
+    /** Sem tipo de dano no modelo: crítico com dado de dano no máximo vira aviso ao Mestre. */
+    private void warnPermanentInjury(Encounter e, EncounterParticipant att, EncounterParticipant tp, RollMessage atk,
+                                     Calc calc) {
+        if (!atk.critical() || calc.dice() == null || atk.breakdown() == null) return;
+        boolean max = atk.breakdown().stream().anyMatch(p -> "DAMAGE".equals(p.part()) && p.dice() != null
+                && !p.source().startsWith("Fúria") && !p.source().startsWith("Guarda") && p.dice().stream().anyMatch(d -> d == calc.dice().sides()));
+        if (max) {
+            timeline.save(CombatEvent.builder().encounterId(e.getId()).round(e.getRound()).turnCounter(e.getTurnCounter())
+                    .participantId(tp.getId()).type(CombatEventType.GM)
+                    .text("Possível ferimento permanente em " + tp.getName() + " (crítico de " + att.getName()
+                            + " com dado de dano no máximo)").build());
+        }
+    }
+
+    /**
+     * Ataques RESOLVED da mesma fonte contra este alvo, incluindo o atual (Timing). A troca de guarda de qualquer
+     * dos dois reinicia a contagem: só valem ataques resolvidos depois dela.
+     */
+    private int uses(PendingAttack current, EncounterParticipant att, EncounterParticipant tp) {
+        Instant cutoff = att.getGuardChangedAt();
+        if (tp.getGuardChangedAt() != null && (cutoff == null || tp.getGuardChangedAt().isAfter(cutoff))) {
+            cutoff = tp.getGuardChangedAt();
+        }
+        Instant since = cutoff;
+        List<PendingAttack> prior = attacks.findByEncounterIdAndAttackerIdAndStatus(current.getEncounterId(),
+                current.getAttackerId(), AttackStatus.RESOLVED).stream()
+                .filter(p -> !p.getId().equals(current.getId()) && p.getSourceType() == current.getSourceType()
+                        && java.util.Objects.equals(p.getSourceId(), current.getSourceId())
+                        && p.getBasicAttack() == current.getBasicAttack()
+                        && java.util.Objects.equals(p.getVariation(), current.getVariation())
+                        && (since == null || (p.getResolvedAt() != null && p.getResolvedAt().isAfter(since))))
+                .toList();
+        if (prior.isEmpty()) return 1;
+        Set<UUID> ids = prior.stream().map(PendingAttack::getId).collect(Collectors.toSet());
+        return 1 + (int) targets.findByAttackIdIn(ids).stream().filter(t -> t.getTargetId().equals(tp.getId())).count();
+    }
+
+    private static int countAttackers(EncounterParticipant tp, UUID attackerId) {
+        List<UUID> l = tp.getAttackersThisRound() == null ? List.of() : tp.getAttackersThisRound();
+        return l.size() + (l.contains(attackerId) ? 0 : 1);
+    }
+
+    private static String names(Ctx ctx, List<AttackTarget> ts) {
+        return ts.stream().map(t -> ctx.participant(t.getTargetId()).getName()).collect(Collectors.joining(", "));
+    }
+
+    private static String summary(EncounterParticipant att, EncounterParticipant tp, PendingAttack a, AttackTarget t,
+                                  int counter) {
+        String how = switch (t.getReaction()) {
+            case DEFEND -> t.getOutcome() == AttackOutcome.DEFENDED ? "defendeu " + t.getMitigationPct() + "%"
+                    : "defesa falhou, " + t.getMitigationPct() + "% mitigado";
+            case DODGE -> "esquiva falhou";
+            case COUNTER -> "contra-ataque falhou";
+            case NONE -> "sem reação";
+        };
+        String with = " com " + a.getSourceName();
+        return switch (t.getOutcome()) {
+            case MISS -> att.getName() + " errou " + tp.getName() + with + " (falha crítica)";
+            case DODGED -> tp.getName() + " esquivou de " + att.getName() + " (" + a.getSourceName() + ")";
+            case COUNTERED -> tp.getName() + " contra-atacou " + att.getName() + ": " + counter + " de dano em "
+                    + att.getName() + (t.getDamage() > 0 ? ", recebeu " + t.getDamage() : ", sem receber dano");
+            default -> att.getName() + " acertou " + tp.getName() + with + ": " + t.getDamage() + " de dano (" + how + ")";
+        };
+    }
+
+    private void log(Encounter e, UUID participantId, String text) {
+        timeline.save(CombatEvent.builder().encounterId(e.getId()).round(e.getRound()).turnCounter(e.getTurnCounter())
+                .participantId(participantId).type(CombatEventType.ACTION)
+                .text(text.length() > 500 ? text.substring(0, 500) : text).build());
+    }
+}

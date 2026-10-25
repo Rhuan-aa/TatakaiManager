@@ -10,6 +10,8 @@ import TimeSkipPanel from '../../components/timeskip/TimeSkipPanel';
 import LogPanel from '../../components/log/LogPanel';
 import CatalogManager from '../../components/catalog/CatalogManager';
 import RuleSettings from '../../components/campaign/RuleSettings';
+import RollFeed from '../../components/rolls/RollFeed';
+import CombatPanel from '../../components/combat/CombatPanel';
 import SheetsSection from '../../components/sheet/SheetsSection';
 
 export default function CampaignDetail() {
@@ -19,6 +21,7 @@ export default function CampaignDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('NPCs');
+  const [fightSheetIds, setFightSheetIds] = useState(undefined);
 
   useEffect(() => {
     let active = true;
@@ -54,8 +57,10 @@ export default function CampaignDetail() {
     { key: 'back', label: 'Campanhas', icon: 'back', to: '/dashboard' },
     { divider: true },
     { key: 'NPCs', label: 'NPCs', icon: 'users', active: activeTab === 'NPCs', onClick: () => setActiveTab('NPCs') },
-    { key: 'Fichas', label: 'Fichas', icon: 'sheet', active: activeTab === 'Fichas', onClick: () => setActiveTab('Fichas') },
+    { key: 'Fichas', label: 'Fichas', icon: 'sheet', active: activeTab === 'Fichas', onClick: () => { setFightSheetIds(undefined); setActiveTab('Fichas'); } },
     { key: 'Agenda', label: 'Agenda', icon: 'calendar', active: activeTab === 'Agenda', onClick: () => setActiveTab('Agenda') },
+    { key: 'Combate', label: 'Combate', icon: 'calendar', active: activeTab === 'Combate', onClick: () => setActiveTab('Combate') },
+    { key: 'Rolagens', label: 'Rolagens', icon: 'scroll', active: activeTab === 'Rolagens', onClick: () => setActiveTab('Rolagens') },
     { key: 'Logs', label: 'Logs', icon: 'scroll', active: activeTab === 'Logs', onClick: () => setActiveTab('Logs') },
     { key: 'Catálogo', label: 'Catálogo', icon: 'book', active: activeTab === 'Catálogo', onClick: () => setActiveTab('Catálogo') },
     ...(isMaster
@@ -67,6 +72,8 @@ export default function CampaignDetail() {
     NPCs: { label: 'NPCs', hint: 'Fichas e acervo desta campanha.' },
     Fichas: { label: 'Fichas', hint: 'Fichas dos personagens dos jogadores.' },
     Agenda: { label: 'Agenda', hint: 'TimeSkips, tempo de jogo e grade de slots.' },
+    Combate: { label: 'Combate', hint: 'Iniciativa, turnos, ações e condições.' },
+    Rolagens: { label: 'Rolagens', hint: 'Rolagens da mesa em tempo real.' },
     Logs: { label: 'Logs', hint: 'Registro narrativo da campanha.' },
     Catálogo: { label: 'Catálogo', hint: 'Traços e clãs do sistema e da campanha.' },
     Configurações: { label: 'Configurações', hint: 'Membros e ajustes da mesa.' },
@@ -124,10 +131,13 @@ export default function CampaignDetail() {
             {activeTab === 'NPCs' && (
               <NpcSection campaignId={id} isMaster={isMaster} npcs={npcs} setNpcs={setNpcs} />
             )}
-            {activeTab === 'Fichas' && <SheetsSection campaignId={id} isMaster={isMaster} />}
+            {activeTab === 'Fichas' && <SheetsSection campaignId={id} isMaster={isMaster} fightSheetIds={fightSheetIds} />}
             {activeTab === 'Agenda' && (
               <TimeSkipPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
             )}
+            {activeTab === 'Combate' && <CombatPanel campaignId={id} isMaster={isMaster} npcs={npcs}
+              onCloseFight={(ids) => { setFightSheetIds(ids); setActiveTab('Fichas'); }} />}
+            {activeTab === 'Rolagens' && <RollFeed campaignId={id} isMaster={isMaster} />}
             {activeTab === 'Logs' && (
               <LogPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
             )}
