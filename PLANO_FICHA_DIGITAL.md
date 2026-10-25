@@ -1366,3 +1366,495 @@ Ficha: bloco "Caderno Marcial e Forja" (rascunhos com o editor de técnica/base 
 Forja com medidor). `MartialPanel`: grupo "Avulsas". `SlotGrid`: ação solo Forja. `FightClosePanel`: oponente por
 jogador. `ProgressPanel`: Rivais (lutas, Leitura 0–3, técnicas conhecidas).
 
+
+---
+
+## 20. F5 — Canais de rolagem e RollProfile (contrato, 24/10/2026)
+
+Spec §16 + RN-ACAO-05, RN-ATQ-01/02/04, RN-DESG-01, RN-MAE-03/04.
+ponytail: o `RollProfile` é **calculado sob demanda** (GET) a partir da ficha + catálogo, não persistido nem
+recalculado por evento — o resultado é o mesmo para o usuário. Bases não têm perfil próprio: entram como
+modificador opcional (escolhida no modo detalhado). Guarda, Adrenalina, interação marcial e altura ficam para a F6.
+
+### 20.1 Regras (puras, em `service/rules/RollRules`)
+- **Vantagem líquida** (−3…+3): `≥1` → 2d20 pega o maior e soma `min(n−1, 2)`; `≤−1` → 2d20 pega o menor e soma
+  `−min(|n|−1, 2)`; 0 → 1d20. O d20 usado é o `naturalD20`.
+- **Crítico:** `natural ≥ critMargin` (20 na F5; fontes de margem ampliada ficam para a F6). **Falha crítica:** natural 1.
+- **Escala de dado da técnica** (`degrau` 0–8 = qtd. do módulo "Dado Maior" na variação):
+  `1d4, 1d6, 1d8, 1d10, 1d12, 2d6, 2d8, 2d10, 2d12`.
+- **Acerto (RN-ATQ-01):** `d20 + mod(DES)` + Precisão da variação (qtd. do módulo "Precisão") + 1 por `HIT` nas
+  bonificações + Precisão da base escolhida (qtd. do módulo de base "Precisão"; base em Esboço = floor/2) +
+  penalidade de Desgaste **Físico** (Cansado −1, Esgotado −2, Exaurido/Colapso −3). Técnica em Esboço → −1 de vantagem.
+  Situacionais (modo detalhado): alvo derrubado = +1 vantagem; atacante derrubado = mod(DES) pela metade
+  (`SheetRules.half`); ataque localizado = penalidade numérica informada + rótulo da região (sem tabela na F5).
+- **Dano (RN-ATQ-02):** `(1+E)·dado` (só esse termo dobra no crítico: dobra a quantidade de dados) + mod(FOR) +
+  2 por `DAMAGE` + "Força do Golpe" da base (qtd.) . `E = floor(FOR/30)` para ataque básico e técnica (todas tratadas
+  como desarmadas na F5) + 1 se a técnica tem `APEX`. mod nulo (atributo 0) conta como 0.
+- **Ataques básicos** (livro, "Ataques Básicos"): Soco 1d3 · Chute 1d4 · Cotovelada 1d3 · Joelhada 1d4+1 (−1 acerto)
+  · Cabeçada 1d4 · Agarrão 1d2+1. Mesmas regras de acerto/dano (sem Precisão/maestria).
+- **Teste de atributo:** `d20 + mod(attr)` + Desgaste da trilha (FOR/DES/CON → Físico; INT/MEN/CAR → Mental; TAL → nenhum).
+- **Gasto de SP** exibido no perfil (`spCostBase` da técnica no catálogo − 2 por `COST`, mín. 0, + 2/4/6 do Desgaste
+  Físico); **não é debitado** na F5 (débito é do motor de combate, F6).
+- Montagem da técnica: buscar a `ArtTechnique` no catálogo (arte do `CharacterArt` ou `borrowedFrom`, por nome).
+  Técnica sem montagem estruturada (avulsa/sem catálogo) → degrau 0 e Precisão 0.
+
+### 20.2 Modelo (`rolls`, colunas novas; bancos existentes: `ddl update` adiciona, nulos = rolagem antiga PUBLIC/FREE)
+`channel` (`PUBLIC|GM_PRIVATE`), `mode` (`QUICK|DETAILED|FREE`), `source_type`
+(`TECHNIQUE|BASIC_ATTACK|ATTRIBUTE_TEST|CUSTOM`), `source_id` (uuid; técnica), `source_name` (100),
+`advantage` int, `critical`/`fumble` bool, `breakdown` jsonb `List<RollPart>`, `damage_total` Integer,
+`edit_reason` (200), `revealed` bool. `RollPart = {part: HIT|DAMAGE, source, value, dice: List<Integer>|null,
+edited: bool}` (parcela de dado: `source` = "2d4 (Oi-Zuki)", `value` = soma, `dice` = faces).
+
+### 20.3 Rotas
+| Método | Rota | Quem | Efeito |
+|---|---|---|---|
+| GET | `/character-sheets/{sid}/roll-profiles` | dono/M (NPC: dono) | `RollProfileResponse[]` (técnicas ACTIVE por variação + 6 ataques básicos) |
+| POST | `/character-sheets/{sid}/rolls/test` | dono/M | `RollTestRequest` → `RollMessage` |
+| POST | `/character-sheets/{sid}/rolls` | (existente) | ganha `channel?` e `campaignId?` (para NPC) |
+| GET | `/campaigns/{cid}/rolls?channel=PUBLIC\|GM_PRIVATE` | membro · M | últimas 100, mais recente primeiro |
+| POST | `/campaigns/{cid}/rolls` `{expression, purpose, channel}` | M | rolagem livre do Mestre sem ficha |
+| POST | `/campaigns/{cid}/rolls/{rid}/reveal` | M | GM_PRIVATE → `revealed=true` e publica no público |
+
+`RollTestRequest = {sourceType*, sourceId?, variation?(nome), basicAttack?(SOCO|CHUTE|COTOVELADA|JOELHADA|CABECADA|AGARRAO),
+attribute?(Attribute), mode* QUICK|DETAILED, channel? (default PUBLIC; GM_PRIVATE só M), campaignId? (obrigatório em NPC;
+requester = M dessa campanha e dono do NPC), purpose ≤200 sem <>, advantage −3..3, baseId?, targetDowned, attackerDowned,
+localizedRegion? ≤40, localizedPenalty? ≤0, overrides: [{source, value}] (só DETAILED; substitui o valor de uma parcela
+não-dado com esse `source` ou adiciona parcela nova em HIT), editReason (obrigatório se houver override; 400)}`.
+`RollProfileResponse = {sourceType, sourceId, name, variation, basicAttack, spCost, critMargin, advantage,
+hit: RollPart[], damageDice: {count, sides, source}, damage: RollPart[], hitFormula, damageFormula}`
+(fórmulas em texto, ex.: "1d20+3", "2d4+2").
+`RollMessage = {id, campaignId, sheetId, actorId, actorName, characterName, channel, mode, purpose, sourceType, sourceId,
+sourceName, formula, breakdown: RollPart[], diceResults, advantage, total, naturalD20, critical, fumble, damageTotal,
+edited, editReason, revealed, createdAt}`.
+
+Canais: PUBLIC → `CampaignEventPublisher.publish(cid, "rolls", msg)` (AFTER_COMMIT, como as fichas). GM_PRIVATE →
+`convertAndSendToUser(masterUserId, "/queue/gm-rolls", msg)` para cada MASTER da campanha; broker passa a ter
+`/queue`; `StompAuthChannelInterceptor` permite SUBSCRIBE em `/user/queue/gm-rolls`. Rolagem de ficha de NPC sem
+`campaignId` continua só no log da ficha (comportamento atual). A rolagem livre atual (`POST /rolls`) também publica
+no canal (default PUBLIC).
+
+### 20.4 Frontend
+- Ficha: bloco "Rolagens" substitui o `RollBox` solto: lista de perfis (técnicas por variação + ataques básicos) com
+  **Rolar** (QUICK) e **Detalhar** (abre o construtor: parcelas com origem, vantagem −3..+3, base, alvo/atacante
+  derrubado, localizado, edição de valores com motivo obrigatório); testes de atributo; rolagem livre por expressão
+  (mantém o `RollBox`). Mestre escolhe o canal (Público/Privado).
+- Aba **Rolagens** na campanha: feed público em tempo real (`useCampaignTopic(cid, 'rolls')`), cartão com total,
+  dano, d20 natural, selo CRÍTICO/FALHA, "editado" (+ motivo) e "revelada"; parcelas expansíveis. Mestre: segunda
+  coluna "Privado" (`/user/queue/gm-rolls`), filtro por texto (propósito/personagem), botão **Revelar** e rolagem
+  livre sem ficha.
+
+### 20.5 Backlog visual (pedido do usuário, 24/10/2026)
+- ✅ Artes marciais recolhíveis no `MartialPanel` (estado por arte em localStorage).
+- ✅ Animação de crítico / falha crítica no `RollCard` (respeita `prefers-reduced-motion`).
+- ✅ Barras de Desgaste rotuladas como desgaste (cansaço).
+- ⏳ **Depois:** animação de rolagem (dados girando alguns instantes antes de revelar o resultado).
+
+---
+
+## 21. F7 — Exportar / importar ficha (contrato, 24/10/2026)
+
+Spec §21 (RN-EXP-01..03). ponytail: o **PDF é a impressão do navegador** (`window.print()` + folha `@media print`
+no estilo do app, "Salvar como PDF") em vez de OpenPDF no servidor — mesmo resultado para a mesa, zero dependência.
+Só JSON passa pelo backend; `GET /character-sheets/{id}/export?format=pdf` não existe.
+
+### 21.1 Formato `.tatakai.json` (`SheetExportFile`, record Jackson)
+```
+{ schemaVersion: 1, exportedAt, exportedBy: {userId, name}, source: {campaignId|null, sheetId, npcId|null},
+  sheet: { name, bodyType, dominance, heightM, weightKg,
+           attributes: {STR..TAL},                 // omitido se ATTRIBUTES oculta p/ quem exporta
+           hpMax, spMax, kpMax, currentHp, currentSp, currentKp, openWounds,
+           physicalFatigue, mentalFatigue,         // RESOURCES
+           fightExperience, sparringExperience, pendingOvercomePoints, barrierOvercomePoints,
+           limiterAdjustments, limiterCarry,
+           money, inventory[],                     // INVENTORY
+           injuries[] },                           // INJURIES
+  traits[]:  {traitId, traitVersion, name, rarity, category, description, buildGains, acquiredIn, gainsApplied},
+  clans[]:   {clanId, clanVersion, name, buildGains},
+  arts[]:    {artId, artName, category, graduation, status, graduationPoints,
+              techniques[]: {kind, name, graduation, complexity, trainingPoints, trainingProgress, state, mastery,
+                             masteryPoints, bonuses[], borrowedFrom}},
+  looseTechniques[]: (mesmo formato, técnicas avulsas),
+  instincts[]: {instinctId, name, rank, description},
+  rivals[]: {name, art, fights, readBonus, knownTechniques[]} }   // npcId não sai (é da campanha de origem)
+```
+Seção oculta (`hiddenByMaster`) para quem exporta → campos da seção ficam `null`/ausentes (RN-EXP-01).
+Treino pendente, Forja, Caderno, rolagens e log **não** saem (são histórico da mesa de origem).
+
+### 21.2 Regras
+- **Exportar:** dono da ficha ou MASTER da campanha; ficha de NPC: dono do NPC. Outros → 404 (como o GET da ficha).
+  Grava log (categoria `BUILD`, ação `EXPORT`).
+- **Importar:** `POST /campaigns/{cid}/character-sheets/import` (multipart `file`, ≤ 1 MB, `.json`). Requester é
+  PLAYER da campanha **sem ficha** (409 se já tem; 403 se MASTER/não membro). `schemaVersion != 1` → 400.
+  Cria a ficha em `PENDING_APPROVAL` com os dados do arquivo; seções ausentes ficam no padrão de ficha nova.
+  Derivados nunca vêm do arquivo (já são calculados). Revalidação → **avisos** (não bloqueiam; o Mestre decide):
+  atributo fora de 0..999, recurso atual > máximo (corta no máximo), traço/clã/arte/instinto inexistente no catálogo
+  ou com versão diferente (mantém o snapshot do arquivo), técnica sem arte correspondente vira avulsa.
+  Grava log (`BUILD`, `IMPORT`, com nome do arquivo). O Mestre aprova/recusa pelo fluxo existente (`/approve`).
+- Resposta do import: `SheetImportResponse {sheet: CharacterSheetResponse, warnings: string[]}` (201).
+
+### 21.3 Rotas
+| Método | Rota | Quem | Efeito |
+|---|---|---|---|
+| GET | `/character-sheets/{sid}/export` | dono/M (NPC: dono) | `SheetExportFile` com `Content-Disposition: attachment; filename="<nome>.tatakai.json"` |
+| POST | `/campaigns/{cid}/character-sheets/import` | PLAYER sem ficha | `SheetImportResponse` 201 |
+
+### 21.4 Frontend
+- Ficha: botões **Exportar JSON** (baixa o arquivo via blob autenticado) e **Imprimir / PDF** (`window.print()`;
+  antes de imprimir, todos os blocos recolhíveis abrem; `@media print` esconde sidebar, navegação, botões e toasts,
+  fundo branco, tinta preta, quebras de página entre blocos).
+- Aba Fichas: jogador sem ficha vê **Importar ficha (.tatakai.json)** ao lado de "Criar ficha"; após importar, mostra
+  os avisos. Mestre vê os avisos? não (não são persistidos) — ponytail: ele revisa a ficha pendente como hoje.
+
+### 20.6 Canais personalizados e feed compacto (pedido do usuário, 24/10/2026)
+- **Canais = abas** na aba Rolagens: "Público", "Privado do Mestre" (só M) e um por canal personalizado.
+- **Canal personalizado** (`roll_channels`): id, campaign_id, name (≤50, sem `<>`, único por campanha),
+  member_ids (jsonb `List<UUID>` de usuários da campanha), created_at. Só o **Mestre** cria/edita/apaga; o Mestre
+  sempre vê todos; jogador vê e rola só nos canais em que está.
+  `RollChannel` ganha `CUSTOM`; `rolls.custom_channel_id` (uuid, nullable). `RollMessage` ganha `customChannelId`.
+  Apagar o canal apaga as rolagens dele.
+- Rotas: `GET /campaigns/{cid}/roll-channels` (membro: os seus; M: todos) · `POST` `{name, memberIds}` (M) ·
+  `PUT /campaigns/{cid}/roll-channels/{id}` (M) · `DELETE` (M, 204).
+  Rolar no canal: `channel: "CUSTOM", customChannelId` em `RollTestRequest`, `RollRequest` (livre da ficha) e
+  `CampaignRollRequest` (livre do Mestre); requester precisa ser membro do canal ou M (403); canal de outra campanha → 404.
+  Histórico: `GET /campaigns/{cid}/rolls?channel=CUSTOM&customChannelId=…` (mesma regra).
+  Revelar (M) funciona também para CUSTOM → publica no público com `revealed=true`.
+- WS: rolagem CUSTOM vai por `convertAndSendToUser(uid, "/queue/rolls", msg)` para cada membro do canal e cada
+  MASTER (sem duplicar); SUBSCRIBE em `/user/queue/rolls` permitido. GM_PRIVATE continua em `/user/queue/gm-rolls`.
+- **Feed compacto** (todas as abas): a última rolagem em destaque (cartão grande, com a animação de crítico/falha);
+  o histórico abaixo fica **recolhido** por padrão (botão "Histórico (N)"), em linhas compactas expansíveis.
+- Na ficha, o seletor de canal do `RollsPanel` lista Público / Privado (M) / canais do usuário.
+- **Impressão:** blocos recolhíveis (`Block` da ficha, `ArtCard`) passam a **sempre montar o conteúdo** e só
+  escondê-lo com CSS quando recolhidos; `@media print` força exibir. Remove `usePrinting`.
+
+---
+
+## 22. F6 — Motor de combate (fatiamento) e F6a (contrato, 24/10/2026)
+
+| Fatia | Entrega | Spec |
+|---|---|---|
+| **F6a** | Encontro, participantes, iniciativa, turnos/rodadas, PA, ações com custo de PA/SP, condições com expiração, linha do tempo | §2.1–2.3 (RN-ACAO-01..05), §3.1–3.6, §4.1 |
+| F6b | Transação de ataque: alvo, região, reação declarada (Defender/Esquiva/Contra), rolagens ligadas ao `RollProfile`, dano e mitigação, Timing, Luta contra Grupo | RN-ATQ-*, RN-REA-*, §19 |
+| F6c | Autômatos de desmaio (PQ/SP/HP), danos periódicos, Adrenalina, Desgaste em combate, ferimentos, fim de combate → Fechar luta | §3.3 passos 2–7, §4.2–4.7, §5 |
+| F6d | Interação marcial, especialização, guarda/dominância, contadores de arte | §6, §8 |
+
+### 22.1 F6a — Modelo (Postgres)
+- `encounters`: id, campaign_id, name (≤100), status `SETUP|ACTIVE|ENDED`, round (int, 0 em SETUP), turn_counter
+  (índice global de turno, cresce a cada turno iniciado), current_index (posição na ordem), created_at, ended_at.
+  No máximo **1 encontro não encerrado por campanha** (409).
+- `encounter_participants`: id, encounter_id, sheet_id (ficha de jogador COMPLETED da campanha ou ficha de NPC
+  associado à campanha), name (snapshot), npc (bool), initiative (Integer), order_index, pa_current, pa_bonus_next,
+  pa_loss_next, moves_this_turn, turn_started_at (turn_counter do último turno iniciado; null antes do 1º).
+  Único (encounter_id, sheet_id).
+- `combat_conditions`: id, participant_id, condition_key, source_participant_id?, expires_at
+  (`START_OF_TARGET_TURN|END_OF_TARGET_TURN|END_OF_ROUND|END_OF_COMBAT|MANUAL|COUNTER`), applied_turn (turn_counter no
+  momento), turns_remaining?, intensity?, note (≤200). **Stack:** mesma `condition_key` no mesmo alvo **renova**
+  (substitui), exceto `stack: SUM` no catálogo (soma `intensity`).
+- `combat_events` (linha do tempo, imutável): id, encounter_id, round, turn_counter, participant_id?, type
+  (`START|INITIATIVE|TURN_START|TURN_END|ROUND_END|ACTION|CONDITION_ADDED|CONDITION_EXPIRED|CONDITION_REMOVED|
+  TURN_LOST|END|GM`), text (pt-BR, ≤500), created_at.
+- Catálogo estático `catalog/conditions.json` (§4.1): `{key, name, effect, exit, defaultExpiresAt, stack}`;
+  `GET /catalog/conditions`. Desequilibrado: `MANUAL`.
+
+### 22.2 F6a — Regras (puras em `service/rules/CombatRules`)
+- **Iniciativa (RN-ACAO-04):** `1d20 + mod(DES)` se a ficha tem alguma `CharacterArt` ACTIVE, senão
+  `1d20 + half(mod(DES))`; + penalidade de Desgaste Físico (−1/−2/−3). Rolada no servidor via
+  `RollService.rollInternal` (fica no log da ficha, purpose "Iniciativa — <encontro>"). Ordem: maior primeiro;
+  empate → maior DES → sorteio. Mestre pode rerrolar ou definir a iniciativa de um participante (log GM).
+- **PA (RN-ACAO-01):** no início do turno `pa = 5 + bonus_next − loss_next` (mín. 0); zera bonus/loss; moves = 0.
+- **Ações (RN-ACAO-02)** — só no turno do participante; executa o dono da ficha ou o Mestre:
+  | `action` | PA | SP | Observação |
+  |---|---|---|---|
+  | MAJOR | 3 | `spCost` (padrão 1) | `label` livre ("Técnica X"). `slow: true` → 4 PA |
+  | PREPARED | 3 | `spCost` | |
+  | BREATHE | 4 | — | recupera `2 + modQ(CON)` SP (até o máximo) |
+  | MINOR | 1 | — | |
+  | MINOR_OFFENSIVE | 2 | `spCost` (padrão 1) | |
+  | DISENGAGE | 2 | — | |
+  | MOVE | 1 | — | distância RN-ACAO-03: `d1 = max(1,5; 4 + modQ(DES))`, `dn = max(1,5; d(n−1)/2)`; log "Moveu X m" |
+  | STAND_UP | 2 | — | remove a condição Derrubado |
+  | SHOVE | 1 | — | Atravessar |
+  | FREE | 0 | — | fala/gatilho |
+  `pa_current ≥ custo` e `currentSp ≥ spCost` (senão 400 com motivo). SP debitado na ficha (`currentSp`), com log
+  de atividade da ficha (categoria RESOURCE) e evento ACTION na linha do tempo.
+- **Avanço (`next-turn`)** — Mestre, ou o dono da ficha do participante atual:
+  1. Fim do turno do atual: expira `END_OF_TARGET_TURN` do atual com `applied_turn < turn_started_at`
+     (RN-TURNO-01: aplicada durante o próprio turno do alvo → `applied_turn == turn_started_at` → só no fim do próximo);
+     `COUNTER` do atual: `turns_remaining − 1`, expira em 0; descarta PA.
+  2. Próximo da ordem; se deu a volta → fim da rodada: expira `END_OF_ROUND`, `round + 1`, evento ROUND_END.
+  3. Início do turno do novo: `turn_counter + 1`, `turn_started_at = turn_counter`; expira `START_OF_TARGET_TURN`
+     dele; recarga de PA; se tem **Atordoado** → evento TURN_LOST, PA = 0 (o turno continua para o Mestre avançar).
+- **Encerrar:** status ENDED, apaga condições `END_OF_COMBAT` (todas, na prática), evento END. O "Fechar luta"
+  (F4b) continua separado.
+- Mestre pode ajustar PA de qualquer participante e reordenar (log GM).
+
+### 22.3 F6a — Rotas (Mestre = M da campanha)
+| Método | Rota | Quem | Efeito |
+|---|---|---|---|
+| GET | `/campaigns/{cid}/encounters` | membro | lista (mais recente primeiro) |
+| POST | `/campaigns/{cid}/encounters` `{name}` | M | cria em SETUP |
+| GET | `/encounters/{eid}` | membro | `EncounterResponse` |
+| POST | `/encounters/{eid}/participants` `{sheetId}` | M | só em SETUP/ACTIVE (entra sem iniciativa → M define) |
+| DELETE | `/encounters/{eid}/participants/{pid}` | M | |
+| POST | `/encounters/{eid}/start` | M | rola iniciativa de quem não tem, ordena, round 1, inicia o 1º turno |
+| PATCH | `/encounters/{eid}/participants/{pid}` `{initiative?, paCurrent?, paBonusNext?, paLossNext?, orderIndex?}` | M | ajuste (log GM) |
+| POST | `/encounters/{eid}/participants/{pid}/reroll-initiative` | M | |
+| POST | `/encounters/{eid}/actions` `{participantId, action, spCost?, slow?, label?}` | dono/M | ver tabela |
+| POST | `/encounters/{eid}/next-turn` | M ou dono do atual | |
+| POST | `/encounters/{eid}/participants/{pid}/conditions` `{key, expiresAt?, turnsRemaining?, intensity?, sourceParticipantId?, note?}` | M | |
+| DELETE | `/encounters/{eid}/conditions/{condId}` | M | |
+| POST | `/encounters/{eid}/end` | M | |
+| GET | `/encounters/{eid}/events` | membro | linha do tempo (ordem cronológica) |
+`EncounterResponse = {id, campaignId, name, status, round, turnCounter, currentParticipantId, participants:
+[{id, sheetId, name, npc, initiative, orderIndex, paCurrent, paBonusNext, paLossNext, movesThisTurn, ownerUserId,
+resources: {currentHp, hpMax, currentSp, spMax, currentKp, kpMax} | null, conditions: [{id, key, name, expiresAt,
+turnsRemaining, intensity, sourceParticipantId, note}]}]}`. `resources` só para o Mestre e o dono da ficha
+(NPC: só o Mestre). WS: após cada mutação publica `{encounterId, type}` em `/topic/campaign/{cid}/combat`
+(AFTER_COMMIT); o cliente refaz o GET (ponytail: snapshot por refetch, sem diff).
+
+### 22.4 F6a — Frontend
+Aba **Combate** na campanha: Mestre cria encontro, adiciona participantes (fichas de jogador COMPLETED + fichas dos
+NPCs da campanha), inicia. Rastreador em ordem de iniciativa com o atual destacado (painel quadrinhos), pips de PA,
+barras HP/SP/PQ quando visíveis, chips de condição com rótulo de expiração ("até o fim do seu próximo turno",
+"2 turnos"…). Barra de ações do participante atual (dono/Mestre): botões com custo de PA/SP, desabilitados com
+motivo (RN-ACAO-02). Mestre: aplicar/remover condição (catálogo), ajustar PA/iniciativa, avançar turno, encerrar.
+Linha do tempo à direita, ao vivo. Jogador sem participante vê o rastreador em modo leitura.
+
+## 23. F6b — Ataque e reação (contrato, 24/10/2026)
+
+Spec §19 + RN-ATQ-01..05/10, RN-REA-01..03/05, RN-ATQ-09 (Timing).
+ponytail: **sem grade/alcance** (o app não modela posições) — o atacante escolhe 1..N alvos livremente, exceto ele
+mesmo e quem está **Furtivo**. Sem fila `/user/queue/reactions`: o pedido de reação chega pelo tópico `combat`
+(evento) + `GET` filtrado por quem vê (nada vaza: o ataque só rola depois das reações). Ficam para depois:
+Contra-Ataque Tardio (F6d), técnicas de núcleo Reação (F6d), Redução de Dano/Calejamento (F6d), efeitos de módulo
+(Derrubar, Atordoar…) e PQ (F6c), prazo de reação (sem resolução automática — o Mestre responde por quem faltar).
+
+### 23.1 Modelo
+- `pending_attacks`: id, encounter_id, attacker_id (participant), source_type (`TECHNIQUE|BASIC_ATTACK`), source_id,
+  variation, basic_attack, source_name, action_kind (`MAJOR|MINOR_OFFENSIVE`), region (≤40), region_penalty (≤0),
+  reserved_pa, reserved_sp, status (`AWAITING_REACTIONS|RESOLVED|CANCELLED`), round, attack_roll_id, created_at,
+  resolved_at.
+- `attack_targets`: id, attack_id, target_id (participant), reaction (`NONE|DEFEND|DODGE|COUNTER`, null = aguardando),
+  auto_resolved, responded_at, reaction_roll_id, outcome (`HIT|MISS|DODGED|DEFENDED|COUNTERED`), mitigation_pct,
+  damage (aplicado ao alvo), counter_damage (aplicado ao atacante).
+- `encounter_participants.attackers_this_round` (jsonb `List<UUID>` de participantes que o atacaram desde o início do
+  turno dele) — zera no **início do turno do defensor** (Luta contra Grupo).
+
+### 23.2 Fluxo e regras (puras em `CombatRules` / `AttackRules`)
+1. **Declarar** (`POST /encounters/{eid}/attacks`) — dono do atacante ou M, no turno do atacante, encontro ACTIVE.
+   Custo: MAJOR 3 PA (+1 se a variação tem a limitação "Lenta"), MINOR_OFFENSIVE 2 PA (só técnica com módulo
+   "Técnica Rápida" ou ataque básico SOCO; senão 400). SP = `spCost` do `RollProfile` (ataque básico = 1).
+   Valida PA/SP (400) e **debita na hora** (reserva). Alvo **Vulnerável/Atordoado/Inconsciente** → reação NONE
+   automática (`auto_resolved`). Se todos já resolvidos → resolve na hora.
+2. **Responder** (`POST /attacks/{aid}/targets/{tid}/reaction {reaction}`) — dono da ficha do alvo (jogador) ou M
+   (NPC sempre M; M pode responder por qualquer um). COUNTER exige `currentSp ≥ 1` do defensor (400). Quando o último
+   alvo responde → **resolver**.
+3. **Cancelar** (`POST /attacks/{aid}/cancel`) — atacante (dono/M) **antes de qualquer resposta não automática**:
+   devolve PA e SP, status CANCELLED. Depois → 409.
+4. **Resolver** (uma rolagem de ataque para todos os alvos; uma de reação por alvo):
+   - **Ataque:** perfil (`RollProfileService`) com região/penalidade e vantagem líquida: −1 técnica em Esboço;
+     −1 atacante Imobilizado; −1 atacante Desorientado; atacante Derrubado → mod pela metade (`attackerDowned`).
+     Contra o alvo: +1 se o alvo está Agarrado, Imobilizado ou Paralisado (um único teste: usa a vantagem do 1º alvo
+     — ponytail). Rolagem publicada no canal **público** (`RollMessage`, purpose "Ataque: A → B[, C]").
+   - **Reação** (`d20` + vantagem líquida + penalidades): DEFEND `mod(CON)`; DODGE e COUNTER `mod(DES)`;
+     − Desgaste Físico; Luta contra Grupo `−(n_atacantes_na_rodada − 1)` (contando este); Timing do defensor
+     `+max(0, usos − 1)` (usos = ataques RESOLVED do mesmo atacante, mesma fonte, mesmo alvo, no encontro, incluindo
+     este); desvantagem em DODGE/COUNTER se Derrubado, em DODGE se Desorientado. Publicada no público
+     ("Defender: B vs A"). COUNTER debita 1 SP do defensor.
+   - **Desfecho por alvo:** ataque com 1 natural → MISS (falha crítica), sem dano, defensor não rola.
+     NONE → HIT. DODGE: reação **>** ataque → DODGED (0); senão HIT. DEFEND: reação ≥ ataque → DEFENDED com
+     Δ 0–3 = 50%, 4–7 = 75%, ≥8 = 100%; falha → HIT com 25% (módulo "Romper Guarda" na variação remove os 25%).
+     COUNTER: reação > ataque → COUNTERED: defensor causa o dano do seu ataque básico SOCO no atacante e **também**
+     recebe o dano; reação ≥ 1,5 × ataque → não recebe. Falha → HIT.
+     **Crítico vs crítico (RN-ATQ-05):** ataque crítico e reação crítica → a reação falha, exceto DEFEND (fica 50%).
+   - **Dano:** total de dano do perfil (crítico dobra os dados, já em `RollRules`) × (1 − mitigação), arredondado para
+     baixo; mínimo 1 se conectou e a mitigação < 100%. Aplicado em `currentHp` (mín. 0) da ficha do alvo (log de
+     atividade RESOURCE). Consequências de HP 0 → F6c.
+   - Registra o atacante em `attackers_this_round` de cada alvo; eventos `ACTION` na linha do tempo com o resumo
+     ("Akira acertou Kuro com Jab: 7 de dano (Defender 50%)").
+
+### 23.3 Rotas
+| Método | Rota | Quem |
+|---|---|---|
+| POST | `/encounters/{eid}/attacks` `{attackerId, sourceType, sourceId?, variation?, basicAttack?, actionKind, targetIds[], region?, regionPenalty?}` | dono/M |
+| GET | `/encounters/{eid}/attacks?status=AWAITING_REACTIONS` | membro (todos veem quem ataca quem; opções de reação só para quem pode responder) |
+| POST | `/attacks/{aid}/targets/{tid}/reaction` `{reaction}` | dono do alvo / M |
+| POST | `/attacks/{aid}/cancel` | dono do atacante / M |
+`AttackResponse = {id, encounterId, attackerId, attackerName, sourceName, actionKind, region, reservedPa, reservedSp,
+status, round, attackRoll: RollMessage|null, targets: [{id, targetId, targetName, reaction, autoResolved, canRespond,
+options: [{reaction, available, reason, predictedBonus}] | null, reactionRoll: RollMessage|null, outcome,
+mitigationPct, damage, counterDamage}]}`. Todas as mutações publicam `{encounterId, type: "ATTACK"}` no `combat`.
+Ataque pendente bloqueia `next-turn` (409 "Há ataque aguardando reação").
+
+### 23.4 Frontend
+`ActionBar`: botão **Atacar** abre o construtor (técnica/variação ou ataque básico a partir de `GET roll-profiles`,
+tipo de ação, alvos marcáveis, região/penalidade) mostrando custo e fórmulas. Painel **Ataques pendentes** no
+rastreador: para quem pode responder, cartão "X ataca você com Y" + botões Defender/Esquiva/Contra/Sem reação com o
+bônus previsto e motivo quando indisponível; atacante vê "aguardando" + Cancelar. Ataque resolvido: resumo por alvo
+(desfecho, %, dano) e os `RollCard` do ataque/reações; HP atualiza no rastreador.
+
+## 24. F6c — Desmaios, Adrenalina, Sangramento e Desgaste em combate (contrato, 24/10/2026)
+
+Spec §3.3 passos 2–5, §3.6–3.7, §4.2–4.6, §5. **Teste de Vontade** (não definido na spec/livro — assumido):
+`1d20 + mod(MEN)` − penalidade de Desgaste **Mental** (RN-DESG-01); vantagem no Fluxo (RN-ADR-04); +4 em Muralha.
+Todos os testes automáticos rolam no servidor (`RollService`), publicados no canal **público** com purpose claro
+("Vontade (PQ 0): Kuro — ND 14") e viram evento na linha do tempo.
+ponytail: sem tipo de dano (cortante/contundente) no modelo → ferimento permanente vira **aviso ao Mestre**
+(evento `GM` "possível ferimento permanente") quando há crítico com algum dado de dano no máximo; o Mestre registra
+pelo ajuste de ficha existente. Burnout (regra opcional), Estabilizar por aliado (RN-DESM-04), Tolerância à Dor e
+Sequela de Nocaute ficam fora.
+
+### 24.1 Modelo (colunas novas)
+- `encounters.default_classification` (`EASY|REAL|LETHAL`, padrão REAL) — definido na criação/edição pelo Mestre.
+- `encounter_participants`: `classification` (copiada do encontro ao entrar; Mestre escala por participante —
+  RN-DESM-05), `team` int (jogadores 1, NPCs 2 por padrão; Mestre edita), `adrenaline` (0–10), `rounds_at_apex`,
+  `hysteria` (`FURY|WALL|LIGHTNING`, null), `save_next_used` bool, `engaged_this_round` bool (atacou ou foi atacado),
+  `damage_this_turn` int (dano sofrido desde o início do turno global atual — zera a cada turno iniciado),
+  `kp_zeroings` int, `death_successes`, `death_failures`, `exhaustion_nd` (Integer; não nulo = Exausto-consciente).
+- Condições novas no catálogo: `BEIRA_DA_MORTE` (MANUAL), `ESTABILIZADO` (MANUAL), `MORTO` (MANUAL),
+  `EXAUSTO` (MANUAL — sem técnicas nem ações com custo de SP), `DISSOCIADO` (MANUAL). `INCONSCIENTE` ganha `note`
+  com a causa (`HP|SP|PQ`) — a nota é o que decide o despertar.
+
+### 24.2 Regras (puras em `CombatRules`/`VitalRules`)
+- **Aplicação de dano/perda** passa por um único ponto `VitalService.applyHp/applySp/applyKp(participant, delta,
+  ctx)` usado por ataques (F6b), sangramento, testes e pelo ajuste manual do Mestre; dispara os autômatos abaixo e a
+  Adrenalina de crise. `damage_this_turn += dano`; `engaged_this_round` marcado em ataque/defesa.
+- **HP 0 (RN-DESM-01..03):** EASY/REAL → `INCONSCIENTE (HP)`, MANUAL ("até o próximo Repouso"). LETHAL →
+  `INCONSCIENTE (HP)` + `BEIRA_DA_MORTE`; se um único golpe zerou e `excedente ≥ hpMax/2` → `MORTO` direto.
+  Já em Beira da Morte: dano sofrido +1 falha (crítico +2). Início do turno: CON ND 12 (`1d20 + mod(CON)` − Desgaste
+  Físico) → sucesso/falha; 3 sucessos → remove Beira, põe `ESTABILIZADO`; 3 falhas → `MORTO`.
+- **SP 0 (§4.4):** Vontade ND 12 → sucesso: `exhaustion_nd = 14` e condição `EXAUSTO` (bloqueia ações/ataques com SP
+  > 0: 400 "Exausto"); a cada início de turno novo teste com `exhaustion_nd` (+2 a cada teste); falha →
+  `INCONSCIENTE (SP)` COUNTER 3 (rodadas = turnos do alvo), acorda com SP 1. Recuperar SP > 0 (Respirar) remove
+  `EXAUSTO`. Desgaste Físico ≥ 12 (Colapso): SP fica 0 e não recupera (Respirar → 400).
+- **PQ 0 (§4.3):** Vontade ND `14 + 2 × kp_zeroings` (depois incrementa) → sucesso: PQ = 2; falha →
+  `INCONSCIENTE (PQ)` COUNTER `1d4 + 2`. Ao expirar o COUNTER de `INCONSCIENTE (PQ)`: PQ = 1 + `DESORIENTADO`
+  END_OF_TARGET_TURN (aplicado no despertar → dura até o fim do próximo turno). `INCONSCIENTE (SP)` expira → SP 1.
+- **Perda de PQ por golpe (RN-ATQ-07, simplificada):** ataque que conecta (HIT/DEFENDED < 100%/COUNTERED recebido)
+  com `region` ∈ {Queixo, Têmpora, Nuca, Fígado} (comparação sem acento/caixa) → `1 + qtd "Impacto na Cabeça" na
+  variação + qtd POWER nas bonificações`, × 2 se crítico em Queixo/Nuca; −1 se o alvo está em Muralha; mín. 0.
+- **Dissociação (Desgaste Mental ≥ 12, RN-DESG-02):** condição `DISSOCIADO` aplicada no início do turno/ao entrar;
+  iniciativa vai para o fim na largada; Ações Menores bloqueadas (MINOR, MINOR_OFFENSIVE, ataque MINOR_OFFENSIVE →
+  400); −1 vantagem em ataque e reação; SP de técnicas × 2; zerar HP/SP/PQ derruba **sem** teste de Vontade.
+- **Sangramento (RN-COND-02/03):** início do turno: `currentHp −= openWounds` (pelo `applyHp`). Ação nova `STANCH`
+  (Estancar, 3 PA): `openWounds = 0` de si **ou** de `targetParticipantId` (aliado, mesmo `team`); bloqueada se o
+  executor está Agarrado/Imobilizado. Fim do combate: `openWounds = 0` de todos.
+- **Adrenalina (RN-ADR-01..04):** início do turno `+2`; crise → 10: (a) `damage_this_turn ≥ hpMax/2`, (b) começar o
+  turno ou ser reduzido a `HP ≤ hpMax/4` (HP > 0); Salvar o Próximo: quando um aliado (mesmo `team`) chega a HP 0,
+  cada outro participante do time ganha +5 uma vez por combate. Fim da rodada: −2 para quem não tem
+  `engaged_this_round`; depois zera a flag. Fim do combate → 0.
+  **Fluxo (≥5):** −1 SP em ações/técnicas/ataques (mín. 0) e vantagem em Vontade. **Ápice (10):** margem de crítico
+  19 nos ataques; `rounds_at_apex + 1` no fim da rodada; no início do turno o dono/Mestre escolhe a Histeria
+  (`PATCH .../hysteria`), que vale até mudar ou sair do Ápice: FURY +4 acerto, +1d6 dano (não dobra no crítico),
+  −2 reações; WALL +4 reações e Vontade, −1 PQ por golpe recebido; LIGHTNING +2 acerto e reações, +1 PA no início do
+  turno (ponytail: sem restringir o uso a Movimento/Ação Menor).
+- Integração F6b: os bônus/penalidades acima entram como parcelas nomeadas no `Calc` (ex.: "Fúria +4",
+  "Adrenalina: Fluxo −1 SP") para aparecerem no breakdown da rolagem.
+- **Fim do combate (§3.7):** Adrenalina 0, Feridas 0, remove `EXAUSTO`, `DISSOCIADO` e condições não MANUAL;
+  `INCONSCIENTE (HP)`, `BEIRA_DA_MORTE`, `ESTABILIZADO`, `MORTO` ficam na linha do tempo/resumo (não há estado de
+  ficha fora do encontro para eles — ponytail).
+
+### 24.3 Rotas
+| Método | Rota | Quem | Efeito |
+|---|---|---|---|
+| PATCH | `/encounters/{eid}` `{name?, defaultClassification?}` | M | |
+| PATCH | `/encounters/{eid}/participants/{pid}` | M | + `classification?, team?, adrenaline?` (log GM) |
+| PATCH | `/encounters/{eid}/participants/{pid}/hysteria` `{hysteria}` | dono/M | só no Ápice (400) |
+| POST | `/encounters/{eid}/participants/{pid}/vitals` `{resource: HP\|SP\|KP, delta, reason}` | M | ajuste manual passando pelos autômatos |
+| — | `actions` ganha `STANCH` (+ `targetParticipantId?`) | dono/M | |
+`EncounterResponse.participants[]` ganha `classification, team, adrenaline, adrenalineTier (NONE|FLOW|APEX),
+hysteria, roundsAtApex, openWounds, deathSuccesses, deathFailures, exhausted (bool)`; `resources` também passa a ter
+`physicalFatigue, mentalFatigue` (mesma regra de visibilidade). `adrenaline`/`hysteria` são públicos (são visíveis
+na mesa). `EncounterResponse` ganha `defaultClassification`.
+
+### 24.4 Frontend
+Rastreador: medidor de Adrenalina (0–10, marcas em 5 e 10, rótulos Fluxo/Ápice), seletor de Histeria quando no Ápice
+(dono/Mestre), selo de classificação (Fácil/Real/Letal) editável pelo Mestre, time, Feridas abertas, contadores de
+morte (●●○ sucessos / falhas) quando em Beira da Morte, selos Exausto/Dissociado/Morto. Mestre: ajuste manual de
+HP/SP/PQ com motivo; classificação padrão no criar/editar encontro. `ActionBar`: Estancar (alvo: si ou aliado),
+custo de SP já com Fluxo; ações bloqueadas por Exausto/Dissociado com motivo. Ao encerrar: botão "Fechar luta"
+que abre o `FightClosePanel` existente com os participantes jogadores pré-selecionados (se o componente aceitar;
+senão, só navega para a aba Fichas).
+
+## 25. F6d — Interação marcial, guarda, base ativa, contadores de arte e Contra Tardio (contrato, 24/10/2026)
+
+Spec §6.1–6.3, §8.1–8.2, RN-REA-04/05, RN-BASE-03, RN-ATQ-03/09. ponytail: **só desarmado** (armas, Pólvora,
+Artesanais, híbridos e Gadget ficam fora — o app não modela armas); altura (opcional) fora; técnicas de núcleo Reação,
+Malícia/Pânico/Ás Marcial/Quebra de Paradigma fora; efeitos de **gastar** contadores ficam manuais (o motor só
+ganha/perde/zera e mostra).
+
+### 25.1 Interação marcial (`MartialRules`, pura)
+- **Tipo efetivo:** atacante = `martialType` da arte do catálogo de onde vem a técnica (`CharacterArt` → `MartialArt`;
+  emprestada → arte hospedeira; avulsa → arte principal); ataque básico → arte principal. Defensor → arte principal.
+  **Arte principal** do participante = `mainArtId` (campo novo, Mestre/dono escolhe entre as `CharacterArt` ACTIVE;
+  padrão: a de maior graduação, empate pela mais antiga). Sem arte → sem tipo (sem vantagens).
+  Normalizar: "Trocação"→STRIKING, "Derrubada"→TAKEDOWN, "Raspagem"→SWEEP, qualquer texto com "Geral"→GENERAL.
+- **Matriz:** STRIKING > TAKEDOWN > SWEEP > STRIKING (vencedor tem a vantagem). GENERAL vence os três e não perde
+  para nenhum; GENERAL × GENERAL = nada.
+  Atacante vence → +1 vantagem no acerto. Defensor vence → +1 vantagem na reação dele. Só o vencedor é afetado.
+  **Coringa** (`MasteryBonus.JOKER` na técnica/base usada pelo perdedor; ataque básico não tem) anula a vantagem do
+  oponente.
+- **Especialização (RN-INT-03):** união de `attackSpecializations`/`reactionSpecializations` das artes ACTIVE.
+  Normalização (sem acento/caixa, plural): soco(s)→SOCO, chute(s)→CHUTE, cotovelada(s)→COTOVELADA, joelhada→JOELHADA,
+  cabeçada(s)→CABECADA, agarrão/agarrões/clinch/constrição/projeção/arremesso→AGARRAO, "geral"→todas;
+  reações: defesa/defender/desvio→DEFEND, esquiva→DODGE, contra-ataque→COUNTER, geral→todas.
+  Ataque básico fora da especialização → mod pela metade (`SheetRules.half`). Técnica de uma arte do personagem conta
+  como especializada (ponytail: o catálogo não tem família por técnica). Reação fora → mod pela metade. Sem arte → metade.
+
+### 25.2 Guarda e dominância (§6.3)
+- Participante: `guard` (`NATURAL|INVERTED|FRONTAL`, padrão NATURAL). Derrubado ⇒ trata como FRONTAL.
+- Ataque declara `strikeSide` (`FRONT|BACK`, opcional) — só vale para ataques básicos SOCO/CHUTE/COTOVELADA/JOELHADA
+  e para técnicas quando informado. NATURAL: frente +1 acerto; trás +1d2 dano. INVERTED: frente +1 acerto; trás +1d2
+  dano e −1 acerto. FRONTAL: nada. Ambidestro: sem o −1.
+- **Pé à frente** (RN-GUA-01): `(dominance == RIGHT) XOR (guard == INVERTED) ? LEFT : RIGHT` (AMBIDEXTROUS conta como
+  RIGHT). **Vantagem do Incomum:** defensor com pé direito à frente contra atacante com pé esquerdo à frente → +1 na
+  reação; não vale com FRONTAL nem se o atacante tem Leitura > 0 contra o defensor.
+- **Leitura de Oponente (RN-REA-05):** defensor que tem um `Rival` com `npcId` = NPC do atacante (ou mesmo nome) soma
+  `readBonus` (0–3) nas reações contra ele.
+- Ação nova `CHANGE_GUARD` (1 PA, `guard`): troca a guarda e **reinicia o Timing** do lutador (Timing passa a contar só
+  ataques resolvidos depois da última troca — `guard_changed_at` timestamp). Ambidestro: a 1ª troca do turno custa 0.
+
+### 25.3 Base ativa (RN-BASE-03/05, RN-ATQ-03)
+- Participante: `active_base_id` (uma `CharacterTechnique` kind BASE e state ACTIVE da ficha, ou null). Ação nova
+  `CHANGE_BASE` (1 PA, `baseId` ou null para sair). Quebra de Base ativa → 400.
+- Ataque usa a base ativa nas `Opts` do perfil (Precisão e Força do Golpe — já calculado em `RollProfileService`).
+- **Calejamento** (módulo de base, qtd × 2) do defensor: Redução de Dano **depois** da % da reação e antes do mínimo 1.
+  Base em Esboço: metade (floor) — RN-BASE-05.
+- Ao ficar Derrubado ou com Quebra de Base, `active_base_id` = null.
+
+### 25.4 Contadores de arte (§8)
+- Catálogo estático `catalog/art_counters.json`: `{key, art (nome da arte), name, min, max, perTarget,
+  increments: [{event, delta}], resets: [{event, value}], note}`. Eventos do motor: `DEFEND_SUCCESS`, `DODGE_SUCCESS`,
+  `COUNTER_SUCCESS`, `HIT` (ataque do dono conectou), `GOT_HIT` (dono recebeu dano), `ART_TECHNIQUE_USED` (técnica da
+  arte do contador usada), `KNOCKED_DOWN` (Derrubado aplicado), `GRAPPLED` (Agarrado/Imobilizado aplicado),
+  `COMBAT_END`. Seed (§8.2): Foco (Karatê 0–1: DEFEND_SUCCESS +1), Ritmo (Capoeira 0–5: DODGE/COUNTER_SUCCESS +1, HIT
+  +1, GOT_HIT −2, KNOCKED_DOWN/GRAPPLED → 0), Pop (Entertainment Wrestling 0–5, manual), Embalo (Boxe 0–5:
+  DODGE_SUCCESS +1, HIT com técnica de Boxe +1 via ART_TECHNIQUE_USED+HIT → modelar como `HIT` + `art` igual; GOT_HIT →
+  0), Força Centrífuga (Taekwondo 0–10: ART_TECHNIQUE_USED +2), Terreno Perdido (Sumo 0–5, manual, perTarget),
+  Luta em Cadeia (Wrestling 0–6, manual, perTarget). Todos resetam em COMBAT_END.
+- Tabela `combat_counters`: id, participant_id, counter_key, target_participant_id (perTarget), value. Criados ao entrar
+  no encontro para cada contador cuja `art` o participante tem ACTIVE (perTarget: criados sob demanda).
+- `PATCH /encounters/{eid}/counters/{id}` `{value}` (dono/M) para gastar/ajustar (log ACTION "Ritmo 3 → 1").
+  Mudanças automáticas viram evento na linha do tempo.
+
+### 25.5 Contra-Ataque Tardio (RN-REA-04)
+- Depois de um alvo terminar em DEFENDED ou DODGED, e até o próximo `next-turn`, o defensor (dono/M) pode
+  `POST /attacks/{aid}/targets/{tid}/late-counter {sourceType, sourceId?, variation?, basicAttack?}` (1× por alvo).
+  Debita o SP do perfil (0 PA). Rola o acerto do perfil do defensor (público); **> total do ataque original** →
+  dano do perfil no atacante (com reação NONE; mitigação por Calejamento do atacante). Senão → a reação vira falha
+  crítica: o alvo recebe o dano integral do ataque original (sem a mitigação), salvo se a variação da técnica do
+  contra tem "Resposta Segura" (aí só falha, sem punição). `AttackTarget` ganha `lateCounter` (`null|SUCCESS|FAIL|SAFE`)
+  e `lateCounterDamage`.
+
+### 25.6 Resposta (`EncounterResponse.participants[]` ganha)
+`mainArtId, mainArtName, martialType (STRIKING|TAKEDOWN|SWEEP|GENERAL|null), guard, leadFoot (LEFT|RIGHT),
+activeBaseId, activeBaseName, counters: [{id, key, name, value, min, max, targetParticipantId}]`, e `arts:
+[{id, name}]` / `bases: [{id, name}]` (as ACTIVE da ficha) só para dono/M. `AttackResponse.targets[]` ganha
+`lateCounter, lateCounterDamage, canLateCounter`. O `breakdown` das rolagens mostra cada parcela nova com nome
+("Interação: Trocação > Derrubada", "Guarda: frente +1", "Fora da especialização: DES/2", "Leitura de Oponente +2",
+"Vantagem do Incomum +1", "Calejamento −4").
+
+### 25.7 Frontend
+Rastreador: tipo marcial (selo), arte principal (select dono/M), guarda + pé à frente, base ativa, contadores de arte
+como medidores (dono/M ajustam com −/+). `ActionBar`: Trocar guarda (1 PA; 0 para ambidestro na 1ª), Trocar base
+(1 PA). `AttackBuilder`: lado do golpe (frente/trás) quando aplicável. `AttackPanel`: botão **Contra-ataque tardio**
+quando `canLateCounter` (escolhe perfil), resultado mostrado no resumo.

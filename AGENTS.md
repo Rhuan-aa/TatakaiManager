@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 439 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 661 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -529,7 +529,7 @@ broadcast: outros clientes só veem ao recarregar o TimeSkip.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 379 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 661 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -762,3 +762,113 @@ null) em Esboço. Rivais (`rivals`) nascem no Fechar luta (`participants[].rival
 `bookings_solo_activity_type_check`. Front: `NotebookPanel` (reusa `TechniqueEditor`/`BaseEditor` do `ArtEditor`),
 grupo "Avulsas" no `MartialPanel`, Rivais no `ProgressPanel`, oponente no `FightClosePanel`.
 
+## 19. Canais de rolagem (F5)
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §20. Regras puras em `service/rules/RollRules` (vantagem líquida, crítico/falha,
+escala de dado da técnica, Desgaste, SP). `RollProfileService` calcula sob demanda o perfil (técnica ACTIVE por variação,
+6 ataques básicos `BasicAttack`, teste de atributo) a partir da ficha + montagem no catálogo Mongo; `RollService` rola no
+servidor (`testRoll`, rolagem livre, `campaignRoll` do Mestre, `history`, `reveal`) e grava em `rolls` (colunas `channel`,
+`mode`, `source_*`, `breakdown` jsonb de `RollPart`, `damage_total`, `edit_reason`, `revealed`; nulos = PUBLIC/FREE).
+Override de parcela só no modo DETALHADO, com `editReason` (400 senão); dados não são editáveis. `GM_PRIVATE` só Mestre (403).
+Rotas: `GET /character-sheets/{sid}/roll-profiles`, `POST /character-sheets/{sid}/rolls/test`, `POST /character-sheets/{sid}/rolls`
+(ganha `channel`/`campaignId`), `GET|POST /campaigns/{cid}/rolls`, `POST /campaigns/{cid}/rolls/{rid}/reveal`
+(`CampaignRollController`). A resposta é sempre `RollMessage` (superset da antiga resposta da rolagem livre).
+WebSocket: `RollEventListener` (AFTER_COMMIT) publica PUBLIC/reveladas em `/topic/campaign/{id}/rolls` e GM_PRIVATE em
+`/user/queue/gm-rolls` de cada Mestre (`convertAndSendToUser`); o broker ganhou `/queue` e o `StompAuthChannelInterceptor`
+aceita `SUBSCRIBE` nessa fila. Guarda, Adrenalina e interação marcial ficam para a F6.
+**Canais personalizados** (§20.6 do plano): `RollChannel.CUSTOM` + `rolls.custom_channel_id`; tabela `roll_channels`
+(`CustomRollChannel`: nome ≤50 único por campanha → 409, `member_ids` jsonb, só membros da campanha → 400). CRUD em
+`/campaigns/{cid}/roll-channels` (`RollChannelService`; escrita só Mestre, jogador lista só os seus). Rolar/ler histórico
+(`?channel=CUSTOM&customChannelId=`) exige ser membro do canal ou Mestre (403); revelar vale para CUSTOM; apagar o canal
+apaga as rolagens. Entrega em `/user/queue/rolls` (membros + Mestres, sem duplicar). Bancos existentes: dropar
+`rolls_channel_check` (§11.11).
+
+## 20. Exportar/importar ficha (F7)
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §21 (PDF = `window.print()` no front, não passa pelo backend). `SheetExportService`
++ `SheetExportController`; formato `.tatakai.json` em `dto/response/SheetExportFile` (`schemaVersion` 1).
+`GET /character-sheets/{sid}/export` — dono/Mestre (NPC: dono do NPC), outros 404; jogador não leva seções
+`hiddenByMaster`; log `BUILD/EXPORT`. `POST /campaigns/{cid}/character-sheets/import` (multipart `file`, `.json`, ≤ 1 MB
+checado no service → 400) — só PLAYER sem ficha (409/403); cria a ficha em `PENDING_APPROVAL` e devolve
+`SheetImportResponse {sheet, warnings}`; avisos (atributo fora de 0..999, atual > máximo, item de catálogo ausente ou com
+outra versão) não bloqueiam; log `BUILD/IMPORT`. Treino pendente, Forja, Caderno, rolagens e logs não saem.
+
+## 21. Motor de combate — F6a
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §22 (F6b–d ainda não feitas). Entidades `Encounter`, `EncounterParticipant`,
+`CombatCondition`, `CombatEvent` (relações por UUID solto, sem FK; bancos existentes com `ddl-auto=validate` precisam das 4
+tabelas novas). `CombatService` (+ `CombatController`) concentra encontro, iniciativa (via `RollService.rollInternal`),
+turnos/rodadas, PA, ações, condições e linha do tempo; regras puras em `service/rules/CombatRules` (bônus de iniciativa,
+recarga de PA, custos, curva de deslocamento, decisões de expiração RN-TURNO-01). Catálogo estático de condições:
+`catalog/conditions.json` via `ConditionCatalog` (`GET /catalog/conditions`; só `ENVENENADO` tem `stack: SUM`).
+Rotas: `/campaigns/{cid}/encounters` (GET/POST), `/encounters/{eid}` (+ `/events`, `/start`, `/actions`, `/next-turn`,
+`/end`, `/participants[/{pid}[/reroll-initiative|/conditions]]`, `DELETE /conditions/{id}`); mutações devolvem o
+`EncounterResponse` completo. `resources` só ao Mestre e ao dono da ficha (NPC: só Mestre). WS: `CombatUpdateMessage` →
+`CombatEventListener` (AFTER_COMMIT) → `/topic/campaign/{cid}/combat` com `{encounterId, type}`; cliente refaz o GET.
+Testes: `combat/CombatRulesTest`, `combat/CombatServiceTest` (rolagem mockada).
+
+## 22. Ataque e reação — F6b
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §23. `AttackService` + `AttackController` (`POST/GET /encounters/{eid}/attacks`,
+`POST /attacks/{aid}/targets/{tid}/reaction`, `POST /attacks/{aid}/cancel`); tabelas `pending_attacks` e `attack_targets`;
+`encounter_participants.attackers_this_round` (jsonb, zera em `CombatService.beginTurn`). Declarar reserva PA/SP (MAJOR 3,
++1 se "Lenta"; MINOR_OFFENSIVE 2 só com "Técnica Rápida" ou SOCO); alvos Vulnerável/Atordoado/Inconsciente reagem NONE
+sozinhos; o ataque só rola quando todos respondem (uma rolagem de ataque, uma por reação), via
+`RollService.rollCalc` (perfil de `RollProfileService`, publica `RollMessage` público) — nada de dado duplicado.
+Desfecho/mitigação/dano em `service/rules/AttackRules` (puro); Luta contra Grupo, Timing e vantagens por condição em
+`AttackService`. `next-turn` devolve 409 com ataque `AWAITING_REACTIONS`. Contra-dano = dano do SOCO do defensor (só o
+dano, sem teste de acerto). Sem alcance/grade nem prazo de reação.
+
+## 23. Desmaios e Adrenalina — F6c
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §24. **Todo** HP/SP/PQ de combate passa por `service/VitalService`
+(`applyHp/applySp/applyKp` + `Ctx{userId, role, reason, critical}`), usado por ataques, sangramento, ações, Respirar e pelo
+ajuste manual do Mestre (`POST .../participants/{pid}/vitals`). Direção das dependências: `CombatService` e `AttackService`
+→ `VitalService` (que só usa repositórios, `RollService`, `SheetActivityLogService`) — sem ciclo. Regras puras em
+`service/rules/VitalRules`.
+- Autômatos: HP 0 (EASY/REAL `INCONSCIENTE`(HP) manual; LETHAL + `BEIRA_DA_MORTE`, dano massivo → `MORTO`; salvaguarda CON
+  ND 12 no início do turno, 3/3), SP 0 (Vontade ND 12 → `EXAUSTO` com ND 14, +2 por turno; falha → `INCONSCIENTE`(SP)
+  COUNTER 3, acorda com SP 1), PQ 0 (Vontade ND 14 + 2×zeragens; falha → COUNTER `1d4+2`, acorda PQ 1 + Desorientado).
+  A causa do desmaio está em `CombatCondition.note` (`HP|SP|PQ`); o despertar roda em `CombatService.expire` →
+  `VitalService.onWake`. Inconsciente/Morto perdem o turno e não agem (400).
+- Teste de Vontade (assumido): `1d20 + mod(MEN) − Desgaste Mental`, vantagem no Fluxo, +4 em Muralha; sai no canal público.
+- Adrenalina/Histeria em `EncounterParticipant` (`adrenaline`, `hysteria`, `rounds_at_apex`, `engaged_this_round`…): +2 por
+  turno, crise → 10, Salvar o Próximo, esfriamento −2 no fim da rodada. Entra no `Calc` do ataque como parcelas nomeadas
+  (`withAdrenaline` em `AttackService`): Fúria +4/+1d6 (d6 próprio, não dobra no crítico), Relâmpago +2, margem 19 no Ápice;
+  reação: Muralha +4, Fúria −2, Relâmpago +2; Fluxo −1 SP, Dissociação ×2 SP e −1 vantagem.
+- Perda de PQ por golpe na cabeça: `VitalRules.kpLoss` + `RollProfileService.headImpactAndPower`. Crítico com dado de dano
+  no máximo → evento `GM` "possível ferimento permanente" (sem tipo de dano no modelo).
+- Ação `STANCH` (3 PA, `targetParticipantId?`, mesmo `team`); `PATCH /encounters/{eid}` (nome, classificação padrão),
+  `PATCH .../participants/{pid}/hysteria`. `CreateEncounterRequest` aceita `defaultClassification`.
+- Fim do combate: Adrenalina 0, Feridas 0, remove `EXAUSTO`/`DISSOCIADO`/condições não MANUAL (as MANUAL ficam).
+- Bancos existentes: colunas novas têm `default` no `columnDefinition` (Hibernate `update` adiciona sem migração); nenhum
+  enum persistido ganhou valor, então **não há CHECK a dropar**.
+- Testes: 661 (`VitalServiceTest`, `VitalRulesTest`, e F6c em `CombatServiceTest`/`AttackServiceTest`).
+
+## 24. Interação marcial e guarda — F6d
+
+Contrato em `PLANO_FICHA_DIGITAL.md` §25 (só desarmado; armas, Pólvora e técnicas de núcleo Reação/Malícia/Pânico fora).
+Regras puras em `service/rules/MartialRules` (tipo, matriz, Coringa, especialização, guarda, pé à frente, Incomum, Calejamento,
+arte principal padrão); contexto de combate em `service/MartialService` (lutador = artes ACTIVE + catálogo, Leitura via `Rival`,
+base ativa, contadores). `AttackService` aplica as parcelas nomeadas: `withMartial` (especialização do básico, guarda,
+interação, só no ataque) e `reactionRoll` (especialização da reação, Leitura de Oponente, Vantagem do Incomum, interação);
+Calejamento (`RollProfileService.calejo`, módulo da base ativa, ×2, Esboço metade) entra em `AttackRules.damage(total, pct,
+reducao)` depois da % e antes do mínimo 1.
+- Participante ganhou `mainArtId`, `guard`, `guardChangedAt`, `guardChangesThisTurn`, `activeBaseId`. Arte principal:
+  `PATCH /encounters/{eid}/participants/{pid}` com `mainArtId` (Mestre; o dono só se for o único campo). Ações
+  `CHANGE_GUARD` (`guard`) e `CHANGE_BASE` (`baseId` ou null) custam 1 PA; ambidestro: 1ª troca de guarda do turno custa 0.
+  Troca de guarda de atacante ou alvo reinicia o Timing (`uses` só conta ataques resolvidos depois). `DERRUBADO`/`QUEBRA_DE_BASE`
+  (via `addCondition`) limpam a base; `QUEBRA_DE_BASE` bloqueia assumir base.
+- `CreateAttackRequest.strikeSide` (`FRONT|BACK`) vale para Soco/Chute/Cotovelada/Joelhada e técnicas. Interação do ataque usa o
+  primeiro alvo (como `EASY_TARGET`); a da reação, o alvo de cada reação. Incomum: +1 fixo na reação (RN-REA-05).
+- Contadores de arte: `catalog/art_counters.json` (`ArtCounterCatalog`; `sameArt` restringe o incremento a golpes da arte),
+  tabela `combat_counters`, criados em `addParticipant`/`start` (`martial.ensureAll`; `perTarget` = um por outro participante).
+  Eventos automáticos em `AttackService.resolve` (HIT, GOT_HIT, DEFEND/DODGE/COUNTER_SUCCESS, ART_TECHNIQUE_USED) e `CombatService`
+  (KNOCKED_DOWN, GRAPPLED, COMBAT_END); cada mudança vira evento ACTION. `PATCH /encounters/{eid}/counters/{id}` `{value}`.
+- Contra-Ataque Tardio: `POST /attacks/{aid}/targets/{tid}/late-counter` (`LateCounterRequest`); `PendingAttack.resolvedTurn`
+  define a janela (fecha no próximo `next-turn`); `AttackTarget.lateCounter` (`SUCCESS|FAIL|SAFE`) e `lateCounterDamage`
+  (SUCCESS: dano no atacante; FAIL: dano extra no alvo, que vira `HIT`). Debita SP do perfil, 0 PA; `canLateCounter` na resposta.
+- Colunas/tabelas novas (todas com default; `ddl-auto=update` cria sozinho). Nenhum enum já persistido ganhou valor
+  (`CombatAction` não é persistido), então **não há CHECK a dropar**. Bancos com `validate` precisam de `combat_counters` e das
+  colunas novas de `encounter_participants`, `pending_attacks` e `attack_targets`.
+- Testes: 712 (`MartialRulesTest`, `MartialServiceTest`, e F6d em `AttackServiceTest`/`CombatServiceTest`).
