@@ -1447,7 +1447,7 @@ no canal (default PUBLIC).
 - ✅ Artes marciais recolhíveis no `MartialPanel` (estado por arte em localStorage).
 - ✅ Animação de crítico / falha crítica no `RollCard` (respeita `prefers-reduced-motion`).
 - ✅ Barras de Desgaste rotuladas como desgaste (cansaço).
-- ⏳ **Depois:** animação de rolagem (dados girando alguns instantes antes de revelar o resultado).
+- ✅ Animação de rolagem (`RollReveal`: d20 girando ~900 ms antes do resultado). Refinamento em §26 (item 5).
 
 ---
 
@@ -1858,3 +1858,42 @@ Rastreador: tipo marcial (selo), arte principal (select dono/M), guarda + pé à
 como medidores (dono/M ajustam com −/+). `ActionBar`: Trocar guarda (1 PA; 0 para ambidestro na 1ª), Trocar base
 (1 PA). `AttackBuilder`: lado do golpe (frente/trás) quando aplicável. `AttackPanel`: botão **Contra-ataque tardio**
 quando `canLateCounter` (escolhe perfil), resultado mostrado no resumo.
+
+---
+
+## 26. Backlog — próximos itens (pedido do usuário, 24/10/2026)
+
+Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas/front) antes de ser implementado.
+
+### 26.1 Motor de combate
+1. **Efeitos de módulo automáticos no acerto** — Derrubar, Atordoar, Empurrar etc. aplicam a condição sozinhos quando o
+   golpe acerta (hoje o Mestre aplica à mão via `addCondition`).
+2. **Técnicas de núcleo Reação** — aparecem como opção no pedido de reação (fora da F6d; Malícia/Pânico também).
+3. **Armas e interação armada** — combate com arma, Pólvora, Artesanais (F6d é só desarmado; não há modelo de arma/alcance).
+4. **Base atual com efeito real** — a base ativa precisa somar os bônus dela nas rolagens (Precisão, Força do Golpe e
+   demais itens da montagem) de forma visível no breakdown. Custo: **entrar** numa base = 1 PA, **trocar** de base = 2 PA
+   (hoje `CHANGE_BASE` custa sempre 1). Sair da base: definir no contrato.
+5. **Última luta continua visível** — ao encerrar o encontro, a aba Combate segue mostrando a última luta (estado final,
+   linha do tempo) em vez de voltar para a tela vazia, até o Mestre abrir outra.
+
+### 26.2 HUD de combate (UX)
+6. **Menu lateral de ações por tipo**, com cor fixa por categoria: **Ação Maior** (vermelho), **Ação Menor** (verde),
+   **Movimento** (azul), **Livre** (rosa). A linha do tempo desce para baixo do HUD. Cores como tokens no `index.css`.
+7. **HUD mais amigável** — revisão geral de hierarquia: turno atual e PA em destaque, ação disponível óbvia, menos
+   campos soltos; ações indisponíveis desabilitadas com o motivo.
+8. **Animações de ataque** durante o combate (golpe saindo do atacante para o alvo, impacto no acerto, esquiva/defesa).
+9. **Tela de reação estilizada** — quando o usuário recebe um ataque, abre por cima da área de combate uma seleção de
+   reação em destaque (estilo quadrinho), com as opções e o custo de cada uma; hoje é um item dentro do `AttackPanel`.
+
+### 26.3 Rolagens
+10. **Animação de rolagem em duas etapas** — o dado gira, o número sai **no centro da tela**, depois se move/encolhe
+    até montar o card grande do feed (`RollCard` em destaque). Respeitar `prefers-reduced-motion` (pula direto ao card).
+
+### 26.4 Fichas e campanha
+11. **Fichas do Mestre (instantâneas)** — o Mestre cria fichas na hora, como quem cria NPC, sem Construção Inicial nem
+    aprovação; cada ficha pode ser **visível ou oculta** para os jogadores (reaproveitar o modelo de ficha de NPC e a
+    visibilidade por seção, se couber).
+12. **Listagem de membros da campanha** — `GET /campaigns/{cid}/members`; hoje jogador sem ficha não entra em canal de
+    rolagem personalizado e várias telas deduzem membros pelas fichas.
+13. **Impressão dos `<details>` de traços** — ainda saem fechados no PDF.
+

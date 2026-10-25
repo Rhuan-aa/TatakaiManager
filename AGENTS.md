@@ -867,3 +867,11 @@ reducao)` depois da % e antes do mínimo 1.
   (`CombatAction` não é persistido), então **não há CHECK a dropar**. Bancos com `validate` precisam de `combat_counters` e das
   colunas novas de `encounter_participants`, `pending_attacks` e `attack_targets`.
 - Testes: 712 (`MartialRulesTest`, `MartialServiceTest`, e F6d em `AttackServiceTest`/`CombatServiceTest`).
+
+## 25. Próximos itens
+
+Backlog sem contrato em `PLANO_FICHA_DIGITAL.md` §26 (efeitos de módulo automáticos, técnicas de Reação, armas, base
+ativa com bônus e custo entrar 1 PA / trocar 2 PA, última luta visível, HUD de combate por tipo de ação e cor, animações
+de ataque, tela de reação estilizada, rolagem em duas etapas, fichas instantâneas do Mestre, listagem de membros,
+impressão dos `<details>`). Ao implementar um item, escreva o contrato numa seção nova do plano e marque-o aqui.
+
