@@ -50,7 +50,7 @@
   {
     "key": "VULNERAVEL",
     "name": "Vulnerável",
-    "effect": "Não pode reagir",
+    "effect": "Não pode reagir; o ataque ainda precisa de total ≥ 10 (ND 10) para acertar",
     "exit": "—",
     "defaultExpiresAt": "START_OF_TARGET_TURN",
     "stack": "RENEW"

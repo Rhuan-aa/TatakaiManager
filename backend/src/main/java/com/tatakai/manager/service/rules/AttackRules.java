@@ -25,6 +25,13 @@ public final class AttackRules {
         return Math.max(0, uses - 1);
     }
 
+    /** Vulnerável não reage, mas o ataque ainda precisa de total ≥ 10 para acertar. */
+    public static final int VULNERABLE_ND = 10;
+
+    public static boolean missesVulnerable(int attackTotal) {
+        return attackTotal < VULNERABLE_ND;
+    }
+
     /** Desfecho de um alvo: mitigação em %, se o atacante sofre contra-dano. */
     public record Result(AttackOutcome outcome, int mitigationPct, boolean counterHits) {}
 

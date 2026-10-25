@@ -458,6 +458,12 @@ public class AttackService {
             }
             AttackRules.Result r = AttackRules.resolve(t.getReaction(), atk.total(), atk.critical(), atk.fumble(),
                     rmsg == null ? 0 : rmsg.total(), rmsg != null && rmsg.critical(), breaksGuard);
+            if (t.getReaction() == ReactionType.NONE && !atk.critical() && ctx.has(tp.getId(), "VULNERAVEL")
+                    && AttackRules.missesVulnerable(atk.total())) {
+                r = new AttackRules.Result(AttackOutcome.MISS, 0, false);
+                log(e, tp.getId(), att.getName() + " errou " + tp.getName() + " (Vulnerável: " + atk.total()
+                        + " vs ND " + AttackRules.VULNERABLE_ND + ")");
+            }
             int calejo = profiles.calejo(tsh, tp.getActiveBaseId());
             int dmg = r.outcome() == AttackOutcome.MISS || r.outcome() == AttackOutcome.DODGED ? 0
                     : AttackRules.damage(atk.damageTotal() == null ? 0 : atk.damageTotal(), r.mitigationPct(), calejo);

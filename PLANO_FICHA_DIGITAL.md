@@ -1975,4 +1975,7 @@ Empurrar: FOR) e fica num só lugar (`EffectRules`).
 - Duração: padrão do `conditions.json` (bate com a tabela do livro). Derrubado/Agarrado disparam os contadores de arte.
 - Fora do escopo: bônus de base "+N para resistir a Empurrar, Derrubar e Quebrar Base" (texto livre no catálogo),
   Arremesso/Montinho/Impacto (dano por tipo de chão) e Ferimentos Permanentes completos (hoje só o aviso ao Mestre).
+- **Vulnerável (regra da mesa, 25/10/2026):** o alvo não reage, mas o ataque só acerta com **total ≥ 10**
+  (`AttackRules.VULNERABLE_ND`); abaixo disso o desfecho é `MISS` (sem dano nem efeitos). Crítico acerta sempre.
+  Vale só para Vulnerável (Atordoado/Inconsciente seguem acertando direto).
 

@@ -1130,4 +1130,22 @@ class AttackServiceTest {
         assertThat(cList).anyMatch(c -> c.getParticipantId().equals(pN.getId()) && c.getConditionKey().equals("ATORDOADO"));
         assertThat(rollCalcs.size() - before).isEqualTo(1); // só o ataque
     }
+
+    @Test
+    @DisplayName("Vulnerável não reage, mas o ataque precisa de total ≥ 10: 9 erra, 10 acerta")
+    void vulnerableNeedsNd10() {
+        cond(pN, "VULNERAVEL");
+        queue.add(msg(9, 8, 5));
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        assertThat(r.status()).isEqualTo(AttackStatus.RESOLVED); // sem reação: resolve na hora
+        assertThat(r.targets().get(0).outcome()).isEqualTo(AttackOutcome.MISS);
+        assertThat(npcSheet.getCurrentHp()).isEqualTo(30);
+
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        queue.add(msg(10, 9, 5));
+        r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        assertThat(r.targets().get(0).outcome()).isEqualTo(AttackOutcome.HIT);
+        assertThat(npcSheet.getCurrentHp()).isEqualTo(25);
+    }
 }

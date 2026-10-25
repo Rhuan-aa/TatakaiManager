@@ -39,7 +39,7 @@ export const ACTION_CATEGORIES = [
 export const STATUS_LABEL = { SETUP: 'Preparação', ACTIVE: 'Em andamento', ENDED: 'Encerrado' };
 
 export const OUTCOME_LABEL = {
-  HIT: 'Acertou', MISS: 'Errou (falha crítica)', DODGED: 'Esquivou', DEFENDED: 'Defendeu', COUNTERED: 'Contra-atacou',
+  HIT: 'Acertou', MISS: 'Errou', DODGED: 'Esquivou', DEFENDED: 'Defendeu', COUNTERED: 'Contra-atacou',
 };
 export const REACTION_LABEL = { DEFEND: 'Defender', DODGE: 'Esquiva', COUNTER: 'Contra-ataque', NONE: 'Sem reação' };
 // Resumo das regras de AttackRules.resolve para a tela de reação
