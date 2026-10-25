@@ -58,6 +58,7 @@ import com.tatakai.manager.service.rules.EffectRules;
 import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.entity.AssemblyItem;
 import com.tatakai.manager.entity.Attribute;
+import com.tatakai.manager.entity.TechniqueCore;
 import com.tatakai.manager.entity.Roll;
 import com.tatakai.manager.service.rules.RollRules;
 import org.springframework.context.ApplicationEventPublisher;
@@ -490,6 +491,7 @@ public class AttackService {
             matchups.put(tp.getId(), new Matchup(fd, interaction(fa, tech, att, attSheet, fd, tp, tsh)));
         }
         calc = withMartial(calc, a, att, attSheet, downed, fa, tech, matchups.get(ts.get(0).getTargetId()).inter());
+        calc = withSituation(calc, a, att, ctx.participant(ts.get(0).getTargetId()), ctx);
 
         int adv = (ctx.has(att.getId(), RESTRAINED) ? -1 : 0) + (ctx.has(att.getId(), DISORIENTED) ? -1 : 0)
                 + (ctx.hasAny(ts.get(0).getTargetId(), EASY_TARGET) ? 1 : 0)
@@ -538,7 +540,9 @@ public class AttackService {
                 log(e, tp.getId(), att.getName() + " errou " + tp.getName() + " (Vulnerável: " + atk.total()
                         + " vs ND " + AttackRules.VULNERABLE_ND + ")");
             }
-            int calejo = profiles.calejo(tsh, tp.getActiveBaseId());
+            // Atravessar: o golpe ignora a Redução de Dano do alvo
+            int calejo = tech != null && profiles.hasModule(attSheet, tech, a.getVariation(), "Atravessar") ? 0
+                    : profiles.calejo(tsh, tp.getActiveBaseId());
             boolean connects = r.outcome() != AttackOutcome.MISS && r.outcome() != AttackOutcome.DODGED;
             int hitDamage = atk.damageTotal() == null ? 0 : atk.damageTotal();
             String sure = connects && !atk.critical() && calc.dice() != null ? guaranteedCrit(a, t, tp, tsh) : null;
@@ -592,13 +596,22 @@ public class AttackService {
     }
 
     /**
-     * Efeitos de módulo no acerto (§30): "no dado" só com 17+ natural; crítico entra sem teste; senão o alvo resiste
-     * com o atributo do efeito contra o total do ataque. Efeito sem regra automática vira aviso para o Mestre.
+     * Efeitos de módulo no acerto (Criação Marcial, plano §30): "no dado" só com 17+ natural; o alvo resiste com o
+     * atributo do efeito (o melhor de dois em Derrubar) contra o resultado do teste — ou ND 10 + mod. de FOR com
+     * **Pressão Fixa**; crítico só dispensa o teste com **Crítico Implacável**. Enraizado e Resiliência da base do
+     * alvo somam na resistência. Efeito sem regra automática vira aviso ao Mestre.
      */
     private void applyEffects(Encounter e, PendingAttack a, CharacterTechnique tech, EncounterParticipant att,
                               CharacterSheet attSheet, EncounterParticipant tp, CharacterSheet tsh, RollMessage atk,
                               VitalService.Ctx vctx, UUID userId, ActorRole role) {
-        for (AssemblyItem it : profiles.effects(attSheet, tech, a.getVariation())) {
+        List<AssemblyItem> items = profiles.effects(attSheet, tech, a.getVariation());
+        if (items.isEmpty()) return;
+        boolean implacable = atk.critical() && profiles.hasModule(attSheet, tech, a.getVariation(), "Crítico Implacável");
+        boolean fixed = profiles.hasModule(attSheet, tech, a.getVariation(), "Pressão Fixa");
+        int nd = EffectRules.nd(atk.total(), fixed, RollRules.modOrZero(attSheet.getStr()));
+        boolean control = profiles.core(attSheet, tech, a.getVariation()) == TechniqueCore.CONTROL;
+        BaseRules.Profile db = profiles.baseProfile(tsh, tp.getActiveBaseId());
+        for (AssemblyItem it : items) {
             if (!EffectRules.triggers(it.isOnDie(), atk.naturalD20(), atk.critical())) continue;
             String label = it.getModule();
             EffectRules.Effect fx = EffectRules.of(label).orElse(null);
@@ -606,53 +619,87 @@ public class AttackService {
                 log(e, tp.getId(), "Efeito " + label + " de " + att.getName() + " em " + tp.getName() + ": aplicar manualmente");
                 continue;
             }
-            if (fx.resist() != null && !atk.critical()) {
-                boolean autoFail = vital.hasCondition(tp, "PARALISADO")
-                        && (fx.resist() == Attribute.STR || fx.resist() == Attribute.DEX);
-                if (!autoFail) {
-                    Calc rc = profiles.attribute(tsh, fx.resist());
-                    BaseRules.Profile db = EffectRules.ROOTED.contains(label) ? profiles.baseProfile(tsh, tp.getActiveBaseId()) : null;
-                    if (db != null && db.rooted() != 0) {
-                        List<RollPart> hit = new ArrayList<>(rc.hit());
-                        hit.add(new RollPart("HIT", "Enraizado (base: " + db.name() + ")", db.rooted(), null, false));
-                        rc = new Calc(rc.type(), rc.sourceId(), rc.name(), rc.variation(), rc.basic(), rc.spCost(),
-                                rc.critMargin(), rc.advantage(), hit, rc.dice(), rc.damage());
-                    }
-                    RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), rc, vital.conditionAdvantage(tp, tsh, fx.resist()),
-                            "Resistir a " + label + ": " + tp.getName() + " vs " + atk.total(), userId, role);
-                    if (EffectRules.resisted(res.total(), atk.total())) {
-                        log(e, tp.getId(), tp.getName() + " resistiu a " + label + " (" + res.total() + " vs " + atk.total() + ")");
-                        continue;
-                    }
-                }
-            }
+            if (fx.kind() == EffectRules.Kind.DEEPEN_WOUND && tsh.getOpenWounds() == 0) continue; // exige Ferida aberta
+            if (fx.resist() != null && !implacable && resists(e, tp, tsh, fx, label, nd, db, userId, role)) continue;
             int qty = Math.max(1, it.getQty());
-            if (fx.condition() != null) {
-                String key = EffectRules.escalate(fx.condition(), vital.hasCondition(tp, "MEIO_CEGO"));
-                if (fx.expiry() != null) vital.addCondition(e, tp, key, fx.expiry(), fx.turns(), label);
-                else vital.addCondition(e, tp, key, label);
-                if ((key.equals(KNOCKED_DOWN) || key.equals("QUEBRA_DE_BASE")) && tp.getActiveBaseId() != null) {
-                    tp.setActiveBaseId(null);
-                    log(e, tp.getId(), tp.getName() + " perdeu a base ativa");
+            switch (fx.kind()) {
+                case CONDITION, TAKEDOWN -> {
+                    String key = EffectRules.escalate(EffectRules.condition(fx, control), vital.hasCondition(tp, "MEIO_CEGO"));
+                    vital.addEffectCondition(e, tp, key, fx.expiry(), label, att.getId());
+                    if ((key.equals(KNOCKED_DOWN) || key.equals("QUEBRA_DE_BASE")) && tp.getActiveBaseId() != null) {
+                        tp.setActiveBaseId(null);
+                        log(e, tp.getId(), tp.getName() + " perdeu a base ativa");
+                    }
+                    if (key.equals(KNOCKED_DOWN) || key.equals("AGARRADO") || key.equals("IMOBILIZADO")) {
+                        martial.fire(e, tp, tsh, key.equals(KNOCKED_DOWN) ? "KNOCKED_DOWN" : "GRAPPLED", null, null);
+                    }
+                    if (fx.kind() == EffectRules.Kind.TAKEDOWN) {
+                        int dmg = EffectRules.takedownDamage(tsh.getWeightKg());
+                        log(e, tp.getId(), tp.getName() + " sofre " + dmg + " de dano de Derrubada");
+                        vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(false));
+                    }
                 }
-                if (key.equals(KNOCKED_DOWN) || key.equals("AGARRADO")) {
-                    martial.fire(e, tp, tsh, key.equals(KNOCKED_DOWN) ? "KNOCKED_DOWN" : "GRAPPLED", null, null);
+                case PUSH -> {
+                    int m = Math.max(0, rolls.rollInternal(attSheet, "1d3", "Empurrar: " + att.getName() + " → " + tp.getName(),
+                            userId, role).getTotal() + RollRules.modOrZero(attSheet.getStr()));
+                    log(e, tp.getId(), tp.getName() + " é empurrado " + m + " m (colidindo, +1d4 de dano: Mestre)");
                 }
-            }
-            if (fx.takedown()) {
-                int dmg = EffectRules.takedownDamage(tsh.getWeightKg());
-                log(e, tp.getId(), tp.getName() + " sofre " + dmg + " de dano de Derrubada");
-                vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(false));
-            }
-            if (fx.stealsPa()) {
-                tp.setPaLossNext(tp.getPaLossNext() + qty);
-                log(e, tp.getId(), tp.getName() + " perde " + qty + " PA no próximo turno (" + label + ")");
-            }
-            if (fx.wounds()) vital.openWounds(e, tp, tsh, qty, vctx);
-            if (fx.condition() == null && !fx.stealsPa() && !fx.wounds()) {
-                log(e, tp.getId(), tp.getName() + " sofre " + label + " (posição na cena: Mestre)");
+                case STEAL_PA -> {
+                    int pa = EffectRules.stolenPa(qty);
+                    tp.setPaLossNext(tp.getPaLossNext() + pa);
+                    log(e, tp.getId(), tp.getName() + " perde " + pa + " PA no próximo turno (" + label + ")");
+                }
+                case WOUND, DEEPEN_WOUND -> vital.openWounds(e, tp, tsh, 1, vctx);
             }
         }
+    }
+
+    /** Teste de resistência a um Efeito; true = resistiu (já registra na linha do tempo). */
+    private boolean resists(Encounter e, EncounterParticipant tp, CharacterSheet tsh, EffectRules.Effect fx, String label,
+                            int nd, BaseRules.Profile db, UUID userId, ActorRole role) {
+        Attribute attr = fx.alt() != null && RollRules.modOrZero(tsh.getAttribute(fx.alt()))
+                > RollRules.modOrZero(tsh.getAttribute(fx.resist())) ? fx.alt() : fx.resist();
+        if (vital.hasCondition(tp, "PARALISADO") && (attr == Attribute.STR || attr == Attribute.DEX)) return false;
+        Calc rc = profiles.attribute(tsh, attr);
+        List<RollPart> hit = new ArrayList<>(rc.hit());
+        if (db != null && EffectRules.ROOTED.contains(label) && db.rooted() != 0) {
+            hit.add(new RollPart("HIT", "Enraizado (base: " + db.name() + ")", db.rooted(), null, false));
+        }
+        if (db != null && db.resilience() != 0) {
+            hit.add(new RollPart("HIT", "Resiliência (base: " + db.name() + ")", db.resilience(), null, false));
+        }
+        rc = new Calc(rc.type(), rc.sourceId(), rc.name(), rc.variation(), rc.basic(), rc.spCost(), rc.critMargin(),
+                rc.advantage(), hit, rc.dice(), rc.damage());
+        RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), rc, vital.conditionAdvantage(tp, tsh, attr),
+                "Resistir a " + label + ": " + tp.getName() + " vs " + nd, userId, role);
+        boolean ok = EffectRules.resisted(res.total(), nd);
+        if (ok) log(e, tp.getId(), tp.getName() + " resistiu a " + label + " (" + res.total() + " vs " + nd + ")");
+        return ok;
+    }
+
+    /**
+     * Situação do golpe (Ataques Básicos e condições): Soco em Ação Menor sem a Força; Joelhada −2 exceto contra alvo
+     * Agarrado ou em Clinch; Enfraquecido −2 de dano; alvo Marcado dá +1 aos aliados de quem marcou.
+     */
+    private Calc withSituation(Calc c, PendingAttack a, EncounterParticipant att, EncounterParticipant first, Ctx ctx) {
+        List<RollPart> hit = new ArrayList<>(c.hit());
+        List<RollPart> damage = new ArrayList<>(c.damage());
+        BasicAttack b = a.getSourceType() == RollSourceType.BASIC_ATTACK ? a.getBasicAttack() : null;
+        if (b == BasicAttack.SOCO && a.getActionKind() == AttackActionKind.MINOR_OFFENSIVE) {
+            damage.removeIf(p -> "FOR".equals(p.source()));
+        }
+        if (b == BasicAttack.JOELHADA && ctx.hasAny(first.getId(), Set.of("AGARRADO", "CLINCH"))) {
+            hit.removeIf(p -> BasicAttack.JOELHADA.label.equals(p.source()));
+        }
+        if (ctx.has(att.getId(), "ENFRAQUECIDO")) damage.add(new RollPart("DAMAGE", "Enfraquecido", -2, null, false));
+        boolean marked = conditions.findByParticipantIdIn(List.of(first.getId())).stream()
+                .filter(k -> "MARCADO".equals(k.getConditionKey()) && k.getSourceParticipantId() != null
+                        && !k.getSourceParticipantId().equals(att.getId()))
+                .map(k -> ctx.ps.get(k.getSourceParticipantId()))
+                .anyMatch(src -> src != null && src.getTeam() == att.getTeam());
+        if (marked) hit.add(new RollPart("HIT", "Alvo Marcado", 1, null, false));
+        return new Calc(c.type(), c.sourceId(), c.name(), c.variation(), c.basic(), c.spCost(), c.critMargin(),
+                c.advantage(), hit, c.dice(), damage);
     }
 
     /** Parcelas marciais do atacante: especialização (básico), guarda e interação (RN-INT-03, RN-GUA, RN-ATQ-01). */

@@ -208,5 +208,29 @@
     "exit": "Reduzir o Desgaste Mental abaixo de 12",
     "defaultExpiresAt": "MANUAL",
     "stack": "RENEW"
+  },
+  {
+    "key": "ALEIJADO",
+    "name": "Aleijado",
+    "effect": "Movimentação pela metade",
+    "exit": "Fim do próximo turno do alvo",
+    "defaultExpiresAt": "END_OF_TARGET_TURN",
+    "stack": "RENEW"
+  },
+  {
+    "key": "ENFRAQUECIDO",
+    "name": "Enfraquecido",
+    "effect": "−2 de dano em todos os golpes",
+    "exit": "Fim do próximo turno do alvo",
+    "defaultExpiresAt": "END_OF_TARGET_TURN",
+    "stack": "RENEW"
+  },
+  {
+    "key": "MARCADO",
+    "name": "Marcado",
+    "effect": "Aliados de quem marcou têm +1 no acerto contra o alvo",
+    "exit": "Fim da rodada",
+    "defaultExpiresAt": "END_OF_ROUND",
+    "stack": "RENEW"
   }
 ]

@@ -1119,20 +1119,21 @@ class AttackServiceTest {
     }
 
     @Test
-    @DisplayName("§30: efeito no dado só com 17+; crítico aplica sem teste; efeito sem regra vira aviso ao Mestre")
+    @DisplayName("§30: efeito no dado só com 17+; crítico com Crítico Implacável aplica sem teste; sem regra vira aviso")
     void effectOnDieCritAndManual() {
         effect("Atordoar", true);
-        effect("Marcar", false);
+        effect("Interromper", false);
         queue.add(msg(15, 12, 5)); // natural 12: Atordoar no dado não dispara
         AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
         service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
         assertThat(cList).noneMatch(c -> c.getConditionKey().equals("ATORDOADO"));
-        assertThat(timelineTexts()).anyMatch(t -> t.contains("Marcar") && t.contains("manualmente"));
+        assertThat(timelineTexts()).anyMatch(t -> t.contains("Interromper") && t.contains("manualmente"));
 
         pA.setPaCurrent(5);
         sheetA.setCurrentSp(10);
         int before = rollCalcs.size();
-        queue.add(msg(25, 20, 5)); // crítico: sem teste de resistência
+        modules.add("Crítico Implacável");
+        queue.add(msg(25, 20, 5)); // crítico com Crítico Implacável: sem teste de resistência
         r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
         service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
         assertThat(cList).anyMatch(c -> c.getParticipantId().equals(pN.getId()) && c.getConditionKey().equals("ATORDOADO"));
@@ -1299,5 +1300,64 @@ class AttackServiceTest {
         assertThat(done.outcome()).isEqualTo(AttackOutcome.DEFENDED);
         assertThat(done.mitigationPct()).isEqualTo(75);
         assertThat(sheetB.getCurrentHp()).isEqualTo(40 - 2); // 10 × 25% = 2 de dano no alvo
+    }
+
+    // ---------- Criação Marcial: efeitos conforme o livro ----------
+
+    @Test
+    @DisplayName("Pressão Fixa: resistência contra ND 10 + mod. de FOR do atacante, não contra o teste")
+    void fixedPressure() {
+        effect("Atordoar", false);
+        modules.add("Pressão Fixa");
+        sheetA.setStr(30);
+        int nd = 10 + com.tatakai.manager.service.rules.RollRules.modOrZero(30);
+        queue.add(msg(25, 15, 5));
+        queue.add(msg(nd, 9, null)); // empata com o ND fixo: resiste (contra o teste 25 teria falhado)
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(cList).noneMatch(c -> c.getConditionKey().equals("ATORDOADO"));
+        assertThat(timelineTexts()).anyMatch(t -> t.contains("resistiu a Atordoar (" + nd + " vs " + nd + ")"));
+    }
+
+    @Test
+    @DisplayName("Derrubar: o alvo resiste com o melhor entre Força e Destreza")
+    void takedownBestAttribute() {
+        effect("Derrubar", false);
+        npcSheet.setStr(10);
+        npcSheet.setDex(40);
+        org.mockito.Mockito.reset(profiles);
+        lenient().when(profiles.technique(any(), any(), any(), any())).thenAnswer(i -> calc(RollSourceType.TECHNIQUE, "Jab", techSp));
+        lenient().when(profiles.effects(any(), any(), any())).thenAnswer(x -> effectItems);
+        lenient().when(profiles.attribute(any(), any())).thenAnswer(x -> calc(RollSourceType.ATTRIBUTE_TEST, "Teste", 0));
+        queue.add(msg(15, 10, 5));
+        queue.add(msg(20, 18, null));
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        org.mockito.Mockito.verify(profiles).attribute(any(), org.mockito.ArgumentMatchers.eq(Attribute.DEX));
+    }
+
+    @Test
+    @DisplayName("Aprofundar Ferida só age se o alvo já sangra; Marcar dá +1 aos aliados; Enfraquecido −2 de dano")
+    void deepenMarkWeaken() {
+        effect("Aprofundar Ferida", false);
+        queue.add(msg(15, 10, 5)); // alvo sem Ferida: nenhum teste
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(npcSheet.getOpenWounds()).isZero();
+
+        // Marcado por pB (mesmo time de pA): pA ganha +1; Enfraquecido: −2 no dano
+        pA.setTeam(1); pB.setTeam(1); pN.setTeam(2);
+        cList.add(CombatCondition.builder().id(UUID.randomUUID()).participantId(pN.getId()).conditionKey("MARCADO")
+                .sourceParticipantId(pB.getId()).expiresAt(ConditionExpiry.END_OF_ROUND).build());
+        cond(pA, "ENFRAQUECIDO");
+        effectItems.clear();
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        queue.add(msg(15, 10, 5));
+        r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        Calc used = rollCalcs.get(rollCalcs.size() - 1);
+        assertThat(used.hit()).anyMatch(p -> p.source().equals("Alvo Marcado") && p.value() == 1);
+        assertThat(used.damage()).anyMatch(p -> p.source().equals("Enfraquecido") && p.value() == -2);
     }
 }

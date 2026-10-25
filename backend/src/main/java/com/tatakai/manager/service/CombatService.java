@@ -543,6 +543,7 @@ public class CombatService {
                 double d = CombatRules.moveDistance(p.getMovesThisTurn(), s.getDex(), base == null ? 0 : base.moveMeters());
                 if (keys.contains(VitalService.FREEZING)) d = d / 2; // Congelando: Movimentação pela metade
                 if (SheetRules.overloaded(s)) d = d / 2;             // Sobrecarregado: idem
+                if (keys.contains("ALEIJADO")) d = d / 2;            // Aleijar: Movimentação pela metade
                 text.append(" — Moveu ").append(d == Math.floor(d) ? String.valueOf((int) d) : String.valueOf(d).replace('.', ',')).append(" m");
             }
             case STAND_UP -> {

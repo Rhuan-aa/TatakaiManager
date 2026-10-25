@@ -130,10 +130,15 @@ public class VitalService {
                 p.getName() + ": " + name(key) + (note == null ? "" : " (" + note + ")") + " aplicada");
     }
 
-    /** Aplica com a duração padrão do catálogo (efeitos de módulo, §30). */
-    public void addCondition(Encounter e, EncounterParticipant p, String key, String note) {
-        ConditionExpiry expiry = catalog.find(key).map(ConditionCatalog.Def::defaultExpiresAt).orElse(ConditionExpiry.MANUAL);
-        addCondition(e, p, key, expiry, expiry == ConditionExpiry.COUNTER ? 1 : null, note);
+    /** Efeito de módulo (§30): duração dada (null = padrão do catálogo) e quem aplicou (Marcar usa a origem). */
+    public void addEffectCondition(Encounter e, EncounterParticipant p, String key, ConditionExpiry expiry, String note, UUID sourceId) {
+        ConditionExpiry ex = expiry != null ? expiry
+                : catalog.find(key).map(ConditionCatalog.Def::defaultExpiresAt).orElse(ConditionExpiry.MANUAL);
+        addCondition(e, p, key, ex, ex == ConditionExpiry.COUNTER ? 1 : null, note);
+        conds(p).stream().filter(c -> key.equals(c.getConditionKey())).findFirst().ifPresent(c -> {
+            c.setSourceParticipantId(sourceId);
+            conditions.save(c);
+        });
     }
 
     public void removeCondition(Encounter e, EncounterParticipant p, String key) {

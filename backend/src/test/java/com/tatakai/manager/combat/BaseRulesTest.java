@@ -67,4 +67,16 @@ class BaseRulesTest {
         assertThat(sketch.precision(null)).isEqualTo(1);
         assertThat(sketch.calejo()).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("Esboço: metade de todos os bônus (para baixo) e reduções inteiras; Resiliência")
+    void sketchAndResilience() {
+        BaseRules.Profile p = BaseRules.profile("x", List.of(
+                it("Guarda", "Guarda +3 em Defender", 3), it("Penalidade", "Penalidade −2 em Esquiva", 2),
+                it("Enraizado", "Enraizado +4", 2), it("Resiliência", "Resiliência +2", 2)), true);
+        assertThat(p.reaction(ReactionType.DEFEND)).isEqualTo(1);  // 3 -> 1
+        assertThat(p.reaction(ReactionType.DODGE)).isEqualTo(-2);  // redução inteira
+        assertThat(p.rooted()).isEqualTo(2);
+        assertThat(p.resilience()).isEqualTo(1);
+    }
 }

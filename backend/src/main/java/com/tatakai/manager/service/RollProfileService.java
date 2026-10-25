@@ -20,6 +20,7 @@ import com.tatakai.manager.entity.MoveKind;
 import com.tatakai.manager.entity.RollMode;
 import com.tatakai.manager.entity.RollPart;
 import com.tatakai.manager.entity.RollSourceType;
+import com.tatakai.manager.entity.TechniqueCore;
 import com.tatakai.manager.entity.TechniqueState;
 import com.tatakai.manager.exception.InvalidRollException;
 import com.tatakai.manager.exception.SheetEntryNotFoundException;
@@ -170,6 +171,14 @@ public class RollProfileService {
         }
         if (cat != null && cat.getExtras() != null) items.addAll(cat.getExtras());
         return items.stream().anyMatch(i -> i.getModule() != null && i.getModule().startsWith(prefix));
+    }
+
+    /** Núcleo da variação usada (Golpe, Controle, Reação, Preparação); null sem catálogo. */
+    @Transactional(readOnly = true)
+    public TechniqueCore core(CharacterSheet sheet, CharacterTechnique t, String variationName) {
+        List<AssemblyVariation> vars = variations(catalog(sheet, t));
+        return vars.stream().filter(v -> variationName == null ? v == vars.get(0) : variationName.equals(v.getName()))
+                .findFirst().map(AssemblyVariation::getCore).orElse(null);
     }
 
     /** Itens de efeito (kind EFFECT) da variação usada + extras, para aplicar no acerto (§30). */

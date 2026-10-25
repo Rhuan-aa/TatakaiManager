@@ -21,7 +21,7 @@ public final class BaseRules {
 
     public record Item(String module, Scope scope, double value) {}
 
-    /** Base parseada; `sketch` (Esboço) divide Precisão e Calejamento pela metade (RN-BASE-05). */
+    /** Base parseada; em Esboço os bônus já vêm pela metade (arredondada para baixo) e as reduções inteiras. */
     public record Profile(String name, List<Item> items, boolean sketch) {
 
         private int sum(String module, Scope... scopes) {
@@ -35,7 +35,7 @@ public final class BaseRules {
 
         /** Precisão no acerto do ataque do tipo `t` (genérica + a do tipo). */
         public int precision(MartialType t) {
-            return RollRules.sketchHalf(sum("Precisão", typed(t)), sketch);
+            return sum("Precisão", typed(t));
         }
 
         /** Força do Golpe no dano do ataque do tipo `t`. */
@@ -61,12 +61,17 @@ public final class BaseRules {
 
         /** Calejamento: Redução de Dano (valor do rótulo; Esboço metade). */
         public int calejo() {
-            return RollRules.sketchHalf(sum("Calejamento", Scope.ALL), sketch);
+            return sum("Calejamento", Scope.ALL);
         }
 
         /** Enraizado: bônus para resistir a Empurrar, Derrubar e Quebrar Base. */
         public int rooted() {
             return sum("Enraizado", Scope.ALL);
+        }
+
+        /** Resiliência: bônus em todos os testes de resistência contra Efeitos. */
+        public int resilience() {
+            return sum("Resiliência", Scope.ALL);
         }
 
         /** Calma: bônus nos Testes de Vontade. */
@@ -113,8 +118,13 @@ public final class BaseRules {
     public static Profile profile(String name, List<AssemblyItem> items, boolean sketch) {
         return new Profile(name, items == null ? List.of() : items.stream()
                 .filter(i -> i.getModule() != null)
-                .map(i -> new Item(i.getModule(), scope(i.getLabel()), valueOrQty(i)))
+                .map(i -> new Item(i.getModule(), scope(i.getLabel()), sketchValue(valueOrQty(i), sketch)))
                 .toList(), sketch);
+    }
+
+    /** Esboço: "concede apenas metade dos seus bônus (arredondada para baixo), mas aplica as reduções por inteiro". */
+    private static double sketchValue(double v, boolean sketch) {
+        return sketch && v > 0 ? Math.floor(v / 2) : v;
     }
 
     /** Valor do rótulo; sem número no rótulo, a quantidade (itens antigos sem rótulo). */

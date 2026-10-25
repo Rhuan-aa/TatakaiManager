@@ -161,14 +161,14 @@ class RollChannelServiceTest {
     }
 
     @Test
-    @DisplayName("ataque básico: Joelhada 1d4+1 com -1 de acerto; E dobra os dados")
+    @DisplayName("ataque básico: Joelhada 1d4+1 com -2 de acerto (Ataques Básicos); E dobra os dados")
     void profile_basicKnee() {
         RollProfileResponse p = service.profiles(sheet.getId(), player.getId()).stream()
                 .filter(x -> x.basicAttack() == BasicAttack.JOELHADA).findFirst().orElseThrow();
 
         assertThat(p.damageDice().count()).isEqualTo(2);
         assertThat(p.damageDice().sides()).isEqualTo(4);
-        assertThat(p.hitFormula()).isEqualTo("1d20+1"); // DES +2, -1
+        assertThat(p.hitFormula()).isEqualTo("1d20"); // DES +2, -2
         assertThat(p.damageFormula()).isEqualTo("2d4+4"); // FOR +3, +1
     }
 

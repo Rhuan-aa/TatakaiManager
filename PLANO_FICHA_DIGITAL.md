@@ -1947,38 +1947,42 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
   as visíveis, com as seções liberadas.
 - Depois da criação dá para editar como qualquer NPC (aba NPCs) e colocar no combate (NPC com `sheetId`).
 
-## 30. Efeitos de módulo no acerto (item 1 do §26, 25/10/2026)
+## 30. Efeitos de módulo no acerto (item 1 do §26; revisado pela Criação Marcial em 25/10/2026)
 
-Fonte: capítulo de Condições (Regras Gerais: *"quando vier de uma técnica, [o alvo rola] contra o resultado do teste
-da técnica"*), tabela de Condições de Combate e Danos de Peso (Derrubada). O capítulo de Criação Marcial não está no
-repositório: o atributo de resistência de cada efeito foi deduzido das técnicas do livro (Liver Shot: FOR; Khao Loy: CON;
-Empurrar: FOR) e fica num só lugar (`EffectRules`).
+Fonte: tabela de **Efeitos** da Criação Marcial e capítulo de Condições. Regras puras em `service/rules/EffectRules`;
+aplicação em `AttackService.applyEffects` (só técnica que acerta, desfecho `HIT`).
 
-- **Quando:** técnica (não ataque básico) com desfecho `HIT` no alvo. Itens `kind = EFFECT` da variação usada + extras
-  (`RollProfileService.effects`). `onDie` ("no dado"): só com d20 natural ≥ 17 ou crítico.
-- **Resistência:** crítico → entra sem teste. Senão o alvo rola `RollProfileService.attribute` (mod. + Desgaste) contra
-  o **total do ataque**; empate resiste. Paralisado falha sozinho em FOR/DES. A rolagem sai no canal público.
-- **Mapa (`service/rules/EffectRules`):**
+- **Disparo:** itens `EFFECT` da variação usada + extras. "No dado" (`onDie`): só com d20 natural ≥ 17.
+- **Resistência:** o alvo rola o atributo do efeito (`RollProfileService.attribute`, com Desgaste) contra o **resultado do
+  teste** da técnica; empate resiste. **Pressão Fixa:** contra **ND 10 + mod. de FOR** do atacante. Crítico **só** dispensa o
+  teste com o módulo **Crítico Implacável**. Derrubar usa o **melhor entre FOR e DES**. Paralisado falha em FOR/DES.
+  Somam na resistência: **Enraizado** (Empurrar/Derrubar/Quebrar Base) e **Resiliência** (todos) da base do alvo.
+  Desvantagem: Envenenado (CON), Congelando e Sobrecarregado (FOR/DES conforme §33/§34).
 
-| Módulo | Resiste | Resultado na falha |
+| Efeito | Resiste | Resultado |
 |---|---|---|
-| Derrubar | FOR | `DERRUBADO` + dano de Derrubada `max(1, 2 + mod. de Peso)` de quem cai; perde a base |
-| Quebrar Base | FOR | `QUEBRA_DE_BASE` (perde a base) |
-| Empurrar | FOR | só registra (sem grade; o Mestre posiciona) |
-| Prender | FOR | `AGARRADO` |
-| Desorientar | CON | `DESORIENTADO` |
-| Expor | DES | `VULNERAVEL` |
-| Atordoar | CON | `ATORDOADO` |
-| Paralisar | CON | `PARALISADO` (contador 1 turno) |
-| Cegar | CON | `MEIO_CEGO`; já Meio-Cego → `CEGO` |
+| Empurrar | FOR | registra o empurrão de **1d3 + mod. de FOR** m (colisão +1d4: o Mestre) |
+| Derrubar | FOR ou DES | `DERRUBADO` + dano de Derrubada `max(1, 2 + mod. de Peso)`; perde a base |
+| Quebrar Base | DES | `QUEBRA_DE_BASE` (perde a base) |
+| Prender | FOR | Golpe: `AGARRADO`; **Controle**: `IMOBILIZADO` (núcleo da variação, `RollProfileService.core`) |
+| Desorientar | CON | `DESORIENTADO` até o fim do próximo turno do alvo |
+| Expor | MEN | `VULNERAVEL` até o fim do próximo turno do alvo |
+| Roubar Tempo | MEN | perde a quantidade de PA no próximo turno (**máx. 2**) |
 | Sufocar | CON | `SUFOCANDO` |
-| Roubar Tempo | CON | perde `qtd` PA no próximo turno (`paLossNext`) |
-| Abrir Ferida | — | `qtd` Feridas abertas (`VitalService.openWounds`), sem teste |
-| demais (Interromper, Aleijar, Enfraquecer, Esmagar, Aprofundar Ferida, Marcar) | — | evento "aplicar manualmente" |
+| Cegar | CON | `MEIO_CEGO` por 1 rodada; já Meio-Cego → `CEGO` |
+| Aleijar | DES | `ALEIJADO` (Mover ÷2) até o fim do próximo turno do alvo |
+| Enfraquecer | CON | `ENFRAQUECIDO` (−2 de dano nos golpes dele) até o fim do próximo turno |
+| Marcar | MEN | `MARCADO` até o fim da rodada: **aliados** de quem marcou têm +1 no acerto contra o alvo |
+| Abrir Ferida | CON | +1 Ferida |
+| Aprofundar Ferida | CON | +1 Ferida, só se o alvo já tem Ferida aberta |
+| Atordoar | CON | `ATORDOADO` |
+| Paralisar | CON | `PARALISADO` até o fim do próximo turno do alvo |
+| Interromper, Esmagar | — | evento "aplicar manualmente" (reação / superfície adjacente) |
 
-- Duração: padrão do `conditions.json` (bate com a tabela do livro). Derrubado/Agarrado disparam os contadores de arte.
-- Fora do escopo: bônus de base "+N para resistir a Empurrar, Derrubar e Quebrar Base" (texto livre no catálogo),
-  Arremesso/Montinho/Impacto (dano por tipo de chão) e Ferimentos Permanentes completos (hoje só o aviso ao Mestre).
+- Condições novas no catálogo: `ALEIJADO`, `ENFRAQUECIDO`, `MARCADO` (com `sourceParticipantId`).
+- Junto (Ataques Básicos): Soco **1d2** e, em Ação Menor, **sem** o mod. de Força; Joelhada **−2** no acerto, exceto contra
+  alvo Agarrado ou em Clinch. Técnica com **Atravessar** ignora a Redução de Dano (Calejamento) do alvo. Base em **Esboço**
+  concede metade de **todos** os bônus (arredondada para baixo) e aplica as reduções inteiras (`BaseRules`).
 - **Vulnerável (regra da mesa, 25/10/2026):** o alvo não reage, mas o ataque só acerta com **total ≥ 10**
   (`AttackRules.VULNERABLE_ND`); abaixo disso o desfecho é `MISS` (sem dano nem efeitos). Crítico acerta sempre.
   Vale só para Vulnerável (Atordoado/Inconsciente seguem acertando direto).
