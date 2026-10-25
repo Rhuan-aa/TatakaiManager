@@ -81,7 +81,7 @@ export default function CampaignDetail() {
     Combate: { label: 'Combate', hint: 'Iniciativa, turnos, ações e condições.' },
     Rolagens: { label: 'Rolagens', hint: 'Rolagens da mesa em tempo real.' },
     Logs: { label: 'Logs', hint: 'Registro narrativo da campanha.' },
-    Catálogo: { label: 'Catálogo', hint: 'Traços e clãs do sistema e da campanha.' },
+    Catálogo: { label: 'Catálogo', hint: 'Traços, clãs, artes e itens do sistema e da campanha.' },
     Configurações: { label: 'Configurações', hint: 'Membros e ajustes da mesa.' },
   };
   const meta = TAB_META[activeTab] ?? TAB_META.NPCs;

@@ -688,7 +688,8 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
   Envio grava atributos/máximos/`limiterAdjustments` e snapshots em `character_traits` /
   `character_clans` (versão do catálogo congelada — RN-TRAIT-02) → `PENDING_APPROVAL`.
 - **Front:** `components/build/BuildWizard`, `components/catalog/CatalogManager` (aba
-  Catálogo), `components/campaign/RuleSettings` (em Configurações).
+  Catálogo; a sub-aba Itens é `ItemsCatalog`, só leitura: armas, consumíveis e equipamentos agrupados por tipo),
+  `components/campaign/RuleSettings` (em Configurações).
 - **Seeds reais:** `scripts/notion_seed.py` (stdlib) converte o export do Notion em `contexto/`
   (gitignored) para `backend/src/main/resources/catalog/traits.json` e `arts.json`
   (`python3 scripts/notion_seed.py`, reexecutável). Só artes **clássicas**. Artes ficam no Mongo

@@ -8,6 +8,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { ATTRS } from '../sheet/sheetRules';
 import ProgressionCatalog from './ProgressionCatalog';
 import ArtsPanel from './ArtsPanel';
+import ItemsCatalog from './ItemsCatalog';
 import RichText from '../ui/RichText';
 import { rarityTagStyle, compareTraits, TRAIT_CATEGORIES } from '../ui/rarity';
 
@@ -429,6 +430,8 @@ export default function CatalogManager({ campaignId, isMaster }) {
   const isTrait = tab === 'trait';
   const isArt = tab === 'art';
   const isProgression = tab === 'instinct' || tab === 'milestone';
+  const isItem = tab === 'item';
+  const isOwnList = tab === 'trait' || tab === 'clan'; // listas editáveis deste componente
 
   const items = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -455,23 +458,23 @@ export default function CatalogManager({ campaignId, isMaster }) {
   return (
     <div className="flex flex-col gap-4">
       <div role="tablist" aria-label="Catálogo" className="flex gap-2">
-        {[['trait', 'Traços'], ['clan', 'Clãs'], ['art', 'Artes'], ['instinct', 'Instintos'], ['milestone', 'Marcos']].map(([k, l]) => (
+        {[['trait', 'Traços'], ['clan', 'Clãs'], ['art', 'Artes'], ['instinct', 'Instintos'], ['milestone', 'Marcos'], ['item', 'Itens']].map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'btn-primary' : 'btn-secondary'}
             onClick={() => { setTab(k); setForm(null); }}>{l}</button>
         ))}
-        {canCreate && (
+        {canCreate && !isItem && (
           <>
-            {!isArt && !isProgression && (
+            {isOwnList && (
               <button className="btn-secondary ml-auto" onClick={() => { setShowImport(false); setForm({ initial: emptyForm(tab) }); }}>
                 Novo {isTrait ? 'traço' : 'clã'}
               </button>
             )}
-            <button className={isArt || isProgression ? 'btn-secondary ml-auto' : 'btn-secondary'} onClick={() => { setForm(null); setShowImport((s) => !s); }}>Importar</button>
+            <button className={isOwnList ? 'btn-secondary' : 'btn-secondary ml-auto'} onClick={() => { setForm(null); setShowImport((s) => !s); }}>Importar</button>
           </>
         )}
       </div>
 
-      {!canCreate && <p className="caption">Somente leitura: apenas o Mestre e editores do sistema alteram o catálogo.</p>}
+      {!canCreate && !isItem && <p className="caption">Somente leitura: apenas o Mestre e editores do sistema alteram o catálogo.</p>}
 
       {showImport && canCreate && (
         <ImportPanel campaignId={campaignId} canGlobal={globalEditor} canCampaign={isMaster}
@@ -485,9 +488,10 @@ export default function CatalogManager({ campaignId, isMaster }) {
       )}
 
       {isProgression && <ProgressionCatalog campaignId={campaignId} kind={tab} refreshKey={artsKey} />}
+      {isItem && <ItemsCatalog />}
       {isArt && <ArtsPanel campaignId={campaignId} isMaster={isMaster} globalEditor={globalEditor} refreshKey={artsKey} />}
 
-      {!isArt && !isProgression && <div className="panel p-3 flex flex-wrap gap-3 items-end" role="search">
+      {isOwnList && <div className="panel p-3 flex flex-wrap gap-3 items-end" role="search">
         <label className="flex flex-col text-xs uppercase gap-1">Buscar
           <input className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome…" />
         </label>
@@ -516,7 +520,7 @@ export default function CatalogManager({ campaignId, isMaster }) {
         </label>
       </div>}
 
-      {isArt || isProgression ? null : loading ? (
+      {!isOwnList ? null : loading ? (
         <div className="skeleton h-24" aria-busy="true" />
       ) : items.length === 0 ? (
         <p className="caption">Nenhum item encontrado.</p>
