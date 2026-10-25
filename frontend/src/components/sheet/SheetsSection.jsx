@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { listSheets, getSheet } from '../../api/characterSheets';
+import { listSheets, getSheet, importSheet } from '../../api/characterSheets';
 import { listRules } from '../../api/campaignRules';
 import { startBuild } from '../../api/characterBuild';
 import BuildWizard from '../build/BuildWizard';
 import { parseApiError } from '../../api/parseApiError';
+import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCampaignTopic } from '../../hooks/useWebSocket';
 import { EmptyState } from '../layout/AppShell';
@@ -14,8 +15,10 @@ import FightClosePanel from './FightClosePanel';
 
 const STATUS = { DRAFT: 'Rascunho', PENDING_APPROVAL: 'Aguardando aprovação', COMPLETED: 'Aprovada', IN_BUILD: 'Em construção' };
 
-export default function SheetsSection({ campaignId, isMaster }) {
+export default function SheetsSection({ campaignId, isMaster, fightSheetIds }) {
   const { user } = useAuth();
+  const toast = useToast();
+  const [warnings, setWarnings] = useState([]);
   const [sheets, setSheets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,7 +28,7 @@ export default function SheetsSection({ campaignId, isMaster }) {
   const [free, setFree] = useState(false);
   const [newName, setNewName] = useState('');
   const [building, setBuilding] = useState(null);
-  const [tab, setTab] = useState('sheets');
+  const [tab, setTab] = useState(fightSheetIds ? 'fight' : 'sheets');
   const [tick, setTick] = useState(0);
   const openIdRef = useRef(null);
   openIdRef.current = openId;
@@ -87,6 +90,20 @@ export default function SheetsSection({ campaignId, isMaster }) {
   }, [openId]);
 
   useCampaignTopic(campaignId, 'sheets', reload);
+
+  async function onImport(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const res = await importSheet(campaignId, file);
+      setWarnings(res.warnings ?? []);
+      toast('Ficha importada. Aguarda aprovação do Mestre.');
+      await reload();
+    } catch (err) {
+      toast(parseApiError(err).message, 'error');
+    }
+  }
 
   const mine = sheets.find((s) => s.ownerUserId === user?.userId);
 
@@ -163,10 +180,23 @@ export default function SheetsSection({ campaignId, isMaster }) {
         {!isMaster && !mine && (
           <button type="button" className="btn-primary" onClick={() => setCreating(true)}>Criar minha ficha</button>
         )}
+        {!isMaster && !mine && (
+          <label className="btn-secondary cursor-pointer">
+            Importar ficha (.tatakai.json)
+            <input type="file" accept=".json,application/json" className="sr-only" onChange={onImport} />
+          </label>
+        )}
       </div>
+      {warnings.length > 0 && (
+        <div className="panel p-4" role="status">
+          <h2 className="panel-title mb-2">Avisos da importação</h2>
+          <ul className="list-disc pl-5 text-sm">{warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
+          <button type="button" className="btn-ghost mt-2" onClick={() => setWarnings([])}>Dispensar</button>
+        </div>
+      )}
 
       {tab === 'fight' && isMaster ? (
-        <FightClosePanel campaignId={campaignId} sheets={sheets} onDone={() => { setTab('sheets'); reload(); }} />
+        <FightClosePanel campaignId={campaignId} sheets={sheets} preselected={fightSheetIds} onDone={() => { setTab('sheets'); reload(); }} />
       ) : tab === 'log' && isMaster ? (
         <ActivityLogPanel campaignId={campaignId} sheets={sheets} refreshKey={tick} />
       ) : sheets.length === 0 ? (

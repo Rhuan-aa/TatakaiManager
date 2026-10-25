@@ -40,8 +40,8 @@ export async function gmAdjust(sheetId, body) {
   return data;
 }
 
-export async function rollDice(sheetId, { expression, purpose }) {
-  const { data } = await client.post(`/character-sheets/${sheetId}/rolls`, { expression, purpose });
+export async function rollDice(sheetId, { expression, purpose, channel, campaignId, customChannelId }) {
+  const { data } = await client.post(`/character-sheets/${sheetId}/rolls`, { expression, purpose, channel, campaignId, customChannelId });
   return data;
 }
 
@@ -80,5 +80,26 @@ export async function getNpcSheetVisibility(campaignId, npcId) {
 
 export async function setNpcSheetVisibility(campaignId, npcId, { section, visible }) {
   const { data } = await client.patch(`/campaigns/${campaignId}/npcs/${npcId}/sheet/visibility`, { section, visible });
+  return data;
+}
+
+export async function exportSheet(sheetId, fallbackName = 'ficha') {
+  const res = await client.get(`/character-sheets/${sheetId}/export`, { responseType: 'blob' });
+  const cd = res.headers['content-disposition'] ?? '';
+  // filename* (RFC 5987) primeiro: o filename= simples pode vir codificado em RFC 2047
+  const m = /filename\*=UTF-8''([^;]+)/i.exec(cd) ?? /filename="?([^";]+)"?/i.exec(cd);
+  const name = m ? decodeURIComponent(m[1]) : `${fallbackName}.tatakai.json`;
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function importSheet(campaignId, file) {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await client.post(`/campaigns/${campaignId}/character-sheets/import`, form);
   return data;
 }

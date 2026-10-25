@@ -482,6 +482,26 @@ h3,
   75% { translate: 2px -1px; }
 }
 
+/* Rolagens críticas: rodam uma vez ao montar o cartão */
+.roll-critical { animation: roll-crit-pop 600ms ease-out, roll-crit-glow 1200ms ease-out; }
+.roll-fumble { animation: onomatopoeia-shake 120ms 4, roll-fumble-flash 900ms ease-out; }
+.roll-onomatopoeia { position: absolute; top: -0.9rem; right: 0.5rem; font-size: 1.4rem; pointer-events: none; }
+.roll-fumble .roll-onomatopoeia { color: var(--accent); }
+@keyframes roll-crit-pop {
+  0% { transform: scale(0.85); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes roll-crit-glow {
+  0% { box-shadow: 0 0 0 0 var(--highlight); }
+  40% { box-shadow: 0 0 22px 8px var(--highlight); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes roll-fumble-flash {
+  0% { filter: grayscale(1) brightness(0.8); background-color: color-mix(in srgb, var(--accent) 35%, var(--panel-bg)); }
+  100% { filter: none; }
+}
+
 /* Animação de entrada para modais/overlays */
 @keyframes fade-in {
   from {
@@ -510,7 +530,21 @@ h3,
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
-  .onomatopoeia {
+  .onomatopoeia,
+  .roll-critical,
+  .roll-fumble {
     animation: none !important;
   }
+}
+
+@media print {
+  aside, nav, header, button, input, select, textarea, .no-print, [role='status'], .halftone, .speed-lines {
+    display: none !important;
+  }
+  html, body, .bg-\[var\(--bg\)\] { background: #fff !important; color: #000 !important; }
+  * { color: #000 !important; box-shadow: none !important; text-shadow: none !important; animation: none !important; }
+  .pl-16 { padding-left: 0 !important; }
+  .panel { background: #fff !important; border: 2px solid #000 !important; break-inside: avoid; }
+  main { max-width: none !important; padding: 0 !important; }
+  .collapsible-body[hidden] { display: block !important; }
 }

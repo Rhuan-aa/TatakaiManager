@@ -216,6 +216,14 @@ function ArtCard({ ca, moves, isMaster, canAct, run }) {
   const toast = useToast();
   const [catalogArt, setCatalogArt] = useState(null);
   const [choice, setChoice] = useState('');
+  const storeKey = `martialArtOpen:${ca.id}`;
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem(storeKey) === '1'; } catch { return false; }
+  });
+  const toggle = () => setOpen((o) => {
+    try { localStorage.setItem(storeKey, o ? '0' : '1'); } catch { /* sem storage */ }
+    return !o;
+  });
   const owned = new Set(moves.map((m) => `${m.kind}:${m.name}`));
   const options = catalogArt ? [
     ...(catalogArt.bases ?? []).map((b) => ({ kind: 'BASE', name: b.name, graduation: b.graduation ?? 'GENERIC' })),
@@ -234,7 +242,10 @@ function ArtCard({ ca, moves, isMaster, canAct, run }) {
   return (
     <section className="flex flex-col gap-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
-        <h4 className="panel-title flex-1 text-2xl">{ca.artName}</h4>
+        <button type="button" className="flex flex-1 items-center gap-2 text-left" aria-expanded={open} onClick={toggle}>
+          <span aria-hidden="true" className="text-xs">{open ? '▲' : '▼'}</span>
+          <h4 className="panel-title text-2xl">{ca.artName}</h4>
+        </button>
         <span className="tag">{lab(ART_CATEGORIES, ca.category)}</span>
         {isMaster ? (
           <select className="field m-0 w-auto py-0.5 text-xs" aria-label={`Graduação em ${ca.artName}`} value={ca.graduation}
@@ -253,6 +264,7 @@ function ArtCard({ ca, moves, isMaster, canAct, run }) {
           <button type="button" className="btn-ghost px-2 text-xs" onClick={() => run(api.removeCharacterArt, ca.id)}>Remover arte</button>
         )}
       </div>
+      <div className="collapsible-body space-y-3" hidden={!open}>
       {ca.graduationCost != null && <GraduationInfo ca={ca} isMaster={isMaster} run={run} />}
       <MoveList title="Bases" moves={moves.filter((m) => m.kind === 'BASE')} {...sub} />
       <MoveList title="Técnicas" moves={moves.filter((m) => m.kind === 'TECHNIQUE')} {...sub} />
@@ -284,6 +296,7 @@ function ArtCard({ ca, moves, isMaster, canAct, run }) {
           }}>{isMaster ? 'Ensinar' : 'Pedir'}</button>
         </div>
       )}
+      </div>
     </section>
   );
 }

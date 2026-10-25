@@ -9,5 +9,8 @@ import java.util.UUID;
 public interface TraitDefinitionRepository extends MongoRepository<TraitDefinition, UUID> {
     List<TraitDefinition> findByCampaignIdIsNull();
 
+    /** Fallback da importação: o catálogo reimportado troca os ids, mas mantém o nome. */
+    java.util.Optional<TraitDefinition> findFirstByName(String name);
+
     List<TraitDefinition> findByCampaignId(UUID campaignId);
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { exportSheet } from '../../api/characterSheets';
 import { listTraits } from '../../api/catalog';
 import { Effects, Variations } from '../catalog/CatalogManager';
 import { approveSheet, updateResources } from '../../api/characterSheets';
@@ -8,7 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import CharacterSheetForm from './CharacterSheetForm';
 import GmAdjustmentPanel from './GmAdjustmentPanel';
-import RollBox from './RollBox';
+import RollsPanel from './RollsPanel';
 import ActivityLogPanel from './ActivityLogPanel';
 import MartialPanel from './MartialPanel';
 import TrainingPanel from './TrainingPanel';
@@ -75,7 +76,7 @@ function FatigueMeter({ name, points, bandKey, kind, onSave }) {
   return (
     <div>
       <div className="flex items-baseline justify-between text-xs uppercase">
-        <span className="font-bold">{name}</span>
+        <span className="font-bold">Desgaste {name.toLowerCase()}</span>
         <span><InlineNumber value={points} label={`Desgaste ${name.toLowerCase()}`} onSave={onSave} /> / {FATIGUE_MAX} · {FATIGUE_LABELS[bandKey]}</span>
       </div>
       <div className="meter relative" role="meter" aria-label={`Desgaste ${name.toLowerCase()}`}
@@ -182,7 +183,7 @@ function Block({ title, aside, collapsible, defaultOpen = false, children }) {
         ) : <h3 className="panel-title">{title}</h3>}
         {aside}
       </div>
-      {open && children}
+      <div className="collapsible-body" hidden={!open}>{children}</div>
     </section>
   );
 }
@@ -283,6 +284,10 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         <h2 className="panel-title flex-1 text-2xl">{sheet.name}</h2>
         {!isNpc && <span className="tag-accent tag">{STATUS[sheet.buildStatus]}</span>}
         {d?.criticalState && <span className="tag">Estado crítico</span>}
+        <button type="button" className="btn-secondary no-print" onClick={async () => {
+          try { await exportSheet(sheet.id, sheet.name); } catch (err) { toast(parseApiError(err).message, 'error'); }
+        }}>Exportar JSON</button>
+        <button type="button" className="btn-secondary no-print" onClick={() => window.print()}>Imprimir / PDF</button>
       </div>
       {!isNpc && <p className="caption self-start">Jogador · {sheet.ownerName}</p>}
       <div className="flex flex-wrap gap-2" aria-label="Identidade">
@@ -339,6 +344,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             </p>
             {f && (
               <div className="mt-3 flex flex-col gap-2">
+                <p className="caption">Desgaste (cansaço)</p>
                 <FatigueMeter name="Físico" points={f.physical} bandKey={f.physicalBand} kind="physical" onSave={saveResource('physicalFatigue')} />
                 <FatigueMeter name="Mental" points={f.mental} bandKey={f.mentalBand} kind="mental" onSave={saveResource('mentalFatigue')} />
               </div>
@@ -436,8 +442,9 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
 
       {(isOwner || isMaster) && (
         <>
-          <Block title="Rolagem de dados">
-            <RollBox sheetId={sheet.id} />
+          <Block title="Rolagens">
+            <RollsPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isNpc={isNpc}
+              refreshKey={refreshKey + sheet.version} />
           </Block>
           <Block title="Atividade da ficha" collapsible>
             <ActivityLogPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
