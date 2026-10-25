@@ -44,6 +44,10 @@ public class AttackTarget {
     @Column(name = "reaction_roll_id")
     private UUID reactionRollId;
 
+    /** Aliado que reagiu no lugar do alvo Inconsciente (Defender ou Contra-atacar); null = o próprio alvo. */
+    @Column(name = "defender_id")
+    private UUID defenderId;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 10)
     private AttackOutcome outcome;

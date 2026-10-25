@@ -44,7 +44,7 @@ function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
         <div key={t.id} className="space-y-1">
           <div className="text-sm">
             <strong>{t.targetName}</strong>: {OUTCOME_LABEL[t.outcome] ?? '—'}
-            {t.reaction && t.reaction !== 'NONE' ? ` (${REACTION_LABEL[t.reaction]})` : ''}
+            {t.reaction && t.reaction !== 'NONE' ? ` (${REACTION_LABEL[t.reaction]}${t.defenderName ? ` por ${t.defenderName}` : ''})` : ''}
             {t.mitigationPct > 0 && ` · mitigação ${t.mitigationPct}%`}
             {t.damage > 0 && ` · ${t.damage} de dano`}
             {t.counterDamage > 0 && ` · contra-ataque causou ${t.counterDamage}`}
@@ -79,7 +79,7 @@ export default function AttackPanel({ pending, resolved, canCancel, onReact, onC
           </div>
           {a.targets.map((t) => (
             <div key={t.id} className="flex flex-wrap items-center gap-2 text-sm">
-              <span>{t.canRespond ? 'Contra você' : t.targetName}:</span>
+              <span>{t.canRespond && !t.guardians ? 'Contra você' : t.targetName}{t.guardians ? ' (inconsciente)' : ''}:</span>
               {t.reaction
                 ? <span className="tag">{t.autoResolved ? 'Sem reação (automático)' : REACTION_LABEL[t.reaction]}</span>
                 : t.canRespond && t.options
@@ -88,7 +88,18 @@ export default function AttackPanel({ pending, resolved, canCancel, onReact, onC
                       disabled={!o.available} title={o.reason ?? undefined} onClick={() => onReact(a.id, t.id, o.reaction)}>
                       {REACTION_LABEL[o.reaction]}{o.predictedBonus != null ? ` (${o.predictedBonus >= 0 ? '+' : ''}${o.predictedBonus})` : ''}
                     </button>))
-                  : <span className="caption">aguardando reação</span>}
+                  : t.canRespond && t.guardians
+                    ? t.guardians.map((g) => (
+                      <span key={g.id} className="flex flex-wrap items-center gap-1">
+                        <span className="caption">por {g.name}:</span>
+                        {g.options.filter((o) => o.reaction !== 'NONE').map((o) => (
+                          <button key={o.reaction} type="button" className="btn-secondary px-3 py-1 text-xs"
+                            disabled={!o.available} title={o.reason ?? undefined} onClick={() => onReact(a.id, t.id, o.reaction, g.id)}>
+                            {REACTION_LABEL[o.reaction]} ({o.predictedBonus >= 0 ? '+' : ''}{o.predictedBonus})
+                          </button>))}
+                      </span>)).concat(
+                      <button key="none" type="button" className="btn-ghost text-xs" onClick={() => onReact(a.id, t.id, 'NONE')}>Ninguém reage</button>)
+                    : <span className="caption">aguardando reação</span>}
             </div>
           ))}
           {canCancel(a) && <button type="button" className="btn-ghost text-xs" onClick={() => onCancel(a.id)}>Cancelar</button>}

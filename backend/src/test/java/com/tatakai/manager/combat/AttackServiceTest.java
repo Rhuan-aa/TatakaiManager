@@ -1234,6 +1234,9 @@ class AttackServiceTest {
     @Test
     @DisplayName("Crítico Garantido: alvo inconsciente (não por HP) ou golpe localizado em ferimento não tratado")
     void guaranteedCrit() {
+        pA.setTeam(1);
+        pB.setTeam(1);
+        pN.setTeam(2); // NPC sozinho no time: sem aliado para reagir por ele
         cList.add(CombatCondition.builder().id(UUID.randomUUID()).participantId(pN.getId()).conditionKey("INCONSCIENTE")
                 .note("PQ").expiresAt(ConditionExpiry.COUNTER).turnsRemaining(3).build());
         queue.add(msg(5, 4, 3));
@@ -1261,5 +1264,37 @@ class AttackServiceTest {
         AttackResponse r = service.list(enc.getId(), AttackStatus.AWAITING_REACTIONS, master.getId()).get(0);
         service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
         assertThat(rollCalcs.get(rollCalcs.size() - 1).critMargin()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Alvo Inconsciente com aliado consciente: o aliado Defende/Contra-ataca no lugar dele (sem Esquiva)")
+    void guardianReacts() {
+        pA.setTeam(1);
+        pB.setTeam(2);
+        pN.setTeam(2);
+        cList.add(CombatCondition.builder().id(UUID.randomUUID()).participantId(pB.getId()).conditionKey("INCONSCIENTE")
+                .note("SP").expiresAt(ConditionExpiry.COUNTER).turnsRemaining(3).build());
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pB), player.getId());
+        assertThat(r.status()).isEqualTo(AttackStatus.AWAITING_REACTIONS);
+        AttackResponse.TargetResponse t = service.list(enc.getId(), AttackStatus.AWAITING_REACTIONS, master.getId()).get(0)
+                .targets().get(0);
+        assertThat(t.guardians()).singleElement().satisfies(g -> {
+            assertThat(g.id()).isEqualTo(pN.getId());
+            assertThat(g.options()).extracting(AttackResponse.Option::reaction)
+                    .containsExactly(ReactionType.DEFEND, ReactionType.COUNTER, ReactionType.NONE);
+        });
+        assertThatThrownBy(() -> service.respond(r.id(), t.id(), ReactionType.DODGE, pN.getId(), master.getId()))
+                .isInstanceOf(InvalidCombatException.class);
+        assertThatThrownBy(() -> service.respond(r.id(), t.id(), ReactionType.DEFEND, null, master.getId()))
+                .isInstanceOf(InvalidCombatException.class);
+
+        queue.add(msg(15, 10, 10));  // ataque (Crítico Garantido: inconsciente por SP, mas natural 10 sem dano extra no mock)
+        queue.add(msg(20, 15, null)); // Defender do NPC: 20 - 15 = 5 -> 75%
+        AttackResponse.TargetResponse done = service.respond(r.id(), t.id(), ReactionType.DEFEND, pN.getId(), master.getId())
+                .targets().get(0);
+        assertThat(done.defenderId()).isEqualTo(pN.getId());
+        assertThat(done.outcome()).isEqualTo(AttackOutcome.DEFENDED);
+        assertThat(done.mitigationPct()).isEqualTo(75);
+        assertThat(sheetB.getCurrentHp()).isEqualTo(40 - 2); // 10 × 25% = 2 de dano no alvo
     }
 }

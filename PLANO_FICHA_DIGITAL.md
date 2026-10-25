@@ -2067,3 +2067,17 @@ chamas). Coluna nova `combat_conditions.progress` (contador; `ddl-auto=update` c
   marca `character_sheets.knockout_sequel`; no **início do próximo combate**, com a regra ligada, a ficha perde **1 PQ** e a
   marca some. Um **Repouso Tratado** no TimeSkip apaga a marca antes disso.
 
+## 36. Aliado reage por alvo Inconsciente (capítulo de Condições, 25/10/2026)
+
+- Alvo **Inconsciente** (qualquer causa) com pelo menos um **aliado consciente** (mesmo time, outro lutador, não é o
+  atacante, sem Inconsciente/Morto) **não** recebe mais "sem reação" automático. Sem aliado, continua automático.
+- `AttackResponse.TargetResponse.guardians[{id, name, options}]`: aliados que **quem está vendo** controla (Mestre: todos;
+  jogador: os seus), com Defender e Contra-ataque calculados com a ficha do aliado (base, Guarda, Desgaste…). Sem Esquiva.
+- `POST /attacks/{aid}/targets/{tid}/reaction {reaction, defenderId}`: DEFEND/COUNTER exigem `defenderId` de um aliado
+  válido (400) e ser o Mestre ou o dono dele (403); DODGE → 400; NONE ("ninguém reage") vale para o Mestre ou o dono de
+  qualquer aliado. `attack_targets.defender_id` guarda quem reagiu (`defenderName` na resposta).
+- Resolução: a rolagem, a interação marcial, o Paralisado (Vontade), o SP do Contra-ataque e o Soco do contra-dano são
+  do **aliado**; o dano, a mitigação, os efeitos e o Crítico Garantido continuam no **alvo**. Linha do tempo: "C reage no
+  lugar de B". Adjacência não é verificada (sem grade).
+- Front: a tela de reação mostra "Reagir por B com C" para cada aliado e "Ninguém reage"; o painel de ataques idem.
+

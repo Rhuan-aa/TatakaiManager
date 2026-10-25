@@ -27,7 +27,9 @@ export const listConditions = () => get('/catalog/conditions');
 export const declareAttack = (eid, body) => post(`/encounters/${eid}/attacks`, body);
 export const listAttacks = async (eid, status) =>
   (await client.get(`/encounters/${eid}/attacks`, { params: status ? { status } : {} })).data;
-export const respondReaction = (aid, tid, reaction) => post(`/attacks/${aid}/targets/${tid}/reaction`, { reaction });
+// defenderId: aliado que reage no lugar de um alvo Inconsciente
+export const respondReaction = (aid, tid, reaction, defenderId) =>
+  post(`/attacks/${aid}/targets/${tid}/reaction`, { reaction, ...(defenderId ? { defenderId } : {}) });
 export const cancelAttack = (aid) => post(`/attacks/${aid}/cancel`);
 export const setCounter = async (eid, id, value) =>
   (await client.patch(`/encounters/${eid}/counters/${id}`, { value })).data;

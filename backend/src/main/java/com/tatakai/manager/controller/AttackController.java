@@ -36,7 +36,7 @@ public class AttackController {
     @PostMapping("/attacks/{aid}/targets/{tid}/reaction")
     public ResponseEntity<AttackResponse> respond(@PathVariable UUID aid, @PathVariable UUID tid,
                                                   @Valid @RequestBody ReactionRequest r) {
-        return ResponseEntity.ok(attacks.respond(aid, tid, r.reaction(), AuthenticatedUser.id()));
+        return ResponseEntity.ok(attacks.respond(aid, tid, r.reaction(), r.defenderId(), AuthenticatedUser.id()));
     }
 
     @PostMapping("/attacks/{aid}/targets/{tid}/late-counter")

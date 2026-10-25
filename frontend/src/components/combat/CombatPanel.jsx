@@ -100,7 +100,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
   // primeiro alvo pendente que espera a minha reação (e que não adiei)
   const awaiting = attacks.filter((a) => a.status === 'AWAITING_REACTIONS')
     .flatMap((a) => a.targets.map((t) => ({ a, t })))
-    .find(({ t }) => t.canRespond && !t.reaction && t.options && !minimized.has(t.id));
+    .find(({ t }) => t.canRespond && !t.reaction && (t.options || t.guardians) && !minimized.has(t.id));
   const awaitingId = awaiting?.t.id;
   const minimize = useCallback(() => {
     if (awaitingId) setMinimized((m) => new Set(m).add(awaitingId));
@@ -218,7 +218,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
                   const att = enc.participants.find((x) => x.id === a.attackerId);
                   return isMaster || isOwner(att);
                 }}
-                onReact={(aid, tid, r) => run(() => api.respondReaction(aid, tid, r))}
+                onReact={(aid, tid, r, did) => run(() => api.respondReaction(aid, tid, r, did))}
                 onCancel={(aid) => run(() => api.cancelAttack(aid))}
                 onLateCounter={(aid, tid, b) => run(() => api.lateCounter(aid, tid, b))}
                 targetSheetId={(t) => enc.participants.find((x) => x.id === (t.targetId))?.sheetId} />
@@ -244,7 +244,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
 
           {awaiting && (
             <ReactionOverlay attack={awaiting.a} target={awaiting.t}
-              onReact={(aid, tid, r) => run(() => api.respondReaction(aid, tid, r))}
+              onReact={(aid, tid, r, did) => run(() => api.respondReaction(aid, tid, r, did))}
               onMinimize={minimize} />
           )}
         </>

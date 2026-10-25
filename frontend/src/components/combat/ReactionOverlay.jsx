@@ -22,24 +22,37 @@ export default function ReactionOverlay({ attack: a, target: t, onReact, onMinim
           {a.attackerName} ataca {t.targetName}
         </h2>
         <p className="mb-4 text-sm">
-          com <strong>{a.sourceName}</strong>{a.region ? ` na ${a.region}` : ''} — escolha a reação.
+          com <strong>{a.sourceName}</strong>{a.region ? ` na ${a.region}` : ''} — {t.guardians
+            ? `${t.targetName} está inconsciente: um aliado pode Defender ou Contra-atacar no lugar dele.`
+            : 'escolha a reação.'}
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {t.options.map((o, i) => {
-            const h = REACTION_HINT[o.reaction];
-            return (
-              <button key={o.reaction} ref={i === 0 ? first : undefined} type="button" className="reaction-option"
-                disabled={!o.available} onClick={() => onReact(a.id, t.id, o.reaction)}>
-                <span className="flex items-center justify-between gap-2">
-                  <span className="panel-title text-lg">{REACTION_LABEL[o.reaction]}</span>
-                  {h?.attr && <span className="tag">{h.attr} {signed(o.predictedBonus)}</span>}
-                </span>
-                <span className="text-xs">{h?.text}</span>
-                <span className="text-xs font-bold">{o.available ? h?.cost : o.reason}</span>
-              </button>
-            );
-          })}
-        </div>
+        {(t.guardians ?? [{ id: null, name: null, options: t.options }]).map((g, gi) => (
+          <div key={g.id ?? 'self'} className="mb-3">
+            {g.name && <p className="panel-title mb-2 text-base">Reagir por {t.targetName} com {g.name}</p>}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {g.options.filter((o) => !g.name || o.reaction !== 'NONE').map((o, i) => {
+                const h = REACTION_HINT[o.reaction];
+                return (
+                  <button key={o.reaction} ref={gi === 0 && i === 0 ? first : undefined} type="button"
+                    className="reaction-option" disabled={!o.available} onClick={() => onReact(a.id, t.id, o.reaction, g.id)}>
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="panel-title text-lg">{REACTION_LABEL[o.reaction]}</span>
+                      {h?.attr && <span className="tag">{h.attr} {signed(o.predictedBonus)}</span>}
+                    </span>
+                    <span className="text-xs">{h?.text}</span>
+                    <span className="text-xs font-bold">{o.available ? h?.cost : o.reason}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {t.guardians && (
+          <button type="button" className="reaction-option w-full" onClick={() => onReact(a.id, t.id, 'NONE')}>
+            <span className="panel-title text-lg">Ninguém reage</span>
+            <span className="text-xs">{t.targetName} recebe o golpe.</span>
+          </button>
+        )}
         <div className="mt-4 text-right">
           <button type="button" className="btn-ghost text-xs" onClick={onMinimize}>Decidir depois (Esc)</button>
         </div>

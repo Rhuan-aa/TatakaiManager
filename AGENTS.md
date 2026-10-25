@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 739 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 740 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -530,7 +530,7 @@ broadcast: outros clientes só veem ao recarregar o TimeSkip.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 739 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 740 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -884,6 +884,7 @@ de cada item lidos do rótulo (`BaseRules`) em acerto, dano, reações, Calejame
 Permanente (Rompimento) criado sozinho no crítico com dado máximo; Limitador de HP e duração por tipo (§32).
 Condições de ambiente (Queimando, Congelando, Envenenado, Sufocando) processadas por turno (`EnvironmentRules`, §33).
 Crítico Garantido (inconsciente por SP/PQ, ferimento não tratado) e Carga por peso do inventário (§34).
-Estabilizar aliado À Beira da Morte e Sequela de Nocaute (regra opcional) (§35). **Pendentes:** técnicas
+Estabilizar aliado À Beira da Morte e Sequela de Nocaute (regra opcional) (§35). Aliado consciente
+Defende/Contra-ataca no lugar de alvo Inconsciente (`guardians`, `defenderId`, §36). **Pendentes:** técnicas
 de Reação, armas, Tração (competição de agarre). Ao implementar um item, escreva o contrato numa seção
 nova do plano e marque-o aqui.

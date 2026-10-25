@@ -261,7 +261,9 @@ public class AttackService {
         List<AttackTarget> ts = new ArrayList<>();
         for (UUID tid : targetIds) {
             ctx.participant(tid).setEngagedThisRound(true);
-            boolean auto = ctx.hasAny(tid, NO_REACTION);
+            boolean auto = ctx.hasAny(tid, NO_REACTION)
+                    && !(ctx.has(tid, VitalService.UNCONSCIOUS) && !ctx.has(tid, "MORTO")
+                         && !guardians(ctx.participant(tid), att, ctx).isEmpty());
             ts.add(targets.save(AttackTarget.builder().attackId(a.getId()).targetId(tid)
                     .reaction(auto ? ReactionType.NONE : null).autoResolved(auto)
                     .respondedAt(auto ? Instant.now() : null).build()));
@@ -275,6 +277,10 @@ public class AttackService {
     // ---------- reagir ----------
 
     public AttackResponse respond(UUID attackId, UUID targetRowId, ReactionType reaction, UUID userId) {
+        return respond(attackId, targetRowId, reaction, null, userId);
+    }
+
+    public AttackResponse respond(UUID attackId, UUID targetRowId, ReactionType reaction, UUID defenderId, UUID userId) {
         PendingAttack a = attacks.findById(attackId).orElseThrow(() -> new EncounterNotFoundException("Ataque não encontrado"));
         Encounter e = load(a.getEncounterId());
         boolean master = requireMembership(e.getCampaignId(), userId) == Role.MASTER;
@@ -284,10 +290,39 @@ public class AttackService {
         AttackTarget t = ts.stream().filter(x -> x.getId().equals(targetRowId)).findFirst()
                 .orElseThrow(() -> new EncounterNotFoundException("Alvo não encontrado"));
         CharacterSheet ts0 = ctx.sheetOf.get(t.getTargetId());
+        if (t.getReaction() != null) throw new CombatConflictException("Este alvo já respondeu");
+        if (ctx.has(t.getTargetId(), VitalService.UNCONSCIOUS)) {
+            // alvo Inconsciente: só um aliado reage no lugar dele, Defendendo ou Contra-atacando
+            List<EncounterParticipant> gs = guardians(ctx.participant(t.getTargetId()), ctx.participant(a.getAttackerId()), ctx);
+            if (reaction == ReactionType.NONE) {
+                if (!master && gs.stream().noneMatch(g -> userId.equals(ownerUserId(ctx.sheetOf.get(g.getId()))))) {
+                    throw new AccessDeniedException("Apenas o Mestre ou o dono de um aliado pode responder");
+                }
+            } else {
+                if (reaction == ReactionType.DODGE) throw new InvalidCombatException("Por um aliado inconsciente só é possível Defender ou Contra-atacar");
+                EncounterParticipant g = gs.stream().filter(x -> x.getId().equals(defenderId)).findFirst()
+                        .orElseThrow(() -> new InvalidCombatException("Escolha um aliado consciente para reagir"));
+                CharacterSheet gsh = ctx.sheetOf.get(g.getId());
+                if (!master && !userId.equals(ownerUserId(gsh))) {
+                    throw new AccessDeniedException("Apenas o Mestre ou o dono do aliado pode reagir por ele");
+                }
+                if (reaction == ReactionType.COUNTER && (ctx.has(g.getId(), STUNNED) || gsh.getCurrentSp() < 1)) {
+                    throw new InvalidCombatException(ctx.has(g.getId(), STUNNED) ? "Atordoado não pode Contra-atacar"
+                            : "Contra-ataque exige 1 SP");
+                }
+                t.setDefenderId(g.getId());
+            }
+            t.setReaction(reaction);
+            t.setRespondedAt(Instant.now());
+            targets.save(t);
+            if (ts.stream().allMatch(x -> x.getReaction() != null)) {
+                resolve(e, a, ts, ctx, userId, master ? ActorRole.MASTER : ActorRole.PLAYER);
+            }
+            return done(e, a, ts, ctx, userId, master);
+        }
         if (!master && !userId.equals(ownerUserId(ts0))) {
             throw new AccessDeniedException("Apenas o dono do alvo ou o Mestre pode reagir");
         }
-        if (t.getReaction() != null) throw new CombatConflictException("Este alvo já respondeu");
         if (reaction == ReactionType.COUNTER && ctx.has(t.getTargetId(), STUNNED)) {
             throw new InvalidCombatException("Atordoado não pode Contra-atacar");
         }
@@ -355,13 +390,27 @@ public class AttackService {
         for (AttackTarget t : ts) {
             EncounterParticipant tp = ctx.ps.get(t.getTargetId());
             CharacterSheet tsh = ctx.sheetOf.get(t.getTargetId());
-            boolean can = a.getStatus() == AttackStatus.AWAITING_REACTIONS && t.getReaction() == null
-                    && tsh != null && (master || userId.equals(ownerUserId(tsh)));
+            boolean open = a.getStatus() == AttackStatus.AWAITING_REACTIONS && t.getReaction() == null && tsh != null;
+            List<AttackResponse.Guardian> guards = null;
+            boolean can;
+            if (open && tp != null && att != null && ctx.has(tp.getId(), VitalService.UNCONSCIOUS)) {
+                guards = guardians(tp, att, ctx).stream()
+                        .filter(g -> master || userId.equals(ownerUserId(ctx.sheetOf.get(g.getId()))))
+                        .map(g -> new AttackResponse.Guardian(g.getId(), g.getName(),
+                                options(a, att, g, ctx.sheetOf.get(g.getId()), ctx).stream()
+                                        .filter(o -> o.reaction() != ReactionType.DODGE).toList()))
+                        .toList();
+                can = !guards.isEmpty();
+            } else {
+                can = open && (master || userId.equals(ownerUserId(tsh)));
+            }
+            EncounterParticipant dp = t.getDefenderId() == null ? null : ctx.ps.get(t.getDefenderId());
             out.add(new TargetResponse(t.getId(), t.getTargetId(), tp == null ? null : tp.getName(), t.getReaction(),
-                    t.isAutoResolved(), can, can ? options(a, att, tp, tsh, ctx) : null,
+                    t.isAutoResolved(), can, can && guards == null ? options(a, att, tp, tsh, ctx) : null,
                     t.getReactionRollId() == null ? null : rolls.message(t.getReactionRollId()), t.getOutcome(),
                     t.getMitigationPct(), t.getDamage(), t.getCounterDamage(), t.getLateCounter(),
-                    t.getLateCounterDamage(), canLateCounter(a, t, ctx, tsh, userId, master)));
+                    t.getLateCounterDamage(), canLateCounter(a, t, ctx, tsh, userId, master),
+                    t.getDefenderId(), dp == null ? null : dp.getName(), guards));
         }
         return new AttackResponse(a.getId(), a.getEncounterId(), a.getAttackerId(), att == null ? null : att.getName(),
                 a.getSourceName(), a.getActionKind(), a.getRegion(), a.getReservedPa(), a.getReservedSp(), a.getStatus(),
@@ -467,19 +516,24 @@ public class AttackService {
             if (!group.contains(att.getId())) group.add(att.getId());
             tp.setAttackersThisRound(group);
 
+            // quem reage: o próprio alvo ou o aliado que o defende (alvo Inconsciente)
+            EncounterParticipant rp = t.getDefenderId() == null ? tp : ctx.participant(t.getDefenderId());
+            CharacterSheet rsh = ctx.sheetOf.get(rp.getId());
+            Matchup mu = rp == tp ? matchups.get(tp.getId()) : guardianMatchup(fa, tech, att, attSheet, rp, rsh);
+            if (rp != tp) log(e, rp.getId(), rp.getName() + " reage no lugar de " + tp.getName());
+
             RollMessage rmsg = null;
-            if (t.getReaction() != ReactionType.NONE && !atk.fumble() && ctx.has(tp.getId(), PARALYZED)
-                    && !vital.willTest(e, tp, tsh, PARALYZED_REACTION_ND, "Paralisado: reagir",
+            if (t.getReaction() != ReactionType.NONE && !atk.fumble() && ctx.has(rp.getId(), PARALYZED)
+                    && !vital.willTest(e, rp, rsh, PARALYZED_REACTION_ND, "Paralisado: reagir",
                             VitalService.Ctx.of(userId, role, "Paralisado"))) {
-                log(e, tp.getId(), tp.getName() + " não consegue reagir (Paralisado)");
+                log(e, rp.getId(), rp.getName() + " não consegue reagir (Paralisado)");
                 t.setReaction(ReactionType.NONE);
             }
             if (t.getReaction() != ReactionType.NONE && !atk.fumble()) {
-                rmsg = reactionRoll(e, a, att, attSheet, tp, tsh, t.getReaction(), group.size(), ctx, matchups.get(tp.getId()),
-                        userId, role);
+                rmsg = reactionRoll(e, a, att, attSheet, rp, rsh, t.getReaction(), group.size(), ctx, mu, userId, role);
                 t.setReactionRollId(rmsg.id());
                 if (t.getReaction() == ReactionType.COUNTER) {
-                    vital.applySp(e, tp, tsh, -1, VitalService.Ctx.of(userId, role, "Contra-ataque"));
+                    vital.applySp(e, rp, rsh, -1, VitalService.Ctx.of(userId, role, "Contra-ataque"));
                 }
             }
             AttackRules.Result r = AttackRules.resolve(t.getReaction(), atk.total(), atk.critical(), atk.fumble(),
@@ -495,13 +549,13 @@ public class AttackService {
                     : AttackRules.damage(atk.damageTotal() == null ? 0 : atk.damageTotal(), r.mitigationPct(), calejo);
             int counter = 0;
             if (r.counterHits()) {
-                RollMessage c = rolls.rollCalc(tsh, e.getCampaignId(), profiles.basic(tsh, BasicAttack.SOCO,
-                        RollProfileService.Opts.NONE), 0, "Contra-ataque: " + tp.getName() + " → " + att.getName(),
+                RollMessage c = rolls.rollCalc(rsh, e.getCampaignId(), profiles.basic(rsh, BasicAttack.SOCO,
+                        RollProfileService.Opts.NONE), 0, "Contra-ataque: " + rp.getName() + " → " + att.getName(),
                         userId, role);
                 int raw = c.damageTotal() == null ? 0 : c.damageTotal();
                 counter = raw <= 0 ? 0 : AttackRules.damage(raw, 0, attackerCalejo);
                 attacksAttacker(e, att, attSheet, counter, new VitalService.Ctx(userId, role,
-                        "Contra-ataque de " + tp.getName(), c.critical()));
+                        "Contra-ataque de " + rp.getName(), c.critical()));
             }
             if (dmg > 0) {
                 vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(atk.critical()));
@@ -516,9 +570,9 @@ public class AttackService {
                 applyEffects(e, a, tech, att, attSheet, tp, tsh, atk, vctx, userId, role);
             }
             switch (r.outcome()) {
-                case DEFENDED -> martial.fire(e, tp, tsh, "DEFEND_SUCCESS", att.getId(), null);
-                case DODGED -> martial.fire(e, tp, tsh, "DODGE_SUCCESS", att.getId(), null);
-                case COUNTERED -> martial.fire(e, tp, tsh, "COUNTER_SUCCESS", att.getId(), null);
+                case DEFENDED -> martial.fire(e, rp, rsh, "DEFEND_SUCCESS", att.getId(), null);
+                case DODGED -> martial.fire(e, rp, rsh, "DODGE_SUCCESS", att.getId(), null);
+                case COUNTERED -> martial.fire(e, rp, rsh, "COUNTER_SUCCESS", att.getId(), null);
                 default -> { }
             }
             t.setOutcome(r.outcome());
@@ -816,6 +870,24 @@ public class AttackService {
             return "ferimento não tratado";
         }
         return null;
+    }
+
+    /**
+     * Aliados que podem reagir por um alvo Inconsciente: mesmo time, outro lutador, não é o atacante, consciente e vivo.
+     * Adjacência não é verificada (sem grade).
+     */
+    private List<EncounterParticipant> guardians(EncounterParticipant tp, EncounterParticipant att, Ctx ctx) {
+        return ctx.ordered.stream()
+                .filter(g -> g.getTeam() == tp.getTeam() && !g.getId().equals(tp.getId())
+                        && (att == null || !g.getId().equals(att.getId()))
+                        && !ctx.hasAny(g.getId(), Set.of(VitalService.UNCONSCIOUS, "MORTO")))
+                .toList();
+    }
+
+    private Matchup guardianMatchup(MartialService.Fighter fa, CharacterTechnique tech, EncounterParticipant att,
+                                    CharacterSheet attSheet, EncounterParticipant gp, CharacterSheet gsh) {
+        MartialService.Fighter fd = martial.fighter(gp, gsh);
+        return new Matchup(fd, interaction(fa, tech, att, attSheet, fd, gp, gsh));
     }
 
     /** Tipo marcial do golpe: arte da técnica, senão a arte principal (escopo dos itens de base, §31). */
