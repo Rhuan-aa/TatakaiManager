@@ -15,6 +15,7 @@ import com.tatakai.manager.entity.FatigueBand;
 import com.tatakai.manager.entity.MartialArt;
 import com.tatakai.manager.entity.Mastery;
 import com.tatakai.manager.entity.MasteryBonus;
+import com.tatakai.manager.entity.MartialType;
 import com.tatakai.manager.entity.MoveKind;
 import com.tatakai.manager.entity.RollMode;
 import com.tatakai.manager.entity.RollPart;
@@ -25,6 +26,7 @@ import com.tatakai.manager.exception.SheetEntryNotFoundException;
 import com.tatakai.manager.repository.CharacterTechniqueRepository;
 import com.tatakai.manager.repository.MartialArtRepository;
 import com.tatakai.manager.service.rules.MartialRules;
+import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.service.rules.RollRules;
 import com.tatakai.manager.service.rules.SheetRules;
 import org.springframework.stereotype.Service;
@@ -44,12 +46,11 @@ public class RollProfileService {
 
     private static final String DICE_MODULE = "Dado Maior";
     private static final String PRECISION_MODULE = "Precisão";
-    private static final String STRIKE_MODULE = "Força do Golpe";
-    private static final String CALEJO_MODULE = "Calejamento";
 
     /** Opções do modo detalhado que mudam o cálculo. */
-    public record Opts(UUID baseId, boolean attackerDowned, String region, Integer regionPenalty) {
-        public static final Opts NONE = new Opts(null, false, null, null);
+    /** `attackType` (tipo marcial do golpe) escolhe os itens de base com escopo ("Precisão +1 em Derrubada"). */
+    public record Opts(UUID baseId, boolean attackerDowned, String region, Integer regionPenalty, MartialType attackType) {
+        public static final Opts NONE = new Opts(null, false, null, null, null);
     }
 
     /** Resultado do cálculo; dice já vem multiplicado por (1+E). */
@@ -89,7 +90,7 @@ public class RollProfileService {
     public Calc forRequest(CharacterSheet sheet, RollTestRequest req) {
         boolean detailed = req.mode() == RollMode.DETAILED;
         Opts o = detailed
-                ? new Opts(req.baseId(), req.attackerDowned(), req.localizedRegion(), req.localizedPenalty())
+                ? new Opts(req.baseId(), req.attackerDowned(), req.localizedRegion(), req.localizedPenalty(), null)
                 : Opts.NONE;
         return switch (req.sourceType()) {
             case TECHNIQUE -> {
@@ -133,19 +134,19 @@ public class RollProfileService {
 
         int degree = qty(items, DICE_MODULE);
         int precision = qty(items, PRECISION_MODULE);
-        BaseNumbers base = base(sheet, t, o.baseId());
+        BaseRules.Profile base = base(sheet, o.baseId());
 
         List<RollPart> hit = new ArrayList<>(attackHit(sheet, o));
         if (precision > 0) hit.add(part("HIT", "Precisão (variação)", precision));
         if (hitBonus > 0) hit.add(part("HIT", "Bonificação HIT", hitBonus));
-        if (base != null && base.precision > 0) hit.add(part("HIT", "Precisão (base: " + base.name + ")", base.precision));
+        hit.addAll(baseHit(base, o));
         hit.addAll(localized(o));
         hit.addAll(fatigueParts(sheet, physical(sheet)));
 
         List<RollPart> damage = new ArrayList<>();
         damage.add(part("DAMAGE", "FOR", RollRules.modOrZero(sheet.getStr())));
         if (damageBonus > 0) damage.add(part("DAMAGE", "Bonificação DAMAGE", 2 * damageBonus));
-        if (base != null && base.strike > 0) damage.add(part("DAMAGE", "Força do Golpe (base: " + base.name + ")", base.strike));
+        damage.addAll(baseDamage(base, o));
 
         RollRules.Dice scale = RollRules.diceScale(degree);
         int e = RollRules.strengthExtra(sheet.getStr(), apex);
@@ -205,16 +206,16 @@ public class RollProfileService {
 
     @Transactional(readOnly = true)
     public Calc basic(CharacterSheet sheet, BasicAttack b, Opts o) {
-        BaseNumbers base = base(sheet, null, o.baseId());
+        BaseRules.Profile base = base(sheet, o.baseId());
         List<RollPart> hit = new ArrayList<>(attackHit(sheet, o));
         if (b.hitPenalty != 0) hit.add(part("HIT", b.label, b.hitPenalty));
-        if (base != null && base.precision > 0) hit.add(part("HIT", "Precisão (base: " + base.name + ")", base.precision));
+        hit.addAll(baseHit(base, o));
         hit.addAll(localized(o));
         hit.addAll(fatigueParts(sheet, physical(sheet)));
         List<RollPart> damage = new ArrayList<>();
         damage.add(part("DAMAGE", "FOR", RollRules.modOrZero(sheet.getStr())));
         if (b.flatDamage != 0) damage.add(part("DAMAGE", b.label, b.flatDamage));
-        if (base != null && base.strike > 0) damage.add(part("DAMAGE", "Força do Golpe (base: " + base.name + ")", base.strike));
+        damage.addAll(baseDamage(base, o));
         int e = RollRules.strengthExtra(sheet.getStr(), false);
         return new Calc(RollSourceType.BASIC_ATTACK, null, b.label, null, b, 0, RollRules.CRIT_MARGIN, 0, hit,
                 new RollRules.Dice(b.count * (1 + e), b.sides), damage);
@@ -263,10 +264,24 @@ public class RollProfileService {
 
     // ---------- helpers ----------
 
-    private record BaseNumbers(String name, int precision, int strike, int calejo) {}
+    /** Parcelas de acerto da base: Precisão e Penalidade do tipo do golpe (§31). */
+    private static List<RollPart> baseHit(BaseRules.Profile base, Opts o) {
+        if (base == null) return List.of();
+        List<RollPart> out = new ArrayList<>();
+        int p = base.precision(o.attackType());
+        if (p != 0) out.add(part("HIT", "Precisão (base: " + base.name() + ")", p));
+        int pen = base.attackPenalty(o.attackType());
+        if (pen != 0) out.add(part("HIT", "Penalidade (base: " + base.name() + ")", pen));
+        return out;
+    }
 
-    /** Base escolhida (ACTIVE, da ficha): números do catálogo; Precisão em Esboço vale metade. */
-    private BaseNumbers base(CharacterSheet sheet, CharacterTechnique technique, UUID baseId) {
+    private static List<RollPart> baseDamage(BaseRules.Profile base, Opts o) {
+        int v = base == null ? 0 : base.strike(o.attackType());
+        return v == 0 ? List.of() : List.of(part("DAMAGE", "Força do Golpe (base: " + base.name() + ")", v));
+    }
+
+    /** Base escolhida (BASE ACTIVE da ficha) com os itens do catálogo; 400 se inválida. */
+    private BaseRules.Profile base(CharacterSheet sheet, UUID baseId) {
         if (baseId == null) return null;
         CharacterTechnique b = techniqueRepository.findById(baseId)
                 .filter(x -> x.getSheet().getId().equals(sheet.getId()) && x.getKind() == MoveKind.BASE
@@ -280,20 +295,24 @@ public class RollProfileService {
                         .map(ArtBase::getItems).orElse(List.of());
             }
         }
-        int precision = RollRules.sketchHalf(qty(items, PRECISION_MODULE), b.getMastery() == Mastery.SKETCH);
-        return new BaseNumbers(b.getName(), precision, qty(items, STRIKE_MODULE),
-                MartialRules.calejo(qty(items, CALEJO_MODULE), b.getMastery() == Mastery.SKETCH));
+        return BaseRules.profile(b.getName(), items, b.getMastery() == Mastery.SKETCH);
     }
 
-    /** Redução de Dano do Calejamento da base ativa (F6d); 0 sem base, base inválida ou sem o módulo. */
+    /** Perfil da base ativa para reações, resistência, Vontade e deslocamento; null sem base ou base inválida. */
+    @Transactional(readOnly = true)
+    public BaseRules.Profile baseProfile(CharacterSheet sheet, UUID baseId) {
+        try {
+            return base(sheet, baseId);
+        } catch (InvalidRollException e) {
+            return null;
+        }
+    }
+
+    /** Redução de Dano do Calejamento da base ativa (valor do rótulo); 0 sem base ou base inválida. */
     @Transactional(readOnly = true)
     public int calejo(CharacterSheet sheet, UUID baseId) {
-        try {
-            BaseNumbers b = base(sheet, null, baseId);
-            return b == null ? 0 : b.calejo;
-        } catch (InvalidRollException e) {
-            return 0;
-        }
+        BaseRules.Profile b = baseProfile(sheet, baseId);
+        return b == null ? 0 : b.calejo();
     }
 
     private ArtTechnique catalog(CharacterSheet sheet, CharacterTechnique t) {

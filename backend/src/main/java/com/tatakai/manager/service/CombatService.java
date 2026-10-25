@@ -50,6 +50,7 @@ import com.tatakai.manager.repository.CombatConditionRepository;
 import com.tatakai.manager.repository.CombatEventRepository;
 import com.tatakai.manager.repository.EncounterParticipantRepository;
 import com.tatakai.manager.repository.EncounterRepository;
+import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.service.rules.CombatRules;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -516,7 +517,8 @@ public class CombatService {
             }
             case MOVE -> {
                 p.setMovesThisTurn(p.getMovesThisTurn() + 1);
-                double d = CombatRules.moveDistance(p.getMovesThisTurn(), s.getDex());
+                BaseRules.Profile base = vital.baseOf(p, s);
+                double d = CombatRules.moveDistance(p.getMovesThisTurn(), s.getDex(), base == null ? 0 : base.moveMeters());
                 text.append(" — Moveu ").append(d == Math.floor(d) ? String.valueOf((int) d) : String.valueOf(d).replace('.', ',')).append(" m");
             }
             case STAND_UP -> {

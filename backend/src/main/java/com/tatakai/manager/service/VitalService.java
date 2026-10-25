@@ -22,6 +22,7 @@ import com.tatakai.manager.repository.EncounterParticipantRepository;
 import com.tatakai.manager.service.RollProfileService.Calc;
 import com.tatakai.manager.service.rules.CombatRules;
 import com.tatakai.manager.service.rules.RollRules;
+import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.service.rules.VitalRules;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,10 +64,12 @@ public class VitalService {
     private final SheetActivityLogService activityLog;
     private final RollService rolls;
     private final ConditionCatalog catalog;
+    private final RollProfileService profiles;
 
     public VitalService(EncounterParticipantRepository participants, CombatConditionRepository conditions,
                         CombatEventRepository timeline, SheetActivityLogService activityLog, RollService rolls,
-                        ConditionCatalog catalog) {
+                        ConditionCatalog catalog, RollProfileService profiles) {
+        this.profiles = profiles;
         this.participants = participants;
         this.conditions = conditions;
         this.timeline = timeline;
@@ -134,6 +137,11 @@ public class VitalService {
 
     // ---------- testes automáticos ----------
 
+    /** Base ativa do participante (§31); null sem base. */
+    public BaseRules.Profile baseOf(EncounterParticipant p, CharacterSheet s) {
+        return p.getActiveBaseId() == null ? null : profiles.baseProfile(s, p.getActiveBaseId());
+    }
+
     /** Teste de Vontade (1d20 + mod. MEN, Fluxo/Muralha/Desgaste) contra `nd`; registra na linha do tempo. */
     public boolean willTest(Encounter e, EncounterParticipant p, CharacterSheet s, int nd, String label, Ctx c) {
         return test(e, p, s, true, nd, label, c);
@@ -146,6 +154,10 @@ public class VitalService {
                 RollRules.modOrZero(mental ? s.getMen() : s.getCon()), null, false));
         int pen = CombatRules.fatiguePenalty(mental ? s.getMentalFatigue() : s.getPhysicalFatigue());
         if (pen > 0) hit.add(new RollPart("HIT", mental ? "Desgaste Mental" : "Desgaste Físico", -pen, null, false));
+        BaseRules.Profile base = mental ? baseOf(p, s) : null;
+        if (base != null && base.calm() != 0) {
+            hit.add(new RollPart("HIT", "Calma (base: " + base.name() + ")", base.calm(), null, false));
+        }
         VitalRules.Tier tier = VitalRules.tier(p.getAdrenaline());
         if (mental && VitalRules.activeHysteria(p.getAdrenaline(), p.getHysteria()) == Hysteria.WALL) {
             hit.add(new RollPart("HIT", "Muralha", 4, null, false));

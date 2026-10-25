@@ -143,7 +143,7 @@ class CombatServiceTest {
         service = new CombatService(encounters, participants, conditions, timeline, sheets, arts, campaignNpcs,
                 members, rolls, activityLog, new ConditionCatalog(), publisher, pendingAttacks,
                 new com.tatakai.manager.service.VitalService(participants, conditions, timeline, activityLog, rolls,
-                        new ConditionCatalog()),
+                        new ConditionCatalog(), org.mockito.Mockito.mock(com.tatakai.manager.service.RollProfileService.class)),
                 new com.tatakai.manager.service.MartialService(arts, martialArts, techniqueRepo, rivals, counterRepo,
                         new com.tatakai.manager.service.ArtCounterCatalog(), timeline));
     }

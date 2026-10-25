@@ -17,7 +17,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-/** Regras puras de interação marcial, especialização, guarda e Calejamento (F6d). Sem Spring, sem aleatoriedade. */
+/** Regras puras de interação marcial, especialização e guarda (F6d). Sem Spring, sem aleatoriedade. */
 public final class MartialRules {
 
     private MartialRules() {
@@ -142,11 +142,6 @@ public final class MartialRules {
     }
 
     // ---------- diversos ----------
-
-    /** Redução de Dano do Calejamento: 2 por ponto; base em Esboço vale metade (floor). */
-    public static int calejo(int qty, boolean sketch) {
-        return RollRules.sketchHalf(2 * Math.max(0, qty), sketch);
-    }
 
     /** Arte principal padrão: maior graduação; empate pela mais antiga. */
     public static CharacterArt defaultMainArt(List<CharacterArt> active) {

@@ -55,6 +55,7 @@ import com.tatakai.manager.service.RollProfileService.Calc;
 import com.tatakai.manager.service.rules.AttackRules;
 import com.tatakai.manager.service.rules.CombatRules;
 import com.tatakai.manager.service.rules.EffectRules;
+import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.entity.AssemblyItem;
 import com.tatakai.manager.entity.Attribute;
 import com.tatakai.manager.service.rules.RollRules;
@@ -386,11 +387,13 @@ public class AttackService {
                 + (incomum(att, ctx.sheetOf.get(att.getId()), tp, tsh, ctx) ? 1 : 0);
         boolean sp = tsh.getCurrentSp() >= 1;
         boolean stunned = ctx.has(tp.getId(), STUNNED);
+        BaseRules.Profile db = profiles.baseProfile(tsh, tp.getActiveBaseId());
+        java.util.function.ToIntFunction<ReactionType> base = r -> db == null ? 0 : db.reaction(r);
         return List.of(
-                new Option(ReactionType.DEFEND, true, null, RollRules.modOrZero(tsh.getCon()) + common),
-                new Option(ReactionType.DODGE, true, null, RollRules.modOrZero(tsh.getDex()) + common),
+                new Option(ReactionType.DEFEND, true, null, RollRules.modOrZero(tsh.getCon()) + common + base.applyAsInt(ReactionType.DEFEND)),
+                new Option(ReactionType.DODGE, true, null, RollRules.modOrZero(tsh.getDex()) + common + base.applyAsInt(ReactionType.DODGE)),
                 new Option(ReactionType.COUNTER, sp && !stunned, stunned ? "Atordoado: sem Contra-ataque" : sp ? null : "SP insuficiente",
-                        RollRules.modOrZero(tsh.getDex()) + common),
+                        RollRules.modOrZero(tsh.getDex()) + common + base.applyAsInt(ReactionType.COUNTER)),
                 new Option(ReactionType.NONE, true, null, 0));
     }
 
@@ -542,7 +545,15 @@ public class AttackService {
                 boolean autoFail = vital.hasCondition(tp, "PARALISADO")
                         && (fx.resist() == Attribute.STR || fx.resist() == Attribute.DEX);
                 if (!autoFail) {
-                    RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), profiles.attribute(tsh, fx.resist()), 0,
+                    Calc rc = profiles.attribute(tsh, fx.resist());
+                    BaseRules.Profile db = EffectRules.ROOTED.contains(label) ? profiles.baseProfile(tsh, tp.getActiveBaseId()) : null;
+                    if (db != null && db.rooted() != 0) {
+                        List<RollPart> hit = new ArrayList<>(rc.hit());
+                        hit.add(new RollPart("HIT", "Enraizado (base: " + db.name() + ")", db.rooted(), null, false));
+                        rc = new Calc(rc.type(), rc.sourceId(), rc.name(), rc.variation(), rc.basic(), rc.spCost(),
+                                rc.critMargin(), rc.advantage(), hit, rc.dice(), rc.damage());
+                    }
+                    RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), rc, 0,
                             "Resistir a " + label + ": " + tp.getName() + " vs " + atk.total(), userId, role);
                     if (EffectRules.resisted(res.total(), atk.total())) {
                         log(e, tp.getId(), tp.getName() + " resistiu a " + label + " (" + res.total() + " vs " + atk.total() + ")");
@@ -655,6 +666,14 @@ public class AttackService {
         if (read > 0) hit.add(new RollPart("HIT", "Leitura de Oponente +" + read, read, null, false));
         if (incomum(att, attSheet, tp, tsh, ctx)) hit.add(new RollPart("HIT", "Vantagem do Incomum +1", 1, null, false));
         int adv = ctx.has(tp.getId(), "DISSOCIADO") ? -1 : 0;
+        BaseRules.Profile db = profiles.baseProfile(tsh, tp.getActiveBaseId());
+        if (db != null) {
+            int g = db.reaction(reaction);
+            if (g != 0) hit.add(new RollPart("HIT", (g > 0 ? "Guarda" : "Penalidade") + " (base: " + db.name() + ")", g, null, false));
+            MartialType at = attackTypeOf(a, att, attSheet);
+            if (db.weakAgainst(at)) adv--;
+            if (db.readsAgainst(at)) adv++;
+        }
         if (!defend && ctx.has(tp.getId(), KNOCKED_DOWN)) adv--;
         if (reaction == ReactionType.DODGE && ctx.has(tp.getId(), DISORIENTED)) adv--;
         if (ctx.has(tp.getId(), STUNNED) || ctx.has(tp.getId(), PARALYZED)) adv--;
@@ -773,9 +792,15 @@ public class AttackService {
                 .orElseThrow(() -> new InvalidCombatException("Técnica não encontrada ou inativa"));
     }
 
+    /** Tipo marcial do golpe: arte da técnica, senão a arte principal (escopo dos itens de base, §31). */
+    private MartialType attackTypeOf(PendingAttack a, EncounterParticipant att, CharacterSheet attSheet) {
+        CharacterTechnique t = a.getSourceType() == RollSourceType.TECHNIQUE ? technique(attSheet, a) : null;
+        return martial.attackType(martial.fighter(att, attSheet), t);
+    }
+
     private Calc calcFor(CharacterSheet s, PendingAttack a, boolean downed, EncounterParticipant att, CharacterSheet attSheet) {
         var o = new RollProfileService.Opts(martial.validBase(attSheet, att.getActiveBaseId()), downed, a.getRegion(),
-                a.getRegionPenalty());
+                a.getRegionPenalty(), attackTypeOf(a, att, attSheet));
         Calc c;
         if (a.getSourceType() == RollSourceType.TECHNIQUE) c = profiles.technique(s, technique(s, a), a.getVariation(), o);
         else {

@@ -89,7 +89,7 @@ class VitalServiceTest {
         });
         lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
                 .thenAnswer(i -> Roll.builder().total(d4).build());
-        vital = new VitalService(participants, conditions, timeline, activityLog, rolls, new ConditionCatalog());
+        vital = new VitalService(participants, conditions, timeline, activityLog, rolls, new ConditionCatalog(), org.mockito.Mockito.mock(com.tatakai.manager.service.RollProfileService.class));
     }
 
     private Optional<CombatCondition> cond(String key) {

@@ -82,6 +82,11 @@ public final class CombatRules {
     }
 
     /** RN-ACAO-03: distância do n-ésimo deslocamento (n >= 1) no turno. */
+    /** Com o ajuste da base (Passada +, Pesada −) em cada Movimentação, mínimo 1,5 m (§31). */
+    public static double moveDistance(int n, int dex, double baseMeters) {
+        return Math.max(MIN_MOVE, moveDistance(n, dex) + baseMeters);
+    }
+
     public static double moveDistance(int n, int dex) {
         double d = Math.max(MIN_MOVE, 4 + SheetRules.modQ(dex));
         for (int i = 2; i <= n; i++) d = Math.max(MIN_MOVE, d / 2);

@@ -1984,3 +1984,27 @@ Empurrar: FOR) e fica num só lugar (`EffectRules`).
   antes da rolagem passa em **Vontade ND 15** (`VitalService.willTest`); falhou → reação vira `NONE`. Reage com
   **desvantagem**; falha automática em testes de FOR/DES (resistência a efeitos); ataques contra ele têm vantagem.
 
+## 31. Base ativa com todos os números (continuação do item 4 do §26, 25/10/2026)
+
+Bug corrigido: o valor dos itens de base era lido da **quantidade**, que nos itens não afins guarda o **custo**
+("Precisão +1 (não afim, 2)" valia +2; "Força do Golpe +3 (não afim, 4)" valia +4), e o Calejamento usava qtd × 2
+("Calejamento 3" virava RD 6; o livro diz RD 3). Agora `service/rules/BaseRules` lê **valor e escopo do rótulo**
+(sem número no rótulo → quantidade). Escopo: `em Defender/Esquiva/Contra-Ataque`, `em/contra Trocação/Derrubada/
+Raspagem`, `fora de …` (ignorado).
+
+| Item de base | Onde entra |
+|---|---|
+| Precisão ±N [em tipo] | acerto do golpe do tipo (genérico sempre); Esboço metade |
+| Força do Golpe +N [em tipo] | dano do golpe do tipo |
+| Penalidade −N em Trocação/… | acerto do golpe daquele tipo |
+| Guarda +N / Penalidade −N em reação | rolagem da reação e `predictedBonus` da tela de reação |
+| Fraqueza / Leitura de Estilo contra tipo | desvantagem / vantagem nas reações contra golpe daquele tipo |
+| Calejamento N | Redução de Dano N (Esboço metade) |
+| Enraizado +N | resistência a Empurrar, Derrubar e Quebrar Base (§30) |
+| Calma +N | Testes de Vontade (`VitalService`) |
+| Passada +1,5 m / Pesada −1,5 m | cada Movimentação (mín. 1,5 m) |
+
+Tipo do golpe: arte da técnica, senão a arte principal (`MartialService.attackType`), passado em
+`RollProfileService.Opts.attackType`; nas rolagens fora do combate (teste da ficha) só os itens genéricos valem.
+Fora: Tração (sem motor de competição de agarre), "Penalidade fora de chutes e joelhadas", módulos únicos (texto).
+

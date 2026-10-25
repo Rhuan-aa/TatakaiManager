@@ -154,12 +154,8 @@ class MartialRulesTest {
     }
 
     @Test
-    @DisplayName("Calejamento: 2 por ponto, Esboço metade; entra depois da % e antes do mínimo 1")
+    @DisplayName("Calejamento (valor em BaseRules): entra depois da % e antes do mínimo 1")
     void calejo() {
-        assertThat(MartialRules.calejo(3, false)).isEqualTo(6);
-        assertThat(MartialRules.calejo(3, true)).isEqualTo(3);
-        assertThat(MartialRules.calejo(1, true)).isEqualTo(1);
-        assertThat(MartialRules.calejo(0, false)).isZero();
         // 20 de dano, defesa 50%: 10 - 6 = 4
         assertThat(AttackRules.damage(20, 50, 6)).isEqualTo(4);
         // a redução nunca leva abaixo de 1 se o golpe conectou

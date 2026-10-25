@@ -212,7 +212,7 @@ class AttackServiceTest {
         service = new AttackService(encounters, participants, conditions, timeline, attackRepo, targetRepo, sheets,
                 techniques, members, rolls, profiles, activityLog, publisher,
                 new com.tatakai.manager.service.VitalService(participants, conditions, timeline, activityLog, rolls,
-                        new com.tatakai.manager.service.ConditionCatalog()), martial);
+                        new com.tatakai.manager.service.ConditionCatalog(), profiles), martial);
     }
 
     // ---------- declarar ----------
@@ -1193,5 +1193,33 @@ class AttackServiceTest {
         pA.setPaCurrent(5);
         assertThatThrownBy(() -> service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId()))
                 .isInstanceOf(InvalidCombatException.class);
+    }
+
+    @Test
+    @DisplayName("§31: base do defensor soma Guarda/Penalidade na reação certa (previsto e rolagem)")
+    void defenderBaseInReactions() {
+        com.tatakai.manager.entity.AssemblyItem g = new com.tatakai.manager.entity.AssemblyItem();
+        g.setModule("Guarda");
+        g.setLabel("Guarda +3 em Defender");
+        com.tatakai.manager.entity.AssemblyItem pen = new com.tatakai.manager.entity.AssemblyItem();
+        pen.setModule("Penalidade");
+        pen.setLabel("Penalidade −2 em Esquiva");
+        pN.setActiveBaseId(UUID.randomUUID());
+        lenient().when(profiles.baseProfile(eq(npcSheet), eq(pN.getActiveBaseId())))
+                .thenReturn(com.tatakai.manager.service.rules.BaseRules.profile("Fudo Dachi", List.of(g, pen), false));
+
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        AttackResponse.TargetResponse t = service.list(enc.getId(), AttackStatus.AWAITING_REACTIONS, master.getId()).stream()
+                .filter(x -> x.id().equals(r.id())).findFirst().get().targets().get(0);
+        int defend = t.options().stream().filter(o -> o.reaction() == ReactionType.DEFEND).findFirst().get().predictedBonus();
+        int dodge = t.options().stream().filter(o -> o.reaction() == ReactionType.DODGE).findFirst().get().predictedBonus();
+        assertThat(defend - (com.tatakai.manager.service.rules.RollRules.modOrZero(npcSheet.getCon()))).isEqualTo(3);
+        assertThat(dodge - (com.tatakai.manager.service.rules.RollRules.modOrZero(npcSheet.getDex()))).isEqualTo(-2);
+
+        queue.add(msg(15, 10, 5));
+        queue.add(msg(18, 15, null));
+        service.respond(r.id(), t.id(), ReactionType.DEFEND, master.getId());
+        assertThat(rollCalcs.get(rollCalcs.size() - 1).hit())
+                .anyMatch(part -> part.source().startsWith("Guarda (base: Fudo Dachi)") && part.value() == 3);
     }
 }

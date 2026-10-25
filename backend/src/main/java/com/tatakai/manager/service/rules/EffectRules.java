@@ -15,6 +15,9 @@ public final class EffectRules {
 
     public static final int ON_DIE_MIN = 17;
 
+    /** Efeitos contra os quais o Enraizado da base ajuda a resistir. */
+    public static final java.util.Set<String> ROOTED = java.util.Set.of("Empurrar", "Derrubar", "Quebrar Base");
+
     /**
      * condition null = sem condição (só registra, ex.: Empurrar sem grade); expiry null = padrão do catálogo.
      * stealsPa: qtd do módulo vira perda de PA no próximo turno. wounds: qtd vira Feridas abertas (sem teste).
