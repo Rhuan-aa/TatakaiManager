@@ -449,7 +449,7 @@ class CombatServiceTest {
     }
 
     @Test
-    @DisplayName("F6d: Trocar base valida (BASE ACTIVE da própria ficha), custa 1 PA, e null sai da base")
+    @DisplayName("F6d: Trocar base valida (BASE ACTIVE da própria ficha), entrar/sair 1 PA, trocar 2 PA")
     void changeBase() {
         EncounterParticipant[] p = started();
         CharacterTechnique ok = base(sheetA, TechniqueState.ACTIVE, MoveKind.BASE);
@@ -459,6 +459,13 @@ class CombatServiceTest {
         baseAct(p[0], null, player.getId());
         assertThat(p[0].getActiveBaseId()).isNull();
         assertThat(p[0].getPaCurrent()).isEqualTo(3);
+        // §26.4: trocar de uma base para outra custa 2 PA
+        CharacterTechnique other2 = base(sheetA, TechniqueState.ACTIVE, MoveKind.BASE);
+        baseAct(p[0], ok.getId(), player.getId());
+        baseAct(p[0], other2.getId(), player.getId());
+        assertThat(p[0].getActiveBaseId()).isEqualTo(other2.getId());
+        assertThat(p[0].getPaCurrent()).isZero();
+        p[0].setPaCurrent(3);
         // inválidas: inexistente, técnica (não base), inativa, de outra ficha
         for (UUID bad : List.of(UUID.randomUUID(), base(sheetA, TechniqueState.ACTIVE, MoveKind.TECHNIQUE).getId(),
                 base(sheetA, TechniqueState.STORED, MoveKind.BASE).getId(),

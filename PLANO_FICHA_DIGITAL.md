@@ -1870,11 +1870,11 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
    golpe acerta (hoje o Mestre aplica à mão via `addCondition`).
 2. **Técnicas de núcleo Reação** — aparecem como opção no pedido de reação (fora da F6d; Malícia/Pânico também).
 3. **Armas e interação armada** — combate com arma, Pólvora, Artesanais (F6d é só desarmado; não há modelo de arma/alcance).
-4. **Base atual com efeito real** — a base ativa precisa somar os bônus dela nas rolagens (Precisão, Força do Golpe e
-   demais itens da montagem) de forma visível no breakdown. Custo: **entrar** numa base = 1 PA, **trocar** de base = 2 PA
-   (hoje `CHANGE_BASE` custa sempre 1). Sair da base: definir no contrato.
-5. **Última luta continua visível** — ao encerrar o encontro, a aba Combate segue mostrando a última luta (estado final,
-   linha do tempo) em vez de voltar para a tela vazia, até o Mestre abrir outra.
+4. ✅ **Base atual com efeito real** — Precisão e Força do Golpe da base ativa entram como parcelas nomeadas no breakdown
+   de técnicas **e** ataques básicos. `CombatRules.baseChangeCost`: **entrar** = 1 PA, **trocar** = 2 PA, **sair** = 1 PA.
+   Outros módulos de base (além de Precisão, Força do Golpe e Calejamento) continuam sem efeito automático (item 1).
+5. ✅ **Última luta continua visível** — a lista vem `createdAt desc` e o painel mantém o encerrado selecionado (prefere
+   um não encerrado, senão o mais recente); cabeçalho "Última luta — encerrada em …" (`EncounterResponse.endedAt`).
 
 ### 26.2 HUD de combate (UX)
 6. **Menu lateral de ações por tipo**, com cor fixa por categoria: **Ação Maior** (vermelho), **Ação Menor** (verde),
@@ -1893,7 +1893,8 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
 11. **Fichas do Mestre (instantâneas)** — o Mestre cria fichas na hora, como quem cria NPC, sem Construção Inicial nem
     aprovação; cada ficha pode ser **visível ou oculta** para os jogadores (reaproveitar o modelo de ficha de NPC e a
     visibilidade por seção, se couber).
-12. **Listagem de membros da campanha** — `GET /campaigns/{cid}/members`; hoje jogador sem ficha não entra em canal de
-    rolagem personalizado e várias telas deduzem membros pelas fichas.
-13. **Impressão dos `<details>` de traços** — ainda saem fechados no PDF.
+12. ✅ **Listagem de membros da campanha** — `GET /campaigns/{cid}/members` (membro; senão 403) → `MemberResponse[]`.
+    O formulário de canal personalizado usa os PLAYERs da campanha (antes: só quem tinha ficha).
+13. ✅ **Impressão dos `<details>`** — `beforeprint`/`afterprint` em `main.jsx` abrem e fecham de volta; o botão
+    "Imprimir / PDF" abre antes e espera 600 ms para os traços carregarem efeitos/variações.
 

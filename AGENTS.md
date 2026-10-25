@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 661 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 714 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -273,7 +273,7 @@ Base: `API_URL` (dev `http://localhost:8080`). Todas exigem Bearer, exceto `/aut
 
 `CampaignResponse = {id, name, description, currentUserRole}` ·
 `MemberResponse = {userId, name, email, role}`.
-**Não existe** `GET /campaigns/{id}` nem listagem de membros.
+`GET /campaigns/{cid}/members` (Membro) → `MemberResponse[]`. **Não existe** `GET /campaigns/{id}`.
 
 **NPCs** — `NpcController` / `NpcService`
 | Método | Rota | Body | Resposta | Regras |
@@ -529,7 +529,7 @@ broadcast: outros clientes só veem ao recarregar o TimeSkip.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 661 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 714 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -870,8 +870,9 @@ reducao)` depois da % e antes do mínimo 1.
 
 ## 25. Próximos itens
 
-Backlog sem contrato em `PLANO_FICHA_DIGITAL.md` §26 (efeitos de módulo automáticos, técnicas de Reação, armas, base
-ativa com bônus e custo entrar 1 PA / trocar 2 PA, última luta visível, HUD de combate por tipo de ação e cor, animações
-de ataque, tela de reação estilizada, rolagem em duas etapas, fichas instantâneas do Mestre, listagem de membros,
-impressão dos `<details>`). Ao implementar um item, escreva o contrato numa seção nova do plano e marque-o aqui.
-
+Backlog em `PLANO_FICHA_DIGITAL.md` §26. **Feitos:** base ativa (bônus no básico e na técnica; entrar/sair 1 PA, trocar
+2 PA — `CombatRules.baseChangeCost`), última luta visível (`EncounterResponse.endedAt`), listagem de membros
+(`GET /campaigns/{cid}/members`), impressão dos `<details>` (`beforeprint` em `main.jsx`). **Pendentes:** efeitos de
+módulo automáticos, técnicas de Reação, armas, HUD de combate por tipo de ação e cor, animações de ataque, tela de reação
+estilizada, rolagem em duas etapas, fichas instantâneas do Mestre. Ao implementar um item, escreva o contrato numa seção
+nova do plano e marque-o aqui.

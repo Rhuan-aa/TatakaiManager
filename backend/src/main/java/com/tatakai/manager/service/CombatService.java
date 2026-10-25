@@ -226,7 +226,7 @@ public class CombatService {
         UUID current = e.getStatus() == EncounterStatus.ACTIVE && e.getCurrentIndex() < ps.size()
                 ? ps.get(e.getCurrentIndex()).getId() : null;
         return new EncounterResponse(e.getId(), e.getCampaignId(), e.getName(), e.getStatus(), e.getRound(),
-                e.getTurnCounter(), current, out, e.getDefaultClassification());
+                e.getTurnCounter(), current, out, e.getDefaultClassification(), e.getEndedAt());
     }
 
     private CounterResponse counterView(CombatCounter c) {
@@ -455,6 +455,9 @@ public class CombatService {
         if (action == CombatAction.CHANGE_GUARD && s.getDominance() == Dominance.AMBIDEXTROUS
                 && p.getGuardChangesThisTurn() == 0) {
             pa = 0; // ambidestro: a 1ª troca de guarda do turno é Ação Livre
+        }
+        if (action == CombatAction.CHANGE_BASE) {
+            pa = CombatRules.baseChangeCost(p.getActiveBaseId() != null, req.baseId() != null);
         }
         int sp = VitalRules.adjustSp(CombatRules.spCost(action, req.spCost()),
                 VitalRules.tier(p.getAdrenaline()), dissociated);

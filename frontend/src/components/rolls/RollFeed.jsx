@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createRollChannel, deleteRollChannel, gmRoll, listCampaignRolls, listRollChannels, revealRoll, updateRollChannel,
 } from '../../api/rolls';
-import { listSheets } from '../../api/characterSheets';
+import { listMembers } from '../../api/campaigns';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 import { useCampaignTopic, useStompDestination } from '../../hooks/useWebSocket';
@@ -48,7 +48,7 @@ function GmRollForm({ campaignId, tab }) {
   );
 }
 
-/** Criar/editar canal: nome + jogadores da campanha (derivados das fichas). */
+/** Criar/editar canal: nome + jogadores da campanha. */
 function ChannelForm({ campaignId, channel, onDone, onCancel }) {
   const toast = useToast();
   const [name, setName] = useState(channel?.name ?? '');
@@ -58,11 +58,8 @@ function ChannelForm({ campaignId, channel, onDone, onCancel }) {
 
   useEffect(() => {
     let active = true;
-    listSheets(campaignId).then((sheets) => {
-      if (!active) return;
-      const m = new Map();
-      sheets.filter((s) => s.ownerUserId && !s.npcId).forEach((s) => m.set(s.ownerUserId, s.ownerName));
-      setPlayers([...m].map(([id, n]) => ({ id, name: n })));
+    listMembers(campaignId).then((members) => {
+      if (active) setPlayers(members.filter((m) => m.role === 'PLAYER').map((m) => ({ id: m.userId, name: m.name })));
     }).catch(() => {});
     return () => { active = false; };
   }, [campaignId]);
@@ -88,7 +85,7 @@ function ChannelForm({ campaignId, channel, onDone, onCancel }) {
       </label>
       <fieldset className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
         <legend className="text-xs uppercase">Jogadores</legend>
-        {players.length === 0 && <span className="caption">Nenhum jogador com ficha.</span>}
+        {players.length === 0 && <span className="caption">Nenhum jogador na campanha.</span>}
         {players.map((p) => (
           <label key={p.id}><input type="checkbox" checked={ids.has(p.id)} onChange={() => toggle(p.id)} /> {p.name}</label>
         ))}

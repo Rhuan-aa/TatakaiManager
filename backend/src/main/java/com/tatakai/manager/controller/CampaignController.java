@@ -35,6 +35,11 @@ public class CampaignController {
         return ResponseEntity.ok(campaignService.listMyCampaigns(AuthenticatedUser.id()));
     }
 
+    @GetMapping("/{campaignId}/members")
+    public ResponseEntity<List<MemberResponse>> members(@PathVariable UUID campaignId) {
+        return ResponseEntity.ok(campaignService.listMembers(campaignId, AuthenticatedUser.id()));
+    }
+
     @PostMapping("/{campaignId}/members")
     public ResponseEntity<MemberResponse> invite(@PathVariable UUID campaignId,
                                                  @Valid @RequestBody InviteMemberRequest request) {

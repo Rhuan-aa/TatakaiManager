@@ -87,6 +87,17 @@ public class CampaignService {
     }
 
     @Transactional(readOnly = true)
+    public List<MemberResponse> listMembers(UUID campaignId, UUID requesterId) {
+        if (!memberRepository.existsByCampaignIdAndUserId(campaignId, requesterId)) {
+            throw new AccessDeniedException("Você não é membro desta campanha");
+        }
+        return memberRepository.findByCampaignId(campaignId).stream()
+                .map(m -> new MemberResponse(m.getUser().getId(), m.getUser().getName(),
+                        m.getUser().getEmail(), m.getRole()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<CampaignResponse> listMyCampaigns(UUID userId) {
         return memberRepository.findByUserId(userId).stream()
                 .map(m -> {

@@ -110,6 +110,11 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
         <>
           <div className="flex flex-wrap items-center gap-2">
             <span className="tag">{STATUS_LABEL[enc.status]}</span>
+            {enc.status === 'ENDED' && (
+              <span className="caption">
+                Última luta{enc.endedAt ? ` — encerrada em ${new Date(enc.endedAt).toLocaleString('pt-BR')}` : ''}, rodada {enc.round}
+              </span>
+            )}
             {enc.status === 'ACTIVE' && <span className="tag">Rodada {enc.round}</span>}
             {isMaster && enc.status === 'SETUP' && (
               <button className="btn-primary" disabled={enc.participants.length === 0}

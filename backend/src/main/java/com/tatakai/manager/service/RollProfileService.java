@@ -189,13 +189,16 @@ public class RollProfileService {
 
     @Transactional(readOnly = true)
     public Calc basic(CharacterSheet sheet, BasicAttack b, Opts o) {
+        BaseNumbers base = base(sheet, null, o.baseId());
         List<RollPart> hit = new ArrayList<>(attackHit(sheet, o));
         if (b.hitPenalty != 0) hit.add(part("HIT", b.label, b.hitPenalty));
+        if (base != null && base.precision > 0) hit.add(part("HIT", "Precisão (base: " + base.name + ")", base.precision));
         hit.addAll(localized(o));
         hit.addAll(fatigueParts(sheet, physical(sheet)));
         List<RollPart> damage = new ArrayList<>();
         damage.add(part("DAMAGE", "FOR", RollRules.modOrZero(sheet.getStr())));
         if (b.flatDamage != 0) damage.add(part("DAMAGE", b.label, b.flatDamage));
+        if (base != null && base.strike > 0) damage.add(part("DAMAGE", "Força do Golpe (base: " + base.name + ")", base.strike));
         int e = RollRules.strengthExtra(sheet.getStr(), false);
         return new Calc(RollSourceType.BASIC_ATTACK, null, b.label, null, b, 0, RollRules.CRIT_MARGIN, 0, hit,
                 new RollRules.Dice(b.count * (1 + e), b.sides), damage);

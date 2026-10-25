@@ -63,6 +63,11 @@ public final class CombatRules {
         };
     }
 
+    /** §26.4: entrar numa base (ou sair dela) = 1 PA; trocar de uma base para outra = 2 PA. */
+    public static int baseChangeCost(boolean hasBase, boolean toBase) {
+        return hasBase && toBase ? 2 : 1;
+    }
+
     /** Ações que gastam SP (padrão 1); as demais ignoram o valor informado. */
     public static int spCost(CombatAction a, Integer requested) {
         return switch (a) {

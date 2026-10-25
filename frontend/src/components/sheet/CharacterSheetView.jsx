@@ -287,7 +287,11 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         <button type="button" className="btn-secondary no-print" onClick={async () => {
           try { await exportSheet(sheet.id, sheet.name); } catch (err) { toast(parseApiError(err).message, 'error'); }
         }}>Exportar JSON</button>
-        <button type="button" className="btn-secondary no-print" onClick={() => window.print()}>Imprimir / PDF</button>
+        <button type="button" className="btn-secondary no-print" onClick={() => {
+          // abre os traços antes para dar tempo de carregar efeitos/variações
+          window.dispatchEvent(new Event('beforeprint'));
+          setTimeout(() => window.print(), 600);
+        }}>Imprimir / PDF</button>
       </div>
       {!isNpc && <p className="caption self-start">Jogador · {sheet.ownerName}</p>}
       <div className="flex flex-wrap gap-2" aria-label="Identidade">

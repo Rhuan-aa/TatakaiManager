@@ -8,6 +8,7 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
   const [target, setTarget] = useState('');
   const [guard, setGuard] = useState('');
   const [base, setBase] = useState('');
+  const basePa = p.activeBaseId && base && base !== '__none' ? 2 : 1;
   const sp = p.resources?.currentSp;
   const dissociated = hasCondition(p, 'DISSOCIADO');
   const exhausted = p.exhausted || hasCondition(p, 'EXAUSTO');
@@ -95,9 +96,10 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
               {p.activeBaseId && <option value="__none">(sair da base)</option>}
               {p.bases.filter((b) => b.id !== p.activeBaseId).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
-            <button type="button" className="btn-secondary px-3 py-1 text-xs" disabled={!base || !canAct || p.paCurrent < 1}
+            <button type="button" className="btn-secondary px-3 py-1 text-xs" disabled={!base || !canAct || p.paCurrent < basePa}
+              title="Entrar ou sair: 1 PA · trocar de base: 2 PA"
               onClick={() => { onAct({ participantId: p.id, action: 'CHANGE_BASE', baseId: base === '__none' ? null : base }); setBase(''); }}>
-              Trocar base · 1 PA
+              {!p.activeBaseId ? 'Entrar na base' : base === '__none' ? 'Sair da base' : 'Trocar base'} · {basePa} PA
             </button>
           </span>
         )}

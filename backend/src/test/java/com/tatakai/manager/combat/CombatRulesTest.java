@@ -58,6 +58,9 @@ class CombatRulesTest {
         assertThat(CombatRules.paCost(CombatAction.STAND_UP, false)).isEqualTo(2);
         assertThat(CombatRules.paCost(CombatAction.SHOVE, false)).isEqualTo(1);
         assertThat(CombatRules.paCost(CombatAction.FREE, false)).isEqualTo(0);
+        assertThat(CombatRules.baseChangeCost(false, true)).isEqualTo(1);  // entrar
+        assertThat(CombatRules.baseChangeCost(true, true)).isEqualTo(2);   // trocar
+        assertThat(CombatRules.baseChangeCost(true, false)).isEqualTo(1);  // sair
         assertThat(CombatRules.spCost(CombatAction.MAJOR, null)).isEqualTo(1);
         assertThat(CombatRules.spCost(CombatAction.MAJOR, 4)).isEqualTo(4);
         assertThat(CombatRules.spCost(CombatAction.MINOR_OFFENSIVE, null)).isEqualTo(1);

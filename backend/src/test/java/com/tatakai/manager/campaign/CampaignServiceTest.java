@@ -170,4 +170,29 @@ class CampaignServiceTest {
                 .containsExactlyInAnyOrder("Aether", "Queda dos Deuses");
         assertThat(result).allSatisfy(c -> assertThat(c.currentUserRole()).isEqualTo(Role.PLAYER));
     }
+
+    @Test
+    @DisplayName("Backlog §26.12: membro lista os membros da campanha")
+    void listMembers_returnsAllMembers() {
+        UUID cid = UUID.randomUUID();
+        Campaign c = Campaign.builder().id(cid).name("Aether").master(master).build();
+        when(memberRepository.existsByCampaignIdAndUserId(cid, player.getId())).thenReturn(true);
+        when(memberRepository.findByCampaignId(cid)).thenReturn(List.of(
+                CampaignMember.builder().campaign(c).user(master).role(Role.MASTER).build(),
+                CampaignMember.builder().campaign(c).user(player).role(Role.PLAYER).build()));
+
+        List<MemberResponse> result = service.listMembers(cid, player.getId());
+
+        assertThat(result).extracting(MemberResponse::role).containsExactly(Role.MASTER, Role.PLAYER);
+    }
+
+    @Test
+    @DisplayName("Backlog §26.12: não membro não lista membros (403)")
+    void listMembers_nonMember_throws() {
+        UUID cid = UUID.randomUUID();
+        when(memberRepository.existsByCampaignIdAndUserId(cid, player.getId())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.listMembers(cid, player.getId()))
+                .isInstanceOf(AccessDeniedException.class);
+    }
 }

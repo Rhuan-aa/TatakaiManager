@@ -20,3 +20,8 @@ export async function inviteMember(campaignId, email) {
   const { data } = await client.post(`/campaigns/${campaignId}/members`, { email });
   return data;
 }
+
+export async function listMembers(campaignId) {
+  const { data } = await client.get(`/campaigns/${campaignId}/members`);
+  return data;
+}
