@@ -368,7 +368,7 @@ derivada do TimeSkip.
 Ordem exata das verificações:
 1. Requester é membro da campanha → senão 403. Guarda o `Role`.
 2. TimeSkip existe e é da campanha → senão 404. Status `ACTIVE` → senão 409.
-3. `TimeSkipDay(tid, dayNumber)` existe → senão 400 "Dia inválido".
+3. `TimeSkipDay(tid, dayNumber)` existe (lido com `SELECT … FOR UPDATE`) → senão 400 "Dia inválido".
 4. `dayNumber >= timeSkip.currentDay` → senão 400 (dia passado).
 5. Monta o booking:
    - **`npcId != null` → com NPC**: `interactionName` obrigatório (400); NPC
@@ -391,8 +391,8 @@ Ordem exata das verificações:
    jogador **pode** ter um booking com NPC e um solo sobrepostos (não há checagem
    cruzada NPC × solo do mesmo jogador).
 8. `save`; `DataIntegrityViolationException` (corrida no unique
-   `(dia, npc, slot inicial)`) → 409. A sobreposição de faixas em concorrência
-   **não** é protegida pelo banco (só o slot inicial).
+   `(dia, npc, slot inicial)`) → 409. A sobreposição de faixas em concorrência é evitada pela trava
+   pessimista na linha do `TimeSkipDay` (passo 3), que serializa as reservas do mesmo dia.
 9. Publica `BOOKED` no tópico da campanha.
 
 Exemplo: NPC com interação de custo 2 agendada no slot 2 ocupa 2 e 3; outro
@@ -608,9 +608,8 @@ no `*ServiceTest` correspondente primeiro.
    Hibernate `update` não remove CHECKs antigos — dropar manualmente.
 4. ~~WebSocket sem autorização por campanha~~ — **corrigido na F0**: `SUBSCRIBE` só
    em `/topic/campaign/{id}/{canal}` para membros; `CONNECT` exige usuário existente.
-5. **Sobreposição de faixas em concorrência** — só o slot inicial é protegido pelo
-   unique do banco; dois requests simultâneos com faixas sobrepostas e slots
-   iniciais diferentes podem passar.
+5. ~~Sobreposição de faixas em concorrência~~ — **corrigido**: `TimeSkipDayRepository.findByTimeSkipIdAndDayNumber`
+   trava a linha do dia (`PESSIMISTIC_WRITE`), então as reservas do mesmo dia são serializadas.
 6. **Mongo fora da transação** — criação/edição de NPC e o cascade de remoção não
    são atômicos entre Mongo e Postgres; NPC órfão no Mongo é filtrado em
    `listForCampaign` (`npcById.containsKey`).
