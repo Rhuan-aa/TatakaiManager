@@ -186,8 +186,9 @@ no `SecurityContext`. Token de usuário apagado → 401 → front força novo lo
 
 `websocket/SlotEventPublisher.java` — `convertAndSend("/topic/campaign/{campaignId}/slots", SlotUpdateMessage)`.
 Publicado por `BookingService.book` (evento `BOOKED`) e `BookingService.cancel`
-(evento `CANCELLED`). Exclusão de TimeSkip, remoção de NPC da campanha e mudança
-de dia **não** publicam evento.
+(evento `CANCELLED`). TimeSkip (criar, encerrar, excluir, dia, local) e NPCs da campanha (associar, remover,
+visibilidade, Agenda, edição, ficha rápida) avisam no canal `/topic/campaign/{id}/campaign` com `{type, id}`
+(`CampaignUpdateMessage` → `CampaignUpdateListener`, após o commit; plano §37).
 
 Payload `SlotUpdateMessage` (JSON):
 ```json
@@ -517,8 +518,8 @@ interação → `POST .../bookings` → backend valida (§4.6) → salva → bro
 `BOOKED` → as outras telas atualizam a célula.
 
 **Mestre avança o tempo**: "avançar dia" → `PATCH /timeskips/{id}/current-day`
-→ dias anteriores ficam somente-leitura (não agenda, não cancela). Não há
-broadcast: outros clientes só veem ao recarregar o TimeSkip.
+→ dias anteriores ficam somente-leitura (não agenda, não cancela). Os outros clientes recebem `TIMESKIP`
+no canal `campaign` e recarregam.
 
 **Log**: jogador escolhe um booking próprio do TimeSkip ativo e escreve →
 `POST /campaigns/{cid}/logs {bookingId, narrative}`. Mestre posta sem booking
@@ -616,8 +617,8 @@ no `*ServiceTest` correspondente primeiro.
 7. **Visibilidade de ficha sem UI de toggle** — a ficha (F1) já respeita
    `SheetSection` (ATTRIBUTES, RESOURCES, INJURIES, INVENTORY), mas ainda não há
    tela para ocultar/exibir seções.
-8. **Sem eventos WS para mudança de dia / exclusão / remoção de NPC** — outros
-   clientes ficam com estado velho até recarregar.
+8. ~~Sem eventos WS para mudança de dia / exclusão / remoção de NPC~~ — **corrigido**: canal `campaign`
+   (`TIMESKIP`/`NPCS`); `TimeSkipPanel` e `CampaignDetail` recarregam (plano §37).
 9. **Caddyfile** tem domínios DuckDNS fixos — ajuste por ambiente.
 11. **CHECK de enum gerado pelo Hibernate** — com `ddl-auto=update`, o Hibernate 6 cria
     `CHECK (col IN (...))` para colunas `@Enumerated(STRING)` ao criar a tabela, e **não

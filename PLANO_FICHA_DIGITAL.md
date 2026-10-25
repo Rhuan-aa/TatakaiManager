@@ -2084,3 +2084,13 @@ chamas). Coluna nova `combat_conditions.progress` (contador; `ddl-auto=update` c
   lugar de B". Adjacência não é verificada (sem grade).
 - Front: a tela de reação mostra "Reagir por B com C" para cada aliado e "Ninguém reage"; o painel de ataques idem.
 
+## 37. Tempo real para TimeSkip e NPCs (problema conhecido §11.8 do AGENTS, 25/10/2026)
+
+- Canal novo `/topic/campaign/{cid}/campaign` (o interceptor já aceita `[a-z-]+`): `CampaignUpdateMessage{campaignId,
+  type, id}` publicado via `ApplicationEventPublisher` e enviado por `CampaignUpdateListener` **após o commit** com
+  `{type, id}`. O cliente refaz o GET.
+- `TIMESKIP`: `TimeSkipService` create, close, delete, setCurrentDay, setVenue. `NPCS`: `NpcService` associate,
+  removeFromCampaign, setVisibility, setBookable, update (avisa cada campanha do NPC) e `CharacterSheetService.createGmSheet`.
+- Front: `TimeSkipPanel` recarrega a lista (mantém a seleção se ainda existir) e `CampaignDetail` recarrega `npcs`
+  (compartilhado por NPCs, Agenda, Combate, Logs, Fichas).
+
