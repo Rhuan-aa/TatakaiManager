@@ -54,6 +54,9 @@ import com.tatakai.manager.repository.PendingAttackRepository;
 import com.tatakai.manager.service.RollProfileService.Calc;
 import com.tatakai.manager.service.rules.AttackRules;
 import com.tatakai.manager.service.rules.CombatRules;
+import com.tatakai.manager.service.rules.EffectRules;
+import com.tatakai.manager.entity.AssemblyItem;
+import com.tatakai.manager.entity.Attribute;
 import com.tatakai.manager.service.rules.RollRules;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -477,6 +480,9 @@ public class AttackService {
                 martial.fire(e, att, attSheet, "HIT", tp.getId(), moveArt);
                 martial.fire(e, tp, tsh, "GOT_HIT", att.getId(), null);
             }
+            if (tech != null && r.outcome() == AttackOutcome.HIT) {
+                applyEffects(e, a, tech, att, attSheet, tp, tsh, atk, vctx, userId, role);
+            }
             switch (r.outcome()) {
                 case DEFENDED -> martial.fire(e, tp, tsh, "DEFEND_SUCCESS", att.getId(), null);
                 case DODGED -> martial.fire(e, tp, tsh, "DODGE_SUCCESS", att.getId(), null);
@@ -494,6 +500,62 @@ public class AttackService {
         a.setResolvedAt(Instant.now());
         a.setResolvedTurn(e.getTurnCounter());
         attacks.save(a);
+    }
+
+    /**
+     * Efeitos de módulo no acerto (§30): "no dado" só com 17+ natural; crítico entra sem teste; senão o alvo resiste
+     * com o atributo do efeito contra o total do ataque. Efeito sem regra automática vira aviso para o Mestre.
+     */
+    private void applyEffects(Encounter e, PendingAttack a, CharacterTechnique tech, EncounterParticipant att,
+                              CharacterSheet attSheet, EncounterParticipant tp, CharacterSheet tsh, RollMessage atk,
+                              VitalService.Ctx vctx, UUID userId, ActorRole role) {
+        for (AssemblyItem it : profiles.effects(attSheet, tech, a.getVariation())) {
+            if (!EffectRules.triggers(it.isOnDie(), atk.naturalD20(), atk.critical())) continue;
+            String label = it.getModule();
+            EffectRules.Effect fx = EffectRules.of(label).orElse(null);
+            if (fx == null) {
+                log(e, tp.getId(), "Efeito " + label + " de " + att.getName() + " em " + tp.getName() + ": aplicar manualmente");
+                continue;
+            }
+            if (fx.resist() != null && !atk.critical()) {
+                boolean autoFail = vital.hasCondition(tp, "PARALISADO")
+                        && (fx.resist() == Attribute.STR || fx.resist() == Attribute.DEX);
+                if (!autoFail) {
+                    RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), profiles.attribute(tsh, fx.resist()), 0,
+                            "Resistir a " + label + ": " + tp.getName() + " vs " + atk.total(), userId, role);
+                    if (EffectRules.resisted(res.total(), atk.total())) {
+                        log(e, tp.getId(), tp.getName() + " resistiu a " + label + " (" + res.total() + " vs " + atk.total() + ")");
+                        continue;
+                    }
+                }
+            }
+            int qty = Math.max(1, it.getQty());
+            if (fx.condition() != null) {
+                String key = EffectRules.escalate(fx.condition(), vital.hasCondition(tp, "MEIO_CEGO"));
+                if (fx.expiry() != null) vital.addCondition(e, tp, key, fx.expiry(), fx.turns(), label);
+                else vital.addCondition(e, tp, key, label);
+                if ((key.equals(KNOCKED_DOWN) || key.equals("QUEBRA_DE_BASE")) && tp.getActiveBaseId() != null) {
+                    tp.setActiveBaseId(null);
+                    log(e, tp.getId(), tp.getName() + " perdeu a base ativa");
+                }
+                if (key.equals(KNOCKED_DOWN) || key.equals("AGARRADO")) {
+                    martial.fire(e, tp, tsh, key.equals(KNOCKED_DOWN) ? "KNOCKED_DOWN" : "GRAPPLED", null, null);
+                }
+            }
+            if (fx.takedown()) {
+                int dmg = EffectRules.takedownDamage(tsh.getWeightKg());
+                log(e, tp.getId(), tp.getName() + " sofre " + dmg + " de dano de Derrubada");
+                vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(false));
+            }
+            if (fx.stealsPa()) {
+                tp.setPaLossNext(tp.getPaLossNext() + qty);
+                log(e, tp.getId(), tp.getName() + " perde " + qty + " PA no próximo turno (" + label + ")");
+            }
+            if (fx.wounds()) vital.openWounds(e, tp, tsh, qty, vctx);
+            if (fx.condition() == null && !fx.stealsPa() && !fx.wounds()) {
+                log(e, tp.getId(), tp.getName() + " sofre " + label + " (posição na cena: Mestre)");
+            }
+        }
     }
 
     /** Parcelas marciais do atacante: especialização (básico), guarda e interação (RN-INT-03, RN-GUA, RN-ATQ-01). */

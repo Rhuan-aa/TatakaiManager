@@ -1062,4 +1062,72 @@ class AttackServiceTest {
         assertThat(cap.getAllValues()).anyMatch(ev -> ev.getType() == CombatEventType.GM
                 && ev.getText().contains("ferimento permanente"));
     }
+
+    // ---------- §30: efeitos de módulo no acerto ----------
+
+    private final List<com.tatakai.manager.entity.AssemblyItem> effectItems = new ArrayList<>();
+
+    private void effect(String module, boolean onDie) {
+        com.tatakai.manager.entity.AssemblyItem it = new com.tatakai.manager.entity.AssemblyItem();
+        it.setModule(module);
+        it.setQty(module.equals("Roubar Tempo") ? 2 : 1);
+        it.setKind(com.tatakai.manager.entity.AssemblyItemKind.EFFECT);
+        it.setOnDie(onDie);
+        effectItems.add(it);
+        lenient().when(profiles.effects(any(), any(), any())).thenAnswer(x -> effectItems);
+        lenient().when(profiles.attribute(any(), any())).thenAnswer(x -> calc(RollSourceType.ATTRIBUTE_TEST, "Teste", 0));
+    }
+
+    private List<String> timelineTexts() {
+        org.mockito.ArgumentCaptor<CombatEvent> cap = org.mockito.ArgumentCaptor.forClass(CombatEvent.class);
+        org.mockito.Mockito.verify(timeline, org.mockito.Mockito.atLeastOnce()).save(cap.capture());
+        return cap.getAllValues().stream().map(CombatEvent::getText).toList();
+    }
+
+    @Test
+    @DisplayName("§30: Derrubar no acerto — alvo falha na resistência (FOR vs total do ataque): Derrubado + dano de Derrubada")
+    void effectTakedown() {
+        effect("Derrubar", false);
+        queue.add(msg(15, 10, 5));
+        queue.add(msg(12, 9, null)); // resistência 12 < 15
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(cList).anyMatch(c -> c.getParticipantId().equals(pN.getId()) && c.getConditionKey().equals("DERRUBADO"));
+        assertThat(npcSheet.getCurrentHp()).isEqualTo(30 - 5 - 1); // golpe + Derrubada (peso 0 → mín. 1)
+    }
+
+    @Test
+    @DisplayName("§30: resistência igual ao ataque evita o efeito; Roubar Tempo tira PA no próximo turno")
+    void effectResistedAndStealPa() {
+        effect("Atordoar", false);
+        effect("Roubar Tempo", false);
+        queue.add(msg(15, 10, 5));
+        queue.add(msg(15, 9, null)); // resiste ao Atordoar (empate)
+        queue.add(msg(3, 2, null));  // falha no Roubar Tempo
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(cList).noneMatch(c -> c.getConditionKey().equals("ATORDOADO"));
+        assertThat(pN.getPaLossNext()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("§30: efeito no dado só com 17+; crítico aplica sem teste; efeito sem regra vira aviso ao Mestre")
+    void effectOnDieCritAndManual() {
+        effect("Atordoar", true);
+        effect("Marcar", false);
+        queue.add(msg(15, 12, 5)); // natural 12: Atordoar no dado não dispara
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(cList).noneMatch(c -> c.getConditionKey().equals("ATORDOADO"));
+        assertThat(timelineTexts()).anyMatch(t -> t.contains("Marcar") && t.contains("manualmente"));
+
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        int before = rollCalcs.size();
+        queue.add(msg(25, 20, 5)); // crítico: sem teste de resistência
+        r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(cList).anyMatch(c -> c.getParticipantId().equals(pN.getId()) && c.getConditionKey().equals("ATORDOADO"));
+        assertThat(rollCalcs.size() - before).isEqualTo(1); // só o ataque
+    }
 }

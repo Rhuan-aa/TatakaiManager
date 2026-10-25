@@ -117,6 +117,12 @@ public class VitalService {
                 p.getName() + ": " + name(key) + (note == null ? "" : " (" + note + ")") + " aplicada");
     }
 
+    /** Aplica com a duração padrão do catálogo (efeitos de módulo, §30). */
+    public void addCondition(Encounter e, EncounterParticipant p, String key, String note) {
+        ConditionExpiry expiry = catalog.find(key).map(ConditionCatalog.Def::defaultExpiresAt).orElse(ConditionExpiry.MANUAL);
+        addCondition(e, p, key, expiry, expiry == ConditionExpiry.COUNTER ? 1 : null, note);
+    }
+
     public void removeCondition(Encounter e, EncounterParticipant p, String key) {
         for (CombatCondition c : conds(p)) {
             if (key.equals(c.getConditionKey())) {
@@ -349,6 +355,15 @@ public class VitalService {
         boolean has = hasCondition(p, DISSOCIATED);
         if (should && !has) addCondition(e, p, DISSOCIATED, ConditionExpiry.MANUAL, null, null);
         else if (!should && has) removeCondition(e, p, DISSOCIATED);
+    }
+
+    /** Abre Feridas (sangramento: −1 HP por Ferida no início de cada turno). */
+    public void openWounds(Encounter e, EncounterParticipant p, CharacterSheet s, int n, Ctx c) {
+        if (n <= 0) return;
+        int before = s.getOpenWounds();
+        s.setOpenWounds(before + n);
+        record(s, c, "COMBAT_WOUND", "openWounds", before, before + n);
+        log(e, p.getId(), CombatEventType.ACTION, p.getName() + ": +" + n + (n == 1 ? " Ferida aberta" : " Feridas abertas"));
     }
 
     public void stanch(Encounter e, EncounterParticipant executor, EncounterParticipant target, CharacterSheet ts, Ctx c) {

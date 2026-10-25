@@ -1866,7 +1866,7 @@ quando `canLateCounter` (escolhe perfil), resultado mostrado no resumo.
 Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas/front) antes de ser implementado.
 
 ### 26.1 Motor de combate
-1. **Efeitos de módulo automáticos no acerto** — Derrubar, Atordoar, Empurrar etc. aplicam a condição sozinhos quando o
+1. ✅ **Efeitos de módulo automáticos no acerto** — Derrubar, Atordoar, Empurrar etc. aplicam a condição sozinhos quando o
    golpe acerta (hoje o Mestre aplica à mão via `addCondition`).
 2. **Técnicas de núcleo Reação** — aparecem como opção no pedido de reação (fora da F6d; Malícia/Pânico também).
 3. **Armas e interação armada** — combate com arma, Pólvora, Artesanais (F6d é só desarmado; não há modelo de arma/alcance).
@@ -1942,4 +1942,37 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
   (`PATCH .../npcs/{nid}/visibility`) e abre a ficha no `NpcSheetPanel` (com os toggles por seção). Jogador vê só
   as visíveis, com as seções liberadas.
 - Depois da criação dá para editar como qualquer NPC (aba NPCs) e colocar no combate (NPC com `sheetId`).
+
+## 30. Efeitos de módulo no acerto (item 1 do §26, 25/10/2026)
+
+Fonte: capítulo de Condições (Regras Gerais: *"quando vier de uma técnica, [o alvo rola] contra o resultado do teste
+da técnica"*), tabela de Condições de Combate e Danos de Peso (Derrubada). O capítulo de Criação Marcial não está no
+repositório: o atributo de resistência de cada efeito foi deduzido das técnicas do livro (Liver Shot: FOR; Khao Loy: CON;
+Empurrar: FOR) e fica num só lugar (`EffectRules`).
+
+- **Quando:** técnica (não ataque básico) com desfecho `HIT` no alvo. Itens `kind = EFFECT` da variação usada + extras
+  (`RollProfileService.effects`). `onDie` ("no dado"): só com d20 natural ≥ 17 ou crítico.
+- **Resistência:** crítico → entra sem teste. Senão o alvo rola `RollProfileService.attribute` (mod. + Desgaste) contra
+  o **total do ataque**; empate resiste. Paralisado falha sozinho em FOR/DES. A rolagem sai no canal público.
+- **Mapa (`service/rules/EffectRules`):**
+
+| Módulo | Resiste | Resultado na falha |
+|---|---|---|
+| Derrubar | FOR | `DERRUBADO` + dano de Derrubada `max(1, 2 + mod. de Peso)` de quem cai; perde a base |
+| Quebrar Base | FOR | `QUEBRA_DE_BASE` (perde a base) |
+| Empurrar | FOR | só registra (sem grade; o Mestre posiciona) |
+| Prender | FOR | `AGARRADO` |
+| Desorientar | CON | `DESORIENTADO` |
+| Expor | DES | `VULNERAVEL` |
+| Atordoar | CON | `ATORDOADO` |
+| Paralisar | CON | `PARALISADO` (contador 1 turno) |
+| Cegar | CON | `MEIO_CEGO`; já Meio-Cego → `CEGO` |
+| Sufocar | CON | `SUFOCANDO` |
+| Roubar Tempo | CON | perde `qtd` PA no próximo turno (`paLossNext`) |
+| Abrir Ferida | — | `qtd` Feridas abertas (`VitalService.openWounds`), sem teste |
+| demais (Interromper, Aleijar, Enfraquecer, Esmagar, Aprofundar Ferida, Marcar) | — | evento "aplicar manualmente" |
+
+- Duração: padrão do `conditions.json` (bate com a tabela do livro). Derrubado/Agarrado disparam os contadores de arte.
+- Fora do escopo: bônus de base "+N para resistir a Empurrar, Derrubar e Quebrar Base" (texto livre no catálogo),
+  Arremesso/Montinho/Impacto (dano por tipo de chão) e Ferimentos Permanentes completos (hoje só o aviso ao Mestre).
 

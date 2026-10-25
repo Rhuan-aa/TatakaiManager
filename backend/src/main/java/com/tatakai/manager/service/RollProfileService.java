@@ -5,6 +5,7 @@ import com.tatakai.manager.dto.response.RollProfileResponse;
 import com.tatakai.manager.entity.ArtBase;
 import com.tatakai.manager.entity.ArtTechnique;
 import com.tatakai.manager.entity.AssemblyItem;
+import com.tatakai.manager.entity.AssemblyItemKind;
 import com.tatakai.manager.entity.AssemblyVariation;
 import com.tatakai.manager.entity.Attribute;
 import com.tatakai.manager.entity.BasicAttack;
@@ -168,6 +169,21 @@ public class RollProfileService {
         }
         if (cat != null && cat.getExtras() != null) items.addAll(cat.getExtras());
         return items.stream().anyMatch(i -> i.getModule() != null && i.getModule().startsWith(prefix));
+    }
+
+    /** Itens de efeito (kind EFFECT) da variação usada + extras, para aplicar no acerto (§30). */
+    @Transactional(readOnly = true)
+    public List<AssemblyItem> effects(CharacterSheet sheet, CharacterTechnique t, String variationName) {
+        ArtTechnique cat = catalog(sheet, t);
+        List<AssemblyVariation> vars = variations(cat);
+        List<AssemblyItem> items = new ArrayList<>();
+        for (AssemblyVariation v : vars) {
+            if (variationName == null ? v == vars.get(0) : variationName.equals(v.getName())) {
+                if (v.getItems() != null) items.addAll(v.getItems());
+            }
+        }
+        if (cat != null && cat.getExtras() != null) items.addAll(cat.getExtras());
+        return items.stream().filter(i -> i.getKind() == AssemblyItemKind.EFFECT).toList();
     }
 
     /** Quantidade de "Impacto na Cabeça" da variação + bonificações POWER (perda de PQ por golpe, F6c). */
