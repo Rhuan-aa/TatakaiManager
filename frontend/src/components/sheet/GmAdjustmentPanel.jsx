@@ -39,7 +39,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
   const [targetId, setTargetId] = useState('');
   const [reason, setReason] = useState('');
   const [injury, setInjury] = useState({ type: 'CUTTING', region: '', severity: 'MINOR', damage: '', affectedAttribute: '' });
-  const [item, setItem] = useState({ name: '', quantity: 1, description: '' });
+  const [item, setItem] = useState({ name: '', quantity: 1, description: '', weightKg: '' });
   const [busy, setBusy] = useState(false);
 
   const [catalog, setCatalog] = useState([]);
@@ -71,7 +71,8 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
         affectedAttribute: injury.affectedAttribute || null,
       };
     }
-    if (cfg.item) body.item = { ...item, quantity: Number(item.quantity), description: item.description || null };
+    if (cfg.item) body.item = { ...item, quantity: Number(item.quantity), description: item.description || null,
+      weightKg: item.weightKg === '' ? null : Number(item.weightKg) };
     setBusy(true);
     try {
       const updated = await gmAdjust(sheet.id, body);
@@ -163,7 +164,12 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
             <input type="number" min={0} required className="field mt-1 w-full" value={item.quantity}
               onChange={(e) => setItem({ ...item, quantity: e.target.value })} />
           </label>
-          <label className="text-xs uppercase sm:col-span-2">
+          <label className="text-xs uppercase">
+            Peso unitário (kg)
+            <input type="number" min={0} max={9999} step="0.1" className="field mt-1 w-full" value={item.weightKg}
+              onChange={(e) => setItem({ ...item, weightKg: e.target.value })} />
+          </label>
+          <label className="text-xs uppercase">
             Descrição
             <input maxLength={2000} className="field mt-1 w-full" value={item.description}
               onChange={(e) => setItem({ ...item, description: e.target.value })} />

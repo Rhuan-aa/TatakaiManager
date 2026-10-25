@@ -437,7 +437,7 @@ public class CharacterSheetService {
             case ADD_ITEM -> {
                 ItemPayload p = requireItem(req);
                 s.getInventory().add(InventoryItem.builder().sheet(s).name(p.name())
-                        .quantity(p.quantity()).description(p.description()).build());
+                        .quantity(p.quantity()).description(p.description()).weightKg(p.weight()).build());
                 return new Change(ActivityCategory.INVENTORY, "item", null, p.name() + " x" + p.quantity());
             }
             case UPDATE_ITEM -> {
@@ -447,6 +447,7 @@ public class CharacterSheetService {
                 item.setName(p.name());
                 item.setQuantity(p.quantity());
                 item.setDescription(p.description());
+                item.setWeightKg(p.weight());
                 return new Change(ActivityCategory.INVENTORY, "item:" + item.getId(), before,
                         p.name() + " x" + p.quantity());
             }
@@ -781,7 +782,9 @@ public class CharacterSheetService {
                     SheetRules.statusLimiter(ResourceType.KP, s.getTal(), s.getBodyType(),
                             adj.getOrDefault("KP", 0)),
                     SheetRules.weightMod(s.getWeightKg()), SheetRules.carryKg(s.getStr()),
-                    criticalState(s, effMax));
+                    criticalState(s, effMax),
+                    SheetRules.carriedKg(s.getInventory()),
+                    SheetRules.loadState(SheetRules.carriedKg(s.getInventory()), SheetRules.carryKg(s.getStr())));
         }
 
         SheetResources resources = null;
@@ -804,7 +807,7 @@ public class CharacterSheetService {
                         i.isTreated(), i.getCreatedAt()))
                 .toList() : null;
         List<InventoryItemResponse> inventory = showInv ? s.getInventory().stream()
-                .map(i -> new InventoryItemResponse(i.getId(), i.getName(), i.getQuantity(), i.getDescription()))
+                .map(i -> new InventoryItemResponse(i.getId(), i.getName(), i.getQuantity(), i.getDescription(), i.getWeightKg()))
                 .toList() : null;
 
         // traços/clãs: ocultos quando a seção TRAITS está oculta; ficha de NPC só para o Mestre

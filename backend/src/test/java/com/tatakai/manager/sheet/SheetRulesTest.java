@@ -207,4 +207,18 @@ class SheetRulesTest {
         assertThat(SheetRules.injuryHp(java.util.List.of(cut, blunt))).isEqualTo(4); // tratado só some se não for cortante
         assertThat(SheetRules.effectiveHpMax(30, java.util.List.of(cut, blunt))).isEqualTo(26);
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("Carga: 3 kg por FOR; até 1×/2×/3× = Livre/Sobrecarregado/Limite; acima Impossível")
+    void load() {
+        var items = java.util.List.of(
+                com.tatakai.manager.entity.InventoryItem.builder().quantity(2).weightKg(10).build(),
+                com.tatakai.manager.entity.InventoryItem.builder().quantity(1).weightKg(5.5).build());
+        assertThat(SheetRules.carriedKg(items)).isEqualTo(25.5);
+        int carry = SheetRules.carryKg(10); // 30 kg
+        assertThat(SheetRules.loadState(30, carry)).isEqualTo(SheetRules.LoadState.FREE);
+        assertThat(SheetRules.loadState(31, carry)).isEqualTo(SheetRules.LoadState.OVERLOADED);
+        assertThat(SheetRules.loadState(90, carry)).isEqualTo(SheetRules.LoadState.LIMIT);
+        assertThat(SheetRules.loadState(91, carry)).isEqualTo(SheetRules.LoadState.IMPOSSIBLE);
+    }
 }

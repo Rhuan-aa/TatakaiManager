@@ -57,7 +57,7 @@ public record SheetExportFile(
             Integer money, List<ItemData> inventory,
             List<InjuryData> injuries) {}
 
-    public record ItemData(String name, int quantity, String description) {}
+    public record ItemData(String name, int quantity, String description, Double weightKg) {}
 
     public record InjuryData(InjuryType type, String region, InjurySeverity severity, int hpMaxReduction,
                              int limiterReduction, Attribute affectedAttribute, boolean treated) {}

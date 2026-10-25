@@ -31,4 +31,8 @@ public class InventoryItem {
 
     @Column(columnDefinition = "text")
     private String description;
+
+    /** Peso unitário em kg (Carga, capítulo de Condições). */
+    @Column(name = "weight_kg", nullable = false, columnDefinition = "double precision default 0")
+    private double weightKg;
 }

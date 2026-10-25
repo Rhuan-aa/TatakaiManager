@@ -2041,3 +2041,17 @@ chamas). Coluna nova `combat_conditions.progress` (contador; `ddl-auto=update` c
   `ConditionCatalog.Def.levels` substitui o antigo `stack: SUM` do Envenenado, e o seletor de condição mostra os níveis.
 - "Apagar chamas" só aparece no menu de ações quando o lutador está Queimando.
 
+## 34. Crítico Garantido e Carga (capítulo de Condições, 25/10/2026)
+
+- **Crítico Garantido:** se o primeiro alvo está **Inconsciente por SP ou PQ** (nota da condição diferente de `HP`), ou se
+  o golpe é **Ataque Localizado** na região de um **ferimento permanente não tratado** (`VitalRules.sameRegion`), o cálculo
+  do ataque sai com `critMargin = 1` (`RollRules.GUARANTEED_CRIT_MARGIN`) e uma parcela nomeada "Crítico Garantido (…)":
+  os dados de dano dobram como em qualquer crítico. O **1 natural continua falha** (`RollRules.critical` ignora o 1).
+  Inconsciente por HP não concede (regra do livro).
+- **Carga:** `inventory_items.weight_kg` (peso unitário, padrão 0; `ItemPayload.weightKg`, exportação/importação).
+  `SheetRules.carriedKg` = Σ quantidade × peso; `loadState`: até a Carga (3 kg × FOR) **Livre**, até 2× **Sobrecarregado**,
+  até 3× **Limite**, acima **Impossível** (`SheetDerived.carriedKg/loadState`). Sobrecarregado ou pior: **Mover ÷2**,
+  **desvantagem** em Esquiva e em testes de DES (resistência a efeitos, Apagar chamas). Ficha mostra "carregado / Carga" e
+  o estado no bloco Inventário; o Mestre informa o peso ao adicionar/atualizar item.
+- Fora: erguer/projetar oponente acima da Carga (desvantagem; depende do agarre) e o bônus de Desproporção.
+

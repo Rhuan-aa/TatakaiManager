@@ -487,7 +487,7 @@ class CharacterSheetServiceTest {
     @DisplayName("ADD_ITEM e REMOVE_ITEM alteram o inventário na categoria INVENTORY")
     void gm_addAndRemoveItem() {
         GmAdjustmentRequest add = new GmAdjustmentRequest(GmAction.ADD_ITEM, null, null, "loot", null,
-                new ItemPayload("Poção", 2, "cura"), null);
+                new ItemPayload("Poção", 2, "cura", null), null);
         service.applyGmAdjustment(sheet.getId(), add, masterUser.getId());
 
         assertThat(sheet.getInventory()).hasSize(1);

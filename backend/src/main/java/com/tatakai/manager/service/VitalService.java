@@ -477,8 +477,9 @@ public class VitalService {
     }
 
     /** Desvantagem do próprio corpo num teste de atributo: Envenenado (CON), Congelando (FOR/DES). */
-    public int conditionAdvantage(EncounterParticipant p, Attribute a) {
+    public int conditionAdvantage(EncounterParticipant p, CharacterSheet s, Attribute a) {
         int adv = 0;
+        if (a == Attribute.DEX && s != null && SheetRules.overloaded(s)) adv--; // Sobrecarregado
         if (a == Attribute.CON && hasCondition(p, POISONED)) adv--;
         if ((a == Attribute.STR || a == Attribute.DEX) && hasCondition(p, FREEZING)) adv--;
         return adv;
@@ -534,7 +535,7 @@ public class VitalService {
         for (CombatCondition k : conds(p)) {
             if (!POISONED.equals(k.getConditionKey()) || hasCondition(p, DEAD)) continue;
             EnvironmentRules.Level l = EnvironmentRules.level(EnvironmentRules.POISON, k.getIntensity());
-            if (!attributeTest(e, p, s, Attribute.CON, l.nd(), "Resistir ao veneno", conditionAdvantage(p, Attribute.CON), c)) continue;
+            if (!attributeTest(e, p, s, Attribute.CON, l.nd(), "Resistir ao veneno", conditionAdvantage(p, s, Attribute.CON), c)) continue;
             int ok = (k.getProgress() == null ? 0 : k.getProgress()) + 1;
             if (ok >= EnvironmentRules.POISON_CURE) removeCondition(e, p, POISONED);
             else {
@@ -549,7 +550,7 @@ public class VitalService {
         CombatCondition k = conds(p).stream().filter(x -> BURNING.equals(x.getConditionKey())).findFirst().orElse(null);
         if (k == null) return;
         EnvironmentRules.Level l = EnvironmentRules.level(EnvironmentRules.BURN, k.getIntensity());
-        if (attributeTest(e, p, s, Attribute.DEX, l.nd(), "Apagar chamas", conditionAdvantage(p, Attribute.DEX), c)) {
+        if (attributeTest(e, p, s, Attribute.DEX, l.nd(), "Apagar chamas", conditionAdvantage(p, s, Attribute.DEX), c)) {
             removeCondition(e, p, BURNING);
         }
     }

@@ -1230,4 +1230,36 @@ class AttackServiceTest {
         assertThat(rollCalcs.get(rollCalcs.size() - 1).hit())
                 .anyMatch(part -> part.source().startsWith("Guarda (base: Fudo Dachi)") && part.value() == 3);
     }
+
+    @Test
+    @DisplayName("Crítico Garantido: alvo inconsciente (não por HP) ou golpe localizado em ferimento não tratado")
+    void guaranteedCrit() {
+        cList.add(CombatCondition.builder().id(UUID.randomUUID()).participantId(pN.getId()).conditionKey("INCONSCIENTE")
+                .note("PQ").expiresAt(ConditionExpiry.COUNTER).turnsRemaining(3).build());
+        queue.add(msg(5, 4, 3));
+        service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        assertThat(rollCalcs.get(rollCalcs.size() - 1).critMargin()).isEqualTo(1);
+        assertThat(rollCalcs.get(rollCalcs.size() - 1).hit()).anyMatch(p -> p.source().contains("alvo inconsciente"));
+
+        // inconsciente por HP não garante
+        cList.get(cList.size() - 1).setNote("HP");
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        queue.add(msg(5, 4, 3));
+        service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        assertThat(rollCalcs.get(rollCalcs.size() - 1).critMargin()).isEqualTo(20);
+
+        // ferimento não tratado no braço + ataque localizado no braço
+        cList.clear();
+        npcSheet.getInjuries().add(PermanentInjury.builder().type(InjuryType.BLUNT).region("Braço esquerdo (Membro Inútil)")
+                .severity(InjurySeverity.MINOR).build());
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        service.declare(enc.getId(), new CreateAttackRequest(pA.getId(), RollSourceType.TECHNIQUE, tech.getId(), null, null,
+                AttackActionKind.MAJOR, List.of(pN.getId()), "braço", -2), player.getId());
+        queue.add(msg(15, 10, 5));
+        AttackResponse r = service.list(enc.getId(), AttackStatus.AWAITING_REACTIONS, master.getId()).get(0);
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(rollCalcs.get(rollCalcs.size() - 1).critMargin()).isEqualTo(1);
+    }
 }

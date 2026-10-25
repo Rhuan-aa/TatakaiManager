@@ -75,6 +75,13 @@ public final class VitalRules {
         return KP_ZERO_BASE_ND + 2 * zeroings;
     }
 
+    /** Ataque Localizado acerta a região de um ferimento ("Braço" casa com "braço esquerdo (Membro Inútil)")? */
+    public static boolean sameRegion(String attackRegion, String injuryRegion) {
+        String a = normalizeRegion(attackRegion);
+        String i = normalizeRegion(injuryRegion);
+        return !a.isEmpty() && !i.isEmpty() && (i.startsWith(a) || a.startsWith(i.replaceAll("\\s*\\(.*\\)$", "")));
+    }
+
     public static String normalizeRegion(String region) {
         if (region == null) return "";
         return Normalizer.normalize(region.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)

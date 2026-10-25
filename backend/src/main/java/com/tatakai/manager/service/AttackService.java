@@ -446,6 +446,13 @@ public class AttackService {
                 + (ctx.has(att.getId(), "DISSOCIADO") ? -1 : 0)
                 + (ctx.has(att.getId(), VitalService.BURNING) ? -1 : 0); // Queimando: desvantagem em precisão
         String targetNames = names(ctx, ts);
+        String sure = guaranteedCrit(a, ctx.participant(ts.get(0).getTargetId()), ctx.sheetOf.get(ts.get(0).getTargetId()));
+        if (sure != null) {
+            List<RollPart> hit = new ArrayList<>(calc.hit());
+            hit.add(new RollPart("HIT", "Crítico Garantido (" + sure + ")", 0, null, false));
+            calc = new Calc(calc.type(), calc.sourceId(), calc.name(), calc.variation(), calc.basic(), calc.spCost(),
+                    RollRules.GUARANTEED_CRIT_MARGIN, calc.advantage(), hit, calc.dice(), calc.damage());
+        }
         RollMessage atk = rolls.rollCalc(attSheet, e.getCampaignId(), calc, adv,
                 "Ataque: " + att.getName() + " → " + targetNames, userId, role);
         a.setAttackRollId(atk.id());
@@ -554,7 +561,7 @@ public class AttackService {
                         rc = new Calc(rc.type(), rc.sourceId(), rc.name(), rc.variation(), rc.basic(), rc.spCost(),
                                 rc.critMargin(), rc.advantage(), hit, rc.dice(), rc.damage());
                     }
-                    RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), rc, vital.conditionAdvantage(tp, fx.resist()),
+                    RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), rc, vital.conditionAdvantage(tp, tsh, fx.resist()),
                             "Resistir a " + label + ": " + tp.getName() + " vs " + atk.total(), userId, role);
                     if (EffectRules.resisted(res.total(), atk.total())) {
                         log(e, tp.getId(), tp.getName() + " resistiu a " + label + " (" + res.total() + " vs " + atk.total() + ")");
@@ -680,6 +687,7 @@ public class AttackService {
         if (ctx.has(tp.getId(), STUNNED) || ctx.has(tp.getId(), PARALYZED)) adv--;
         if (defend && ctx.has(tp.getId(), VitalService.POISONED)) adv--;   // Envenenado: CON
         if (!defend && ctx.has(tp.getId(), VitalService.FREEZING)) adv--;  // Congelando: DES
+        if (reaction == ReactionType.DODGE && SheetRules.overloaded(tsh)) adv--; // Sobrecarregado: Esquiva
         if (mu.inter().label() != null) hit.add(new RollPart("HIT", mu.inter().label(), 0, null, false));
         if (mu.inter().result() == -1) adv++;
         String label = switch (reaction) {
@@ -793,6 +801,21 @@ public class AttackService {
         return techniques.findById(sourceId)
                 .filter(t -> t.getSheet().getId().equals(s.getId()) && t.getState() == TechniqueState.ACTIVE)
                 .orElseThrow(() -> new InvalidCombatException("Técnica não encontrada ou inativa"));
+    }
+
+    /**
+     * Crítico Garantido (capítulo de Condições): alvo Inconsciente que não seja por HP, ou Ataque Localizado na região
+     * de um ferimento permanente não tratado. Vale o primeiro alvo (uma rolagem por ataque). Null = não garantido.
+     */
+    private String guaranteedCrit(PendingAttack a, EncounterParticipant tp, CharacterSheet tsh) {
+        boolean out = conditions.findByParticipantIdIn(List.of(tp.getId())).stream()
+                .anyMatch(c -> VitalService.UNCONSCIOUS.equals(c.getConditionKey()) && !"HP".equals(c.getNote()));
+        if (out) return "alvo inconsciente";
+        if (a.getRegion() != null && tsh != null && tsh.getInjuries().stream()
+                .anyMatch(i -> !i.isTreated() && VitalRules.sameRegion(a.getRegion(), i.getRegion()))) {
+            return "ferimento não tratado";
+        }
+        return null;
     }
 
     /** Tipo marcial do golpe: arte da técnica, senão a arte principal (escopo dos itens de base, §31). */

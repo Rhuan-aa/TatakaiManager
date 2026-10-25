@@ -19,6 +19,15 @@ import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, KEIKEN, lab
 import { RARITY, rarityTagStyle } from '../ui/rarity';
 import RichText from '../ui/RichText';
 
+const kg = (v) => (Math.round((v ?? 0) * 10) / 10).toString().replace('.', ',');
+// Carga (capítulo de Condições): efeitos de cada estado acima da Carga
+const LOAD_LABEL = { OVERLOADED: 'Sobrecarregado', LIMIT: 'Limite', IMPOSSIBLE: 'Impossível' };
+const LOAD_HINT = {
+  OVERLOADED: 'Movimentação pela metade; desvantagem em Destreza e Esquivas.',
+  LIMIT: 'Só pode erguer ou arrastar (Ação Maior + teste de Força).',
+  IMPOSSIBLE: 'O peso não se move.',
+};
+
 const STATUS = { DRAFT: 'Rascunho', PENDING_APPROVAL: 'Aguardando aprovação', COMPLETED: 'Aprovada', IN_BUILD: 'Em construção' };
 const SEVERITY = { MINOR: 'Leve', MODERATE: 'Moderado', SEVERE: 'Grave', LETHAL: 'Letal' };
 
@@ -299,7 +308,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         <IdentityChip icon={<BodyIcon type={sheet.bodyType} />} title="Tipo corporal" value={label(BODY_TYPES, sheet.bodyType)} />
         <IdentityChip icon={ICON.hand} title="Dominância" value={label(DOMINANCES, sheet.dominance)} />
         <IdentityChip icon={ICON.scale} title="Peso" value={`${sheet.weightKg} kg`} />
-        {d && <IdentityChip icon={ICON.pack} title="Carga" value={`${d.carryKg} kg`} />}
+        {d && <IdentityChip icon={ICON.pack} title="Carga" value={`${kg(d.carriedKg)} / ${d.carryKg} kg`} />}
         {p && <IdentityChip icon={ICON.belt} title="Keiken" value={KEIKEN[p.keiken]} color="var(--keiken)" />}
       </div>
 
@@ -431,13 +440,17 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
       <Block title="Inventário" aside={sheet.money != null && (
         <span className="tag" style={{ borderColor: 'var(--chip-el)', color: 'var(--chip-el)' }}>Diárias {sheet.money}</span>
       )}>
+        {d && d.loadState !== 'FREE' && (
+          <p className="mb-2 text-sm"><span className="tag tag-accent">{LOAD_LABEL[d.loadState]}</span> {LOAD_HINT[d.loadState]}</p>
+        )}
         {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : sheet.inventory.length === 0 ? (
           <p className="text-sm">Inventário vazio.</p>
         ) : (
           <ul className="flex flex-col gap-1 text-sm">
             {sheet.inventory.map((i) => (
               <li key={i.id}>
-                {i.quantity}× <strong>{i.name}</strong>{i.description && ` — ${i.description}`}
+                {i.quantity}× <strong>{i.name}</strong>{i.weightKg > 0 && ` · ${kg(i.weightKg * i.quantity)} kg`}
+                {i.description && ` — ${i.description}`}
               </li>
             ))}
           </ul>

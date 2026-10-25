@@ -5,6 +5,8 @@ import com.tatakai.manager.entity.AttributeBand;
 import com.tatakai.manager.entity.BodyType;
 import com.tatakai.manager.entity.FatigueBand;
 import com.tatakai.manager.entity.InjurySeverity;
+import com.tatakai.manager.entity.CharacterSheet;
+import com.tatakai.manager.entity.InventoryItem;
 import com.tatakai.manager.entity.InjuryType;
 import com.tatakai.manager.entity.PermanentInjury;
 import com.tatakai.manager.entity.ResourceType;
@@ -109,6 +111,26 @@ public final class SheetRules {
         if (kg < 125) return 4;
         if (kg < 140) return 5;
         return 5 + (int) Math.floor((kg - 125) / 15);
+    }
+
+    /** Estado de Carga: até a Carga, até 2×, até 3×, acima de 3×. */
+    public enum LoadState { FREE, OVERLOADED, LIMIT, IMPOSSIBLE }
+
+    /** Peso total do inventário (quantidade × peso unitário). */
+    public static double carriedKg(List<InventoryItem> items) {
+        return items == null ? 0 : items.stream().mapToDouble(i -> Math.max(0, i.getQuantity()) * i.getWeightKg()).sum();
+    }
+
+    public static LoadState loadState(double carriedKg, int carryKg) {
+        if (carriedKg <= carryKg) return LoadState.FREE;
+        if (carriedKg <= 2.0 * carryKg) return LoadState.OVERLOADED;
+        if (carriedKg <= 3.0 * carryKg) return LoadState.LIMIT;
+        return LoadState.IMPOSSIBLE;
+    }
+
+    /** Sobrecarregado ou pior: Movimentação pela metade e desvantagem em DES e Esquiva. */
+    public static boolean overloaded(CharacterSheet s) {
+        return loadState(carriedKg(s.getInventory()), carryKg(s.getStr())) != LoadState.FREE;
     }
 
     public static int carryKg(int str) {
