@@ -35,6 +35,23 @@ export function useCampaignTopic(campaignId, channel, onMessage) {
   return clientRef;
 }
 
+/** Assina um destino arbitrário (ex.: /user/queue/gm-rolls). `enabled` falso = não conecta. */
+export function useStompDestination(destination, onMessage, enabled = true) {
+  useEffect(() => {
+    if (!enabled) return;
+    const client = new Client({
+      webSocketFactory: () => new SockJS(WS_URL),
+      connectHeaders: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      onConnect: () => {
+        client.subscribe(destination, (m) => onMessage(JSON.parse(m.body)));
+      },
+      reconnectDelay: 3000,
+    });
+    client.activate();
+    return () => client.deactivate();
+  }, [destination, onMessage, enabled]);
+}
+
 export function useWebSocket(campaignId, onSlotUpdate) {
   return useCampaignTopic(campaignId, 'slots', onSlotUpdate);
 }

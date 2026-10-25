@@ -4,7 +4,8 @@ import com.tatakai.manager.dto.request.*;
 import com.tatakai.manager.dto.response.CharacterSheetResponse;
 import com.tatakai.manager.dto.response.CharacterSheetSummaryResponse;
 import com.tatakai.manager.dto.response.NpcSectionVisibilityResponse;
-import com.tatakai.manager.dto.response.RollResponse;
+import com.tatakai.manager.dto.response.RollMessage;
+import com.tatakai.manager.dto.response.RollProfileResponse;
 import com.tatakai.manager.security.AuthenticatedUser;
 import com.tatakai.manager.service.CharacterSheetService;
 import com.tatakai.manager.service.RollService;
@@ -74,10 +75,22 @@ public class CharacterSheetController {
     }
 
     @PostMapping("/character-sheets/{sheetId}/rolls")
-    public ResponseEntity<RollResponse> roll(@PathVariable UUID sheetId,
-                                             @Valid @RequestBody RollRequest request) {
+    public ResponseEntity<RollMessage> roll(@PathVariable UUID sheetId,
+                                            @Valid @RequestBody RollRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(rollService.roll(sheetId, request, AuthenticatedUser.id()));
+    }
+
+    @GetMapping("/character-sheets/{sheetId}/roll-profiles")
+    public ResponseEntity<List<RollProfileResponse>> rollProfiles(@PathVariable UUID sheetId) {
+        return ResponseEntity.ok(rollService.profiles(sheetId, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/character-sheets/{sheetId}/rolls/test")
+    public ResponseEntity<RollMessage> testRoll(@PathVariable UUID sheetId,
+                                                @Valid @RequestBody RollTestRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(rollService.testRoll(sheetId, request, AuthenticatedUser.id()));
     }
 
     @PostMapping("/npcs/{npcId}/sheet")

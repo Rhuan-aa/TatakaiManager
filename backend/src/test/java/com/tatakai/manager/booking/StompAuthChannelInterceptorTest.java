@@ -134,4 +134,28 @@ class StompAuthChannelInterceptorTest {
                 subscribeMessage(userId, "/topic/campaign/not-a-uuid/slots"), channel))
                 .isInstanceOf(MessagingException.class);
     }
+
+    @Test
+    @DisplayName("SUBSCRIBE em /user/queue/gm-rolls é aceito para usuário autenticado (F5)")
+    void subscribe_gmQueue_isAllowed() {
+        Message<byte[]> msg = subscribeMessage(UUID.randomUUID(), "/user/queue/gm-rolls");
+
+        assertThat(interceptor.preSend(msg, channel)).isSameAs(msg);
+    }
+
+    @Test
+    @DisplayName("SUBSCRIBE em /user/queue/rolls é aceito para usuário autenticado (canais personalizados)")
+    void subscribe_customRollsQueue_isAllowed() {
+        Message<byte[]> msg = subscribeMessage(UUID.randomUUID(), "/user/queue/rolls");
+
+        assertThat(interceptor.preSend(msg, channel)).isSameAs(msg);
+    }
+
+    @Test
+    @DisplayName("SUBSCRIBE em outra fila de usuário é negado")
+    void subscribe_otherQueue_isDenied() {
+        assertThatThrownBy(() -> interceptor.preSend(
+                subscribeMessage(UUID.randomUUID(), "/user/queue/outra"), channel))
+                .isInstanceOf(MessagingException.class);
+    }
 }

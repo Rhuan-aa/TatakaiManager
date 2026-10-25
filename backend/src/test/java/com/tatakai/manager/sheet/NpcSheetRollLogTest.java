@@ -1,7 +1,7 @@
 package com.tatakai.manager.sheet;
 
 import com.tatakai.manager.dto.request.RollRequest;
-import com.tatakai.manager.dto.response.RollResponse;
+import com.tatakai.manager.dto.response.RollMessage;
 import com.tatakai.manager.dto.response.SheetActivityLogResponse;
 import com.tatakai.manager.entity.*;
 import com.tatakai.manager.exception.CharacterSheetNotFoundException;
@@ -60,9 +60,9 @@ class NpcSheetRollLogTest {
     @DisplayName("RollService: dono rola na ficha de NPC com campaignId null e sem publicar evento")
     void roll_npcOwner_noEvent() {
         RollService rolls = new RollService(rollRepository, sheetRepository, memberRepository, userRepository,
-                rollActivityLog, events);
+                rollActivityLog, events, null, null);
 
-        RollResponse r = rolls.roll(sheet.getId(), new RollRequest("1d20", "teste"), owner.getId());
+        RollMessage r = rolls.roll(sheet.getId(), new RollRequest("1d20", "teste"), owner.getId());
 
         assertThat(r.actorName()).isEqualTo("Mestre");
         ArgumentCaptor<Roll> roll = ArgumentCaptor.forClass(Roll.class);
@@ -75,7 +75,7 @@ class NpcSheetRollLogTest {
     @DisplayName("RollService: não-dono em ficha de NPC -> CharacterSheetNotFoundException")
     void roll_npcNonOwner() {
         RollService rolls = new RollService(rollRepository, sheetRepository, memberRepository, userRepository,
-                rollActivityLog, events);
+                rollActivityLog, events, null, null);
         assertThatThrownBy(() -> rolls.roll(sheet.getId(), new RollRequest("1d20", "x"), stranger.getId()))
                 .isInstanceOf(CharacterSheetNotFoundException.class);
         verify(rollRepository, never()).save(any());

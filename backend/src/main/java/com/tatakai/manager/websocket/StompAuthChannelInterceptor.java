@@ -28,6 +28,13 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
     private static final Pattern CAMPAIGN_TOPIC =
             Pattern.compile("^/topic/campaign/([0-9a-fA-F-]{36})/[a-z-]+$");
 
+    private static final String GM_QUEUE = "/user/queue/gm-rolls";
+
+    /** Fila pessoal das rolagens privadas do Mestre (o broker só entrega ao próprio usuário). */
+    private static final String ROLLS_QUEUE = "/user/queue/rolls";
+
+    private static final String GM_ROLLS_QUEUE = "/user/queue/gm-rolls";
+
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final CampaignMemberRepository campaignMemberRepository;
@@ -64,6 +71,9 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
     private void checkSubscription(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
         var user = accessor.getUser();
+        if (user != null && ROLLS_QUEUE.equals(destination)) return;
+        if (user != null && GM_ROLLS_QUEUE.equals(destination)) return;
+        if (user != null && GM_QUEUE.equals(destination)) return; // fila pessoal: o broker entrega só ao próprio usuário
         Matcher m = destination == null ? null : CAMPAIGN_TOPIC.matcher(destination);
         if (user == null || m == null || !m.matches()) {
             throw new MessagingException("Assinatura WebSocket não permitida");

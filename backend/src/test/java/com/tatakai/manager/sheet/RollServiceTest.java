@@ -1,7 +1,7 @@
 package com.tatakai.manager.sheet;
 
 import com.tatakai.manager.dto.request.RollRequest;
-import com.tatakai.manager.dto.response.RollResponse;
+import com.tatakai.manager.dto.response.RollMessage;
 import com.tatakai.manager.dto.response.SheetUpdateMessage;
 import com.tatakai.manager.entity.ActivityCategory;
 import com.tatakai.manager.entity.ActorRole;
@@ -62,7 +62,7 @@ class RollServiceTest {
     @BeforeEach
     void setUp() {
         service = new RollService(rollRepository, sheetRepository, memberRepository, userRepository,
-                activityLog, events);
+                activityLog, events, null, null);
         campaign = Campaign.builder().id(UUID.randomUUID()).build();
         owner = User.builder().id(UUID.randomUUID()).name("Ana").build();
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
@@ -107,7 +107,7 @@ class RollServiceTest {
     @DisplayName("total fica dentro do intervalo possível em muitas rolagens")
     void roll_totalWithinRange() {
         for (int i = 0; i < 300; i++) {
-            RollResponse r = service.roll(sheet.getId(), new RollRequest("2d6+3", "teste"), owner.getId());
+            RollMessage r = service.roll(sheet.getId(), new RollRequest("2d6+3", "teste"), owner.getId());
             assertThat(r.diceResults()).hasSize(2).allMatch(d -> d >= 1 && d <= 6);
             assertThat(r.total()).isBetween(5, 15)
                     .isEqualTo(r.diceResults().stream().mapToInt(Integer::intValue).sum() + 3);
@@ -117,7 +117,7 @@ class RollServiceTest {
     @Test
     @DisplayName("naturalD20 só existe para 1d20 (com ou sem modificador)")
     void roll_naturalD20OnlyForSingleD20() {
-        RollResponse d20 = service.roll(sheet.getId(), new RollRequest("1d20+2", "ataque"), owner.getId());
+        RollMessage d20 = service.roll(sheet.getId(), new RollRequest("1d20+2", "ataque"), owner.getId());
         assertThat(d20.naturalD20()).isNotNull().isBetween(1, 20);
         assertThat(d20.naturalD20()).isEqualTo(d20.diceResults().get(0));
         assertThat(d20.critical()).isEqualTo(d20.naturalD20() == 20);

@@ -7,7 +7,7 @@ import { DICE_REGEX } from './sheetRules';
 const describe = (r) =>
   `[${r.diceResults.join(', ')}]${r.modifier ? ` ${r.modifier > 0 ? '+' : '−'} ${Math.abs(r.modifier)}` : ''}`;
 
-export default function RollBox({ sheetId, onRolled }) {
+export default function RollBox({ sheetId, channel, customChannelId, campaignId, onRolled }) {
   const toast = useToast();
   const [expression, setExpression] = useState('1d20');
   const [purpose, setPurpose] = useState('');
@@ -22,7 +22,7 @@ export default function RollBox({ sheetId, onRolled }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const r = await rollDice(sheetId, { expression: expression.trim(), purpose: purpose.trim() });
+      const r = await rollDice(sheetId, { expression: expression.trim(), purpose: purpose.trim(), channel, customChannelId, campaignId });
       setResult(r);
       setHistory((h) => [r, ...h].slice(0, 10));
       onRolled?.(r);
