@@ -636,7 +636,7 @@ class AttackServiceTest {
     }
 
     @Test
-    @DisplayName("F6c: crítico com dado de dano no máximo gera aviso GM de ferimento permanente")
+    @DisplayName("F6c/§32: crítico com dado de dano no máximo cria ferimento permanente (Rompimento) e avisa o Mestre")
     void permanentInjuryWarning() {
         RollMessage crit = new RollMessage(UUID.randomUUID(), cid, null, null, "x", "y", RollChannel.PUBLIC, RollMode.QUICK,
                 "p", RollSourceType.CUSTOM, null, "s", "f", "f", 0,
@@ -645,6 +645,14 @@ class AttackServiceTest {
         messages.put(crit.id(), crit);
         duel(ReactionType.NONE, crit, null);
         verifyWarn();
+        // §32: Rompimento criado na ficha — 14 de 30 HP (47%) = Moderado, −7 HP máx (metade do dano)
+        assertThat(npcSheet.getInjuries()).singleElement().satisfies(i -> {
+            assertThat(i.getType()).isEqualTo(InjuryType.BLUNT);
+            assertThat(i.getSeverity()).isEqualTo(InjurySeverity.MODERATE);
+            assertThat(i.getHpMaxReduction()).isEqualTo(7);
+            assertThat(i.getLimiterReduction()).isEqualTo(10);
+            assertThat(i.getAffectedAttribute()).isNull(); // não localizado
+        });
     }
 
     // ---------- F6d: interação marcial, guarda, Calejamento, contadores, Contra-Ataque Tardio ----------
@@ -1060,7 +1068,7 @@ class AttackServiceTest {
         org.mockito.ArgumentCaptor<CombatEvent> cap = org.mockito.ArgumentCaptor.forClass(CombatEvent.class);
         org.mockito.Mockito.verify(timeline, org.mockito.Mockito.atLeastOnce()).save(cap.capture());
         assertThat(cap.getAllValues()).anyMatch(ev -> ev.getType() == CombatEventType.GM
-                && ev.getText().contains("ferimento permanente"));
+                && ev.getText().toLowerCase().contains("ferimento permanente"));
     }
 
     // ---------- §30: efeitos de módulo no acerto ----------

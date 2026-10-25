@@ -23,6 +23,10 @@ import com.tatakai.manager.service.RollProfileService.Calc;
 import com.tatakai.manager.service.rules.CombatRules;
 import com.tatakai.manager.service.rules.RollRules;
 import com.tatakai.manager.service.rules.BaseRules;
+import com.tatakai.manager.service.rules.SheetRules;
+import com.tatakai.manager.entity.PermanentInjury;
+import com.tatakai.manager.entity.InjuryType;
+import com.tatakai.manager.entity.InjurySeverity;
 import com.tatakai.manager.service.rules.VitalRules;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -372,6 +376,35 @@ public class VitalService {
         boolean has = hasCondition(p, DISSOCIATED);
         if (should && !has) addCondition(e, p, DISSOCIATED, ConditionExpiry.MANUAL, null, null);
         else if (!should && has) removeCondition(e, p, DISSOCIATED);
+    }
+
+    /**
+     * Ferimento permanente de combate (Rompimento: golpes desarmados são contundentes): crítico com dado de dano no
+     * máximo. Gravidade pela proporção dano / HP máximo; HP máximo cai metade do dano; Limitador do atributo da região
+     * cai conforme a gravidade. O Mestre pode trocar a região ou remover (ajustes da ficha).
+     */
+    public void permanentInjury(Encounter e, EncounterParticipant p, CharacterSheet s, int damage, String region, Ctx c) {
+        int before = SheetRules.effectiveHpMax(s.getHpMax(), s.getInjuries());
+        InjurySeverity sev = SheetRules.injurySeverity(damage, before);
+        String where = region == null || region.isBlank() ? "não localizado" : region.trim();
+        boolean limb = SheetRules.injuryLimb(where);
+        PermanentInjury injury = PermanentInjury.builder()
+                .sheet(s).type(InjuryType.BLUNT).region((where + (limb ? " (Membro Inútil)" : "")))
+                .severity(sev)
+                .hpMaxReduction(SheetRules.injuryHpReduction(sev, InjuryType.BLUNT, s.getHpMax(), damage))
+                .limiterReduction(SheetRules.injuryLimiterReduction(sev))
+                .affectedAttribute(SheetRules.injuryAttribute(where))
+                .build();
+        s.getInjuries().add(injury);
+        int after = SheetRules.effectiveHpMax(s.getHpMax(), s.getInjuries());
+        if (s.getCurrentHp() > after) s.setCurrentHp(after);
+        record(s, c, "COMBAT_INJURY", "effectiveHpMax", before, after);
+        timeline.save(CombatEvent.builder().encounterId(e.getId()).round(e.getRound()).turnCounter(e.getTurnCounter())
+                .participantId(p.getId()).type(CombatEventType.GM)
+                .text("Ferimento permanente em " + p.getName() + ": Rompimento — " + injury.getRegion() + ", "
+                        + sev.name() + " (−" + injury.getHpMaxReduction() + " HP máx."
+                        + (injury.getAffectedAttribute() == null ? "" : ", Limitador de " + injury.getAffectedAttribute()
+                        + " −" + injury.getLimiterReduction()) + ")").build());
     }
 
     /** Abre Feridas (sangramento: −1 HP por Ferida no início de cada turno). */

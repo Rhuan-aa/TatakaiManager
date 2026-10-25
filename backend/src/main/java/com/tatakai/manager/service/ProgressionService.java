@@ -347,11 +347,10 @@ public class ProgressionService {
         Map<String, Integer> out = new HashMap<>();
         for (String t : ProgressionRules.ATTRIBUTE_TARGETS) {
             Attribute a = Attribute.valueOf(t);
-            int injury = s.getInjuries().stream().filter(i -> !i.isTreated() && i.getAffectedAttribute() == a)
-                    .mapToInt(PermanentInjury::getLimiterReduction).sum();
+            int injury = SheetRules.injuryLimiter(s.getInjuries(), a);
             out.put(t, SheetRules.attributeLimiter(a, s.getTal(), s.getBodyType(), injury, adj.getOrDefault(t, 0)));
         }
-        out.put("HP", SheetRules.statusLimiter(ResourceType.HP, s.getTal(), s.getBodyType(), adj.getOrDefault("HP", 0)));
+        out.put("HP", SheetRules.statusLimiter(ResourceType.HP, s.getTal(), s.getBodyType(), adj.getOrDefault("HP", 0) - SheetRules.injuryHp(s.getInjuries())));
         out.put("SP", SheetRules.statusLimiter(ResourceType.SP, s.getTal(), s.getBodyType(), adj.getOrDefault("SP", 0)));
         return out;
     }

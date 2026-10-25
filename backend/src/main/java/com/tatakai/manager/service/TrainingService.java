@@ -226,8 +226,7 @@ public class TrainingService {
     private int consolidateAttribute(CharacterSheet s, Attribute a, int gain) {
         int before = s.getAttribute(a);
         int capped = TrainingRules.barrierCap(before, gain);
-        int injury = s.getInjuries().stream().filter(i -> !i.isTreated() && i.getAffectedAttribute() == a)
-                .mapToInt(PermanentInjury::getLimiterReduction).sum();
+        int injury = SheetRules.injuryLimiter(s.getInjuries(), a);
         int limiter = SheetRules.attributeLimiter(a, s.getTal(), s.getBodyType(), injury,
                 adjustments(s).getOrDefault(a.name(), 0));
         int after = before + beyondLimiter(s, a.name(), before, capped, limiter);
@@ -238,7 +237,8 @@ public class TrainingService {
 
     private int consolidateResource(CharacterSheet s, String key, int gain) {
         ResourceType r = ResourceType.valueOf(key);
-        int limiter = SheetRules.statusLimiter(r, s.getTal(), s.getBodyType(), adjustments(s).getOrDefault(key, 0));
+        int limiter = SheetRules.statusLimiter(r, s.getTal(), s.getBodyType(), adjustments(s).getOrDefault(key, 0)
+                - (r == ResourceType.HP ? SheetRules.injuryHp(s.getInjuries()) : 0));
         int before = switch (r) {
             case HP -> s.getHpMax();
             case SP -> s.getSpMax();

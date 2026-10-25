@@ -768,16 +768,14 @@ public class CharacterSheetService {
                 mods.put(a, SheetRules.mod(v));
                 bands.put(a, SheetRules.band(v));
                 if (a != Attribute.TAL) {
-                    int red = s.getInjuries().stream()
-                            .filter(i -> !i.isTreated() && i.getAffectedAttribute() == a)
-                            .mapToInt(PermanentInjury::getLimiterReduction).sum();
+                    int red = SheetRules.injuryLimiter(s.getInjuries(), a);
                     limiters.put(a, SheetRules.attributeLimiter(a, s.getTal(), s.getBodyType(), red,
                             adj.getOrDefault(a.name(), 0)));
                 }
             }
             derived = new SheetDerived(mods, bands, limiters,
                     SheetRules.statusLimiter(ResourceType.HP, s.getTal(), s.getBodyType(),
-                            adj.getOrDefault("HP", 0)),
+                            adj.getOrDefault("HP", 0) - SheetRules.injuryHp(s.getInjuries())),
                     SheetRules.statusLimiter(ResourceType.SP, s.getTal(), s.getBodyType(),
                             adj.getOrDefault("SP", 0)),
                     SheetRules.statusLimiter(ResourceType.KP, s.getTal(), s.getBodyType(),

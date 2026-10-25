@@ -500,7 +500,7 @@ public class AttackService {
                 int kp = VitalRules.kpLoss(a.getRegion(), headBonus(attSheet, a), 0, atk.critical(),
                         VitalRules.activeHysteria(tp.getAdrenaline(), tp.getHysteria()) == Hysteria.WALL);
                 if (kp > 0) vital.applyKp(e, tp, tsh, -kp, vctx);
-                warnPermanentInjury(e, att, tp, atk, calc);
+                if (permanentInjury(atk, calc)) vital.permanentInjury(e, tp, tsh, dmg, a.getRegion(), vctx);
                 martial.fire(e, att, attSheet, "HIT", tp.getId(), moveArt);
                 martial.fire(e, tp, tsh, "GOT_HIT", att.getId(), null);
             }
@@ -847,17 +847,12 @@ public class AttackService {
     }
 
     /** Sem tipo de dano no modelo: crítico com dado de dano no máximo vira aviso ao Mestre. */
-    private void warnPermanentInjury(Encounter e, EncounterParticipant att, EncounterParticipant tp, RollMessage atk,
-                                     Calc calc) {
-        if (!atk.critical() || calc.dice() == null || atk.breakdown() == null) return;
-        boolean max = atk.breakdown().stream().anyMatch(p -> "DAMAGE".equals(p.part()) && p.dice() != null
-                && !p.source().startsWith("Fúria") && !p.source().startsWith("Guarda") && p.dice().stream().anyMatch(d -> d == calc.dice().sides()));
-        if (max) {
-            timeline.save(CombatEvent.builder().encounterId(e.getId()).round(e.getRound()).turnCounter(e.getTurnCounter())
-                    .participantId(tp.getId()).type(CombatEventType.GM)
-                    .text("Possível ferimento permanente em " + tp.getName() + " (crítico de " + att.getName()
-                            + " com dado de dano no máximo)").build());
-        }
+    /** Ferimento permanente: crítico em que algum dado de dano do golpe tirou o máximo (dados extras não contam). */
+    private static boolean permanentInjury(RollMessage atk, Calc calc) {
+        if (!atk.critical() || calc.dice() == null || atk.breakdown() == null) return false;
+        return atk.breakdown().stream().anyMatch(p -> "DAMAGE".equals(p.part()) && p.dice() != null
+                && !p.source().startsWith("Fúria") && !p.source().startsWith("Guarda")
+                && p.dice().stream().anyMatch(d -> d == calc.dice().sides()));
     }
 
     /**

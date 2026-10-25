@@ -2008,3 +2008,20 @@ Tipo do golpe: arte da técnica, senão a arte principal (`MartialService.attack
 `RollProfileService.Opts.attackType`; nas rolagens fora do combate (teste da ficha) só os itens genéricos valem.
 Fora: Tração (sem motor de competição de agarre), "Penalidade fora de chutes e joelhadas", módulos únicos (texto).
 
+## 32. Ferimentos Permanentes automáticos (capítulo de Condições, 25/10/2026)
+
+- **Gatilho:** acerto crítico em que algum dado de dano do golpe tirou o máximo (dados extras de Fúria/Guarda não contam),
+  com dano > 0. Golpes desarmados são **contundentes** → **Rompimento** (`InjuryType.BLUNT`).
+- **Gravidade** (`SheetRules.injurySeverity`): dano causado / HP máximo efetivo — até 25% Menor, 26–50% Moderado,
+  51–99% Grave, 100%+ Letal. **HP máximo** cai **metade do dano** (Rompimento); **Limitador** do atributo da região cai
+  5/10/15 (Letal: 0). **Região** = a do Ataque Localizado (`PendingAttack.region`), senão "não localizado".
+  `SheetRules.injuryAttribute`: braço/ombro/mão/dedo → FOR; perna/pé → DES; fígado/pâncreas/genitália → CON;
+  nariz/orelha → CAR; membro → região marcada "(Membro Inútil)". Pulmão (Limitador de SP) não modelado.
+- **Duração** (`SheetRules.injuryActive`): Desmembramento (cortante) é permanente mesmo tratado; Perfuração e Rompimento
+  deixam de reduzir quando tratados (`TREAT_INJURY`). Vale para HP máximo efetivo, Limitador do atributo e **Limitador
+  de HP** (agora também reduzido pela soma do HP máximo perdido).
+- `VitalService.permanentInjury` grava o ferimento na ficha, ajusta o HP atual ao novo máximo, registra no log da ficha
+  e publica evento GM na linha do tempo. O Mestre corrige/remove pelos ajustes da ficha (`REMOVE_INJURY`).
+- Fora: Crítico Garantido contra ferimento não tratado, 2 meses de recuperação do Membro Inútil (o Mestre trata),
+  ferimentos cortantes/perfurantes (dependem de armas).
+

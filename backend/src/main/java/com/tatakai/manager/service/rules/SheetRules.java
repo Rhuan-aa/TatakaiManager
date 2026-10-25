@@ -115,10 +115,52 @@ public final class SheetRules {
         return 3 * str;
     }
 
-    /** HP máximo efetivo: hpMax menos as reduções dos ferimentos, nunca abaixo de 1. */
+    /** HP máximo efetivo: hpMax menos as reduções dos ferimentos ativos, nunca abaixo de 1. */
     public static int effectiveHpMax(int hpMax, List<PermanentInjury> injuries) {
-        int sum = injuries.stream().mapToInt(PermanentInjury::getHpMaxReduction).sum();
-        return Math.max(1, hpMax - sum);
+        return Math.max(1, hpMax - injuryHp(injuries));
+    }
+
+    /** Ferimento ainda reduz? Desmembramento (cortante) é permanente; Perfuração e Rompimento, até o tratamento. */
+    public static boolean injuryActive(PermanentInjury i) {
+        return i.getType() == InjuryType.CUTTING || !i.isTreated();
+    }
+
+    /** Soma das reduções de HP máximo dos ferimentos ativos (também reduz o Limitador de HP). */
+    public static int injuryHp(List<PermanentInjury> injuries) {
+        return injuries.stream().filter(SheetRules::injuryActive).mapToInt(PermanentInjury::getHpMaxReduction).sum();
+    }
+
+    /** Redução do Limitador do atributo pelos ferimentos ativos da região ligada a ele. */
+    public static int injuryLimiter(List<PermanentInjury> injuries, Attribute a) {
+        return injuries.stream().filter(i -> injuryActive(i) && i.getAffectedAttribute() == a)
+                .mapToInt(PermanentInjury::getLimiterReduction).sum();
+    }
+
+    /** Gravidade pela proporção dano / HP máximo: até 25%, 26–50%, 51–99%, 100%+. */
+    public static InjurySeverity injurySeverity(int damage, int hpMax) {
+        long pct = hpMax <= 0 ? 100 : Math.round(damage * 100.0 / hpMax);
+        if (pct >= 100) return InjurySeverity.LETHAL;
+        if (pct > 50) return InjurySeverity.SEVERE;
+        if (pct > 25) return InjurySeverity.MODERATE;
+        return InjurySeverity.MINOR;
+    }
+
+    /** Atributo cujo Limitador cai com ferimento na região (tabela do livro); null = nenhum modelado (ex.: pulmão). */
+    public static Attribute injuryAttribute(String region) {
+        if (region == null) return null;
+        String r = java.text.Normalizer.normalize(region.toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        if (r.matches(".*\\b(braco|ombro|mao|dedo|antebraco|cotovelo|punho)\\b.*")) return Attribute.STR;
+        if (r.matches(".*\\b(perna|pe|joelho|coxa|canela|tornozelo)\\b.*")) return Attribute.DEX;
+        if (r.matches(".*\\b(figado|pancreas|genitalia|rim|costela)\\b.*")) return Attribute.CON;
+        if (r.matches(".*\\b(nariz|orelha)\\b.*")) return Attribute.CHA;
+        return null;
+    }
+
+    /** Região é um membro (Rompimento deixa o membro Inútil)? */
+    public static boolean injuryLimb(String region) {
+        Attribute a = injuryAttribute(region);
+        return a == Attribute.STR || a == Attribute.DEX;
     }
 
     public static boolean criticalState(int currentHp, int effectiveHpMax, int... attributes) {
