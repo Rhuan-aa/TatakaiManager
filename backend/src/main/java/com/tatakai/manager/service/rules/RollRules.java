@@ -21,8 +21,6 @@ public final class RollRules {
             new Dice(2, 6), new Dice(2, 8), new Dice(2, 10), new Dice(2, 12)};
 
     public static final int CRIT_MARGIN = 20;
-    /** Margem que torna qualquer d20 crítico (Crítico Garantido); o 1 natural continua falha crítica. */
-    public static final int GUARANTEED_CRIT_MARGIN = 1;
 
     public static int clampAdvantage(int n) {
         return Math.max(-3, Math.min(3, n));

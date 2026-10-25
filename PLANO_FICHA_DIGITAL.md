@@ -2043,11 +2043,13 @@ chamas). Coluna nova `combat_conditions.progress` (contador; `ddl-auto=update` c
 
 ## 34. Crítico Garantido e Carga (capítulo de Condições, 25/10/2026)
 
-- **Crítico Garantido:** se o primeiro alvo está **Inconsciente por SP ou PQ** (nota da condição diferente de `HP`), ou se
-  o golpe é **Ataque Localizado** na região de um **ferimento permanente não tratado** (`VitalRules.sameRegion`), o cálculo
-  do ataque sai com `critMargin = 1` (`RollRules.GUARANTEED_CRIT_MARGIN`) e uma parcela nomeada "Crítico Garantido (…)":
-  os dados de dano dobram como em qualquer crítico. O **1 natural continua falha** (`RollRules.critical` ignora o 1).
-  Inconsciente por HP não concede (regra do livro).
+- **Crítico Garantido** (corrigido em 25/10/2026 pela regra da mesa): é **dano crítico no alvo**, não acerto crítico — a
+  rolagem de ataque não muda (desfecho, efeitos e crítico contra quem reage seguem o d20 real). Quando o golpe **conecta**
+  (não errou nem foi esquivado) e o ataque não foi crítico de verdade, rolam-se **de novo os dados de dano** do golpe
+  (`rollInternal`, ex.: `1d6`) e somam-se ao dano **daquele alvo** antes da mitigação: (a) alvo **Inconsciente por SP ou
+  PQ** e **ninguém reagiu** por ele (`reaction = NONE`; se um aliado reagiu, não há); (b) **Ataque Localizado** na região de
+  um **ferimento permanente não tratado** (`VitalRules.sameRegion`). Inconsciente por HP não concede. Linha do tempo:
+  "Crítico Garantido em X (motivo): +N de dano". O 1 natural nunca é crítico (`RollRules.critical`).
 - **Carga:** `inventory_items.weight_kg` (peso unitário, padrão 0; `ItemPayload.weightKg`, exportação/importação).
   `SheetRules.carriedKg` = Σ quantidade × peso; `loadState`: até a Carga (3 kg × FOR) **Livre**, até 2× **Sobrecarregado**,
   até 3× **Limite**, acima **Impossível** (`SheetDerived.carriedKg/loadState`). Sobrecarregado ou pior: **Mover ÷2**,
@@ -2077,7 +2079,7 @@ chamas). Coluna nova `combat_conditions.progress` (contador; `ddl-auto=update` c
   válido (400) e ser o Mestre ou o dono dele (403); DODGE → 400; NONE ("ninguém reage") vale para o Mestre ou o dono de
   qualquer aliado. `attack_targets.defender_id` guarda quem reagiu (`defenderName` na resposta).
 - Resolução: a rolagem, a interação marcial, o Paralisado (Vontade), o SP do Contra-ataque e o Soco do contra-dano são
-  do **aliado**; o dano, a mitigação, os efeitos e o Crítico Garantido continuam no **alvo**. Linha do tempo: "C reage no
+  do **aliado**; o dano, a mitigação e os efeitos continuam no **alvo**; com aliado reagindo **não** há Crítico Garantido (§34). Linha do tempo: "C reage no
   lugar de B". Adjacência não é verificada (sem grade).
 - Front: a tela de reação mostra "Reagir por B com C" para cada aliado e "Ninguém reage"; o painel de ataques idem.
 

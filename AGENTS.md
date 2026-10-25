@@ -883,7 +883,7 @@ Contra; Paralisado não age e só reage após Vontade ND 15, com desvantagem (pl
 de cada item lidos do rótulo (`BaseRules`) em acerto, dano, reações, Calejamento, Enraizado, Calma e Movimentação (§31). Ferimento
 Permanente (Rompimento) criado sozinho no crítico com dado máximo; Limitador de HP e duração por tipo (§32).
 Condições de ambiente (Queimando, Congelando, Envenenado, Sufocando) processadas por turno (`EnvironmentRules`, §33).
-Crítico Garantido (inconsciente por SP/PQ, ferimento não tratado) e Carga por peso do inventário (§34).
+Crítico Garantido = dano crítico no alvo (inconsciente por SP/PQ sem reação, ferimento não tratado) e Carga por peso do inventário (§34).
 Estabilizar aliado À Beira da Morte e Sequela de Nocaute (regra opcional) (§35). Aliado consciente
 Defende/Contra-ataca no lugar de alvo Inconsciente (`guardians`, `defenderId`, §36). **Pendentes:** técnicas
 de Reação, armas, Tração (competição de agarre). Ao implementar um item, escreva o contrato numa seção

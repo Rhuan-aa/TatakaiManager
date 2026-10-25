@@ -1232,38 +1232,41 @@ class AttackServiceTest {
     }
 
     @Test
-    @DisplayName("Crítico Garantido: alvo inconsciente (não por HP) ou golpe localizado em ferimento não tratado")
+    @DisplayName("Crítico Garantido = dano crítico no alvo (dados de dano de novo), não acerto crítico")
     void guaranteedCrit() {
         pA.setTeam(1);
         pB.setTeam(1);
-        pN.setTeam(2); // NPC sozinho no time: sem aliado para reagir por ele
+        pN.setTeam(2); // NPC sozinho no time: ninguém reage por ele
+        lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
+                .thenAnswer(x -> Roll.builder().total(4).build());
         cList.add(CombatCondition.builder().id(UUID.randomUUID()).participantId(pN.getId()).conditionKey("INCONSCIENTE")
                 .note("PQ").expiresAt(ConditionExpiry.COUNTER).turnsRemaining(3).build());
-        queue.add(msg(5, 4, 3));
-        service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
-        assertThat(rollCalcs.get(rollCalcs.size() - 1).critMargin()).isEqualTo(1);
-        assertThat(rollCalcs.get(rollCalcs.size() - 1).hit()).anyMatch(p -> p.source().contains("alvo inconsciente"));
+        queue.add(msg(15, 10, 3));
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        assertThat(rollCalcs.get(rollCalcs.size() - 1).critMargin()).isEqualTo(20); // o acerto não muda
+        assertThat(r.targets().get(0).damage()).isEqualTo(3 + 4);                  // 1d6 extra no mock = 4
+        org.mockito.Mockito.verify(rolls).rollInternal(any(), org.mockito.ArgumentMatchers.eq("1d6"), anyString(), any(), any());
 
         // inconsciente por HP não garante
         cList.get(cList.size() - 1).setNote("HP");
         pA.setPaCurrent(5);
         sheetA.setCurrentSp(10);
-        queue.add(msg(5, 4, 3));
-        service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
-        assertThat(rollCalcs.get(rollCalcs.size() - 1).critMargin()).isEqualTo(20);
+        queue.add(msg(15, 10, 3));
+        r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        assertThat(r.targets().get(0).damage()).isEqualTo(3);
 
-        // ferimento não tratado no braço + ataque localizado no braço
+        // ferimento não tratado no braço + ataque localizado no braço: dano crítico mesmo com reação (se conectar)
         cList.clear();
         npcSheet.getInjuries().add(PermanentInjury.builder().type(InjuryType.BLUNT).region("Braço esquerdo (Membro Inútil)")
                 .severity(InjurySeverity.MINOR).build());
         pA.setPaCurrent(5);
         sheetA.setCurrentSp(10);
-        service.declare(enc.getId(), new CreateAttackRequest(pA.getId(), RollSourceType.TECHNIQUE, tech.getId(), null, null,
+        r = service.declare(enc.getId(), new CreateAttackRequest(pA.getId(), RollSourceType.TECHNIQUE, tech.getId(), null, null,
                 AttackActionKind.MAJOR, List.of(pN.getId()), "braço", -2), player.getId());
         queue.add(msg(15, 10, 5));
-        AttackResponse r = service.list(enc.getId(), AttackStatus.AWAITING_REACTIONS, master.getId()).get(0);
-        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
-        assertThat(rollCalcs.get(rollCalcs.size() - 1).critMargin()).isEqualTo(1);
+        AttackResponse.TargetResponse t = service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId())
+                .targets().get(0);
+        assertThat(t.damage()).isEqualTo(5 + 4);
     }
 
     @Test
@@ -1288,7 +1291,7 @@ class AttackServiceTest {
         assertThatThrownBy(() -> service.respond(r.id(), t.id(), ReactionType.DEFEND, null, master.getId()))
                 .isInstanceOf(InvalidCombatException.class);
 
-        queue.add(msg(15, 10, 10));  // ataque (Crítico Garantido: inconsciente por SP, mas natural 10 sem dano extra no mock)
+        queue.add(msg(15, 10, 10));  // ataque; aliado reagiu, então não há Crítico Garantido
         queue.add(msg(20, 15, null)); // Defender do NPC: 20 - 15 = 5 -> 75%
         AttackResponse.TargetResponse done = service.respond(r.id(), t.id(), ReactionType.DEFEND, pN.getId(), master.getId())
                 .targets().get(0);

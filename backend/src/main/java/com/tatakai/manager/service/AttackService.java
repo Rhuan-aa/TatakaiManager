@@ -58,6 +58,7 @@ import com.tatakai.manager.service.rules.EffectRules;
 import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.entity.AssemblyItem;
 import com.tatakai.manager.entity.Attribute;
+import com.tatakai.manager.entity.Roll;
 import com.tatakai.manager.service.rules.RollRules;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -495,13 +496,6 @@ public class AttackService {
                 + (ctx.has(att.getId(), "DISSOCIADO") ? -1 : 0)
                 + (ctx.has(att.getId(), VitalService.BURNING) ? -1 : 0); // Queimando: desvantagem em precisão
         String targetNames = names(ctx, ts);
-        String sure = guaranteedCrit(a, ctx.participant(ts.get(0).getTargetId()), ctx.sheetOf.get(ts.get(0).getTargetId()));
-        if (sure != null) {
-            List<RollPart> hit = new ArrayList<>(calc.hit());
-            hit.add(new RollPart("HIT", "Crítico Garantido (" + sure + ")", 0, null, false));
-            calc = new Calc(calc.type(), calc.sourceId(), calc.name(), calc.variation(), calc.basic(), calc.spCost(),
-                    RollRules.GUARANTEED_CRIT_MARGIN, calc.advantage(), hit, calc.dice(), calc.damage());
-        }
         RollMessage atk = rolls.rollCalc(attSheet, e.getCampaignId(), calc, adv,
                 "Ataque: " + att.getName() + " → " + targetNames, userId, role);
         a.setAttackRollId(atk.id());
@@ -545,8 +539,17 @@ public class AttackService {
                         + " vs ND " + AttackRules.VULNERABLE_ND + ")");
             }
             int calejo = profiles.calejo(tsh, tp.getActiveBaseId());
-            int dmg = r.outcome() == AttackOutcome.MISS || r.outcome() == AttackOutcome.DODGED ? 0
-                    : AttackRules.damage(atk.damageTotal() == null ? 0 : atk.damageTotal(), r.mitigationPct(), calejo);
+            boolean connects = r.outcome() != AttackOutcome.MISS && r.outcome() != AttackOutcome.DODGED;
+            int hitDamage = atk.damageTotal() == null ? 0 : atk.damageTotal();
+            String sure = connects && !atk.critical() && calc.dice() != null ? guaranteedCrit(a, t, tp, tsh) : null;
+            if (sure != null) {
+                // Crítico Garantido é só dano crítico: rola de novo os dados de dano do golpe e soma neste alvo
+                Roll extra = rolls.rollInternal(attSheet, calc.dice().count() + "d" + calc.dice().sides(),
+                        "Crítico Garantido (" + sure + "): " + att.getName() + " → " + tp.getName(), userId, role);
+                hitDamage += extra.getTotal();
+                log(e, tp.getId(), "Crítico Garantido em " + tp.getName() + " (" + sure + "): +" + extra.getTotal() + " de dano");
+            }
+            int dmg = connects ? AttackRules.damage(hitDamage, r.mitigationPct(), calejo) : 0;
             int counter = 0;
             if (r.counterHits()) {
                 RollMessage c = rolls.rollCalc(rsh, e.getCampaignId(), profiles.basic(rsh, BasicAttack.SOCO,
@@ -858,13 +861,14 @@ public class AttackService {
     }
 
     /**
-     * Crítico Garantido (capítulo de Condições): alvo Inconsciente que não seja por HP, ou Ataque Localizado na região
-     * de um ferimento permanente não tratado. Vale o primeiro alvo (uma rolagem por ataque). Null = não garantido.
+     * Crítico Garantido (capítulo de Condições) = **dano** crítico no alvo, não acerto crítico: alvo Inconsciente que
+     * não seja por HP e por quem ninguém reagiu, ou Ataque Localizado na região de um ferimento permanente não tratado.
+     * Null = não garantido.
      */
-    private String guaranteedCrit(PendingAttack a, EncounterParticipant tp, CharacterSheet tsh) {
+    private String guaranteedCrit(PendingAttack a, AttackTarget t, EncounterParticipant tp, CharacterSheet tsh) {
         boolean out = conditions.findByParticipantIdIn(List.of(tp.getId())).stream()
                 .anyMatch(c -> VitalService.UNCONSCIOUS.equals(c.getConditionKey()) && !"HP".equals(c.getNote()));
-        if (out) return "alvo inconsciente";
+        if (out && t.getReaction() == ReactionType.NONE) return "alvo inconsciente"; // só se ninguém reagiu
         if (a.getRegion() != null && tsh != null && tsh.getInjuries().stream()
                 .anyMatch(i -> !i.isTreated() && VitalRules.sameRegion(a.getRegion(), i.getRegion()))) {
             return "ferimento não tratado";
