@@ -47,6 +47,8 @@ import java.util.UUID;
 public class VitalService {
 
     public static final String UNCONSCIOUS = "INCONSCIENTE";
+    /** Dano Persistente (§41): intensidade = dano no início do turno. */
+    public static final String PERSISTENT = "DANO_PERSISTENTE";
     public static final String DYING = "BEIRA_DA_MORTE";
     public static final String STABLE = "ESTABILIZADO";
     public static final String DEAD = "MORTO";
@@ -533,6 +535,11 @@ public class VitalService {
                     else applyHp(e, p, s, -d, new Ctx(c.userId(), c.role(), "Veneno", false));
                 }
                 case GrappleRules.STRANGLED -> strangled(e, p, s, k, c);
+                case PERSISTENT -> {
+                    int d = k.getIntensity() == null ? 0 : k.getIntensity();
+                    log(e, p.getId(), CombatEventType.ACTION, p.getName() + " sofre o Dano Persistente: " + d + " de dano");
+                    if (d > 0) applyHp(e, p, s, -d, new Ctx(c.userId(), c.role(), "Dano Persistente", false));
+                }
                 case SUFFOCATING -> {
                     int d = rollDamage(s, EnvironmentRules.SUFFOCATE_SP, "Sufocando: " + p.getName(), c);
                     log(e, p.getId(), CombatEventType.ACTION, p.getName() + " sufoca: −" + d + " SP");

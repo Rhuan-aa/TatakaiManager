@@ -45,7 +45,9 @@ class RollRulesTest {
     void diceScale() {
         assertThat(RollRules.diceScale(0).text()).isEqualTo("1d4");
         assertThat(RollRules.diceScale(4).text()).isEqualTo("1d12");
-        assertThat(RollRules.diceScale(5).text()).isEqualTo("2d6");
+        assertThat(RollRules.diceScale(5).text()).isEqualTo("1d12+1d4");
+        assertThat(RollRules.Dice.parse("2d10 + 1d4").text()).isEqualTo("2d10+1d4");
+        assertThat(RollRules.Dice.parse("2d10+1d4").scaled(2).text()).isEqualTo("4d10+2d4");
         assertThat(RollRules.diceScale(8).text()).isEqualTo("2d12");
         assertThat(RollRules.diceScale(20).text()).isEqualTo("2d12");
         assertThat(RollRules.diceScale(-2).text()).isEqualTo("1d4");

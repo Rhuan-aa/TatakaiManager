@@ -193,16 +193,19 @@ public class RollService {
         parts.addAll(calc.hit());
 
         List<Integer> allDice = new ArrayList<>(d20s);
-        int damageCount = 0;
-        int damageSides = 0;
+        StringBuilder damageText = new StringBuilder();
         if (attack) {
-            damageCount = calc.dice().count() * (crit ? 2 : 1);
-            damageSides = calc.dice().sides();
-            List<Integer> faces = new ArrayList<>();
-            for (int i = 0; i < damageCount; i++) faces.add(die(damageSides));
-            allDice.addAll(faces);
-            parts.add(new RollPart("DAMAGE", damageCount + "d" + damageSides + " (" + calc.name() + ")",
-                    faces.stream().mapToInt(Integer::intValue).sum(), faces, false));
+            int mult = crit ? 2 : 1; // Dano Crítico: todos os dados em dobro
+            for (RollRules.Dice term : calc.dice().terms()) {
+                int n = term.count() * mult;
+                List<Integer> faces = new ArrayList<>();
+                for (int i = 0; i < n; i++) faces.add(die(term.sides()));
+                allDice.addAll(faces);
+                if (!damageText.isEmpty()) damageText.append('+');
+                damageText.append(n).append('d').append(term.sides());
+                parts.add(new RollPart("DAMAGE", n + "d" + term.sides() + " (" + calc.name() + ")",
+                        faces.stream().mapToInt(Integer::intValue).sum(), faces, false));
+            }
             parts.addAll(calc.damage());
         }
         for (RollOverride ov : overrides) applyOverride(parts, ov);
@@ -217,7 +220,7 @@ public class RollService {
             damageTotal = Math.max(0, dmg);
             int dmgFlat = parts.stream().filter(p -> p.dice() == null && "DAMAGE".equals(p.part()))
                     .mapToInt(RollPart::value).sum();
-            formula += " | dano " + damageCount + "d" + damageSides + (dmgFlat == 0 ? "" : RollRules.signed(dmgFlat));
+            formula += " | dano " + damageText + (dmgFlat == 0 ? "" : RollRules.signed(dmgFlat));
         }
         boolean edited = parts.stream().anyMatch(RollPart::edited);
         String purpose = reqPurpose == null || reqPurpose.isBlank() ? calc.name() : reqPurpose;
@@ -282,7 +285,8 @@ public class RollService {
     @Transactional(readOnly = true)
     public List<RollProfileResponse> profiles(UUID sheetId, UUID requesterId) {
         Access a = access(sheetId, requesterId, null);
-        return profiles.list(a.sheet()).stream().map(RollProfileService::toResponse).toList();
+        return profiles.list(a.sheet()).stream().map(c -> RollProfileService.toResponse(c,
+                profiles.moduleNames(a.sheet(), c.sourceId(), c.variation()))).toList();
     }
 
     /** Rolagem livre do Mestre na campanha, sem ficha. */

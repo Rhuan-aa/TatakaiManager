@@ -26,19 +26,31 @@ public record CreateAttackRequest(
         StrikeSide strikeSide,
         /** Agarrão: ponto do agarre (padrão braço) e se aperta/torce no acerto (1d2 + FOR) (§39) */
         com.tatakai.manager.service.rules.GrappleRules.Grip grip,
-        Boolean squeeze) {
+        Boolean squeeze,
+        /** Ímpeto: metros em linha reta antes do golpe (§41) */
+        @jakarta.validation.constraints.PositiveOrZero @Max(100) Double runMeters,
+        /** Esmagar: há superfície sólida adjacente ao alvo (§41) */
+        Boolean surface) {
+
+    public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
+                               BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
+                               String region, Integer regionPenalty, StrikeSide strikeSide,
+                               com.tatakai.manager.service.rules.GrappleRules.Grip grip, Boolean squeeze) {
+        this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
+                strikeSide, grip, squeeze, null, null);
+    }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
                                BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
                                String region, Integer regionPenalty, StrikeSide strikeSide) {
         this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
-                strikeSide, null, null);
+                strikeSide, null, null, null, null);
     }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
                                BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
                                String region, Integer regionPenalty) {
         this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
-                null, null, null);
+                null, null, null, null, null);
     }
 }

@@ -29,6 +29,7 @@ import com.tatakai.manager.repository.MartialArtRepository;
 import com.tatakai.manager.service.rules.MartialRules;
 import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.service.rules.RollRules;
+import com.tatakai.manager.service.rules.ModuleRules;
 import com.tatakai.manager.service.rules.SheetRules;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -140,21 +141,36 @@ public class RollProfileService {
         int precision = qty(items, PRECISION_MODULE);
         BaseRules.Profile base = base(sheet, o.baseId());
 
-        List<RollPart> hit = new ArrayList<>(attackHit(sheet, o));
+        ModuleRules.AltAttribute alt = ModuleRules.altAttribute(items);
+        int weight = SheetRules.weightMod(sheet.getWeightKg());
+        List<RollPart> hit = new ArrayList<>(alt != null && alt.test() && alt.attribute() != Attribute.DEX
+                ? List.of(part("HIT", label(alt.attribute()) + " (Atributo Alternativo)",
+                        o.attackerDowned() ? SheetRules.half(RollRules.modOrZero(sheet.getAttribute(alt.attribute())))
+                                : RollRules.modOrZero(sheet.getAttribute(alt.attribute()))))
+                : attackHit(sheet, o));
         if (precision > 0) hit.add(part("HIT", "Precisão (variação)", precision));
+        int massHit = ModuleRules.massHit(items, weight);
+        if (massHit > 0) hit.add(part("HIT", "Massa", massHit));
         if (hitBonus > 0) hit.add(part("HIT", "Bonificação HIT", hitBonus));
         hit.addAll(baseHit(base, o));
         hit.addAll(localized(o));
         hit.addAll(fatigueParts(sheet, physical(sheet)));
 
         List<RollPart> damage = new ArrayList<>();
-        damage.add(part("DAMAGE", "FOR", RollRules.modOrZero(sheet.getStr())));
+        Attribute dmgAttr = alt != null && !alt.test() ? alt.attribute() : Attribute.STR;
+        damage.add(part("DAMAGE", dmgAttr == Attribute.STR ? "FOR" : label(dmgAttr) + " (Atributo Alternativo)",
+                RollRules.modOrZero(sheet.getAttribute(dmgAttr))));
         if (damageBonus > 0) damage.add(part("DAMAGE", "Bonificação DAMAGE", 2 * damageBonus));
+        int massDamage = ModuleRules.massDamage(items, weight);
+        if (massDamage > 0) damage.add(part("DAMAGE", "Massa", massDamage));
         damage.addAll(baseDamage(base, o));
 
-        RollRules.Dice scale = RollRules.diceScale(degree);
+        // Controle só causa dano com Dado Maior, e o 1º degrau é 1d4
+        boolean control = variation != null && variation.getCore() == TechniqueCore.CONTROL;
         int e = RollRules.strengthExtra(sheet.getStr(), apex);
-        RollRules.Dice dice = new RollRules.Dice(scale.count() * (1 + e), scale.sides());
+        RollRules.Dice dice = control && degree == 0 ? null
+                : RollRules.diceScale(control ? degree - 1 : degree).scaled(1 + e);
+        if (dice == null) damage = new ArrayList<>();
         int sp = RollRules.spCost(cat == null ? null : cat.getSpCostBase(), count(bonuses, MasteryBonus.COST),
                 physical(sheet));
         int adv = t.getMastery() == Mastery.SKETCH ? -1 : 0;
@@ -216,7 +232,16 @@ public class RollProfileService {
     /** Itens de efeito (kind EFFECT) da variação usada + extras, para aplicar no acerto (§30). */
     @Transactional(readOnly = true)
     public List<AssemblyItem> effects(CharacterSheet sheet, CharacterTechnique t, String variationName) {
-        ArtTechnique cat = catalog(sheet, t);
+        return items(sheet, t, variationName).stream().filter(i -> i.getKind() == AssemblyItemKind.EFFECT).toList();
+    }
+
+    /** Todos os itens da variação usada (a primeira, se `variationName` for null) + extras da técnica. */
+    @Transactional(readOnly = true)
+    public List<AssemblyItem> items(CharacterSheet sheet, CharacterTechnique t, String variationName) {
+        return itemsOf(catalog(sheet, t), variationName);
+    }
+
+    private static List<AssemblyItem> itemsOf(ArtTechnique cat, String variationName) {
         List<AssemblyVariation> vars = variations(cat);
         List<AssemblyItem> items = new ArrayList<>();
         for (AssemblyVariation v : vars) {
@@ -225,7 +250,7 @@ public class RollProfileService {
             }
         }
         if (cat != null && cat.getExtras() != null) items.addAll(cat.getExtras());
-        return items.stream().filter(i -> i.getKind() == AssemblyItemKind.EFFECT).toList();
+        return items;
     }
 
     /** Quantidade de "Impacto na Cabeça" da variação + bonificações POWER (perda de PQ por golpe, F6c). */
@@ -283,17 +308,31 @@ public class RollProfileService {
     }
 
     public static RollProfileResponse toResponse(Calc c) {
+        return toResponse(c, List.of());
+    }
+
+    public static RollProfileResponse toResponse(Calc c, List<String> modules) {
         int hitFlat = c.hit().stream().mapToInt(RollPart::value).sum();
         String hitFormula = "1d20" + (hitFlat == 0 ? "" : RollRules.signed(hitFlat));
         RollProfileResponse.DamageDice dd = null;
         String damageFormula = null;
         if (c.dice() != null) {
-            dd = new RollProfileResponse.DamageDice(c.dice().count(), c.dice().sides(), c.name());
+            dd = new RollProfileResponse.DamageDice(c.dice().count(), c.dice().sides(), c.name(), c.dice().text());
             int flat = c.damage().stream().mapToInt(RollPart::value).sum();
             damageFormula = c.dice().text() + (flat == 0 ? "" : RollRules.signed(flat));
         }
         return new RollProfileResponse(c.type(), c.sourceId(), c.name(), c.variation(), c.basic(), c.spCost(),
-                c.critMargin(), c.advantage(), c.hit(), dd, c.damage(), hitFormula, damageFormula);
+                c.critMargin(), c.advantage(), c.hit(), dd, c.damage(), hitFormula, damageFormula, modules);
+    }
+
+    /** Nomes dos módulos da técnica (variação dada) para a tela; vazio se não for técnica. */
+    @Transactional(readOnly = true)
+    public List<String> moduleNames(CharacterSheet sheet, UUID techniqueId, String variationName) {
+        if (techniqueId == null) return List.of();
+        return techniqueRepository.findById(techniqueId)
+                .map(t -> items(sheet, t, variationName).stream().map(AssemblyItem::getModule)
+                        .filter(java.util.Objects::nonNull).distinct().toList())
+                .orElse(List.of());
     }
 
     public static String label(Attribute a) {

@@ -10,15 +10,59 @@ public final class RollRules {
     private RollRules() {
     }
 
-    public record Dice(int count, int sides) {
+    /** Dados de dano: termo principal (`count`d`sides`) e termos extras somados (ex.: 1d12+1d4, 2d10+1d4). */
+    public record Dice(int count, int sides, List<Dice> plus) {
+        public Dice(int count, int sides) {
+            this(count, sides, List.of());
+        }
+
+        public Dice {
+            plus = plus == null ? List.of() : List.copyOf(plus);
+        }
+
+        /** Todos os termos simples, o principal primeiro. */
+        public List<Dice> terms() {
+            List<Dice> out = new java.util.ArrayList<>();
+            out.add(new Dice(count, sides));
+            out.addAll(plus);
+            return out;
+        }
+
+        /** Escala de Dano: multiplica a quantidade de cada termo. */
+        public Dice scaled(int factor) {
+            return new Dice(count * factor, sides, plus.stream().map(d -> d.scaled(factor)).toList());
+        }
+
+        /** Soma outro termo (ex.: Dado Adicional de técnica armada). */
+        public Dice with(Dice extra) {
+            List<Dice> l = new java.util.ArrayList<>(plus);
+            l.addAll(extra.terms());
+            return new Dice(count, sides, l);
+        }
+
         public String text() {
-            return count + "d" + sides;
+            StringBuilder b = new StringBuilder(count + "d" + sides);
+            for (Dice d : plus) b.append('+').append(d.count()).append('d').append(d.sides());
+            return b.toString();
+        }
+
+        /** "2d10 + 1d4" → Dice; null/vazio → null. */
+        public static Dice parse(String text) {
+            if (text == null || text.isBlank()) return null;
+            List<Dice> terms = new java.util.ArrayList<>();
+            for (String t : text.replace(" ", "").toLowerCase().split("\\+")) {
+                String[] p = t.split("d");
+                terms.add(new Dice(Integer.parseInt(p[0]), Integer.parseInt(p[1])));
+            }
+            return new Dice(terms.get(0).count(), terms.get(0).sides(), terms.subList(1, terms.size()));
         }
     }
 
+    /** Degraus de Dado da Criação Marcial: 1d4 … 1d12, 1d12+1d4, 1d12+1d6, 1d12+1d8, 2d12. */
     private static final Dice[] SCALE = {
             new Dice(1, 4), new Dice(1, 6), new Dice(1, 8), new Dice(1, 10), new Dice(1, 12),
-            new Dice(2, 6), new Dice(2, 8), new Dice(2, 10), new Dice(2, 12)};
+            new Dice(1, 12, List.of(new Dice(1, 4))), new Dice(1, 12, List.of(new Dice(1, 6))),
+            new Dice(1, 12, List.of(new Dice(1, 8))), new Dice(2, 12)};
 
     public static final int CRIT_MARGIN = 20;
 

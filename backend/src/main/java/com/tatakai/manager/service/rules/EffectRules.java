@@ -23,7 +23,7 @@ public final class EffectRules {
     /** Efeitos contra os quais o Enraizado da base ajuda a resistir. */
     public static final Set<String> ROOTED = Set.of("Empurrar", "Derrubar", "Quebrar Base");
 
-    public enum Kind { CONDITION, TAKEDOWN, PUSH, STEAL_PA, WOUND, DEEPEN_WOUND }
+    public enum Kind { CONDITION, TAKEDOWN, PUSH, STEAL_PA, WOUND, DEEPEN_WOUND, CRUSH }
 
     /**
      * condition: chave da condição (null quando o efeito não deixa condição); resist/alt: atributos de resistência
@@ -39,6 +39,7 @@ public final class EffectRules {
             Map.entry("Derrubar", new Effect(Kind.TAKEDOWN, "DERRUBADO", Attribute.STR, Attribute.DEX, null)),
             Map.entry("Quebrar Base", Effect.cond("QUEBRA_DE_BASE", Attribute.DEX, null)),
             Map.entry("Empurrar", new Effect(Kind.PUSH, null, Attribute.STR, null, null)),
+            Map.entry("Esmagar", new Effect(Kind.CRUSH, null, Attribute.STR, null, null)),
             Map.entry("Prender", Effect.cond("AGARRADO", Attribute.STR, null)), // Controle: Imobilizado
             Map.entry("Desorientar", Effect.cond("DESORIENTADO", Attribute.CON, NEXT_TURN)),
             Map.entry("Expor", Effect.cond("VULNERAVEL", Attribute.MEN, NEXT_TURN)),
@@ -55,7 +56,7 @@ public final class EffectRules {
 
     private EffectRules() {}
 
-    /** Efeito automático do módulo; vazio = o Mestre aplica à mão (Interromper, Esmagar). */
+    /** Efeito automático do módulo; vazio = o Mestre aplica à mão (Interromper). */
     public static Optional<Effect> of(String module) {
         return Optional.ofNullable(module == null ? null : EFFECTS.get(module));
     }

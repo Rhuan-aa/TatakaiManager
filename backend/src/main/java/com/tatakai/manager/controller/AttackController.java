@@ -45,6 +45,12 @@ public class AttackController {
         return ResponseEntity.ok(attacks.lateCounter(aid, tid, r, AuthenticatedUser.id()));
     }
 
+    @PostMapping("/attacks/{aid}/chain")
+    public ResponseEntity<AttackResponse> chain(@PathVariable UUID aid,
+                                                @Valid @RequestBody com.tatakai.manager.dto.request.ChainAttackRequest r) {
+        return ResponseEntity.ok(attacks.chain(aid, r.techniqueId(), r.variation(), AuthenticatedUser.id()));
+    }
+
     @PostMapping("/attacks/{aid}/cancel")
     public ResponseEntity<AttackResponse> cancel(@PathVariable UUID aid) {
         return ResponseEntity.ok(attacks.cancel(aid, AuthenticatedUser.id()));

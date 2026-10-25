@@ -2187,7 +2187,7 @@ Ação Menor Ofensiva sem Técnica Rápida: Soco, Mordida e Empurrão (`BasicAtt
 
 Regras puras novas em `service/rules/ModuleRules`; aplicação em `AttackService`/`RollProfileService`/`VitalService`.
 - **Degraus de Dado** pelo livro: 1d4, 1d6, 1d8, 1d10, 1d12, 1d12+1d4, 1d12+1d6, 1d12+1d8, 2d12. `RollRules.Dice` ganha termos
-  extras (`plus`), todos dobram no crítico; a Escala de Dano multiplica só o termo principal.
+  extras (`plus`), todos dobram no crítico e a Escala de Dano multiplica cada termo.
 - **Controle** sem Dado Maior não causa dano; com Dado Maior, o 1º degrau é 1d4 (degrau n → tabela[n−1]).
 - **Atributo Alternativo** (técnica): nota/rótulo com "INT" → Inteligência, senão Destreza; com "teste"/"acerto" troca o
   atributo do teste, senão troca a Força do dano.

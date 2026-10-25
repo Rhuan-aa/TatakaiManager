@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 760 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 771 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -531,7 +531,7 @@ no canal `campaign` e recarregam.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 760 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 771 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -888,19 +888,20 @@ Defende/Contra-ataca no lugar de alvo Inconsciente (`guardians`, `defenderId`, �
 Preparação (`TechniqueRules`, `coreTechniques`, §38). Módulos de base Fôlego, Economia, Absorção Contínua, Troca Fluida,
 Punição e Avanço Pesado (§31). Agarre (`GrappleRules`, `POST /encounters/{eid}/grapple`, §39; tela: grupo "Agarre" no
 `ActionBar` e ponto/apertar do Agarrão no `AttackBuilder`). Mordida, Empurrão, Encontrão, Pisão e efeitos especiais da
-Cabeçada/Chute/Joelhada (`AttackService.basicHit/basicFumble/basicKp`, §40).
+Cabeçada/Chute/Joelhada (`AttackService.basicHit/basicFumble/basicKp`, §40). Criação Marcial completa (§41): Degraus
+de Dado do livro (`RollRules.Dice` com termos extras), Controle sem dano sem Dado Maior, Atributo Alternativo, Massa,
+Golpe no Fôlego, Dano Persistente (`DANO_PERSISTENTE`), Montinho, Arremesso/Cravar pelo chão do encontro
+(`Encounter.floor`), Ímpeto (`runMeters`), Sequência, Varredura/Círculo (limite de alvos), Contragolpe (Golpe como
+Contra-ataque), Encadear (`POST /attacks/{aid}/chain`), Esmagar (`surface`) e as limitações Risco, Desguarnecida,
+Exposta, Uso Restrito, Tardia, Previsível e Exige Base (regras puras em `ModuleRules`).
 
 **Pendentes** (detalhes no plano §26.5):
-1. **Chão do encontro** (macio/padrão/duro) para Arremesso, Cravar e Montinho (módulos de Potência) e o dano de chão.
-2. **Armas** — falta o subcapítulo "Armas" (tabela de armas). Já há regras no material: classes, Carga no Gasto de Uso,
-   Dado Adicional/Golpe Pesado, módulos armados (Desarmar, Puxar, Mutilar, Quebrar Arma, Aparar…), mãos ocupadas
-   (Agarrão exige duas mãos livres), locais de item (mão, Acesso Rápido, mochila) e condição do item.
-3. Técnicas ainda sem efeito automático: Dano Persistente, Golpe no Fôlego, Massa, Sequência, Varredura/Círculo, Encadear,
-   Contragolpe, Investida/Ímpeto (sem grade), Interromper/Esmagar como Efeito de golpe; Gatilho/Exige Base/Exige Posição
-   só como texto.
-4. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).
+1. **Armas, proteções e consumíveis** — contrato no plano §42–§44 (capítulos Armas, Equipamentos e Consumíveis).
+2. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição, Duas Etapas e os efeitos únicos das
+   Artes Clássicas (Foco, Ritmo, Pop, Embalo…).
+3. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).
 
 **Colunas novas sem migração automática** (bancos com `ddl-auto=validate`): `combat_conditions.progress`,
 `inventory_items.weight_kg`, `encounter_participants.stabilize_failures`/`fluid_switch_used`,
 `character_sheets.knockout_sequel`, `attack_targets.defender_id`/`reaction_technique_id`/`reaction_variation`,
-`pending_attacks.grip`/`squeeze`. Dropar `pending_attacks_basic_attack_check` (Mordida/Empurrão/Encontrão/Pisão, §11.11). Ao implementar um item, escreva o contrato numa seção nova do plano e marque-o aqui.
+`pending_attacks.grip`/`squeeze`/`run_meters`/`surface`, `encounters.floor`. Dropar `pending_attacks_basic_attack_check` (Mordida/Empurrão/Encontrão/Pisão, §11.11). Ao implementar um item, escreva o contrato numa seção nova do plano e marque-o aqui.

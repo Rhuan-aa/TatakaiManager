@@ -87,3 +87,4 @@ export const BASIC_HINT = {
   ENCONTRAO: 'Exige 3 m em linha reta · sem dano · alvo resiste com FOR/DES contra acerto + seu mod. de Peso ou cai · falha crítica: você cai',
   PISAO: 'Só contra alvo Derrubado · + mod. de Peso no dano · +1 PQ na cabeça',
 };
+export const FLOOR_LABEL = { SOFT: 'Macio', STANDARD: 'Padrão', HARD: 'Duro' };

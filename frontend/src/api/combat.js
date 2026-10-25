@@ -32,6 +32,9 @@ export const listAttacks = async (eid, status) =>
 export const respondReaction = (aid, tid, reaction, defenderId, tech) =>
   post(`/attacks/${aid}/targets/${tid}/reaction`, { reaction, ...(defenderId ? { defenderId } : {}), ...(tech ?? {}) });
 export const cancelAttack = (aid) => post(`/attacks/${aid}/cancel`);
+// Encadear (§41): aborta o golpe e usa outra técnica do mesmo tipo
+export const chainAttack = (aid, techniqueId, variation) =>
+  post(`/attacks/${aid}/chain`, { techniqueId, ...(variation ? { variation } : {}) });
 export const setCounter = async (eid, id, value) =>
   (await client.patch(`/encounters/${eid}/counters/${id}`, { value })).data;
 export const lateCounter = (aid, tid, body) => post(`/attacks/${aid}/targets/${tid}/late-counter`, body);

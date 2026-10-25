@@ -68,6 +68,8 @@ class AttackServiceTest {
     private final Map<UUID, RollMessage> messages = new HashMap<>();
     private final List<Calc> rollCalcs = new ArrayList<>();
     private final Set<String> modules = new HashSet<>();
+    /** Itens da montagem da técnica (§41); vazio = técnica comum de 1 alvo. */
+    private final List<AssemblyItem> techItems = new ArrayList<>();
     private int techSp = 2;
 
     private static CampaignMember member(Campaign c, User u, Role r) {
@@ -135,6 +137,7 @@ class AttackServiceTest {
             if (!attackList.contains(a)) attackList.add(a);
             return a;
         });
+        lenient().when(attackRepo.findByEncounterIdOrderByCreatedAtDesc(any())).thenAnswer(i -> new ArrayList<>(attackList));
         lenient().when(attackRepo.findById(any())).thenAnswer(i -> attackList.stream().filter(a -> a.getId().equals(i.getArgument(0))).findFirst());
         lenient().when(attackRepo.findByEncounterIdAndStatusOrderByCreatedAtDesc(any(), any())).thenAnswer(i ->
                 attackList.stream().filter(a -> a.getStatus() == i.getArgument(1)).toList());
@@ -157,6 +160,7 @@ class AttackServiceTest {
         lenient().when(profiles.technique(any(), any(), any(), any())).thenAnswer(i -> calc(RollSourceType.TECHNIQUE, "Jab", techSp));
         lenient().when(profiles.basic(any(), any(), any())).thenAnswer(i -> calc(RollSourceType.BASIC_ATTACK, "Soco", 0));
         lenient().when(profiles.hasModule(any(), any(), any(), anyString())).thenAnswer(i -> modules.contains((String) i.getArgument(3)));
+        lenient().when(profiles.items(any(), any(), any())).thenAnswer(i -> techItems);
         lenient().when(rolls.rollCalc(any(), any(), any(), anyInt(), anyString(), any(), any())).thenAnswer(i -> {
             rollCalcs.add(i.getArgument(2));
             lastAdv.add(i.getArgument(3));
@@ -305,6 +309,7 @@ class AttackServiceTest {
     @Test
     @DisplayName("Responder: jogador pelo próprio alvo, Mestre por qualquer um; outros 403")
     void respondPermissions() {
+        techItems.add(item("Varredura", "Varredura", AssemblyItemKind.MODULE));
         AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pB, pN), player.getId());
         UUID tb = r.targets().get(0).id();
         UUID tn = r.targets().get(1).id();
@@ -338,6 +343,7 @@ class AttackServiceTest {
     @Test
     @DisplayName("Cancelar antes de resposta devolve PA e SP; após resposta -> 409; terceiros -> 403")
     void cancel() {
+        techItems.add(item("Varredura", "Varredura", AssemblyItemKind.MODULE));
         AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pB, pN), player.getId());
         assertThatThrownBy(() -> service.cancel(r.id(), other.getId())).isInstanceOf(AccessDeniedException.class);
         AttackResponse c = service.cancel(r.id(), player.getId());
@@ -1083,6 +1089,7 @@ class AttackServiceTest {
         it.setOnDie(onDie);
         effectItems.add(it);
         lenient().when(profiles.effects(any(), any(), any())).thenAnswer(x -> effectItems);
+        lenient().when(profiles.items(any(), any(), any())).thenAnswer(x -> effectItems);
         lenient().when(profiles.attribute(any(), any())).thenAnswer(x -> calc(RollSourceType.ATTRIBUTE_TEST, "Teste", 0));
     }
 
@@ -1328,6 +1335,7 @@ class AttackServiceTest {
         org.mockito.Mockito.reset(profiles);
         lenient().when(profiles.technique(any(), any(), any(), any())).thenAnswer(i -> calc(RollSourceType.TECHNIQUE, "Jab", techSp));
         lenient().when(profiles.effects(any(), any(), any())).thenAnswer(x -> effectItems);
+        lenient().when(profiles.items(any(), any(), any())).thenAnswer(x -> effectItems);
         lenient().when(profiles.attribute(any(), any())).thenAnswer(x -> calc(RollSourceType.ATTRIBUTE_TEST, "Teste", 0));
         queue.add(msg(15, 10, 5));
         queue.add(msg(20, 18, null));
@@ -1509,5 +1517,168 @@ class AttackServiceTest {
         fight(basicOn(BasicAttack.CHUTE, AttackActionKind.MAJOR, null, pN), ReactionType.NONE, msg(1, 1, null), null);
         assertThat(cList.stream().anyMatch(c -> c.getParticipantId().equals(pA.getId()) && "AGARRADO".equals(c.getConditionKey())
                 && pN.getId().equals(c.getSourceParticipantId()) && "LEG".equals(c.getNote()))).isTrue();
+    }
+
+    // ---------- §41: Criação Marcial — módulos automáticos ----------
+
+    private AssemblyItem mod(String module, int cost, AssemblyItemKind kind) {
+        AssemblyItem i = item(module, module, kind);
+        i.setCost(cost);
+        return i;
+    }
+
+    @Test
+    @DisplayName("§41: 1 alvo sem Varredura; Tardia; Uso Restrito; Exige Base")
+    void declareLimits() {
+        assertThatThrownBy(() -> service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pB, pN), player.getId()))
+                .isInstanceOf(InvalidCombatException.class).hasMessageContaining("um alvo");
+        techItems.add(mod("Tardia", -1, AssemblyItemKind.LIMITATION));
+        assertThatThrownBy(() -> service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId()))
+                .hasMessageContaining("Tardia");
+        enc.setRound(3);
+        techItems.add(mod("Uso Restrito", -3, AssemblyItemKind.LIMITATION));
+        service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        pA.setPaCurrent(5);
+        assertThatThrownBy(() -> service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId()))
+                .hasMessageContaining("Uso Restrito");
+        techItems.clear();
+        techItems.add(mod("Exige Base", -1, AssemblyItemKind.LIMITATION));
+        assertThatThrownBy(() -> service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId()))
+                .hasMessageContaining("Exige Base");
+    }
+
+    @Test
+    @DisplayName("§41: Montinho soma 1d4 + Peso e derruba quem cai; Golpe no Fôlego (só SP) vai para o SP")
+    void pileOnAndBreath() {
+        lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
+                .thenAnswer(x -> Roll.builder().total(3).build());
+        sheetA.setWeightKg(60); // Mod. de Peso 0
+        npcSheet.setCurrentSp(20);
+        techItems.add(mod("Montinho", 1, AssemblyItemKind.MODULE));
+        techItems.add(mod("Fôlego (só no SP)", 0, AssemblyItemKind.MODULE));
+        AttackResponse.TargetResponse t = duel(ReactionType.NONE, msg(15, 10, 5), null);
+        assertThat(t.damage()).isEqualTo(8);
+        assertThat(npcSheet.getCurrentHp()).isEqualTo(30);
+        assertThat(npcSheet.getCurrentSp()).isEqualTo(12);
+        assertThat(holds(pA, "DERRUBADO")).isTrue();
+    }
+
+    @Test
+    @DisplayName("§41: Dano Persistente deixa metade do dano para o próximo turno")
+    void persistentDamage() {
+        techItems.add(mod("Dano Persistente", 4, AssemblyItemKind.MODULE));
+        duel(ReactionType.NONE, msg(15, 10, 6), null);
+        CombatCondition c = cList.stream().filter(x -> x.getParticipantId().equals(pN.getId())
+                && "DANO_PERSISTENTE".equals(x.getConditionKey())).findFirst().orElseThrow();
+        assertThat(c.getIntensity()).isEqualTo(3);
+        assertThat(c.getTurnsRemaining()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("§41: Sequência faz um 2º acerto contra a mesma reação, com metade do dano")
+    void sequence() {
+        techItems.add(mod("Sequência", 3, AssemblyItemKind.MODULE));
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        queue.add(msg(15, 10, 6));
+        queue.add(msg(9, 9, null));   // Esquiva do alvo: 9
+        queue.add(msg(12, 12, 4));    // 2º acerto: 12 > 9 → metade de 4
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        AttackResponse.TargetResponse t = service.respond(r.id(), r.targets().get(0).id(), ReactionType.DODGE, master.getId())
+                .targets().get(0);
+        assertThat(t.outcome()).isEqualTo(AttackOutcome.HIT);
+        assertThat(t.damage()).isEqualTo(8);
+        assertThat(npcSheet.getCurrentHp()).isEqualTo(22);
+    }
+
+    @Test
+    @DisplayName("§41: Risco derruba quem erra; Exposta deixa Vulnerável")
+    void riskAndExposed() {
+        techItems.add(mod("Risco", -1, AssemblyItemKind.LIMITATION));
+        duel(ReactionType.DODGE, msg(10, 10, 5), msg(15, 15, null));
+        assertThat(holds(pA, "DERRUBADO")).isTrue();
+        techItems.clear();
+        techItems.add(mod("Exposta", -3, AssemblyItemKind.LIMITATION));
+        duel(ReactionType.NONE, msg(15, 10, 5), null);
+        assertThat(holds(pA, "VULNERAVEL")).isTrue();
+    }
+
+    @Test
+    @DisplayName("§41: Contragolpe — o Golpe vira o Contra-ataque, com o gasto e o dano dele")
+    void counterStrike() {
+        CharacterTechnique npcTech = CharacterTechnique.builder().id(UUID.randomUUID()).sheet(npcSheet)
+                .kind(MoveKind.TECHNIQUE).state(TechniqueState.ACTIVE).name("Contra-Jab").build();
+        lenient().when(profiles.coreTechniques(any(), org.mockito.ArgumentMatchers.eq(TechniqueCore.STRIKE)))
+                .thenAnswer(x -> x.getArgument(0) == npcSheet ? List.of(new com.tatakai.manager.service.RollProfileService
+                        .CoreTechnique(npcTech, null, "Contra-Jab", 2, List.of(mod("Contragolpe", 3, AssemblyItemKind.MODULE)), false))
+                        : List.of());
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        queue.add(msg(10, 10, 5));    // ataque
+        queue.add(msg(16, 16, null)); // reação: 16 ≥ 1,5 × 10 → sem dano
+        queue.add(msg(5, 5, 4));      // dano do revide (perfil da técnica)
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        AttackResponse.TargetResponse t = service.respond(r.id(), r.targets().get(0).id(), ReactionType.COUNTER, null,
+                npcTech.getId(), null, master.getId()).targets().get(0);
+        assertThat(t.outcome()).isEqualTo(AttackOutcome.COUNTERED);
+        assertThat(t.counterDamage()).isEqualTo(4);
+        assertThat(npcSheet.getCurrentSp()).isEqualTo(3); // gasto da técnica (2), não 1 SP
+    }
+
+    @Test
+    @DisplayName("§41: Encadear aborta o golpe e declara outra técnica sem PA, com +25% de SP")
+    void chainAttack() {
+        techItems.add(mod("Encadear", 2, AssemblyItemKind.MODULE));
+        modules.add("Encadear");
+        CharacterTechnique tech2 = CharacterTechnique.builder().id(UUID.randomUUID()).sheet(sheetA)
+                .kind(MoveKind.TECHNIQUE).state(TechniqueState.ACTIVE).name("Cruzado").build();
+        lenient().when(techniques.findById(tech2.getId())).thenReturn(Optional.of(tech2));
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        assertThat(sheetA.getCurrentSp()).isEqualTo(8);
+        AttackResponse c = service.chain(r.id(), tech2.getId(), null, player.getId());
+        assertThat(c.id()).isNotEqualTo(r.id());
+        assertThat(c.reservedPa()).isZero();
+        assertThat(c.reservedSp()).isEqualTo(3);
+        assertThat(sheetA.getCurrentSp()).isEqualTo(5);
+        assertThat(attackList.stream().filter(x -> x.getId().equals(r.id())).findFirst().orElseThrow().getStatus())
+                .isEqualTo(AttackStatus.CANCELLED);
+        assertThat(pA.getPaCurrent()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("§41: Arremesso no chão duro (+2d4 e 1 PQ) e Esmagar só com superfície")
+    void throwAndCrush() {
+        lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
+                .thenAnswer(x -> Roll.builder().total(3).build());
+        lenient().when(profiles.attribute(any(), any())).thenAnswer(x -> calc(RollSourceType.ATTRIBUTE_TEST, "Teste", 0));
+        enc.setFloor(Floor.HARD);
+        npcSheet.setCurrentKp(5);
+        npcSheet.setWeightKg(60);
+        techItems.add(mod("Derrubar", 2, AssemblyItemKind.EFFECT));
+        techItems.add(mod("Arremesso", 2, AssemblyItemKind.MODULE));
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        queue.add(msg(15, 10, 5));
+        queue.add(msg(2, 2, null)); // resistência falha
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(npcSheet.getCurrentKp()).isEqualTo(4);
+        assertThat(npcSheet.getCurrentHp()).isEqualTo(30 - 5 - 2 - 3); // golpe, Derrubada (2 + Peso 0), Arremesso
+
+        techItems.clear();
+        techItems.add(mod("Esmagar", 2, AssemblyItemKind.EFFECT));
+        cList.clear();
+        pA.setPaCurrent(5);
+        queue.add(msg(15, 10, 1));
+        r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(npcSheet.getCurrentKp()).isEqualTo(4); // sem superfície: nada
+        pA.setPaCurrent(5);
+        queue.add(msg(15, 10, 1));
+        queue.add(msg(2, 2, null));
+        r = service.declare(enc.getId(), new CreateAttackRequest(pA.getId(), RollSourceType.TECHNIQUE, tech.getId(), null,
+                null, AttackActionKind.MAJOR, List.of(pN.getId()), null, null, null, null, null, null, true), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(npcSheet.getCurrentKp()).isEqualTo(3);
     }
 }

@@ -82,6 +82,14 @@ public class PendingAttack {
     @Column(nullable = false, columnDefinition = "boolean not null default false")
     private boolean squeeze;
 
+    /** Metros percorridos em linha reta antes do golpe (Ímpeto, §41). */
+    @Column(name = "run_meters")
+    private Double runMeters;
+
+    /** Há superfície sólida adjacente ao alvo (Esmagar, §41). */
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean surface;
+
     /** turn_counter do encontro quando resolveu: a janela do Contra-Ataque Tardio fecha no próximo next-turn. */
     @Column(name = "resolved_turn")
     private Integer resolvedTurn;

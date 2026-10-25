@@ -264,5 +264,13 @@
     "exit": "Fim do turno",
     "defaultExpiresAt": "END_OF_TARGET_TURN",
     "stack": "RENEW"
+  },
+  {
+    "key": "DANO_PERSISTENTE",
+    "name": "Dano Persistente",
+    "effect": "No início do turno, sofre o dano indicado (metade do golpe)",
+    "exit": "Some sozinho depois dos turnos do módulo",
+    "defaultExpiresAt": "COUNTER",
+    "stack": "RENEW"
   }
 ]

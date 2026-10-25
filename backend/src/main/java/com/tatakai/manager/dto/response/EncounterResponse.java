@@ -13,7 +13,8 @@ import java.util.UUID;
 
 public record EncounterResponse(UUID id, UUID campaignId, String name, EncounterStatus status, int round,
                                 int turnCounter, UUID currentParticipantId, List<ParticipantResponse> participants,
-                                CombatClassification defaultClassification, java.time.Instant endedAt) {
+                                CombatClassification defaultClassification, java.time.Instant endedAt,
+                                com.tatakai.manager.entity.Floor floor) {
 
     public record ParticipantResponse(UUID id, UUID sheetId, String name, boolean npc, Integer initiative,
                                       int orderIndex, int paCurrent, int paBonusNext, int paLossNext,

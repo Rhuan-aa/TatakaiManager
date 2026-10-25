@@ -245,7 +245,7 @@ public class CombatService {
         UUID current = e.getStatus() == EncounterStatus.ACTIVE && e.getCurrentIndex() < ps.size()
                 ? ps.get(e.getCurrentIndex()).getId() : null;
         return new EncounterResponse(e.getId(), e.getCampaignId(), e.getName(), e.getStatus(), e.getRound(),
-                e.getTurnCounter(), current, out, e.getDefaultClassification(), e.getEndedAt());
+                e.getTurnCounter(), current, out, e.getDefaultClassification(), e.getEndedAt(), e.getFloor());
     }
 
     private CounterResponse counterView(CombatCounter c) {
@@ -287,6 +287,7 @@ public class CombatService {
         requireNotEnded(e);
         if (req.name() != null && !req.name().isBlank()) e.setName(req.name().trim());
         if (req.defaultClassification() != null) e.setDefaultClassification(req.defaultClassification());
+        if (req.floor() != null) e.setFloor(req.floor());
         encounters.save(e);
         return done(e, "UPDATED", userId, true);
     }

@@ -51,6 +51,12 @@ public class Encounter {
     @Builder.Default
     private CombatClassification defaultClassification = CombatClassification.REAL;
 
+    /** Chão do encontro: dano de Arremesso (plano §41). */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10, columnDefinition = "varchar(10) not null default 'STANDARD'")
+    @Builder.Default
+    private Floor floor = Floor.STANDARD;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

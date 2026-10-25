@@ -14,7 +14,7 @@ import AttackPanel from './AttackPanel';
 import Timeline from './Timeline';
 import ReactionOverlay from './ReactionOverlay';
 import { playAttack } from './attackFx';
-import { STATUS_LABEL, CLASS_LABEL, CLASS_COLOR } from './combatLabels';
+import { STATUS_LABEL, CLASS_LABEL, CLASS_COLOR, FLOOR_LABEL } from './combatLabels';
 
 export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }) {
   const { user } = useAuth();
@@ -154,6 +154,15 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
             {isMaster && enc.status !== 'ENDED' && (
               <button className="btn-ghost" onClick={() => window.confirm('Encerrar o encontro?') && run(() => api.endEncounter(enc.id))}>Encerrar</button>
             )}
+            <label className="flex items-center gap-1 text-xs" title="Dano de Arremesso: macio +0, padrão +1d4, duro +2d4 e 1 PQ">
+              Chão
+              {isMaster && enc.status !== 'ENDED' ? (
+                <select className="field !mt-0 !w-auto !py-0.5" value={enc.floor ?? 'STANDARD'}
+                  onChange={(e) => run(() => api.updateEncounter(enc.id, { floor: e.target.value }))}>
+                  {Object.entries(FLOOR_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                </select>
+              ) : <strong>{FLOOR_LABEL[enc.floor ?? 'STANDARD']}</strong>}
+            </label>
             {(() => {
               const cls = enc.defaultClassification ?? 'REAL';
               return (
@@ -233,7 +242,9 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
                 onReact={(aid, tid, r, did, tech) => run(() => api.respondReaction(aid, tid, r, did, tech))}
                 onCancel={(aid) => run(() => api.cancelAttack(aid))}
                 onLateCounter={(aid, tid, b) => run(() => api.lateCounter(aid, tid, b))}
-                targetSheetId={(t) => enc.participants.find((x) => x.id === (t.targetId))?.sheetId} />
+                targetSheetId={(t) => enc.participants.find((x) => x.id === (t.targetId))?.sheetId}
+                attackerSheetId={(a) => enc.participants.find((x) => x.id === a.attackerId)?.sheetId}
+                onChain={(aid, tid, v) => run(() => api.chainAttack(aid, tid, v))} />
 
               {enc.participants.length === 0
                 ? <p className="caption">Sem participantes.</p>

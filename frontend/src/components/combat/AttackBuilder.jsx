@@ -14,6 +14,8 @@ export default function AttackBuilder({ participant: p, participants, initialKin
   const [side, setSide] = useState('');
   const [grip, setGrip] = useState('ARM');
   const [squeeze, setSqueeze] = useState(false);
+  const [run, setRun] = useState(0);
+  const [surface, setSurface] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -23,9 +25,13 @@ export default function AttackBuilder({ participant: p, participants, initialKin
 
   const prof = profiles?.[idx];
   const grab = prof?.basicAttack === 'AGARRAO';
+  const mods = prof?.modules ?? [];
+  // §41: Varredura atinge 2 alvos, Círculo todos; o resto, 1
+  const maxTargets = mods.includes('Círculo') ? Infinity : mods.includes('Varredura') ? 2 : 1;
   const sided = prof?.basicAttack ? SIDED_BASICS.includes(prof.basicAttack) : !!prof;
   const stealth = (t) => t.conditions.some((c) => c.key === 'FURTIVO');
-  const toggle = (id) => setTargets((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const toggle = (id) => setTargets((cur) => (cur.includes(id) ? cur.filter((x) => x !== id)
+    : maxTargets === 1 ? [id] : cur.length >= maxTargets ? cur : [...cur, id]));
 
   function submit(e) {
     e.preventDefault();
@@ -41,6 +47,8 @@ export default function AttackBuilder({ participant: p, participants, initialKin
       regionPenalty: -Math.abs(penalty),
       ...(sided && side ? { strikeSide: side } : {}),
       ...(grab ? { grip, squeeze } : {}),
+      ...(mods.includes('Ímpeto') && run > 0 ? { runMeters: run } : {}),
+      ...(mods.includes('Esmagar') ? { surface } : {}),
     });
   }
 
@@ -84,6 +92,17 @@ export default function AttackBuilder({ participant: p, participants, initialKin
                 </label>
               </>
             )}
+            {mods.includes('Ímpeto') && (
+              <label className="text-xs" title="+2 de dano a cada 1,5 m em linha reta (máx. +6)">Corrida (m)
+                <input type="number" min={0} max={100} step={1.5} className="field !w-20" value={run}
+                  onChange={(e) => setRun(Math.max(0, Number(e.target.value)))} />
+              </label>
+            )}
+            {mods.includes('Esmagar') && (
+              <label className="flex items-center gap-1 self-end text-xs" title="Esmagar: prensa o alvo (1d4+3 e +1 PQ)">
+                <input type="checkbox" checked={surface} onChange={(e) => setSurface(e.target.checked)} /> Parede/obstáculo junto do alvo
+              </label>
+            )}
             <label className="text-xs">Região
               <input className="field" maxLength={40} value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Cabeça…" />
             </label>
@@ -95,7 +114,7 @@ export default function AttackBuilder({ participant: p, participants, initialKin
           {prof && <p className="caption">Acerto: {prof.hitFormula} · Dano: {prof.damageFormula ?? 'nenhum'}</p>}
           {BASIC_HINT[prof?.basicAttack] && <p className="caption">{BASIC_HINT[prof.basicAttack]}</p>}
           <fieldset className="flex flex-wrap gap-3">
-            <legend className="caption">Alvos</legend>
+            <legend className="caption">Alvos{maxTargets === 1 ? ' (1)' : maxTargets === 2 ? ' (até 2, Varredura)' : ' (Círculo)'}</legend>
             {participants.filter((t) => t.id !== p.id).map((t) => {
               const hidden = stealth(t);
               return (

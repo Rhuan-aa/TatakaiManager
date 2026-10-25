@@ -86,6 +86,7 @@ class RollChannelServiceTest {
         cat.setName("Oi-Zuki");
         cat.setSpCostBase(10);
         AssemblyVariation v = new AssemblyVariation();
+        variation = v;
         v.setName("Padrão");
         v.setItems(List.of(item("Dado Maior", 5), item("Precisão", 2), item("Outro", 3)));
         cat.setVariations(List.of(v));
@@ -98,6 +99,30 @@ class RollChannelServiceTest {
                 .thenReturn(List.of(technique, base));
         lenient().when(techniqueRepository.findById(technique.getId())).thenReturn(Optional.of(technique));
         lenient().when(techniqueRepository.findById(base.getId())).thenReturn(Optional.of(base));
+    }
+
+    private AssemblyVariation variation;
+
+    @Test
+    @DisplayName("§41: Controle sem Dado Maior não causa dano (1º degrau = 1d4); Massa no acerto e Atributo Alternativo no dano")
+    void profile_controlMassAlt() {
+        variation.setCore(TechniqueCore.CONTROL);
+        variation.setItems(List.of());
+        RollProfileResponse p = service.profiles(sheet.getId(), player.getId()).get(0);
+        assertThat(p.damageDice()).isNull();
+        assertThat(p.damage()).isEmpty();
+
+        AssemblyItem mass = item("Massa", 1);
+        mass.setLabel("Massa no acerto");
+        AssemblyItem alt = item("Atributo Alternativo", 1);
+        alt.setNote("Destreza no dano");
+        variation.setItems(List.of(item("Dado Maior", 1), mass, alt));
+        sheet.setWeightKg(100); // Mod. de Peso +3 → +1 no acerto
+        p = service.profiles(sheet.getId(), player.getId()).get(0);
+        assertThat(p.damageDice().text()).isEqualTo("2d4"); // 1d4 × (1+E)
+        assertThat(p.hit()).anyMatch(x -> x.source().equals("Massa") && x.value() == 1);
+        assertThat(p.damage()).anyMatch(x -> x.source().equals("DES (Atributo Alternativo)") && x.value() == 2);
+        assertThat(p.damage()).noneMatch(x -> x.source().equals("FOR"));
     }
 
     private static AssemblyItem item(String module, int qty) {
@@ -129,20 +154,19 @@ class RollChannelServiceTest {
     }
 
     @Test
-    @DisplayName("perfil da técnica: Dado Maior 5 = 2d6 e E=1 dobra os dados; Precisão, HIT, DAMAGE e SP")
+    @DisplayName("perfil da técnica: Dado Maior 5 = 1d12+1d4 e E=1 dobra os dados; Precisão, HIT, DAMAGE e SP")
     void profile_technique() {
         List<RollProfileResponse> ps = service.profiles(sheet.getId(), player.getId());
 
         RollProfileResponse p = ps.stream().filter(x -> x.sourceType() == RollSourceType.TECHNIQUE).findFirst().orElseThrow();
         assertThat(p.name()).isEqualTo("Oi-Zuki");
         assertThat(p.variation()).isEqualTo("Padrão");
-        assertThat(p.damageDice().count()).isEqualTo(4); // 2d6 x (1+E=2)
-        assertThat(p.damageDice().sides()).isEqualTo(6);
+        assertThat(p.damageDice().text()).isEqualTo("2d12+2d4"); // (1d12+1d4) x (1+E=2)
         // acerto: DES +2, Precisão 2, HIT x2
         assertThat(p.hit().stream().mapToInt(RollPart::value).sum()).isEqualTo(6);
         assertThat(p.hitFormula()).isEqualTo("1d20+6");
         // dano: FOR +3, DAMAGE +2
-        assertThat(p.damageFormula()).isEqualTo("4d6+5");
+        assertThat(p.damageFormula()).isEqualTo("2d12+2d4+5");
         assertThat(p.spCost()).isEqualTo(8); // 10 - 2*COST
         assertThat(p.critMargin()).isEqualTo(20);
         assertThat(ps.stream().filter(x -> x.sourceType() == RollSourceType.BASIC_ATTACK)).hasSize(BasicAttack.values().length);
@@ -156,7 +180,7 @@ class RollChannelServiceTest {
 
         RollProfileResponse p = service.profiles(sheet.getId(), player.getId()).get(0);
 
-        assertThat(p.damageDice().count()).isEqualTo(6); // 2d6 x (1+1+1)
+        assertThat(p.damageDice().text()).isEqualTo("3d12+3d4"); // (1d12+1d4) x (1+1+1)
         assertThat(p.advantage()).isEqualTo(-1);
     }
 

@@ -33,6 +33,35 @@ function LateCounterPicker({ sheetId, onPick, onClose }) {
   );
 }
 
+/** Encadear: escolhe outra técnica do atacante (o servidor confere o tipo e cobra +25% de SP). */
+function ChainPicker({ sheetId, currentName, onPick, onClose }) {
+  const [profiles, setProfiles] = useState(null);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    let active = true;
+    getRollProfiles(sheetId)
+      .then((r) => active && setProfiles(r.filter((x) => !x.basicAttack
+        && `${x.name}${x.variation ? ` (${x.variation})` : ''}` !== currentName)))
+      .catch(() => active && setProfiles([]));
+    return () => { active = false; };
+  }, [sheetId, currentName]);
+  const prof = profiles?.[idx];
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      {!profiles && <span className="caption">Carregando…</span>}
+      {profiles?.length === 0 && <span className="caption">Nenhuma outra técnica.</span>}
+      {profiles?.length > 0 && (
+        <select className="field !w-auto !py-0.5 text-xs" aria-label="Técnica encadeada" value={idx} onChange={(e) => setIdx(Number(e.target.value))}>
+          {profiles.map((x, i) => <option key={i} value={i}>{x.name}{x.variation ? ` (${x.variation})` : ''} · {Math.ceil(x.spCost * 1.25)} SP</option>)}
+        </select>
+      )}
+      <button type="button" className="btn-primary px-3 py-1 text-xs" disabled={!prof}
+        onClick={() => onPick(prof.sourceId, prof.variation)}>Encadear</button>
+      <button type="button" className="btn-ghost text-xs" onClick={onClose}>Fechar</button>
+    </div>
+  );
+}
+
 function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
   const [picking, setPicking] = useState(null);
 
@@ -66,8 +95,10 @@ function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
   );
 }
 
-export default function AttackPanel({ pending, resolved, canCancel, onReact, onCancel, onLateCounter, targetSheetId }) {
+export default function AttackPanel({ pending, resolved, canCancel, onReact, onCancel, onLateCounter, targetSheetId,
+  attackerSheetId, onChain }) {
   const initialIds = useRef(new Set(resolved.map((a) => a.id))); // já resolvidos ao montar: sem animação
+  const [chaining, setChaining] = useState(null);
   return (
     <div className="space-y-3">
       {pending.length > 0 && <h3 className="panel-title text-lg">Ataques pendentes</h3>}
@@ -108,6 +139,11 @@ export default function AttackPanel({ pending, resolved, canCancel, onReact, onC
             </div>
           ))}
           {canCancel(a) && <button type="button" className="btn-ghost text-xs" onClick={() => onCancel(a.id)}>Cancelar</button>}
+          {a.canChain && (chaining === a.id
+            ? <ChainPicker sheetId={attackerSheetId(a)} currentName={a.sourceName} onClose={() => setChaining(null)}
+                onPick={(tid, v) => { onChain(a.id, tid, v); setChaining(null); }} />
+            : <button type="button" className="btn-secondary px-3 py-1 text-xs" title="Aborta o golpe e usa outra técnica (+25% SP, sem PA)"
+                onClick={() => setChaining(a.id)}>Encadear</button>)}
         </div>
       ))}
       {resolved.length > 0 && (

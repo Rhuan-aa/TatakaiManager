@@ -11,7 +11,9 @@ import java.util.UUID;
 
 public record AttackResponse(UUID id, UUID encounterId, UUID attackerId, String attackerName, String sourceName,
         AttackActionKind actionKind, String region, int reservedPa, int reservedSp, AttackStatus status, int round,
-        RollMessage attackRoll, List<TargetResponse> targets) {
+        RollMessage attackRoll, List<TargetResponse> targets,
+        /** Encadear (§41): o atacante pode abortar e trocar de técnica agora. */
+        boolean canChain) {
 
     public record TargetResponse(UUID id, UUID targetId, String targetName, ReactionType reaction,
             boolean autoResolved, boolean canRespond, List<Option> options, RollMessage reactionRoll,
