@@ -63,6 +63,12 @@ public final class TechniqueRules {
         return 100;
     }
 
+    /** Quebra-Escudo (Taekwondo — Guarda Natural): a mitigação do Defender desce um grau (100→75→50→25→0). */
+    public static int stepDown(int mitigationPct) {
+        for (int i = GRADES.length - 1; i >= 0; i--) if (GRADES[i] < mitigationPct) return GRADES[i];
+        return 0;
+    }
+
     private static ReactionType reactionOf(BaseRules.Scope s) {
         return switch (s) {
             case DEFEND -> ReactionType.DEFEND;

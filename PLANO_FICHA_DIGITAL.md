@@ -2307,8 +2307,8 @@ seção nova e risque o item aqui.
    armada)" no `ArtEditor`. Só o backend foi testado (unitários + smoke da API).
 
 **Criação Marcial**
-2. Efeitos únicos das Artes Clássicas (Foco, Ritmo/PR, Pop, Embalo, Força Centrífuga, Terreno Perdido…): hoje só texto.
-   Precisariam de recursos por participante e regras por arte (Tabelas das Artes Clássicas).
+2. ~~Efeitos únicos das Artes Clássicas (Foco, Ritmo/PR, Pop, Embalo, Força Centrífuga, Terreno Perdido…): hoje só texto.
+   Precisariam de recursos por participante e regras por arte (Tabelas das Artes Clássicas).~~ (feito, §47)
 3. Sem grade/posição: Investida, Acompanhar, Reposicionar, Controle de Distância, Ataque de Oportunidade, adjacência e
    alcance Curto/Médio/Longo dos golpes (só a distância informada no ataque com arma é usada).
 4. Limitações só em texto: Gatilho, Exige Posição, Duas Etapas.
@@ -2385,3 +2385,55 @@ seção nova e risque o item aqui.
 - **Campos dedicados no `ArtEditor`**: seletores/inputs próprios em `ItemsEditor` para `Atributo Alternativo` (DES/INT +
   dano/acerto), `Massa` (dano/acerto), `Exige Base` (datalist com as bases da arte) e `Arma Única` (datalist com o catálogo
   de armas).
+
+## 47. Artes Clássicas — passivas e contadores automáticos (25/10/2026)
+
+- **Helpers em `MartialService`**: `Fighter.hasArtNamed(String)` (verifica se a arte está ativa na ficha) e operações sobre
+  `CombatCounter` (`counterValue`, `consumeCounter`, `addCounter`, `resetCounter`).
+- **Karatê (`Zanshin` / `FOCO` 0..1)**: quando `FOCO > 0`, o próximo ataque (`withMartial`) ou teste de Contra-ataque
+  (`reactionRoll` + `r.counterHits()`) consome 1 `FOCO` e soma `+2` no acerto e `+2` no dano (`"Foco (Zanshin) +2"`).
+- **Capoeira (`Roda` e `Ritmo` / `RITMO` 0..5)**:
+  - Entrar na base `Ginga` custa 0 PA; sair da `Ginga` zera `RITMO` (`CombatService.act`).
+  - `1+ PR`: `+1` na Esquiva (`reactionRoll`) e `+1` no acerto (`+2` em técnicas de Capoeira com `2+ PR`).
+  - `3+ PR`: `+3` de dano e `+1 PQ` na cabeça (`basicKp`) em Chute ou técnicas de Capoeira.
+  - `4+ PR`: `+1` de vantagem no acerto.
+  - `5 PR (Ritmo Pleno)`: técnicas de Capoeira custam metade do SP (mínimo 1, em `declare`) e o dado de dano de Chute/Capoeira
+    sobe 1 degrau (`WeaponRules.heavier(dice, 1)`).
+- **Boxe (`Embalo` / `EMBALO` 0..5)**: soma `+EMBALO` no acerto e no dano de `BasicAttack.SOCO` e técnicas de Boxe; em `5`,
+  concede **Crítico Garantido** (`"Embalo 5"`) e reseta `EMBALO` para 0 (`AttackService.resolve`).
+- **Muay Thai (`Preparando a Arma`)**: técnicas de Muay Thai custam `−2 SP` (mínimo 1, em `RollProfileService`); o lutador
+  recebe `+3` de Redução de Dano contra golpes contundentes (`calejo += 3`, salvo `Atravessar`).
+- **Taekwondo (`Guarda Trocada` e `FORCA_CENTRIFUGA` 0..10)**:
+  - 1ª troca de guarda (`CHANGE_GUARD`) por turno custa 0 PA (`CombatService.act`).
+  - `FORCA_CENTRIFUGA`: consumida integralmente na próxima técnica de Taekwondo para somar `+FC` de dano (`withMartial`).
+  - `Guarda Natural – Quebra-Escudo`: Chute ou técnica de Taekwondo em `Guard.NATURAL` contra `DEFEND` reduz a mitigação do
+    defensor em 1 grau (`TechniqueRules.stepDown`: `100→75→50→25→0`).
+  - `Guarda Invertida – Caçador de Movimento`: Chute ou técnica de Taekwondo em `Guard.INVERTED` contra `DODGE` que falhou
+    causa `+1d6` de dano extra.
+- **Judô (`Ukemi` e `Kuzushi`)**:
+  - `Ukemi`: reduz pela metade o dano sofrido de `Derrubada` e `Montinho`.
+  - `Kuzushi`: oponente que erra golpe corpo-a-corpo contra defensor de Judô recebe `DESEQUILIBRADO` (`END_OF_TARGET_TURN`).
+    Contra alvo `DESEQUILIBRADO`, técnica de Judô com `Derrubar` tem custo de SP reduzido em `max(0, mod(FOR do alvo))` (mín. 1,
+    *Mínimo Esforço*), soma `+max(0, mod(FOR do alvo))` de dano (*Força Alheia*) e impõe desvantagem na resistência a `Derrubar`
+    (*Ceder*), removendo `DESEQUILIBRADO` ao derrubar.
+- **Sumo (`Preso ao Solo` e `TERRENO_PERDIDO` 0..5 por alvo)**:
+  - `Preso ao Solo`: `+2` em `Defender` (`reactionRoll`), `+max(0, modPeso)` para resistir a `Empurrar`/`Derrubar` (`resists`)
+    e `−50%` na movimentação enquanto estiver em base ativa (`CombatService.act`).
+  - `TERRENO_PERDIDO`: incrementa `+1` (`+2` no crítico) ao acertar ou empurrar o alvo.
+- **Wrestling (`Fôlego de Altitude`, `Opressão da Cordilheira` e `LUTA_EM_CADEIA` 0..6 por alvo)**:
+  - `Fôlego de Altitude`: contra alvo com `currentSp < spMax / 2`, técnicas de Wrestling recebem `+2` no acerto (`withSituation`)
+    e o alvo sofre `−2` na resistência (`resists`).
+  - `Opressão da Cordilheira`: ao encerrar o turno `DERRUBADO` e preso (`AGARRADO`/`IMOBILIZADO`) por lutador de Wrestling,
+    perde `4 + max(0, modPeso do agarrador)` de SP (`CombatService.endTurn`).
+  - `LUTA_EM_CADEIA`: soma o valor atual do contador no acerto de técnicas de Wrestling e `AGARRAO` contra aquele alvo e
+    incrementa `+1` ao acertar.
+- **Entertainment Wrestling (`Bump Master` e `POP` 0..5)**:
+  - `Bump Master`: 1º `STAND_UP` por turno custa 0 PA (`CombatService.act`); reduz o dano de `Derrubada`, `Montinho` e
+    `Arremesso` em `max(2, mod(CON))` e zera a perda de PQ de `Arremesso`/`Cravar`.
+  - `Pop`: incrementa `+1` ao derrubar um alvo ou declarar ataque contra alvo `DERRUBADO`/`VULNERAVEL`; com `POP >= 3`, técnica
+    de Entertainment Wrestling ativa **Finisher** (consome 3 `POP`, dá `+1` de vantagem no acerto e impõe `−1` de vantagem na
+    resistência do alvo aos efeitos).
+- **MMA (`Base Adaptável`)**: 1ª troca/entrada de base (`CHANGE_BASE`) por turno custa 0 PA (`fluidSwitchUsed`), e esquivar ou
+  acertar uma técnica de MMA restaura a troca gratuita (`fluidSwitchUsed = false`).
+- **Jiu-Jitsu Brasileiro (`Arte Suave`)**: 1ª troca/entrada de base (`CHANGE_BASE`) por turno enquanto `DERRUBADO` custa 0 PA;
+  `SOCO` e `CHUTE` em pé sofrem `−3` no acerto (`"Arte Suave: trocação em pé −3"`).

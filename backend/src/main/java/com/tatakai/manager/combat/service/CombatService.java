@@ -501,9 +501,14 @@ public class CombatService {
             throw new InvalidCombatException("Dissociado: Ações Menores estão bloqueadas");
         }
         int pa = CombatRules.paCost(action, Boolean.TRUE.equals(req.slow()));
-        if (action == CombatAction.CHANGE_GUARD && s.getDominance() == Dominance.AMBIDEXTROUS
-                && p.getGuardChangesThisTurn() == 0) {
-            pa = 0; // ambidestro: a 1ª troca de guarda do turno é Ação Livre
+        MartialService.Fighter fighter = martial.fighter(p, s);
+        if (action == CombatAction.CHANGE_GUARD && (s.getDominance() == Dominance.AMBIDEXTROUS
+                || fighter.hasArtNamed("Taekwondo")) && p.getGuardChangesThisTurn() == 0) {
+            pa = 0; // ambidestro ou Guarda Trocada (Taekwondo): a 1ª troca de guarda do turno é Ação Livre
+        }
+        if (action == CombatAction.STAND_UP && fighter.hasArtNamed("Entertainment Wrestling") && !p.isReadinessUsed()) {
+            pa = 0; // Bump Master: levantar-se 1× por turno não custa PA
+            p.setReadinessUsed(true);
         }
         com.tatakai.manager.sheet.entity.InventoryItem item = gearItem(s, action, req.itemId());
         WeaponCatalog.Def weapon = item == null ? null : weapons.find(item.getWeaponKey()).orElse(null);
@@ -529,8 +534,14 @@ public class CombatService {
         if (action == CombatAction.CHANGE_BASE) {
             pa = CombatRules.baseChangeCost(p.getActiveBaseId() != null, req.baseId() != null);
             BaseRules.Profile target = req.baseId() == null ? null : profiles.baseProfile(s, req.baseId());
-            if (target != null && target.fluidSwitch() && !p.isFluidSwitchUsed()) {
-                pa = 0; // Troca Fluida: entrar nesta base é Ação Livre uma vez por turno
+            boolean ginga = target != null && target.name() != null
+                    && target.name().toLowerCase(java.util.Locale.ROOT).startsWith("ginga") && fighter.hasArtNamed("Capoeira");
+            if (ginga) {
+                pa = 0; // Roda (Capoeira): entrar na Ginga é sempre Ação Livre
+            } else if ((target != null && target.fluidSwitch() || fighter.hasArtNamed("MMA")
+                    || (fighter.hasArtNamed("Jiu-Jitsu Brasileiro") && keys.contains(KNOCKED_DOWN)))
+                    && !p.isFluidSwitchUsed()) {
+                pa = 0; // Troca Fluida / Base Adaptável (MMA) / Arte Suave no solo (Jiu-Jitsu): 1× por turno grátis
                 p.setFluidSwitchUsed(true);
             }
         }
@@ -618,6 +629,7 @@ public class CombatService {
                 if (keys.contains(VitalService.FREEZING)) d = d / 2; // Congelando: Movimentação pela metade
                 if (SheetRules.overloaded(s)) d = d / 2;             // Sobrecarregado: idem
                 if (keys.contains("ALEIJADO")) d = d / 2;            // Aleijar: Movimentação pela metade
+                if (base != null && fighter.hasArtNamed("Sumo")) d = d / 2; // Preso ao Solo (Sumo): −50% em base
                 if (p.getMovesThisTurn() == 1) d = com.tatakai.manager.combat.service.rules.EquipmentRules.firstMove(d, armorWeight(s));
                 text.append(" — Moveu ").append(d == Math.floor(d) ? String.valueOf((int) d) : String.valueOf(d).replace('.', ',')).append(" m");
             }
@@ -638,8 +650,13 @@ public class CombatService {
                 text.append(" — guarda ").append(req.guard().label());
             }
             case CHANGE_BASE -> {
+                boolean wasGinga = activeBase != null && activeBase.name() != null
+                        && activeBase.name().toLowerCase(java.util.Locale.ROOT).startsWith("ginga");
                 p.setActiveBaseId(newBase == null ? null : newBase.getId());
                 BaseRules.Profile entered = newBase == null ? null : profiles.baseProfile(s, newBase.getId());
+                boolean isGinga = entered != null && entered.name() != null
+                        && entered.name().toLowerCase(java.util.Locale.ROOT).startsWith("ginga");
+                if (wasGinga && !isGinga) martial.resetCounter(e, p, "RITMO");
                 text.append(newBase == null ? " — sem base ativa" : " — base " + newBase.getName()
                         + (entered != null && entered.distanceControl() ? " (Controle de Distância)" : ""));
             }
@@ -1129,7 +1146,7 @@ public class CombatService {
             throw new CombatConflictException("Há ataque aguardando reação");
         }
         VitalService.Ctx ctx = VitalService.Ctx.of(userId, master ? ActorRole.MASTER : ActorRole.PLAYER, "Combate");
-        endTurn(e, current, ctx);
+        endTurn(e, current, ps, ctx);
         int next = e.getCurrentIndex() + 1;
         if (next >= ps.size()) {
             next = 0;
@@ -1150,7 +1167,7 @@ public class CombatService {
         if (ctx != null && VitalService.STIMULATED.equals(c.getConditionKey())) vital.stimulantCrash(e, p, sheetOf(p), ctx);
     }
 
-    private void endTurn(Encounter e, EncounterParticipant p, VitalService.Ctx ctx) {
+    private void endTurn(Encounter e, EncounterParticipant p, List<EncounterParticipant> ps, VitalService.Ctx ctx) {
         int started = p.getTurnStartedAt() == null ? e.getTurnCounter() : p.getTurnStartedAt();
         for (CombatCondition c : new ArrayList<>(conditions.findByParticipantIdIn(List.of(p.getId())))) {
             if (CombatRules.expiresAtTurnEnd(c.getExpiresAt(), c.getAppliedTurn(), started)) {
@@ -1162,6 +1179,22 @@ public class CombatService {
             }
         }
         vital.onTurnEnd(e, p, sheetOf(p), ctx);
+        // Opressão da Cordilheira (Wrestling): alvo Derrubado preso por um wrestler perde 4 + mod. de Peso de SP no fim do turno
+        List<CombatCondition> myConds = conditions.findByParticipantIdIn(List.of(p.getId()));
+        if (myConds.stream().anyMatch(c -> KNOCKED_DOWN.equals(c.getConditionKey()))) {
+            myConds.stream().filter(c -> (GRABBED.equals(c.getConditionKey()) || RESTRAINED.equals(c.getConditionKey()))
+                    && c.getSourceParticipantId() != null).findFirst().ifPresent(hold -> {
+                ps.stream().filter(x -> x.getId().equals(hold.getSourceParticipantId())).findFirst().ifPresent(holder -> {
+                    CharacterSheet hs = sheetOf(holder);
+                    if (martial.fighter(holder, hs).hasArtNamed("Wrestling")) {
+                        int spLoss = 4 + Math.max(0, SheetRules.weightMod(hs.getWeightKg()));
+                        log(e, p.getId(), CombatEventType.ACTION, "Opressão da Cordilheira (" + holder.getName() + "): −"
+                                + spLoss + " SP em " + p.getName());
+                        vital.applySp(e, p, sheetOf(p), -spLoss, ctx);
+                    }
+                });
+            });
+        }
         dropUnmaintained(e, p);
         p.setPaCurrent(0);
         log(e, p.getId(), CombatEventType.TURN_END, "Fim do turno de " + p.getName());

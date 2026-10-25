@@ -284,6 +284,8 @@ class AttackServiceTest {
             if (!counterRows.contains(c)) counterRows.add(c);
             return c;
         });
+        lenient().doAnswer(i -> counterRows.remove(i.<CombatCounter>getArgument(0)))
+                .when(counters).delete(any(CombatCounter.class));
         service = new AttackService(encounters, participants, conditions, timeline, attackRepo, targetRepo, sheets,
                 techniques, members, rolls, profiles, activityLog, publisher,
                 new com.tatakai.manager.combat.service.VitalService(participants, conditions, timeline, activityLog, rolls,
@@ -1925,5 +1927,78 @@ class AttackServiceTest {
         assertThat(used.hit()).anyMatch(x -> x.source().startsWith("Mira Estável") && x.value() == 2);
         assertThat(used.hit()).anyMatch(x -> x.source().equals("Dominância: lado não dominante −1") && x.value() == -1);
         assertThat(used.hit()).noneMatch(x -> x.source().startsWith("Guarda:"));
+    }
+
+    @Test
+    @DisplayName("§47 Artes Clássicas: Karatê (Foco +2/+2 consumido), Boxe (Embalo 5 Crítico Garantido e reseta), Capoeira (Ritmo 5 SP/2 e dado +1)")
+    void classicalArtsKarateBoxeCapoeira() {
+        lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
+                .thenAnswer(x -> Roll.builder().total(4).build());
+        // 1) Karatê: FOCO = 1 dá +2 acerto, +2 dano e consome FOCO
+        CharacterArt karate = art(sheetA, "Karatê", "Trocação", Graduation.BEGINNER, List.of("Socos"), List.of());
+        counterRows.add(CombatCounter.builder().id(UUID.randomUUID()).participantId(pA.getId())
+                .counterKey("FOCO").value(1).build());
+        rollCalcs.clear();
+        fight(soco(null), ReactionType.NONE, msg(15, 10, 5), null);
+        assertThat(part(rollCalcs.get(0), "Foco (Zanshin) +2").value()).isEqualTo(2);
+        assertThat(rollCalcs.get(0).damage()).anyMatch(x -> x.source().equals("Foco (Zanshin) +2") && x.value() == 2);
+        assertThat(counterRows).noneMatch(c -> "FOCO".equals(c.getCounterKey()) && c.getValue() > 0);
+        assertThat(karate).isNotNull();
+
+        // 2) Boxe: EMBALO = 5 dá +5 acerto/dano, Crítico Garantido (+4 dado extra) e reseta EMBALO para 0
+        artsOf.get(sheetA.getId()).clear();
+        art(sheetA, "Boxe", "Trocação", Graduation.BEGINNER, List.of("Socos"), List.of());
+        counterRows.clear();
+        counterRows.add(CombatCounter.builder().id(UUID.randomUUID()).participantId(pA.getId())
+                .counterKey("EMBALO").value(5).build());
+        rollCalcs.clear();
+        AttackResponse r = fight(soco(null), ReactionType.NONE, msg(15, 10, 5), null);
+        assertThat(part(rollCalcs.get(0), "Embalo +5").value()).isEqualTo(5);
+        assertThat(r.targets().get(0).damage()).isEqualTo(5 + 4);
+        assertThat(counterRows).allMatch(c -> c.getValue() == 0);
+
+        // 3) Capoeira: RITMO = 5 na técnica de Capoeira custa metade do SP (4 -> 2), sobe o dado (1d6 -> 1d8) e dá +2 acerto / +3 dano / +1 vantagem
+        artsOf.get(sheetA.getId()).clear();
+        CharacterArt cap = art(sheetA, "Capoeira", "Raspagem", Graduation.BEGINNER, List.of("Chutes"), List.of("Desvio"));
+        tech.setCharacterArt(cap);
+        techSp = 4;
+        counterRows.add(CombatCounter.builder().id(UUID.randomUUID()).participantId(pA.getId())
+                .counterKey("RITMO").value(5).build());
+        rollCalcs.clear();
+        r = fight(technique(AttackActionKind.MAJOR, pN), ReactionType.NONE, msg(15, 10, 6), null);
+        assertThat(r.reservedSp()).isEqualTo(2);
+        assertThat(rollCalcs.get(0).dice().text()).isEqualTo("1d8");
+        assertThat(part(rollCalcs.get(0), "Ritmo +2").value()).isEqualTo(2);
+        assertThat(rollCalcs.get(0).damage()).anyMatch(x -> x.source().equals("Ritmo (3 PR) +3") && x.value() == 3);
+    }
+
+    @Test
+    @DisplayName("§47 Artes Clássicas: Muay Thai (+3 RD contundente), Judô (Kuzushi no erro inimigo), BJJ (−3 em pé) e Sumo/Wrestling contadores por alvo")
+    void classicalArtsMuayThaiJudoBjjSumoWrestling() {
+        // 1) Jiu-Jitsu Brasileiro em pé sofre −3 em Soco; Muay Thai defensor reduz 3 de dano contundente
+        art(sheetA, "Jiu-Jitsu Brasileiro", "Submissão", Graduation.BEGINNER, List.of(), List.of());
+        art(npcSheet, "Muay Thai", "Trocação", Graduation.BEGINNER, List.of(), List.of());
+        rollCalcs.clear();
+        AttackResponse r = fight(soco(null), ReactionType.NONE, msg(15, 10, 7), null);
+        assertThat(part(rollCalcs.get(0), "Arte Suave: trocação em pé −3").value()).isEqualTo(-3);
+        assertThat(r.targets().get(0).damage()).isEqualTo(4); // 7 - 3 (Preparando a Arma)
+
+        // 2) Judô: atacante que erra golpe corpo-a-corpo contra defensor de Judô fica DESEQUILIBRADO
+        artsOf.get(npcSheet.getId()).clear();
+        art(npcSheet, "Judô", "Derrubada", Graduation.BEGINNER, List.of(), List.of("Desvio"));
+        fight(soco(null), ReactionType.DODGE, msg(10, 8, 5), msg(16, 14, null));
+        assertThat(holds(pA, "DESEQUILIBRADO")).isTrue();
+
+        // 3) Sumo e Wrestling: acertar incrementa TERRENO_PERDIDO e LUTA_EM_CADEIA por alvo
+        artsOf.get(sheetA.getId()).clear();
+        art(sheetA, "Sumo", "Empurrão", Graduation.BEGINNER, List.of("Socos"), List.of());
+        CharacterArt wr = art(sheetA, "Wrestling", "Derrubada", Graduation.BEGINNER, List.of(), List.of());
+        tech.setCharacterArt(wr);
+        counterRows.clear();
+        fight(technique(AttackActionKind.MAJOR, pN), ReactionType.NONE, msg(15, 10, 5), null);
+        assertThat(counterRows).anyMatch(c -> "TERRENO_PERDIDO".equals(c.getCounterKey())
+                && pN.getId().equals(c.getTargetParticipantId()) && c.getValue() == 1);
+        assertThat(counterRows).anyMatch(c -> "LUTA_EM_CADEIA".equals(c.getCounterKey())
+                && pN.getId().equals(c.getTargetParticipantId()) && c.getValue() == 1);
     }
 }

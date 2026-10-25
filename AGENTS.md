@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 785 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 788 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -919,10 +919,18 @@ Contragolpe no atacante, Golpe no Fôlego/Dano Persistente/Montinho/proteção/F
 mesmo tipo marcial, dominância com arma de 1 mão (`−1` no lado não dominante, sem guarda), Abrangência `Arma Única`, módulos
 de base armada (`Controle de Distância`, `Empunhadura Firme`, `Prontidão`, `Recarga Treinada`, `Mira Estável`), módulos
 armados de técnica (`Arremessar`, `Transpassar`, `Supressão` com condição `SUPRIMIDO`) e seletores dedicados no `ArtEditor`.
+**Passivas e contadores automáticos das Artes Clássicas** (§47): Karatê (`FOCO` `+2` acerto/dano consumido no ataque ou
+contra-ataque), Capoeira (`Roda` Ginga 0 PA / `RITMO` 1..5 PR com SP/2 e dado +1 no 5 PR), Boxe (`EMBALO` `+1..+5` acerto/dano
+e Crítico Garantido no 5), Muay Thai (`−2 SP` mín. 1 e `+3` RD contundente), Taekwondo (1ª troca de guarda 0 PA,
+`FORCA_CENTRIFUGA` consumida em dano, `Quebra-Escudo` e `Caçador de Movimento +1d6`), Judô (`Ukemi` metade em
+Derrubada/Montinho e `Kuzushi` aplicando `DESEQUILIBRADO` no erro inimigo com Mínimo Esforço/Força Alheia/Ceder), Sumo
+(`Preso ao Solo` `+2` Defender, `+modPeso` contra Empurrar/Derrubar, `−50%` movimento em base e `TERRENO_PERDIDO`), Wrestling
+(`Fôlego de Altitude` `+2/−2` com SP < 50%, `Opressão da Cordilheira` drena SP no fim do turno e `LUTA_EM_CADEIA`),
+Entertainment Wrestling (1º levantar 0 PA, redução de queda/arremesso e `POP` / `Finisher` com 3 Pop), MMA (1ª troca de base
+0 PA restaurada na esquiva/acerto) e Jiu-Jitsu Brasileiro (1ª troca de base no chão 0 PA e `−3` em Soco/Chute em pé).
 
 **Pendentes** (lista completa no plano §45; antigos em §26.5):
-1. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição, Duas Etapas e os efeitos únicos das
-   Artes Clássicas (Foco, Ritmo, Pop, Embalo…).
+1. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição e Duas Etapas.
 2. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).
 
 **Colunas novas sem migração automática** (bancos com `ddl-auto=validate`): `combat_conditions.progress`,

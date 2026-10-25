@@ -232,6 +232,9 @@ public class RollProfileService {
         if (dice == null) damage = new ArrayList<>();
         int sp = RollRules.spCost(cat == null ? null : cat.getSpCostBase(), count(bonuses, MasteryBonus.COST),
                 physical(sheet)) + (weapon == null ? 0 : weapon.load());
+        if (t.getCharacterArt() != null && "Muay Thai".equalsIgnoreCase(t.getCharacterArt().getArtName())) {
+            sp = Math.max(1, sp - 2); // Preparando a Arma: técnicas de Muay Thai custam −2 SP (mín. 1)
+        }
         int adv = t.getMastery() == Mastery.SKETCH ? -1 : 0;
         return new Calc(RollSourceType.TECHNIQUE, t.getId(), t.getName(), variation == null ? null : variation.getName(),
                 null, sp, RollRules.CRIT_MARGIN, adv, hit, dice, damage, weapon);
@@ -279,6 +282,9 @@ public class RollProfileService {
                 if (cat.getExtras() != null) items.addAll(cat.getExtras());
                 List<MasteryBonus> bonuses = t.getBonuses() == null ? List.of() : t.getBonuses();
                 int sp = RollRules.spCost(cat.getSpCostBase(), count(bonuses, MasteryBonus.COST), physical(sheet));
+                if (t.getCharacterArt() != null && "Muay Thai".equalsIgnoreCase(t.getCharacterArt().getArtName())) {
+                    sp = Math.max(1, sp - 2);
+                }
                 String name = variations(cat).size() > 1 ? t.getName() + " (" + v.getName() + ")" : t.getName();
                 out.add(new CoreTechnique(t, variations(cat).size() > 1 ? v.getName() : null, name, sp, items,
                         t.getMastery() == Mastery.SKETCH));

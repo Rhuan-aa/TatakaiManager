@@ -287,6 +287,21 @@ public class AttackService {
         if (a.getSourceType() == RollSourceType.TECHNIQUE && ownBase != null && ownBase.economy(attackTypeOf(a, att, s))) {
             sp = Math.max(0, sp - 1); // Economia da base: fixo, depois dos multiplicadores
         }
+        MartialService.Fighter faDecl = martial.fighter(att, s);
+        if (a.getSourceType() == RollSourceType.TECHNIQUE) {
+            CharacterTechnique tDecl = technique(s, a);
+            String artDecl = techArtName(tDecl);
+            if ("Capoeira".equalsIgnoreCase(artDecl) && faDecl.hasArtNamed("Capoeira")
+                    && martial.counterValue(att.getId(), "RITMO", null) >= 5) {
+                sp = Math.max(1, sp / 2); // Ritmo Pleno (5 PR): técnicas de Capoeira custam metade do SP (mín. 1)
+            }
+            if ("Judô".equalsIgnoreCase(artDecl) && faDecl.hasArtNamed("Judô")
+                    && profiles.hasModule(s, tDecl, a.getVariation(), "Derrubar")
+                    && ctx.has(targetIds.get(0), "DESEQUILIBRADO")) {
+                CharacterSheet ts0 = ctx.sheetOf.get(targetIds.get(0));
+                if (ts0 != null) sp = Math.max(1, sp - Math.max(0, RollRules.modOrZero(ts0.getStr()))); // Kuzushi: Mínimo Esforço
+            }
+        }
         if (sp > 0 && ctx.has(att.getId(), "EXAUSTO")) {
             throw new InvalidCombatException("Exausto: sem técnicas nem ações com custo de SP");
         }
@@ -305,6 +320,10 @@ public class AttackService {
         a.setReservedPa(pa);
         a.setReservedSp(sp);
         a = attacks.save(a);
+        if (faDecl.hasArtNamed("Entertainment Wrestling")
+                && targetIds.stream().anyMatch(tid -> ctx.hasAny(tid, Set.of(KNOCKED_DOWN, "VULNERAVEL")))) {
+            martial.addCounter(e, att, s, "POP", null, 1);
+        }
 
         List<AttackTarget> ts = openTargets(a, targetIds, att, ctx);
         log(e, att.getId(), att.getName() + " declara " + a.getSourceName() + " contra "
@@ -678,7 +697,7 @@ public class AttackService {
             MartialService.Fighter fd = martial.fighter(tp, tsh);
             matchups.put(tp.getId(), new Matchup(fd, interaction(a, fa, tech, att, attSheet, fd, tp, tsh)));
         }
-        calc = withMartial(calc, a, att, attSheet, downed, fa, tech, matchups.get(ts.get(0).getTargetId()).inter());
+        calc = withMartial(e, calc, a, att, attSheet, downed, fa, tech, matchups.get(ts.get(0).getTargetId()).inter());
         calc = withSituation(calc, a, att, ctx.participant(ts.get(0).getTargetId()), ctx);
         calc = withModules(calc, a, items, ctx.participant(ts.get(0).getTargetId()));
         WeaponCatalog.Def weapon = calc.weapon();
@@ -711,11 +730,17 @@ public class AttackService {
             return;
         }
         String moveArt = tech == null || tech.getCharacterArt() == null ? null : tech.getCharacterArt().getArtName();
+        boolean embalo5 = fa.hasArtNamed("Boxe")
+                && (a.getBasicAttack() == BasicAttack.SOCO || "Boxe".equalsIgnoreCase(moveArt))
+                && martial.counterValue(att.getId(), "EMBALO", null) >= 5;
         if (tech != null) martial.fire(e, att, attSheet, "ART_TECHNIQUE_USED", null, moveArt);
         int attackerCalejo = profiles.calejo(attSheet, att.getActiveBaseId());
         boolean pileOn = false;
         RollMessage second = null; // Sequência: 2º teste de acerto, rolado uma vez
         BaseRules.Profile attBase = profiles.baseProfile(attSheet, att.getActiveBaseId());
+        Guard effGuard = MartialRules.effectiveGuard(att.getGuard(), downed);
+        boolean tkdKick = fa.hasArtNamed("Taekwondo")
+                && (a.getBasicAttack() == BasicAttack.CHUTE || "Taekwondo".equalsIgnoreCase(moveArt));
 
         for (AttackTarget t : ts) {
             EncounterParticipant tp = ctx.participant(t.getTargetId());
@@ -773,12 +798,18 @@ public class AttackService {
                 r = new AttackRules.Result(AttackOutcome.MISS, 100, false);
                 log(e, rp.getId(), rp.getName() + " interrompe o golpe de " + att.getName());
             }
-            // Atravessar: o golpe ignora a Redução de Dano do alvo
-            int calejo = tech != null && profiles.hasModule(attSheet, tech, a.getVariation(), "Atravessar") ? 0
-                    : profiles.calejo(tsh, tp.getActiveBaseId());
+            // Atravessar: o golpe ignora a Redução de Dano do alvo; Preparando a Arma (Muay Thai): +3 RD contundente
+            boolean atravessar = tech != null && profiles.hasModule(attSheet, tech, a.getVariation(), "Atravessar");
+            boolean bluntHit = weapon == null || "BLUNT".equals(weapon.damageType());
+            int calejo = atravessar ? 0 : profiles.calejo(tsh, tp.getActiveBaseId())
+                    + (bluntHit && mu.defender().hasArtNamed("Muay Thai") ? 3 : 0);
             if (rr != null && rr.parry() && t.getReaction() == ReactionType.DEFEND && r.mitigationPct() > 0
                     && defenderWeapon(rsh) != null) { // Aparar: a redução sobe um grau
                 r = new AttackRules.Result(r.outcome(), TechniqueRules.stepUp(r.mitigationPct()), r.counterHits());
+            }
+            if (tkdKick && effGuard == Guard.NATURAL && t.getReaction() == ReactionType.DEFEND && r.mitigationPct() > 0) {
+                r = new AttackRules.Result(r.outcome(), TechniqueRules.stepDown(r.mitigationPct()), r.counterHits());
+                log(e, tp.getId(), "Quebra-Escudo (Taekwondo): redução de Defender de " + rp.getName() + " cai para " + r.mitigationPct() + "%");
             }
             boolean areaDodge = weapon != null && weapon.area() && r.outcome() == AttackOutcome.DODGED;
             boolean connects = (r.outcome() != AttackOutcome.MISS && r.outcome() != AttackOutcome.DODGED) || areaDodge;
@@ -790,7 +821,14 @@ public class AttackService {
                 for (int i = 1; i < shots; i++) hitDamage += rollDice(attSheet, calc.dice(), "Rajada: " + att.getName(), userId, role);
                 log(e, tp.getId(), "Rajada de " + att.getName() + ": " + shots + " projétil(eis) em " + tp.getName());
             }
-            String sure = connects && !atk.critical() && calc.dice() != null ? guaranteedCrit(a, t, tp, tsh) : null;
+            if (connects && calc.dice() != null && tkdKick && effGuard == Guard.INVERTED
+                    && t.getReaction() == ReactionType.DODGE && r.outcome() == AttackOutcome.HIT) {
+                int hunt = rolls.rollInternal(attSheet, "1d6", "Caçador de Movimento: " + att.getName() + " → " + tp.getName(), userId, role).getTotal();
+                hitDamage += hunt;
+                log(e, tp.getId(), "Caçador de Movimento (Taekwondo): +" + hunt + " de dano em " + tp.getName());
+            }
+            String sure = connects && !atk.critical() && calc.dice() != null
+                    ? (embalo5 ? "Embalo 5" : guaranteedCrit(a, t, tp, tsh)) : null;
             if (sure != null) {
                 // Crítico Garantido é só dano crítico: rola de novo os dados de dano do golpe e soma neste alvo
                 int extra = rollDice(attSheet, calc.dice(), "Crítico Garantido (" + sure + "): " + att.getName()
@@ -814,6 +852,10 @@ public class AttackService {
             if (connects && ModuleRules.has(items, "Montinho")) {
                 int pile = Math.max(0, rolls.rollInternal(attSheet, "1d4", "Montinho: " + att.getName() + " → " + tp.getName(),
                         userId, role).getTotal() + SheetRules.weightMod(attSheet.getWeightKg()));
+                if (mu.defender().hasArtNamed("Judô")) pile /= 2;
+                if (mu.defender().hasArtNamed("Entertainment Wrestling")) {
+                    pile = Math.max(0, pile - Math.max(2, RollRules.modOrZero(tsh.getCon())));
+                }
                 hitDamage += pile;
                 pileOn = true;
                 log(e, tp.getId(), att.getName() + " cai por cima de " + tp.getName() + " (Montinho): +" + pile + " de dano");
@@ -830,7 +872,9 @@ public class AttackService {
                 RollMessage c = rolls.rollCalc(rsh, e.getCampaignId(), counterCalc != null ? counterCalc
                         : profiles.basic(rsh, BasicAttack.SOCO, RollProfileService.Opts.NONE), 0,
                         "Contra-ataque: " + rp.getName() + " → " + att.getName(), userId, role);
-                int raw = c.damageTotal() == null ? 0 : c.damageTotal();
+                int focoCounter = mu.defender().hasArtNamed("Karatê")
+                        && martial.consumeCounter(e, rp, "FOCO", null, 1) > 0 ? 2 : 0;
+                int raw = (c.damageTotal() == null ? 0 : c.damageTotal()) + focoCounter;
                 counter = raw <= 0 ? 0 : AttackRules.damage(raw, 0, attackerCalejo);
                 VitalService.Ctx cctx = new VitalService.Ctx(userId, role, "Contra-ataque de " + rp.getName(), c.critical());
                 attacksAttacker(e, att, attSheet, counter, cctx);
@@ -876,6 +920,24 @@ public class AttackService {
                 martial.fire(e, att, attSheet, "HIT", tp.getId(), moveArt);
                 martial.fire(e, tp, tsh, "GOT_HIT", att.getId(), null);
             }
+            if (r.outcome() == AttackOutcome.HIT) {
+                if (fa.hasArtNamed("Sumo")) {
+                    martial.addCounter(e, att, attSheet, "TERRENO_PERDIDO", tp.getId(), atk.critical() ? 2 : 1);
+                }
+                if (fa.hasArtNamed("Wrestling")
+                        && ("Wrestling".equalsIgnoreCase(moveArt) || a.getBasicAttack() == BasicAttack.AGARRAO)) {
+                    martial.addCounter(e, att, attSheet, "LUTA_EM_CADEIA", tp.getId(), 1);
+                }
+                if (fa.hasArtNamed("MMA") && "MMA".equalsIgnoreCase(moveArt)) {
+                    att.setFluidSwitchUsed(false);
+                }
+            }
+            if ((r.outcome() == AttackOutcome.MISS || r.outcome() == AttackOutcome.DODGED
+                    || r.outcome() == AttackOutcome.COUNTERED)
+                    && mu.defender().hasArtNamed("Judô") && (weapon == null || (!weapon.shooter() && !thrownTech))) {
+                vital.addEffectCondition(e, att, "DESEQUILIBRADO", ConditionExpiry.END_OF_TARGET_TURN, "Kuzushi", rp.getId());
+                log(e, att.getId(), att.getName() + " fica Desequilibrado (Kuzushi de " + rp.getName() + ")");
+            }
             Set<String> applied = tech != null && r.outcome() == AttackOutcome.HIT
                     ? applyEffects(e, a, tech, items, att, attSheet, tp, tsh, atk, vctx, userId, role) : Set.of();
             if (tech != null && r.outcome() == AttackOutcome.HIT) armedModules(e, a, items, att, tp, tsh, atk, userId, role);
@@ -898,7 +960,10 @@ public class AttackService {
             }
             switch (r.outcome()) {
                 case DEFENDED -> martial.fire(e, rp, rsh, "DEFEND_SUCCESS", att.getId(), null);
-                case DODGED -> martial.fire(e, rp, rsh, "DODGE_SUCCESS", att.getId(), null);
+                case DODGED -> {
+                    martial.fire(e, rp, rsh, "DODGE_SUCCESS", att.getId(), null);
+                    if (mu.defender().hasArtNamed("MMA")) rp.setFluidSwitchUsed(false);
+                }
                 case COUNTERED -> martial.fire(e, rp, rsh, "COUNTER_SUCCESS", att.getId(), null);
                 default -> { }
             }
@@ -909,6 +974,7 @@ public class AttackService {
             targets.save(t);
             log(e, att.getId(), summary(att, tp, a, t, counter));
         }
+        if (embalo5) martial.resetCounter(e, att, "EMBALO");
         if (atk.fumble()) basicFumble(e, a, att, attSheet, ctx.participant(ts.get(0).getTargetId()), vctx);
         if (tech != null && gun != null && ModuleRules.has(items, "Disparo Rápido") && weapon.capacity() != null) {
             gun.setLoaded(weapon.capacity()); // a recarga depois da técnica é Ação Livre
@@ -1214,12 +1280,26 @@ public class AttackService {
         }
     }
 
-    /** +1 PQ por golpe na cabeça: Chute, Cotovelada, Pisão e Joelhada no Clinch (§40). */
+    /** +1 PQ por golpe na cabeça: Chute, Cotovelada, Pisão e Joelhada no Clinch (§40); Ritmo ≥ 3 (Capoeira) soma +1 PQ. */
     private int basicKp(PendingAttack a, EncounterParticipant tp, Ctx ctx) {
         BasicAttack b = basicOf(a);
-        if (b == BasicAttack.CHUTE || b == BasicAttack.COTOVELADA || b == BasicAttack.PISAO) return 1;
-        if (b == BasicAttack.SOCO && equipment.wears(ctx.sheetOf.get(a.getAttackerId()), "MMA_GLOVES")) return 1;
-        return b == BasicAttack.JOELHADA && ctx.has(tp.getId(), GrappleRules.CLINCH) ? 1 : 0;
+        CharacterSheet as = ctx.sheetOf.get(a.getAttackerId());
+        EncounterParticipant att = ctx.ps.get(a.getAttackerId());
+        int ritmoKp = 0;
+        if (att != null && as != null && martial.fighter(att, as).hasArtNamed("Capoeira")
+                && martial.counterValue(att.getId(), "RITMO", null) >= 3) {
+            String art = a.getSourceType() == RollSourceType.TECHNIQUE ? techArtName(technique(as, a)) : null;
+            if (b == BasicAttack.CHUTE || "Capoeira".equalsIgnoreCase(art)) ritmoKp = 1;
+        }
+        int base = 0;
+        if (b == BasicAttack.CHUTE || b == BasicAttack.COTOVELADA || b == BasicAttack.PISAO) base = 1;
+        else if (b == BasicAttack.SOCO && equipment.wears(as, "MMA_GLOVES")) base = 1;
+        else if (b == BasicAttack.JOELHADA && ctx.has(tp.getId(), GrappleRules.CLINCH)) base = 1;
+        return base + ritmoKp;
+    }
+
+    private static String techArtName(CharacterTechnique t) {
+        return t == null || t.getCharacterArt() == null ? null : t.getCharacterArt().getArtName();
     }
 
     private boolean faceHeadbuttThisRound(Encounter e, PendingAttack a, EncounterParticipant tp) {
@@ -1263,6 +1343,9 @@ public class AttackService {
         int nd = EffectRules.nd(atk.total(), fixed, RollRules.modOrZero(attSheet.getStr()));
         boolean control = profiles.core(attSheet, tech, a.getVariation()) == TechniqueCore.CONTROL;
         BaseRules.Profile db = profiles.baseProfile(tsh, tp.getActiveBaseId());
+        String moveArt = techArtName(tech);
+        boolean finisher = atk.breakdown() != null
+                && atk.breakdown().stream().anyMatch(p -> p.source() != null && p.source().startsWith("Finisher"));
         for (AssemblyItem it : items) {
             if (!EffectRules.triggers(it.isOnDie(), atk.naturalD20(), atk.critical())) continue;
             String label = it.getModule();
@@ -1276,7 +1359,7 @@ public class AttackService {
                 log(e, tp.getId(), "Esmagar de " + att.getName() + ": sem superfície sólida junto de " + tp.getName());
                 continue;
             }
-            if (fx.resist() != null && !implacable && resists(e, tp, tsh, fx, label, nd, db, userId, role)) continue;
+            if (fx.resist() != null && !implacable && resists(e, tp, tsh, fx, label, nd, db, moveArt, finisher, userId, role)) continue;
             applyEffect(e, fx, it, control, att, attSheet, tp, tsh, vctx, userId, role);
             applied.add(label);
             if (fx.kind() == EffectRules.Kind.TAKEDOWN && ModuleRules.has(all, "Arremesso")) {
@@ -1293,6 +1376,10 @@ public class AttackService {
         int d = dice == null ? 0 : rolls.rollInternal(attSheet, dice, (spike ? "Cravar" : "Arremesso") + ": " + att.getName()
                 + " → " + tp.getName(), userId, role).getTotal();
         int kp = ModuleRules.throwKp(e.getFloor(), spike);
+        if (martial.fighter(tp, tsh).hasArtNamed("Entertainment Wrestling")) {
+            d = Math.max(0, d - Math.max(2, RollRules.modOrZero(tsh.getCon())));
+            kp = 0; // Bump Master: não perde PQ por Arremesso nem Cravar
+        }
         log(e, tp.getId(), tp.getName() + " cai " + (spike ? "cravado" : "arremessado") + ": " + d + " de dano"
                 + (kp > 0 ? " e −" + kp + " PQ" : "") + (dice == null ? " (chão macio)" : ""));
         if (d > 0) vital.applyHp(e, tp, tsh, -d, vctx.withCritical(false));
@@ -1431,18 +1518,34 @@ public class AttackService {
                     tp.setActiveBaseId(null);
                     log(e, tp.getId(), tp.getName() + " perdeu a base ativa");
                 }
+                if (key.equals(KNOCKED_DOWN)) {
+                    conditions.findByParticipantIdIn(List.of(tp.getId())).stream()
+                            .filter(c -> "DESEQUILIBRADO".equals(c.getConditionKey()))
+                            .toList().forEach(conditions::delete);
+                    if (martial.fighter(src, srcSheet).hasArtNamed("Entertainment Wrestling")) {
+                        martial.addCounter(e, src, srcSheet, "POP", null, 1);
+                    }
+                }
                 if (key.equals(KNOCKED_DOWN) || key.equals("AGARRADO") || key.equals("IMOBILIZADO")) {
                     martial.fire(e, tp, tsh, key.equals(KNOCKED_DOWN) ? "KNOCKED_DOWN" : "GRAPPLED", null, null);
                 }
                 if (fx.kind() == EffectRules.Kind.TAKEDOWN) {
                     int dmg = EffectRules.takedownDamage(tsh.getWeightKg());
+                    MartialService.Fighter fd = martial.fighter(tp, tsh);
+                    if (fd.hasArtNamed("Judô")) dmg /= 2; // Ukemi
+                    if (fd.hasArtNamed("Entertainment Wrestling")) {
+                        dmg = Math.max(0, dmg - Math.max(2, RollRules.modOrZero(tsh.getCon()))); // Bump Master
+                    }
                     log(e, tp.getId(), tp.getName() + " sofre " + dmg + " de dano de Derrubada");
-                    vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(false));
+                    if (dmg > 0) vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(false));
                 }
             }
             case PUSH -> {
                 int m = Math.max(0, rolls.rollInternal(srcSheet, "1d3", "Empurrar: " + src.getName() + " → " + tp.getName(),
                         userId, role).getTotal() + RollRules.modOrZero(srcSheet.getStr()));
+                if (martial.fighter(src, srcSheet).hasArtNamed("Sumo")) {
+                    martial.addCounter(e, src, srcSheet, "TERRENO_PERDIDO", tp.getId(), 1);
+                }
                 log(e, tp.getId(), tp.getName() + " é empurrado " + m + " m (colidindo, +1d4 de dano: Mestre)");
             }
             case STEAL_PA -> {
@@ -1490,9 +1593,14 @@ public class AttackService {
         conditions.save(c);
     }
 
-    /** Teste de resistência a um Efeito; true = resistiu (já registra na linha do tempo). */
     private boolean resists(Encounter e, EncounterParticipant tp, CharacterSheet tsh, EffectRules.Effect fx, String label,
                             int nd, BaseRules.Profile db, UUID userId, ActorRole role) {
+        return resists(e, tp, tsh, fx, label, nd, db, null, false, userId, role);
+    }
+
+    /** Teste de resistência a um Efeito; true = resistiu (já registra na linha do tempo). */
+    private boolean resists(Encounter e, EncounterParticipant tp, CharacterSheet tsh, EffectRules.Effect fx, String label,
+                            int nd, BaseRules.Profile db, String moveArt, boolean finisher, UUID userId, ActorRole role) {
         Attribute attr = fx.alt() != null && RollRules.modOrZero(tsh.getAttribute(fx.alt()))
                 > RollRules.modOrZero(tsh.getAttribute(fx.resist())) ? fx.alt() : fx.resist();
         if (vital.hasCondition(tp, "PARALISADO") && (attr == Attribute.STR || attr == Attribute.DEX)) return false;
@@ -1507,9 +1615,25 @@ public class AttackService {
         if (db != null && db.resilience() != 0) {
             hit.add(new RollPart("HIT", "Resiliência (base: " + db.name() + ")", db.resilience(), null, false));
         }
+        if (EffectRules.ROOTED.contains(label) && martial.fighter(tp, tsh).hasArtNamed("Sumo")) {
+            int wm = Math.max(0, SheetRules.weightMod(tsh.getWeightKg()));
+            if (wm > 0) hit.add(new RollPart("HIT", "Preso ao Solo +" + wm, wm, null, false));
+        }
+        if ("Wrestling".equalsIgnoreCase(moveArt) && tsh.getCurrentSp() < tsh.getSpMax() / 2) {
+            hit.add(new RollPart("HIT", "Fôlego de Altitude −2", -2, null, false));
+        }
+        int extraAdv = 0;
+        if ("Derrubar".equals(label) && vital.hasCondition(tp, "DESEQUILIBRADO")) {
+            extraAdv--;
+            hit.add(new RollPart("HIT", "Kuzushi (Ceder: desvantagem)", 0, null, false));
+        }
+        if (finisher) {
+            extraAdv--;
+            hit.add(new RollPart("HIT", "Finisher (desvantagem)", 0, null, false));
+        }
         rc = new Calc(rc.type(), rc.sourceId(), rc.name(), rc.variation(), rc.basic(), rc.spCost(), rc.critMargin(),
                 rc.advantage(), hit, rc.dice(), rc.damage());
-        RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), rc, vital.conditionAdvantage(tp, tsh, attr),
+        RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), rc, vital.conditionAdvantage(tp, tsh, attr) + extraAdv,
                 "Resistir a " + label + ": " + tp.getName() + " vs " + nd, userId, role);
         boolean ok = EffectRules.resisted(res.total(), nd);
         if (ok) log(e, tp.getId(), tp.getName() + " resistiu a " + label + " (" + res.total() + " vs " + nd + ")");
@@ -1529,6 +1653,22 @@ public class AttackService {
             damage.removeIf(p -> "FOR".equals(p.source()));
         }
         CharacterSheet as = ctx.sheetOf.get(att.getId());
+        CharacterSheet fs = ctx.sheetOf.get(first.getId());
+        CharacterTechnique tech = a.getSourceType() == RollSourceType.TECHNIQUE && as != null ? technique(as, a) : null;
+        String artName = techArtName(tech);
+        MartialService.Fighter fa = as == null ? null : martial.fighter(att, as);
+        if ("Wrestling".equalsIgnoreCase(artName) && fs != null && fs.getCurrentSp() < fs.getSpMax() / 2) {
+            hit.add(new RollPart("HIT", "Fôlego de Altitude +2", 2, null, false));
+        }
+        if (fa != null && fa.hasArtNamed("Wrestling") && ("Wrestling".equalsIgnoreCase(artName) || b == BasicAttack.AGARRAO)) {
+            int chain = martial.counterValue(att.getId(), "LUTA_EM_CADEIA", first.getId());
+            if (chain > 0) hit.add(new RollPart("HIT", "Luta em Cadeia +" + chain, chain, null, false));
+        }
+        if ("Judô".equalsIgnoreCase(artName) && tech != null && profiles.hasModule(as, tech, a.getVariation(), "Derrubar")
+                && ctx.has(first.getId(), "DESEQUILIBRADO") && fs != null && c.dice() != null) {
+            int fAlheia = Math.max(0, RollRules.modOrZero(fs.getStr()));
+            if (fAlheia > 0) damage.add(new RollPart("DAMAGE", "Kuzushi (Força Alheia) +" + fAlheia, fAlheia, null, false));
+        }
         if (b == BasicAttack.SOCO && equipment.wears(as, "MMA_GLOVES")) damage.add(new RollPart("DAMAGE", "Luvas de MMA", -3, null, false));
         int glovesAdv = b == BasicAttack.AGARRAO && equipment.wears(as, "BOXING_GLOVES") ? -1 : 0;
         if (b == BasicAttack.JOELHADA && ctx.hasAny(first.getId(), Set.of("AGARRADO", "CLINCH"))) {
@@ -1569,16 +1709,57 @@ public class AttackService {
         return c.with(c.spCost(), c.critMargin(), adv, hit, damage);
     }
 
-    /** Parcelas marciais do atacante: especialização (básico), guarda e interação (RN-INT-03, RN-GUA, RN-ATQ-01). */
-    private Calc withMartial(Calc c, PendingAttack a, EncounterParticipant att, CharacterSheet s, boolean downed,
+    /** Parcelas marciais do atacante: especialização (básico), guarda, interação e contadores/passivas das Artes Clássicas. */
+    private Calc withMartial(Encounter e, Calc c, PendingAttack a, EncounterParticipant att, CharacterSheet s, boolean downed,
                              MartialService.Fighter fa, CharacterTechnique tech, Inter inter) {
         List<RollPart> hit = new ArrayList<>(c.hit());
         List<RollPart> damage = new ArrayList<>(c.damage());
         int adv = c.advantage();
+        RollRules.Dice dice = c.dice();
+        String artName = techArtName(tech);
         boolean basic = a.getSourceType() == RollSourceType.BASIC_ATTACK && a.getBasicAttack() != null
                 && a.getBasicAttack().unarmed(); // a especialização é dos golpes do corpo
         if (basic && !downed && (!fa.hasArt() || !fa.attack().contains(MartialRules.family(a.getBasicAttack())))) {
             halve(hit, "DES", "Fora da especialização: DES/2");
+        }
+        if (!downed && fa.hasArtNamed("Jiu-Jitsu Brasileiro")
+                && (a.getBasicAttack() == BasicAttack.SOCO || a.getBasicAttack() == BasicAttack.CHUTE)) {
+            hit.add(new RollPart("HIT", "Arte Suave: trocação em pé −3", -3, null, false));
+        }
+        if (fa.hasArtNamed("Karatê") && martial.consumeCounter(e, att, "FOCO", null, 1) > 0) {
+            hit.add(new RollPart("HIT", "Foco (Zanshin) +2", 2, null, false));
+            if (dice != null) damage.add(new RollPart("DAMAGE", "Foco (Zanshin) +2", 2, null, false));
+        }
+        boolean kickOrCapoeira = a.getBasicAttack() == BasicAttack.CHUTE || "Capoeira".equalsIgnoreCase(artName);
+        int ritmo = fa.hasArtNamed("Capoeira") ? martial.counterValue(att.getId(), "RITMO", null) : 0;
+        if (ritmo >= 1) {
+            int rh = ritmo >= 2 && "Capoeira".equalsIgnoreCase(artName) ? 2 : 1;
+            hit.add(new RollPart("HIT", "Ritmo +" + rh, rh, null, false));
+        }
+        if (ritmo >= 3 && kickOrCapoeira && dice != null) {
+            damage.add(new RollPart("DAMAGE", "Ritmo (3 PR) +3", 3, null, false));
+        }
+        if (ritmo >= 4) {
+            adv++;
+            hit.add(new RollPart("HIT", "Ritmo (4 PR: vantagem)", 0, null, false));
+        }
+        if (ritmo >= 5 && kickOrCapoeira && dice != null) {
+            dice = WeaponRules.heavier(dice, 1);
+        }
+        int embalo = fa.hasArtNamed("Boxe") && (a.getBasicAttack() == BasicAttack.SOCO || "Boxe".equalsIgnoreCase(artName))
+                ? martial.counterValue(att.getId(), "EMBALO", null) : 0;
+        if (embalo > 0) {
+            hit.add(new RollPart("HIT", "Embalo +" + embalo, embalo, null, false));
+            if (dice != null) damage.add(new RollPart("DAMAGE", "Embalo +" + embalo, embalo, null, false));
+        }
+        if ("Taekwondo".equalsIgnoreCase(artName) && dice != null) {
+            int fc = martial.consumeCounter(e, att, "FORCA_CENTRIFUGA", null, 10);
+            if (fc > 0) damage.add(new RollPart("DAMAGE", "Força Centrífuga +" + fc, fc, null, false));
+        }
+        if ("Entertainment Wrestling".equalsIgnoreCase(artName) && martial.counterValue(att.getId(), "POP", null) >= 3) {
+            martial.consumeCounter(e, att, "POP", null, 3);
+            adv++;
+            hit.add(new RollPart("HIT", "Finisher (3 Pop: vantagem)", 0, null, false));
         }
         StrikeSide side = a.getStrikeSide();
         if (c.weapon() != null) {
@@ -1609,7 +1790,7 @@ public class AttackService {
         }
         if (inter.label() != null) hit.add(new RollPart("HIT", inter.label(), 0, null, false));
         if (inter.result() == 1) adv++;
-        return c.with(c.spCost(), c.critMargin(), adv, hit, damage);
+        return c.with(c.spCost(), c.critMargin(), adv, hit, damage).withDice(dice);
     }
 
     /** Troca a parcela `source` pela metade do valor (RN-ATR-04: só se > 0). */
@@ -1662,6 +1843,15 @@ public class AttackService {
         if (h == Hysteria.WALL) hit.add(new RollPart("HIT", "Muralha", 4, null, false));
         if (h == Hysteria.FURY) hit.add(new RollPart("HIT", "Fúria", -2, null, false));
         if (h == Hysteria.LIGHTNING) hit.add(new RollPart("HIT", "Relâmpago", 2, null, false));
+        if (defend && mu.defender().hasArtNamed("Sumo")) hit.add(new RollPart("HIT", "Preso ao Solo +2", 2, null, false));
+        if (reaction == ReactionType.DODGE && mu.defender().hasArtNamed("Capoeira")
+                && martial.counterValue(tp.getId(), "RITMO", null) >= 1) {
+            hit.add(new RollPart("HIT", "Ritmo +1", 1, null, false));
+        }
+        if (reaction == ReactionType.COUNTER && mu.defender().hasArtNamed("Karatê")
+                && martial.counterValue(tp.getId(), "FOCO", null) > 0) {
+            hit.add(new RollPart("HIT", "Foco (Zanshin) +2", 2, null, false));
+        }
         int read = martial.read(tsh, att, attSheet);
         if (read > 0) hit.add(new RollPart("HIT", "Leitura de Oponente +" + read, read, null, false));
         if (incomum(att, attSheet, tp, tsh, ctx)) hit.add(new RollPart("HIT", "Vantagem do Incomum +1", 1, null, false));
@@ -1733,7 +1923,7 @@ public class AttackService {
         boolean downed = ctx.has(tp.getId(), KNOCKED_DOWN);
         Calc calc = calcFor(tsh, probe, downed, tp, tsh);
         CharacterTechnique tech = req.sourceType() == RollSourceType.TECHNIQUE ? technique(tsh, probe) : null;
-        calc = withMartial(calc, probe, tp, tsh, downed, martial.fighter(tp, tsh), tech, Inter.NONE);
+        calc = withMartial(e, calc, probe, tp, tsh, downed, martial.fighter(tp, tsh), tech, Inter.NONE);
         int sp = req.sourceType() == RollSourceType.BASIC_ATTACK
                 ? VitalRules.adjustSp(1, VitalRules.tier(tp.getAdrenaline()), ctx.has(tp.getId(), "DISSOCIADO"))
                 : calc.spCost();

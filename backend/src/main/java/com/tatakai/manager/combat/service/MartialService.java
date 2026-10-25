@@ -55,6 +55,10 @@ public class MartialService {
         public boolean hasArt() {
             return !active.isEmpty();
         }
+
+        public boolean hasArtNamed(String name) {
+            return name != null && active != null && active.stream().anyMatch(a -> name.equalsIgnoreCase(a.getArtName()));
+        }
     }
 
     private final CharacterArtRepository arts;
@@ -283,6 +287,51 @@ public class MartialService {
 
     public ArtCounterCatalog.Def counterDef(String key) {
         return counterCatalog.find(key).orElse(null);
+    }
+
+    /** Valor atual de um contador do participante (0 se não existir). */
+    @Transactional(readOnly = true)
+    public int counterValue(UUID participantId, String key, UUID targetId) {
+        if (participantId == null || key == null) return 0;
+        return counters.findByParticipantIdIn(List.of(participantId)).stream()
+                .filter(c -> key.equals(c.getCounterKey()) && Objects.equals(targetId, c.getTargetParticipantId()))
+                .mapToInt(CombatCounter::getValue).findFirst().orElse(0);
+    }
+
+    /** Consome `amount` (ou todo o saldo se `amount <= 0`) do contador e registra na linha do tempo. Devolve o valor consumido. */
+    public int consumeCounter(Encounter e, EncounterParticipant p, String key, UUID targetId, int amount) {
+        if (p == null || key == null) return 0;
+        CombatCounter c = counters.findByParticipantIdIn(List.of(p.getId())).stream()
+                .filter(x -> key.equals(x.getCounterKey()) && Objects.equals(targetId, x.getTargetParticipantId()))
+                .findFirst().orElse(null);
+        if (c == null || c.getValue() <= 0) return 0;
+        int before = c.getValue();
+        int used = amount <= 0 ? before : Math.min(before, amount);
+        int after = before - used;
+        c.setValue(after);
+        counters.save(c);
+        note(e, p, counterName(key) + " " + before + " → " + after + " (" + p.getName() + ")");
+        return used;
+    }
+
+    /** Soma `delta` ao contador (respeitando min..max do catálogo) se o participante tiver a arte. */
+    public void addCounter(Encounter e, EncounterParticipant p, CharacterSheet s, String key, UUID targetId, int delta) {
+        if (p == null || s == null || delta == 0) return;
+        ArtCounterCatalog.Def d = counterCatalog.find(key).orElse(null);
+        if (d == null || !hasArt(fighter(p, s), d.art())) return;
+        List<CombatCounter> mine = new ArrayList<>(counters.findByParticipantIdIn(List.of(p.getId())));
+        CombatCounter c = ensureRow(mine, p.getId(), key, d.perTarget() ? targetId : null);
+        int before = c.getValue();
+        int after = MartialRules.clamp(before + delta, d.min(), d.max());
+        if (after == before) return;
+        c.setValue(after);
+        counters.save(c);
+        note(e, p, d.name() + " " + before + " → " + after + " (" + p.getName() + ")");
+    }
+
+    /** Zera um contador do participante se estiver > 0. */
+    public void resetCounter(Encounter e, EncounterParticipant p, String key) {
+        consumeCounter(e, p, key, null, 0);
     }
 
     private void note(Encounter e, EncounterParticipant p, String text) {

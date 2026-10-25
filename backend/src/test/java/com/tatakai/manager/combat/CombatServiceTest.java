@@ -202,6 +202,7 @@ class CombatServiceTest {
             eventList.add(ev);
             return ev;
         });
+        lenient().when(counterRepo.save(any(CombatCounter.class))).thenAnswer(i -> i.getArgument(0));
         // iniciativa controlada: o total vem do mapa abaixo
         lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any())).thenAnswer(i -> {
             CharacterSheet s = i.getArgument(0);
@@ -1284,5 +1285,44 @@ class CombatServiceTest {
         assertThat(glock.getLoaded()).isEqualTo(15);
         gear.accept(CombatAction.DRAW, glock);   // 2º sacar/guardar no mesmo turno: 1 PA
         assertThat(p[0].getPaCurrent()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("§47 Artes Clássicas no turno: Taekwondo (1ª troca de guarda 0 PA), Ent. Wrestling (1º levantar 0 PA) e Wrestling (Opressão da Cordilheira −SP no fim do turno)")
+    void classicalArtsTurnActionsAndOppression() {
+        CharacterArt tkd = CharacterArt.builder().id(UUID.randomUUID()).sheet(sheetA).artId(UUID.randomUUID())
+                .artName("Taekwondo").status(CharacterArtStatus.ACTIVE).graduation(Graduation.BEGINNER)
+                .createdAt(java.time.Instant.now()).build();
+        CharacterArt ew = CharacterArt.builder().id(UUID.randomUUID()).sheet(sheetA).artId(UUID.randomUUID())
+                .artName("Entertainment Wrestling").status(CharacterArtStatus.ACTIVE).graduation(Graduation.BEGINNER)
+                .createdAt(java.time.Instant.now()).build();
+        CharacterArt wr = CharacterArt.builder().id(UUID.randomUUID()).sheet(npcSheet).artId(UUID.randomUUID())
+                .artName("Wrestling").status(CharacterArtStatus.ACTIVE).graduation(Graduation.BEGINNER)
+                .createdAt(java.time.Instant.now()).build();
+        lenient().when(arts.findBySheetIdOrderByCreatedAt(sheetA.getId())).thenReturn(List.of(tkd, ew));
+        lenient().when(arts.findBySheetIdOrderByCreatedAt(npcSheet.getId())).thenReturn(List.of(wr));
+
+        EncounterParticipant[] p = started();
+        p[0].setPaCurrent(5);
+        // 1ª troca de guarda com Taekwondo: 0 PA; 2ª troca: 1 PA
+        guardAct(p[0], Guard.INVERTED, player.getId());
+        assertThat(p[0].getPaCurrent()).isEqualTo(5);
+        guardAct(p[0], Guard.NATURAL, player.getId());
+        assertThat(p[0].getPaCurrent()).isEqualTo(4);
+
+        // Bump Master (Entertainment Wrestling): 1º Levantar-se no turno custa 0 PA
+        cond(p[0], "DERRUBADO", null, null, null);
+        act(p[0], CombatAction.STAND_UP, null, player.getId());
+        assertThat(p[0].getPaCurrent()).isEqualTo(4);
+
+        // Opressão da Cordilheira (Wrestling): A Derrubado e Agarrado por NPC de Wrestling perde 4 + modPeso SP ao encerrar o turno
+        npcSheet.setWeightKg(85.0); // modPeso = +2 -> drena 6 SP
+        sheetA.setCurrentSp(10);
+        cList.add(CombatCondition.builder().id(UUID.randomUUID()).participantId(p[0].getId())
+                .conditionKey("DERRUBADO").expiresAt(ConditionExpiry.MANUAL).build());
+        cList.add(CombatCondition.builder().id(UUID.randomUUID()).participantId(p[0].getId())
+                .conditionKey("AGARRADO").sourceParticipantId(p[1].getId()).expiresAt(ConditionExpiry.MANUAL).build());
+        service.nextTurn(enc.getId(), player.getId());
+        assertThat(sheetA.getCurrentSp()).isEqualTo(4);
     }
 }
