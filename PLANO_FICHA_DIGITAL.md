@@ -1868,7 +1868,7 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
 ### 26.1 Motor de combate
 1. ✅ **Efeitos de módulo automáticos no acerto** — Derrubar, Atordoar, Empurrar etc. aplicam a condição sozinhos quando o
    golpe acerta (hoje o Mestre aplica à mão via `addCondition`).
-2. **Técnicas de núcleo Reação** — aparecem como opção no pedido de reação (fora da F6d; Malícia/Pânico também).
+2. ✅ **Técnicas de núcleo Reação** — e de Preparação (§38). Malícia/Pânico não existem no capítulo de Criação Marcial.
 3. **Armas e interação armada** — combate com arma, Pólvora, Artesanais (F6d é só desarmado; não há modelo de arma/alcance).
 4. ✅ **Base atual com efeito real** — Precisão e Força do Golpe da base ativa entram como parcelas nomeadas no breakdown
    de técnicas **e** ataques básicos. `CombatRules.baseChangeCost`: **entrar** = 1 PA, **trocar** = 2 PA, **sair** = 1 PA.
@@ -2101,4 +2101,30 @@ chamas). Coluna nova `combat_conditions.progress` (contador; `ddl-auto=update` c
   removeFromCampaign, setVisibility, setBookable, update (avisa cada campanha do NPC) e `CharacterSheetService.createGmSheet`.
 - Front: `TimeSkipPanel` recarrega a lista (mantém a seleção se ainda existir) e `CampaignDetail` recarrega `npcs`
   (compartilhado por NPCs, Agenda, Combate, Logs, Fichas).
+
+## 38. Técnicas de Reação e de Preparação (Criação Marcial, 25/10/2026)
+
+Regras puras em `service/rules/TechniqueRules` (lê os itens da variação; valor/escopo do **Reforço** pelo rótulo, como na
+base). Técnicas listadas por `RollProfileService.coreTechniques(sheet, REACTION|PREPARATION)` (ACTIVE, uma por variação,
+com itens e Gasto de Uso). A lista de **ataques** (`list`) passa a ignorar variações de núcleo Reação/Preparação.
+
+- **Reação** ("usada no lugar de uma reação, sem custo de PA"): `TargetResponse.techniques[{techniqueId, variation, name,
+  reaction, available, reason, predictedBonus, spCost, triggers}]`. A reação substituída é a do escopo do Reforço
+  ("Reforço +2 em Esquiva"); sem escopo → Defender. `POST .../reaction {reaction, techniqueId, variation}`: a reação vira a
+  da técnica, gasta o **SP da técnica** (no lugar do 1 SP do Contra-ataque); Exausto, SP insuficiente ou Atordoado (Contra)
+  → 400. Na rolagem: parcela **Reforço**; técnica em **Esboço** rola com desvantagem. Após o resultado:
+  **Redução Escalonada** (Defender: mitigação sobe um grau 25→50→75→100), **Interromper** (reação bem-sucedida anula o
+  golpe), **Absorção** (−1 PQ no golpe recebido). No sucesso: **Bloqueio Punitivo** (ao Defender, 1d4 + FOR no atacante),
+  **Efeitos** da técnica no atacante (resistidos contra o teste da reação), **Abertura** (condição `ABERTURA` no reagente,
+  origem = atacante: o próximo ataque dele contra esse atacante tem vantagem e a consome) e **Fôlego Tático** (SP = mod. de
+  CON). **Gatilhos** (ataque baixo/alto/armado…) e **Exige Base** aparecem como texto e ficam a cargo da mesa;
+  Reposicionar não tem efeito (sem grade). `attack_targets.reaction_technique_id/reaction_variation`; resposta traz
+  `reactionTechniqueName`.
+- **Preparação** (Ação Maior, 3 PA): `CombatActionRequest {action: PREPARED, techniqueId, variation}` gasta o SP da
+  técnica e cria `PREPARADO` até o início do próximo turno (**Sustentação**: até o fim dele), nota `id;variação;flags`.
+  Enquanto ativo: **Reforço** soma nas reações do tipo; **Leitura** dá vantagem na próxima reação (consome `L`); **Carga**
+  soma +dano no próximo golpe (consome `C`); **Fôlego Tático** recupera SP na hora. `ParticipantResponse.preparations`
+  (dono/Mestre) alimenta o menu de ações.
+- Front: tela de reação com "Técnicas de Reação" (bônus previsto, SP, gatilhos), botões no painel de ataques, resumo
+  "Esquiva com Aú"; menu Ação Maior com "Nome (Preparação)".
 

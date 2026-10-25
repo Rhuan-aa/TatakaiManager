@@ -28,8 +28,9 @@ export const declareAttack = (eid, body) => post(`/encounters/${eid}/attacks`, b
 export const listAttacks = async (eid, status) =>
   (await client.get(`/encounters/${eid}/attacks`, { params: status ? { status } : {} })).data;
 // defenderId: aliado que reage no lugar de um alvo Inconsciente
-export const respondReaction = (aid, tid, reaction, defenderId) =>
-  post(`/attacks/${aid}/targets/${tid}/reaction`, { reaction, ...(defenderId ? { defenderId } : {}) });
+// tech: { techniqueId, variation } de uma técnica de núcleo Reação (§38)
+export const respondReaction = (aid, tid, reaction, defenderId, tech) =>
+  post(`/attacks/${aid}/targets/${tid}/reaction`, { reaction, ...(defenderId ? { defenderId } : {}), ...(tech ?? {}) });
 export const cancelAttack = (aid) => post(`/attacks/${aid}/cancel`);
 export const setCounter = async (eid, id, value) =>
   (await client.patch(`/encounters/${eid}/counters/${id}`, { value })).data;

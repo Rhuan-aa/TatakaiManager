@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 745 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 751 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -531,7 +531,7 @@ no canal `campaign` e recarregam.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 745 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 751 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -884,6 +884,7 @@ Permanente (Rompimento) criado sozinho no crítico com dado máximo; Limitador d
 Condições de ambiente (Queimando, Congelando, Envenenado, Sufocando) processadas por turno (`EnvironmentRules`, §33).
 Crítico Garantido = dano crítico no alvo (inconsciente por SP/PQ sem reação, ferimento não tratado) e Carga por peso do inventário (§34).
 Estabilizar aliado À Beira da Morte e Sequela de Nocaute (regra opcional) (§35). Aliado consciente
-Defende/Contra-ataca no lugar de alvo Inconsciente (`guardians`, `defenderId`, §36). **Pendentes:** técnicas
-de Reação, armas, Tração (competição de agarre). Ao implementar um item, escreva o contrato numa seção
+Defende/Contra-ataca no lugar de alvo Inconsciente (`guardians`, `defenderId`, §36). Técnicas de Reação e de
+Preparação (`TechniqueRules`, `coreTechniques`, §38). **Pendentes:** armas (falta o
+subcapítulo Armas), agarre (Ataques Básicos), módulos de base Fôlego/Economia/Absorção Contínua/Troca Fluida/Punição. Ao implementar um item, escreva o contrato numa seção
 nova do plano e marque-o aqui.

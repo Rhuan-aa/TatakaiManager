@@ -41,6 +41,7 @@ import static org.mockito.Mockito.verify;
 class CombatServiceTest {
 
     @Mock private com.tatakai.manager.service.CampaignRuleService ruleService;
+    @Mock private com.tatakai.manager.service.RollProfileService profiles;
     @Mock private EncounterRepository encounters;
     @Mock private EncounterParticipantRepository participants;
     @Mock private CombatConditionRepository conditions;
@@ -146,7 +147,7 @@ class CombatServiceTest {
                 new com.tatakai.manager.service.VitalService(participants, conditions, timeline, activityLog, rolls,
                         new ConditionCatalog(), org.mockito.Mockito.mock(com.tatakai.manager.service.RollProfileService.class)),
                 new com.tatakai.manager.service.MartialService(arts, martialArts, techniqueRepo, rivals, counterRepo,
-                        new com.tatakai.manager.service.ArtCounterCatalog(), timeline), ruleService);
+                        new com.tatakai.manager.service.ArtCounterCatalog(), timeline), ruleService, profiles);
     }
 
     private int initA = 10, initB = 10;
@@ -1081,5 +1082,27 @@ class CombatServiceTest {
         started();
         assertThat(sheetA.getCurrentKp()).isEqualTo(4);
         assertThat(sheetA.isKnockoutSequel()).isFalse();
+    }
+
+    @Test
+    @DisplayName("§38 Preparação: Ação Preparada com técnica gasta o SP dela e deixa PREPARADO com Carga a consumir")
+    void preparationTechnique() {
+        EncounterParticipant[] p = started();
+        CharacterTechnique dr = CharacterTechnique.builder().id(UUID.randomUUID()).sheet(sheetA).kind(MoveKind.TECHNIQUE)
+                .state(TechniqueState.ACTIVE).name("Dempsey Roll").build();
+        com.tatakai.manager.entity.AssemblyItem carga = new com.tatakai.manager.entity.AssemblyItem();
+        carga.setModule("Carga");
+        carga.setLabel("Carga +6");
+        var prep = new com.tatakai.manager.service.RollProfileService.CoreTechnique(dr, null, "Dempsey Roll", 4,
+                List.of(carga), false);
+        org.mockito.Mockito.when(profiles.coreTechniques(sheetA, com.tatakai.manager.entity.TechniqueCore.PREPARATION))
+                .thenReturn(List.of(prep));
+        int sp = sheetA.getCurrentSp();
+        service.act(enc.getId(), new CombatActionRequest(p[0].getId(), CombatAction.PREPARED, null, null, null, null,
+                null, null, null, dr.getId(), null), player.getId());
+        assertThat(p[0].getPaCurrent()).isEqualTo(2);
+        assertThat(sheetA.getCurrentSp()).isEqualTo(sp - 4);
+        assertThat(cList).anyMatch(c -> c.getConditionKey().equals("PREPARADO")
+                && c.getNote().equals(dr.getId() + ";;C") && c.getExpiresAt() == ConditionExpiry.START_OF_TARGET_TURN);
     }
 }

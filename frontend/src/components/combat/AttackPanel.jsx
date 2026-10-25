@@ -44,7 +44,7 @@ function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
         <div key={t.id} className="space-y-1">
           <div className="text-sm">
             <strong>{t.targetName}</strong>: {OUTCOME_LABEL[t.outcome] ?? '—'}
-            {t.reaction && t.reaction !== 'NONE' ? ` (${REACTION_LABEL[t.reaction]}${t.defenderName ? ` por ${t.defenderName}` : ''})` : ''}
+            {t.reaction && t.reaction !== 'NONE' ? ` (${REACTION_LABEL[t.reaction]}${t.reactionTechniqueName ? ` com ${t.reactionTechniqueName}` : ''}${t.defenderName ? ` por ${t.defenderName}` : ''})` : ''}
             {t.mitigationPct > 0 && ` · mitigação ${t.mitigationPct}%`}
             {t.damage > 0 && ` · ${t.damage} de dano`}
             {t.counterDamage > 0 && ` · contra-ataque causou ${t.counterDamage}`}
@@ -87,7 +87,12 @@ export default function AttackPanel({ pending, resolved, canCancel, onReact, onC
                     <button key={o.reaction} type="button" className="btn-secondary px-3 py-1 text-xs"
                       disabled={!o.available} title={o.reason ?? undefined} onClick={() => onReact(a.id, t.id, o.reaction)}>
                       {REACTION_LABEL[o.reaction]}{o.predictedBonus != null ? ` (${o.predictedBonus >= 0 ? '+' : ''}${o.predictedBonus})` : ''}
-                    </button>))
+                    </button>)).concat((t.techniques ?? []).map((o) => (
+                    <button key={`tec:${o.techniqueId}:${o.variation ?? ''}`} type="button" className="btn-secondary px-3 py-1 text-xs"
+                      disabled={!o.available} title={o.reason ?? `${REACTION_LABEL[o.reaction]} · ${o.spCost} SP`}
+                      onClick={() => onReact(a.id, t.id, o.reaction, null, { techniqueId: o.techniqueId, variation: o.variation })}>
+                      {o.name} ({o.predictedBonus >= 0 ? '+' : ''}{o.predictedBonus})
+                    </button>)))
                   : t.canRespond && t.guardians
                     ? t.guardians.map((g) => (
                       <span key={g.id} className="flex flex-wrap items-center gap-1">

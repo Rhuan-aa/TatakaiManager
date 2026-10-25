@@ -1360,4 +1360,68 @@ class AttackServiceTest {
         assertThat(used.hit()).anyMatch(p -> p.source().equals("Alvo Marcado") && p.value() == 1);
         assertThat(used.damage()).anyMatch(p -> p.source().equals("Enfraquecido") && p.value() == -2);
     }
+
+    // ---------- §38: técnicas de Reação ----------
+
+    private com.tatakai.manager.entity.AssemblyItem item(String module, String label, AssemblyItemKind kind) {
+        com.tatakai.manager.entity.AssemblyItem it = new com.tatakai.manager.entity.AssemblyItem();
+        it.setModule(module);
+        it.setLabel(label);
+        it.setKind(kind);
+        it.setQty(1);
+        return it;
+    }
+
+    @Test
+    @DisplayName("§38: técnica de Reação substitui a Esquiva com Reforço, gasta o SP dela e deixa Abertura no sucesso")
+    void reactionTechnique() {
+        CharacterTechnique au = CharacterTechnique.builder().id(UUID.randomUUID()).sheet(npcSheet).kind(MoveKind.TECHNIQUE)
+                .state(TechniqueState.ACTIVE).name("Aú").build();
+        var rt = new RollProfileService.CoreTechnique(au, null, "Aú", 3, List.of(
+                item("Reforço", "Reforço +2 em Esquiva", AssemblyItemKind.MODULE),
+                item("Abertura", "Abertura", AssemblyItemKind.MODULE)), false);
+        lenient().when(profiles.coreTechniques(eq(npcSheet), eq(TechniqueCore.REACTION))).thenReturn(List.of(rt));
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        AttackResponse.TargetResponse t = service.list(enc.getId(), AttackStatus.AWAITING_REACTIONS, master.getId()).get(0)
+                .targets().get(0);
+        assertThat(t.techniques()).singleElement().satisfies(o -> {
+            assertThat(o.reaction()).isEqualTo(ReactionType.DODGE);
+            assertThat(o.spCost()).isEqualTo(3);
+            assertThat(o.available()).isTrue();
+        });
+        int sp = npcSheet.getCurrentSp();
+        queue.add(msg(15, 10, 5));
+        queue.add(msg(18, 15, null)); // esquiva 18 > 15
+        AttackResponse.TargetResponse done = service.respond(r.id(), t.id(), ReactionType.NONE, null, au.getId(), null,
+                master.getId()).targets().get(0);
+        assertThat(done.reaction()).isEqualTo(ReactionType.DODGE);
+        assertThat(done.outcome()).isEqualTo(AttackOutcome.DODGED);
+        assertThat(done.reactionTechniqueName()).isEqualTo("Aú");
+        assertThat(npcSheet.getCurrentSp()).isEqualTo(sp - 3);
+        assertThat(rollCalcs.get(rollCalcs.size() - 1).hit()).anyMatch(p -> p.source().startsWith("Reforço (Aú)") && p.value() == 2);
+        assertThat(cList).anyMatch(c -> c.getParticipantId().equals(pN.getId()) && c.getConditionKey().equals("ABERTURA")
+                && pA.getId().equals(c.getSourceParticipantId()));
+    }
+
+    @Test
+    @DisplayName("§38: Redução Escalonada sobe a mitigação do Defender; Bloqueio Punitivo fere o atacante")
+    void defendTechnique() {
+        CharacterTechnique gb = CharacterTechnique.builder().id(UUID.randomUUID()).sheet(npcSheet).kind(MoveKind.TECHNIQUE)
+                .state(TechniqueState.ACTIVE).name("Gedan Barai").build();
+        var rt = new RollProfileService.CoreTechnique(gb, null, "Gedan Barai", 2, List.of(
+                item("Redução Escalonada", "Redução Escalonada", AssemblyItemKind.MODULE),
+                item("Bloqueio Punitivo", "Bloqueio Punitivo", AssemblyItemKind.MODULE)), false);
+        lenient().when(profiles.coreTechniques(eq(npcSheet), eq(TechniqueCore.REACTION))).thenReturn(List.of(rt));
+        lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
+                .thenAnswer(x -> Roll.builder().total(3).build());
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        queue.add(msg(15, 10, 8));
+        queue.add(msg(16, 14, null)); // defende por 1: 50% -> Redução Escalonada 75%
+        int hpA = sheetA.getCurrentHp();
+        AttackResponse.TargetResponse done = service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, null,
+                gb.getId(), null, master.getId()).targets().get(0);
+        assertThat(done.outcome()).isEqualTo(AttackOutcome.DEFENDED);
+        assertThat(done.mitigationPct()).isEqualTo(75);
+        assertThat(sheetA.getCurrentHp()).isLessThan(hpA); // 1d4 (3) + FOR do defensor
+    }
 }

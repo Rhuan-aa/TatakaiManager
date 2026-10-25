@@ -24,8 +24,11 @@ public record EncounterResponse(UUID id, UUID campaignId, String name, Encounter
                                       boolean exhausted, UUID mainArtId, String mainArtName,
                                       MartialType martialType, Guard guard, Foot leadFoot, UUID activeBaseId,
                                       String activeBaseName, List<CounterResponse> counters, List<ArtRef> arts,
-                                      List<ArtRef> bases) {
+                                      List<ArtRef> bases, List<TechRef> preparations) {
     }
+
+    /** Técnica de núcleo Preparação disponível (dono/Mestre), para a Ação Preparada (§38). */
+    public record TechRef(UUID techniqueId, String variation, String name, int spCost) {}
 
     public record ArtRef(UUID id, String name) {
     }

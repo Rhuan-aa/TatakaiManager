@@ -72,6 +72,12 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
     MAJOR: (
       <>
         <ActButton label="Atacar" cost="3 PA" reason={paReason(3)} onClick={() => onAttack('MAJOR')} />
+        {(p.preparations ?? []).map((t) => (
+          <ActButton key={`${t.techniqueId}:${t.variation ?? ''}`} label={`${t.name} (Preparação)`} cost={`3 PA · ${t.spCost} SP`}
+            title="Prepara o corpo até o início do próximo turno"
+            reason={paReason(3) ?? (sp != null && sp < t.spCost ? `SP insuficiente (${sp}/${t.spCost})` : exhausted ? 'Exausto: sem técnicas' : null)}
+            onClick={() => onAct({ participantId: p.id, action: 'PREPARED', techniqueId: t.techniqueId, variation: t.variation })} />
+        ))}
         <ActButton label={ACTION_STANCH.label} cost={`${ACTION_STANCH.pa} PA`} reason={stanchReason}
           onClick={() => onAct({ participantId: p.id, action: 'STANCH', ...(target ? { targetParticipantId: target } : {}) })} />
         {allies.length > 0 && (

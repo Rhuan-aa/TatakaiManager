@@ -229,7 +229,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
                   const att = enc.participants.find((x) => x.id === a.attackerId);
                   return isMaster || isOwner(att);
                 }}
-                onReact={(aid, tid, r, did) => run(() => api.respondReaction(aid, tid, r, did))}
+                onReact={(aid, tid, r, did, tech) => run(() => api.respondReaction(aid, tid, r, did, tech))}
                 onCancel={(aid) => run(() => api.cancelAttack(aid))}
                 onLateCounter={(aid, tid, b) => run(() => api.lateCounter(aid, tid, b))}
                 targetSheetId={(t) => enc.participants.find((x) => x.id === (t.targetId))?.sheetId} />
@@ -255,7 +255,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
 
           {awaiting && (
             <ReactionOverlay attack={awaiting.a} target={awaiting.t}
-              onReact={(aid, tid, r, did) => run(() => api.respondReaction(aid, tid, r, did))}
+              onReact={(aid, tid, r, did, tech) => run(() => api.respondReaction(aid, tid, r, did, tech))}
               onMinimize={minimize} />
           )}
         </>

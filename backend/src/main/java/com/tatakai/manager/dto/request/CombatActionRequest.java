@@ -20,16 +20,24 @@ public record CombatActionRequest(
         Guard guard,
         UUID baseId,
         /** Estabilizar com kit médico ou conhecimento de medicina: vantagem */
-        Boolean medical) {
+        Boolean medical,
+        /** Ação Preparada com técnica de núcleo Preparação (§38) */
+        UUID techniqueId,
+        @Size(max = 100) String variation) {
+
+    public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
+                               UUID targetParticipantId, Guard guard, UUID baseId, Boolean medical) {
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, medical, null, null);
+    }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId, Guard guard, UUID baseId) {
-        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, null);
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId) {
-        this(participantId, action, spCost, slow, label, targetParticipantId, null, null, null);
+        this(participantId, action, spCost, slow, label, targetParticipantId, null, null, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label) {

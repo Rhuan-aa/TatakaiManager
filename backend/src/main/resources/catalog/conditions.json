@@ -232,5 +232,21 @@
     "exit": "Fim da rodada",
     "defaultExpiresAt": "END_OF_ROUND",
     "stack": "RENEW"
+  },
+  {
+    "key": "ABERTURA",
+    "name": "Abertura",
+    "effect": "Próximo ataque contra quem originou a abertura tem vantagem",
+    "exit": "Fim do próximo turno ou ao atacar",
+    "defaultExpiresAt": "END_OF_TARGET_TURN",
+    "stack": "RENEW"
+  },
+  {
+    "key": "PREPARADO",
+    "name": "Preparado",
+    "effect": "Técnica de Preparação ativa: Reforço nas reações, Leitura e Carga",
+    "exit": "Início do próximo turno (Sustentação: fim dele)",
+    "defaultExpiresAt": "START_OF_TARGET_TURN",
+    "stack": "RENEW"
   }
 ]

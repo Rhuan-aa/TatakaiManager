@@ -47,6 +47,25 @@ export default function ReactionOverlay({ attack: a, target: t, onReact, onMinim
             </div>
           </div>
         ))}
+        {t.techniques?.length > 0 && (
+          <div className="mb-3">
+            <p className="panel-title mb-2 text-base">Técnicas de Reação</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {t.techniques.map((o) => (
+                <button key={`${o.techniqueId}:${o.variation ?? ''}`} type="button" className="reaction-option"
+                  disabled={!o.available}
+                  onClick={() => onReact(a.id, t.id, o.reaction, null, { techniqueId: o.techniqueId, variation: o.variation })}>
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="panel-title text-lg">{o.name}</span>
+                    <span className="tag">{REACTION_LABEL[o.reaction]} {signed(o.predictedBonus)}</span>
+                  </span>
+                  {o.triggers?.length > 0 && <span className="text-xs">Só se: {o.triggers.map((g) => g.replace(/^Gatilho:?\s*/, '')).join(', ')}</span>}
+                  <span className="text-xs font-bold">{o.available ? `${o.spCost} SP` : o.reason}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {t.guardians && (
           <button type="button" className="reaction-option w-full" onClick={() => onReact(a.id, t.id, 'NONE')}>
             <span className="panel-title text-lg">Ninguém reage</span>

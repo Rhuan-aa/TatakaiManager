@@ -48,6 +48,13 @@ public class AttackTarget {
     @Column(name = "defender_id")
     private UUID defenderId;
 
+    /** Técnica de núcleo Reação usada no lugar da reação comum (§38); null = reação comum. */
+    @Column(name = "reaction_technique_id")
+    private UUID reactionTechniqueId;
+
+    @Column(name = "reaction_variation", length = 100)
+    private String reactionVariation;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 10)
     private AttackOutcome outcome;

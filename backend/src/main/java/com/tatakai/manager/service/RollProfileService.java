@@ -79,7 +79,10 @@ public class RollProfileService {
             if (vars.isEmpty()) {
                 out.add(technique(sheet, t, null, Opts.NONE));
             } else {
-                for (AssemblyVariation v : vars) out.add(technique(sheet, t, v.getName(), Opts.NONE));
+                for (AssemblyVariation v : vars) {
+                    if (!attackCore(v.getCore())) continue; // Reação e Preparação não são ataques
+                    out.add(technique(sheet, t, v.getName(), Opts.NONE));
+                }
             }
         }
         for (BasicAttack b : BasicAttack.values()) out.add(basic(sheet, b, Opts.NONE));
@@ -171,6 +174,35 @@ public class RollProfileService {
         }
         if (cat != null && cat.getExtras() != null) items.addAll(cat.getExtras());
         return items.stream().anyMatch(i -> i.getModule() != null && i.getModule().startsWith(prefix));
+    }
+
+    private static boolean attackCore(TechniqueCore c) {
+        return c == null || c == TechniqueCore.STRIKE || c == TechniqueCore.CONTROL;
+    }
+
+    /** Técnica ACTIVE de núcleo Reação ou Preparação (uma por variação), com os itens da montagem e o gasto de SP. */
+    public record CoreTechnique(CharacterTechnique technique, String variation, String name, int spCost,
+                                List<AssemblyItem> items, boolean sketch) {}
+
+    /** Técnicas ACTIVE da ficha cuja variação tem o núcleo dado (REACTION ou PREPARATION). */
+    @Transactional(readOnly = true)
+    public List<CoreTechnique> coreTechniques(CharacterSheet sheet, TechniqueCore core) {
+        List<CoreTechnique> out = new ArrayList<>();
+        for (CharacterTechnique t : techniqueRepository.findBySheetIdOrderByCreatedAt(sheet.getId())) {
+            if (t.getKind() != MoveKind.TECHNIQUE || t.getState() != TechniqueState.ACTIVE) continue;
+            ArtTechnique cat = catalog(sheet, t);
+            for (AssemblyVariation v : variations(cat)) {
+                if (v.getCore() != core) continue;
+                List<AssemblyItem> items = new ArrayList<>(v.getItems() == null ? List.of() : v.getItems());
+                if (cat.getExtras() != null) items.addAll(cat.getExtras());
+                List<MasteryBonus> bonuses = t.getBonuses() == null ? List.of() : t.getBonuses();
+                int sp = RollRules.spCost(cat.getSpCostBase(), count(bonuses, MasteryBonus.COST), physical(sheet));
+                String name = variations(cat).size() > 1 ? t.getName() + " (" + v.getName() + ")" : t.getName();
+                out.add(new CoreTechnique(t, variations(cat).size() > 1 ? v.getName() : null, name, sp, items,
+                        t.getMastery() == Mastery.SKETCH));
+            }
+        }
+        return out;
     }
 
     /** Núcleo da variação usada (Golpe, Controle, Reação, Preparação); null sem catálogo. */

@@ -53,6 +53,9 @@ import com.tatakai.manager.repository.EncounterParticipantRepository;
 import com.tatakai.manager.repository.EncounterRepository;
 import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.service.rules.CombatRules;
+import com.tatakai.manager.service.rules.RollRules;
+import com.tatakai.manager.entity.TechniqueCore;
+import com.tatakai.manager.service.rules.TechniqueRules;
 import com.tatakai.manager.service.rules.SheetRules;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -96,6 +99,7 @@ public class CombatService {
     private final VitalService vital;
     private final MartialService martial;
     private final CampaignRuleService rules;
+    private final RollProfileService profiles;
     private final Random random = new SecureRandom();
 
     public CombatService(EncounterRepository encounters, EncounterParticipantRepository participants,
@@ -104,7 +108,9 @@ public class CombatService {
                          CampaignNpcRepository campaignNpcs, CampaignMemberRepository members,
                          RollService rolls, SheetActivityLogService activityLog, ConditionCatalog catalog,
                          ApplicationEventPublisher publisher, PendingAttackRepository attacks,
-                         VitalService vital, MartialService martial, CampaignRuleService rules) {
+                         VitalService vital, MartialService martial, CampaignRuleService rules,
+                         RollProfileService profiles) {
+        this.profiles = profiles;
         this.rules = rules;
         this.encounters = encounters;
         this.participants = participants;
@@ -226,7 +232,10 @@ public class CombatService {
                     p.getGuard(), s == null ? null : MartialRules.leadFoot(s.getDominance(), p.getGuard()),
                     m == null ? null : m.activeBaseId(), m == null ? null : m.activeBaseName(),
                     counterById.getOrDefault(p.getId(), List.of()).stream().map(this::counterView).toList(),
-                    m == null ? null : m.arts(), m == null ? null : m.bases()));
+                    m == null ? null : m.arts(), m == null ? null : m.bases(),
+                    seeResources ? profiles.coreTechniques(s, TechniqueCore.PREPARATION).stream()
+                            .map(t -> new EncounterResponse.TechRef(t.technique().getId(), t.variation(), t.name(), t.spCost()))
+                            .toList() : null));
         }
         UUID current = e.getStatus() == EncounterStatus.ACTIVE && e.getCurrentIndex() < ps.size()
                 ? ps.get(e.getCurrentIndex()).getId() : null;
@@ -469,7 +478,15 @@ public class CombatService {
         if (action == CombatAction.CHANGE_BASE) {
             pa = CombatRules.baseChangeCost(p.getActiveBaseId() != null, req.baseId() != null);
         }
-        int sp = VitalRules.adjustSp(CombatRules.spCost(action, req.spCost()),
+        // Ação Preparada com técnica de Preparação: o gasto é o SP da técnica (§38)
+        RollProfileService.CoreTechnique prep = null;
+        if (action == CombatAction.PREPARED && req.techniqueId() != null) {
+            prep = profiles.coreTechniques(s, TechniqueCore.PREPARATION).stream()
+                    .filter(x -> x.technique().getId().equals(req.techniqueId())
+                            && java.util.Objects.equals(x.variation(), req.variation()))
+                    .findFirst().orElseThrow(() -> new InvalidCombatException("Técnica de Preparação não encontrada ou inativa"));
+        }
+        int sp = VitalRules.adjustSp(prep != null ? prep.spCost() : CombatRules.spCost(action, req.spCost()),
                 VitalRules.tier(p.getAdrenaline()), dissociated);
         if (sp > 0 && keys.contains(VitalService.EXHAUSTED)) {
             throw new InvalidCombatException("Exausto: sem técnicas nem ações com custo de SP");
@@ -552,6 +569,9 @@ public class CombatService {
             }
             case STANCH -> vital.stanch(e, p, stanchTarget, sheetOf(stanchTarget), ctx);
             case EXTINGUISH -> vital.extinguish(e, p, s, ctx);
+            case PREPARED -> {
+                if (prep != null) prepare(e, p, s, prep, ctx);
+            }
             case STABILIZE -> vital.stabilize(e, p, s, stabilizeTarget, Boolean.TRUE.equals(req.medical()), ctx);
             case CHANGE_GUARD -> {
                 p.setGuard(req.guard());
@@ -567,6 +587,25 @@ public class CombatService {
         }
         log(e, p.getId(), CombatEventType.ACTION, text.toString());
         return done(e, "ACTION", userId, master);
+    }
+
+    /**
+     * Técnica de Preparação (§38): condição PREPARADO até o início do próximo turno (com Sustentação, até o fim dele),
+     * com a técnica e o que ainda pode ser consumido na nota ("id;variação;flags": L = Leitura, C = Carga).
+     * Fôlego Tático recupera SP na hora.
+     */
+    private void prepare(Encounter e, EncounterParticipant p, CharacterSheet s, RollProfileService.CoreTechnique t,
+                         VitalService.Ctx ctx) {
+        TechniqueRules.Preparation pr = TechniqueRules.preparation(t.items());
+        String flags = (pr.reading() ? "L" : "") + (pr.charge() > 0 ? "C" : "");
+        conditions.findByParticipantIdIn(List.of(p.getId())).stream()
+                .filter(c -> "PREPARADO".equals(c.getConditionKey())).forEach(conditions::delete);
+        conditions.save(CombatCondition.builder().participantId(p.getId()).conditionKey("PREPARADO")
+                .expiresAt(pr.sustain() ? ConditionExpiry.COUNTER : ConditionExpiry.START_OF_TARGET_TURN)
+                .turnsRemaining(pr.sustain() ? 2 : null).appliedTurn(e.getTurnCounter()) // 2: o contador desconta já no fim deste turno
+                .note(t.technique().getId() + ";" + (t.variation() == null ? "" : t.variation()) + ";" + flags).build());
+        log(e, p.getId(), CombatEventType.CONDITION_ADDED, p.getName() + " se prepara com " + t.name());
+        if (pr.breath()) vital.applySp(e, p, s, Math.max(0, RollRules.modOrZero(s.getCon())), ctx);
     }
 
     public EncounterResponse nextTurn(UUID encounterId, UUID userId) {
