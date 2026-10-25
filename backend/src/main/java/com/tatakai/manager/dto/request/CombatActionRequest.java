@@ -18,11 +18,18 @@ public record CombatActionRequest(
         @Size(max = 100) @Pattern(regexp = "^[^<>]*$", message = "Caracteres < e > não são permitidos") String label,
         UUID targetParticipantId,
         Guard guard,
-        UUID baseId) {
+        UUID baseId,
+        /** Estabilizar com kit médico ou conhecimento de medicina: vantagem */
+        Boolean medical) {
+
+    public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
+                               UUID targetParticipantId, Guard guard, UUID baseId) {
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, null);
+    }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId) {
-        this(participantId, action, spCost, slow, label, targetParticipantId, null, null);
+        this(participantId, action, spCost, slow, label, targetParticipantId, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label) {

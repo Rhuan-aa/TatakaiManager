@@ -207,6 +207,7 @@ public class TrainingService {
         s.setCurrentHp(Math.min(effMax, s.getCurrentHp() + hp));
         s.setCurrentSp(Math.min(s.getSpMax(), s.getCurrentSp() + sp));
         s.setCurrentKp(s.getKpMax());
+        if (q == RestQuality.TREATED) s.setKnockoutSequel(false); // Repouso Tratado apaga a Sequela de Nocaute
         int rec = TrainingRules.restFatigueRecovery(q);
         s.setPhysicalFatigue(Math.max(0, s.getPhysicalFatigue() - rec));
         s.setMentalFatigue(Math.max(0, s.getMentalFatigue() - rec));

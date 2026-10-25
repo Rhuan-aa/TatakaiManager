@@ -2055,3 +2055,15 @@ chamas). Coluna nova `combat_conditions.progress` (contador; `ddl-auto=update` c
   o estado no bloco Inventário; o Mestre informa o peso ao adicionar/atualizar item.
 - Fora: erguer/projetar oponente acima da Carga (desvantagem; depende do agarre) e o bônus de Desproporção.
 
+## 35. Estabilizar e Sequela de Nocaute (capítulo de Condições, 25/10/2026)
+
+- **Estabilizar** (`CombatAction.STABILIZE`, Ação Maior, 3 PA): um **aliado** (mesmo time, outro lutador) de quem está
+  **À Beira da Morte** faz **INT contra ND 12**, **+3 a cada falha** anterior no mesmo alvo
+  (`encounter_participants.stabilize_failures`, `VitalRules.stabilizeNd`); `medical: true` (kit médico ou medicina) dá
+  **vantagem**. Sucesso: sai da Beira da Morte e fica **Estabilizado** (continua Inconsciente; desperta com cura ou
+  Repouso). Alvo sem Beira da Morte, ele mesmo ou de outro time → 400. Adjacência não é verificada (sem grade).
+  Front: aparece no grupo Ação Maior só quando há aliado À Beira da Morte, com a escolha do aliado e "Kit médico / medicina".
+- **Sequela de Nocaute** (regra opcional `KNOCKOUT_SEQUEL`, já existia em Regras da campanha): ficar Inconsciente por PQ
+  marca `character_sheets.knockout_sequel`; no **início do próximo combate**, com a regra ligada, a ficha perde **1 PQ** e a
+  marca some. Um **Repouso Tratado** no TimeSkip apaga a marca antes disso.
+

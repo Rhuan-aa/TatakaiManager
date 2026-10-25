@@ -53,7 +53,7 @@ public final class CombatRules {
     public static int paCost(CombatAction a, boolean slow) {
         return switch (a) {
             case MAJOR -> slow ? 4 : 3;
-            case PREPARED, EXTINGUISH -> 3;
+            case PREPARED, EXTINGUISH, STABILIZE -> 3;
             case BREATHE -> 4;
             case MINOR, SHOVE, CHANGE_GUARD, CHANGE_BASE -> 1;
             case STANCH -> 3;

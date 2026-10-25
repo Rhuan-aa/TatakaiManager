@@ -78,6 +78,10 @@ public class CharacterSheet {
     private int currentKp;
 
     private int openWounds;
+
+    /** Sequela de Nocaute pendente (regra opcional): o próximo combate começa com 1 PQ a menos. */
+    @Column(name = "knockout_sequel", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean knockoutSequel;
     private int physicalFatigue;
     private int mentalFatigue;
     private int fightExperience;

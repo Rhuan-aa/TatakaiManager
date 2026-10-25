@@ -21,12 +21,16 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
   const [target, setTarget] = useState('');
   const [guard, setGuard] = useState('');
   const [base, setBase] = useState('');
+  const [dyingTarget, setDyingTarget] = useState('');
+  const [medical, setMedical] = useState(false);
   const basePa = p.activeBaseId && base && base !== '__none' ? 2 : 1;
   const sp = p.resources?.currentSp;
   const dissociated = hasCondition(p, 'DISSOCIADO');
   const exhausted = p.exhausted || hasCondition(p, 'EXAUSTO');
   const flow = p.adrenalineTier === 'FLOW' || p.adrenalineTier === 'APEX';
   const allies = participants.filter((x) => x.id !== p.id && x.team === p.team);
+  const dying = allies.filter((x) => hasCondition(x, 'BEIRA_DA_MORTE'));
+  const stabilizeId = dyingTarget || dying[0]?.id;
   // custo exibido: Fluxo/Ápice -1 (mín. 0); Dissociado dobra técnicas (Ação maior/Preparada)
   const effSp = (a) => {
     const v = Math.max(0, spCost - (flow ? 1 : 0));
@@ -77,6 +81,25 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
               {allies.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
             </select>
           </label>
+        )}
+        {dying.length > 0 && (
+          <>
+            <ActButton label="Estabilizar" cost="3 PA" title="INT vs ND 12 (+3 a cada falha); vantagem com kit médico"
+              reason={paReason(3)}
+              onClick={() => onAct({ participantId: p.id, action: 'STABILIZE', targetParticipantId: stabilizeId, medical })} />
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {dying.length > 1 && (
+                <select className="field !mt-0 !w-auto !py-0.5" aria-label="Aliado a estabilizar" value={stabilizeId}
+                  onChange={(e) => setDyingTarget(e.target.value)}>
+                  {dying.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                </select>
+              )}
+              {dying.length === 1 && <span>em {dying[0].name}</span>}
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={medical} onChange={(e) => setMedical(e.target.checked)} /> Kit médico / medicina
+              </label>
+            </div>
+          </>
         )}
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <label className="flex items-center gap-1">Custo SP

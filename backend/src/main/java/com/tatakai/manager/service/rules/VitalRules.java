@@ -82,6 +82,11 @@ public final class VitalRules {
         return !a.isEmpty() && !i.isEmpty() && (i.startsWith(a) || a.startsWith(i.replaceAll("\\s*\\(.*\\)$", "")));
     }
 
+    /** Estabilizar: INT contra ND 12, +3 a cada falha anterior no mesmo lutador. */
+    public static int stabilizeNd(int failures) {
+        return 12 + 3 * Math.max(0, failures);
+    }
+
     public static String normalizeRegion(String region) {
         if (region == null) return "";
         return Normalizer.normalize(region.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)

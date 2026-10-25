@@ -105,6 +105,10 @@ public class EncounterParticipant {
     @Column(name = "death_failures", nullable = false, columnDefinition = "integer not null default 0")
     private int deathFailures;
 
+    /** Tentativas falhas de Estabilizar este lutador: o ND sobe +3 a cada uma. */
+    @Column(name = "stabilize_failures", nullable = false, columnDefinition = "integer not null default 0")
+    private int stabilizeFailures;
+
     /** CharacterArt escolhida como arte principal (F6d); null = padrão (maior graduação). */
     @Column(name = "main_art_id")
     private UUID mainArtId;

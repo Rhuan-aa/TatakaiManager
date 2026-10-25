@@ -27,6 +27,7 @@ import com.tatakai.manager.entity.BuildStatus;
 import com.tatakai.manager.entity.CharacterArtStatus;
 import com.tatakai.manager.entity.CharacterSheet;
 import com.tatakai.manager.entity.CombatAction;
+import com.tatakai.manager.entity.OptionalRule;
 import com.tatakai.manager.entity.CombatCondition;
 import com.tatakai.manager.entity.CombatEvent;
 import com.tatakai.manager.entity.CombatEventType;
@@ -94,6 +95,7 @@ public class CombatService {
     private final PendingAttackRepository attacks;
     private final VitalService vital;
     private final MartialService martial;
+    private final CampaignRuleService rules;
     private final Random random = new SecureRandom();
 
     public CombatService(EncounterRepository encounters, EncounterParticipantRepository participants,
@@ -102,7 +104,8 @@ public class CombatService {
                          CampaignNpcRepository campaignNpcs, CampaignMemberRepository members,
                          RollService rolls, SheetActivityLogService activityLog, ConditionCatalog catalog,
                          ApplicationEventPublisher publisher, PendingAttackRepository attacks,
-                         VitalService vital, MartialService martial) {
+                         VitalService vital, MartialService martial, CampaignRuleService rules) {
+        this.rules = rules;
         this.encounters = encounters;
         this.participants = participants;
         this.conditions = conditions;
@@ -355,6 +358,10 @@ public class CombatService {
             CharacterSheet s = sheetOf(p);
             sheetById.put(p.getId(), s);
             vital.syncDissociation(e, p, s);
+            if (s.isKnockoutSequel() && e.getCampaignId() != null
+                    && rules.isEnabled(e.getCampaignId(), OptionalRule.KNOCKOUT_SEQUEL)) {
+                vital.knockoutSequel(e, p, s, VitalService.Ctx.of(userId, ActorRole.MASTER, "Sequela de Nocaute"));
+            }
             if (p.getInitiative() == null) {
                 p.setInitiative(rollInitiative(e, s, userId));
                 log(e, p.getId(), CombatEventType.INITIATIVE, p.getName() + " rolou iniciativa: " + p.getInitiative());
@@ -490,6 +497,17 @@ public class CombatService {
                 throw new InvalidCombatException("Só é possível estancar a si mesmo ou a um aliado");
             }
         }
+        EncounterParticipant stabilizeTarget = null;
+        if (action == CombatAction.STABILIZE) {
+            if (req.targetParticipantId() == null) throw new InvalidCombatException("Escolha quem estabilizar");
+            stabilizeTarget = participantOf(e, req.targetParticipantId());
+            if (stabilizeTarget.getId().equals(p.getId()) || stabilizeTarget.getTeam() != p.getTeam()) {
+                throw new InvalidCombatException("Só é possível estabilizar um aliado");
+            }
+            if (!vital.hasCondition(stabilizeTarget, VitalService.DYING)) {
+                throw new InvalidCombatException(stabilizeTarget.getName() + " não está À Beira da Morte");
+            }
+        }
         if (action == CombatAction.EXTINGUISH && !keys.contains(VitalService.BURNING)) {
             throw new InvalidCombatException(p.getName() + " não está Queimando");
         }
@@ -533,6 +551,7 @@ public class CombatService {
             }
             case STANCH -> vital.stanch(e, p, stanchTarget, sheetOf(stanchTarget), ctx);
             case EXTINGUISH -> vital.extinguish(e, p, s, ctx);
+            case STABILIZE -> vital.stabilize(e, p, s, stabilizeTarget, Boolean.TRUE.equals(req.medical()), ctx);
             case CHANGE_GUARD -> {
                 p.setGuard(req.guard());
                 p.setGuardChangedAt(java.time.Instant.now()); // reinicia o Timing

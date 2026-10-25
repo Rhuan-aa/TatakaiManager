@@ -40,6 +40,7 @@ import static org.mockito.Mockito.verify;
 @DisplayName("CombatService — F6a Motor de combate")
 class CombatServiceTest {
 
+    @Mock private com.tatakai.manager.service.CampaignRuleService ruleService;
     @Mock private EncounterRepository encounters;
     @Mock private EncounterParticipantRepository participants;
     @Mock private CombatConditionRepository conditions;
@@ -145,7 +146,7 @@ class CombatServiceTest {
                 new com.tatakai.manager.service.VitalService(participants, conditions, timeline, activityLog, rolls,
                         new ConditionCatalog(), org.mockito.Mockito.mock(com.tatakai.manager.service.RollProfileService.class)),
                 new com.tatakai.manager.service.MartialService(arts, martialArts, techniqueRepo, rivals, counterRepo,
-                        new com.tatakai.manager.service.ArtCounterCatalog(), timeline));
+                        new com.tatakai.manager.service.ArtCounterCatalog(), timeline), ruleService);
     }
 
     private int initA = 10, initB = 10;
@@ -824,6 +825,12 @@ class CombatServiceTest {
                         List.of(), List.of(), 0, total, 10, false, false, null, false, null, false, java.time.Instant.now(), null));
     }
 
+    private com.tatakai.manager.dto.response.RollMessage rollMsg(int total) {
+        return new com.tatakai.manager.dto.response.RollMessage(UUID.randomUUID(), cid, null, null, "x", "y",
+                RollChannel.PUBLIC, RollMode.QUICK, "p", RollSourceType.ATTRIBUTE_TEST, null, "s", "f", "f", 0,
+                List.of(), List.of(), 0, total, 10, false, false, null, false, null, false, java.time.Instant.now(), null);
+    }
+
     private boolean has(EncounterParticipant p, String key) {
         return cList.stream().anyMatch(c -> c.getParticipantId().equals(p.getId()) && c.getConditionKey().equals(key));
     }
@@ -1038,5 +1045,41 @@ class CombatServiceTest {
         assertThat(p[0].getAdrenaline()).isZero();
         assertThat(sheetA.getOpenWounds()).isZero();
         assertThat(has(p[0], "EXAUSTO")).isFalse();
+    }
+
+    // ---------- §35: Estabilizar e Sequela de Nocaute ----------
+
+    @Test
+    @DisplayName("§35 Estabilizar: Ação Maior de aliado, INT vs ND 12 (+3 por falha); sucesso tira da Beira da Morte")
+    void stabilize() {
+        EncounterParticipant[] p = started();
+        p[1].setTeam(p[0].getTeam());
+        cond(p[1], "BEIRA_DA_MORTE", ConditionExpiry.MANUAL, null, null);
+        java.util.function.Supplier<CombatActionRequest> req = () -> new CombatActionRequest(p[0].getId(),
+                CombatAction.STABILIZE, null, null, null, p[1].getId(), null, null, true);
+        org.mockito.Mockito.when(rolls.rollCalc(any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(), anyString(), any(), any()))
+                .thenReturn(rollMsg(10)).thenReturn(rollMsg(15));
+        service.act(enc.getId(), req.get(), player.getId());           // 10 < 12: falha
+        assertThat(p[1].getStabilizeFailures()).isEqualTo(1);
+        assertThat(p[0].getPaCurrent()).isEqualTo(2);
+        p[0].setPaCurrent(5);
+        service.act(enc.getId(), req.get(), player.getId());           // 15 vs ND 15: sucesso
+        assertThat(cList).noneMatch(c -> c.getConditionKey().equals("BEIRA_DA_MORTE"));
+        assertThat(cList).anyMatch(c -> c.getParticipantId().equals(p[1].getId()) && c.getConditionKey().equals("ESTABILIZADO"));
+        org.mockito.Mockito.verify(rolls, org.mockito.Mockito.atLeastOnce()).rollCalc(any(), any(), any(), org.mockito.ArgumentMatchers.eq(1), anyString(), any(), any());
+        // alvo sem Beira da Morte -> 400
+        p[0].setPaCurrent(5);
+        assertThatThrownBy(() -> service.act(enc.getId(), req.get(), player.getId())).isInstanceOf(InvalidCombatException.class);
+    }
+
+    @Test
+    @DisplayName("§35 Sequela de Nocaute: com a regra ligada, o próximo combate começa com 1 PQ a menos")
+    void knockoutSequel() {
+        sheetA.setKnockoutSequel(true);
+        sheetA.setCurrentKp(5);
+        org.mockito.Mockito.when(ruleService.isEnabled(any(), org.mockito.ArgumentMatchers.eq(com.tatakai.manager.entity.OptionalRule.KNOCKOUT_SEQUEL))).thenReturn(true);
+        started();
+        assertThat(sheetA.getCurrentKp()).isEqualTo(4);
+        assertThat(sheetA.isKnockoutSequel()).isFalse();
     }
 }

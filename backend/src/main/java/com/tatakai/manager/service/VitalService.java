@@ -327,6 +327,7 @@ public class VitalService {
             s.setCurrentKp(2);
             record(s, c, "COMBAT_KP", "currentKp", before, 2);
         } else {
+            s.setKnockoutSequel(true); // só pesa se a campanha usar a Sequela de Nocaute (aplicada no próximo combate)
             Roll r = rolls.rollInternal(s, "1d4", "Duração do desmaio por PQ: " + p.getName(), c.userId(), c.role());
             addCondition(e, p, UNCONSCIOUS, ConditionExpiry.COUNTER, r.getTotal() + 2, "PQ");
         }
@@ -543,6 +544,34 @@ public class VitalService {
                 conditions.save(k);
             }
         }
+    }
+
+    /**
+     * Estabilizar (Ação Maior de um aliado): INT contra ND 12 (+3 por falha anterior), vantagem com kit médico ou
+     * medicina. Sucesso: sai da Beira da Morte e fica Estabilizado.
+     */
+    public void stabilize(Encounter e, EncounterParticipant executor, CharacterSheet es, EncounterParticipant target,
+                          boolean medical, Ctx c) {
+        int nd = VitalRules.stabilizeNd(target.getStabilizeFailures());
+        if (attributeTest(e, executor, es, Attribute.INT, nd, "Estabilizar " + target.getName(), medical ? 1 : 0, c)) {
+            removeCondition(e, target, DYING);
+            addCondition(e, target, STABLE, ConditionExpiry.MANUAL, null, null);
+            target.setStabilizeFailures(0);
+        } else {
+            target.setStabilizeFailures(target.getStabilizeFailures() + 1);
+        }
+    }
+
+    /** Sequela de Nocaute no início do combate: −1 PQ e a pendência some. */
+    public void knockoutSequel(Encounter e, EncounterParticipant p, CharacterSheet s, Ctx c) {
+        if (!s.isKnockoutSequel()) return;
+        s.setKnockoutSequel(false);
+        int before = s.getCurrentKp();
+        if (before > 0) {
+            s.setCurrentKp(before - 1);
+            record(s, c, "KNOCKOUT_SEQUEL", "currentKp", before, before - 1);
+        }
+        log(e, p.getId(), CombatEventType.ACTION, p.getName() + ": Sequela de Nocaute (−1 PQ)");
     }
 
     /** Apagar chamas (Ação Maior): DES contra o ND da intensidade; sucesso encerra o Queimando. */
