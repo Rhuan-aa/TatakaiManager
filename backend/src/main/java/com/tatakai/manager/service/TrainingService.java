@@ -239,7 +239,8 @@ public class TrainingService {
     private int consolidateResource(CharacterSheet s, String key, int gain) {
         ResourceType r = ResourceType.valueOf(key);
         int limiter = SheetRules.statusLimiter(r, s.getTal(), s.getBodyType(), adjustments(s).getOrDefault(key, 0)
-                - (r == ResourceType.HP ? SheetRules.injuryHp(s.getInjuries()) : 0));
+                - (r == ResourceType.HP ? SheetRules.injuryHp(s.getInjuries())
+                   : r == ResourceType.SP ? SheetRules.injurySpLimiter(s.getInjuries()) : 0));
         int before = switch (r) {
             case HP -> s.getHpMax();
             case SP -> s.getSpMax();

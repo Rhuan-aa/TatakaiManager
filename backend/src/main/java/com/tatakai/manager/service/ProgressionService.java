@@ -351,7 +351,7 @@ public class ProgressionService {
             out.put(t, SheetRules.attributeLimiter(a, s.getTal(), s.getBodyType(), injury, adj.getOrDefault(t, 0)));
         }
         out.put("HP", SheetRules.statusLimiter(ResourceType.HP, s.getTal(), s.getBodyType(), adj.getOrDefault("HP", 0) - SheetRules.injuryHp(s.getInjuries())));
-        out.put("SP", SheetRules.statusLimiter(ResourceType.SP, s.getTal(), s.getBodyType(), adj.getOrDefault("SP", 0)));
+        out.put("SP", SheetRules.statusLimiter(ResourceType.SP, s.getTal(), s.getBodyType(), adj.getOrDefault("SP", 0) - SheetRules.injurySpLimiter(s.getInjuries())));
         return out;
     }
 

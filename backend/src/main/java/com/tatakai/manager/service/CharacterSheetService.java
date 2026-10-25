@@ -778,7 +778,7 @@ public class CharacterSheetService {
                     SheetRules.statusLimiter(ResourceType.HP, s.getTal(), s.getBodyType(),
                             adj.getOrDefault("HP", 0) - SheetRules.injuryHp(s.getInjuries())),
                     SheetRules.statusLimiter(ResourceType.SP, s.getTal(), s.getBodyType(),
-                            adj.getOrDefault("SP", 0)),
+                            adj.getOrDefault("SP", 0) - SheetRules.injurySpLimiter(s.getInjuries())),
                     SheetRules.statusLimiter(ResourceType.KP, s.getTal(), s.getBodyType(),
                             adj.getOrDefault("KP", 0)),
                     SheetRules.weightMod(s.getWeightKg()), SheetRules.carryKg(s.getStr()),

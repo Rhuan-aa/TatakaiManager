@@ -179,6 +179,17 @@ public final class SheetRules {
         return null;
     }
 
+    /** Ferimento no pulmão reduz o Limitador de SP (tabela do livro), pela gravidade, enquanto ativo. */
+    public static int injurySpLimiter(List<PermanentInjury> injuries) {
+        return injuries.stream().filter(i -> injuryActive(i) && isLung(i.getRegion()))
+                .mapToInt(PermanentInjury::getLimiterReduction).sum();
+    }
+
+    private static boolean isLung(String region) {
+        return region != null && java.text.Normalizer.normalize(region.toLowerCase(java.util.Locale.ROOT),
+                java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "").contains("pulm");
+    }
+
     /** Região é um membro (Rompimento deixa o membro Inútil)? */
     public static boolean injuryLimb(String region) {
         Attribute a = injuryAttribute(region);

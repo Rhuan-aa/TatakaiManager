@@ -206,6 +206,11 @@ class SheetRulesTest {
                 .hpMaxReduction(6).treated(true).build();
         assertThat(SheetRules.injuryHp(java.util.List.of(cut, blunt))).isEqualTo(4); // tratado só some se não for cortante
         assertThat(SheetRules.effectiveHpMax(30, java.util.List.of(cut, blunt))).isEqualTo(26);
+        var lung = com.tatakai.manager.entity.PermanentInjury.builder().type(com.tatakai.manager.entity.InjuryType.PIERCING)
+                .region("Pulmão direito").limiterReduction(15).build();
+        assertThat(SheetRules.injurySpLimiter(java.util.List.of(lung, blunt))).isEqualTo(15);
+        lung.setTreated(true);
+        assertThat(SheetRules.injurySpLimiter(java.util.List.of(lung))).isZero(); // Perfuração tratada deixa de reduzir
     }
 
     @org.junit.jupiter.api.Test

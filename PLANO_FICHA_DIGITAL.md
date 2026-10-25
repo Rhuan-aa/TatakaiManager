@@ -2016,7 +2016,8 @@ Fora: Tração (sem motor de competição de agarre), "Penalidade fora de chutes
   51–99% Grave, 100%+ Letal. **HP máximo** cai **metade do dano** (Rompimento); **Limitador** do atributo da região cai
   5/10/15 (Letal: 0). **Região** = a do Ataque Localizado (`PendingAttack.region`), senão "não localizado".
   `SheetRules.injuryAttribute`: braço/ombro/mão/dedo → FOR; perna/pé → DES; fígado/pâncreas/genitália → CON;
-  nariz/orelha → CAR; membro → região marcada "(Membro Inútil)". Pulmão (Limitador de SP) não modelado.
+  nariz/orelha → CAR; membro → região marcada "(Membro Inútil)"; **pulmão** reduz o **Limitador de SP**
+  (`SheetRules.injurySpLimiter`, pela região, enquanto o ferimento estiver ativo).
 - **Duração** (`SheetRules.injuryActive`): Desmembramento (cortante) é permanente mesmo tratado; Perfuração e Rompimento
   deixam de reduzir quando tratados (`TREAT_INJURY`). Vale para HP máximo efetivo, Limitador do atributo e **Limitador
   de HP** (agora também reduzido pela soma do HP máximo perdido).
