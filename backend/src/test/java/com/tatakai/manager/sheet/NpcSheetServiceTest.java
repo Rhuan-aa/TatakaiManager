@@ -2,6 +2,7 @@ package com.tatakai.manager.sheet;
 
 import com.tatakai.manager.dto.request.AttributesPayload;
 import com.tatakai.manager.dto.request.CreateCharacterSheetRequest;
+import com.tatakai.manager.dto.request.CreateGmSheetRequest;
 import com.tatakai.manager.dto.request.GmAdjustmentRequest;
 import com.tatakai.manager.dto.request.SetNpcSectionVisibilityRequest;
 import com.tatakai.manager.dto.request.UpdateCharacterSheetRequest;
@@ -110,6 +111,47 @@ class NpcSheetServiceTest {
     private void linkCampaignNpc() {
         lenient().when(campaignNpcRepository.findByCampaignIdAndNpcId(campaign.getId(), npc.getId()))
                 .thenReturn(Optional.of(cn));
+    }
+
+    // ------------------------------------------------------------------ createGmSheet (§26.11)
+
+    @Test
+    @DisplayName("§26.11: Mestre cria ficha instantânea visível -> NPC sem interações, fora da Agenda, seções liberadas")
+    void createGmSheet_visible() {
+        member(owner, Role.MASTER);
+        when(npcRepository.save(any(Npc.class))).thenAnswer(i -> i.getArgument(0));
+        when(campaignNpcRepository.save(any(CampaignNpc.class))).thenAnswer(i -> i.getArgument(0));
+        when(npcRepository.findById(any())).thenAnswer(i -> Optional.of(Npc.builder().id(i.getArgument(0))
+                .name("Capanga").ownerId(owner.getId()).build()));
+
+        CharacterSheetResponse r = service.createGmSheet(campaign.getId(),
+                new CreateGmSheetRequest(createReq(), true), owner.getId());
+
+        assertThat(r.buildStatus()).isEqualTo(BuildStatus.COMPLETED);
+        ArgumentCaptor<CampaignNpc> link = ArgumentCaptor.forClass(CampaignNpc.class);
+        verify(campaignNpcRepository).save(link.capture());
+        assertThat(link.getValue().isVisible()).isTrue();
+        assertThat(link.getValue().isBookable()).isFalse();
+        assertThat(link.getValue().getNpcId()).isEqualTo(r.npcId());
+        verify(npcVisibilityRepository, times(4)).save(any(NpcSheetVisibility.class));
+    }
+
+    @Test
+    @DisplayName("§26.11: ficha instantânea oculta não libera seções; jogador não pode criar (403)")
+    void createGmSheet_hiddenAndPlayer() {
+        member(owner, Role.MASTER);
+        member(playerUser, Role.PLAYER);
+        when(npcRepository.save(any(Npc.class))).thenAnswer(i -> i.getArgument(0));
+        when(campaignNpcRepository.save(any(CampaignNpc.class))).thenAnswer(i -> i.getArgument(0));
+        when(npcRepository.findById(any())).thenAnswer(i -> Optional.of(Npc.builder().id(i.getArgument(0))
+                .ownerId(owner.getId()).build()));
+
+        service.createGmSheet(campaign.getId(), new CreateGmSheetRequest(createReq(), false), owner.getId());
+        verify(npcVisibilityRepository, never()).save(any());
+
+        assertThatThrownBy(() -> service.createGmSheet(campaign.getId(),
+                new CreateGmSheetRequest(createReq(), true), playerUser.getId()))
+                .isInstanceOf(AccessDeniedException.class);
     }
 
     // ------------------------------------------------------------------ createForNpc

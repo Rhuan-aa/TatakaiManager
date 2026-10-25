@@ -12,10 +12,11 @@ import CharacterSheetForm from './CharacterSheetForm';
 import CharacterSheetView from './CharacterSheetView';
 import ActivityLogPanel from './ActivityLogPanel';
 import FightClosePanel from './FightClosePanel';
+import GmSheets from './GmSheets';
 
 const STATUS = { DRAFT: 'Rascunho', PENDING_APPROVAL: 'Aguardando aprovação', COMPLETED: 'Aprovada', IN_BUILD: 'Em construção' };
 
-export default function SheetsSection({ campaignId, isMaster, fightSheetIds }) {
+export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npcs = [], setNpcs }) {
   const { user } = useAuth();
   const toast = useToast();
   const [warnings, setWarnings] = useState([]);
@@ -200,8 +201,12 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds }) {
       ) : tab === 'log' && isMaster ? (
         <ActivityLogPanel campaignId={campaignId} sheets={sheets} refreshKey={tick} />
       ) : sheets.length === 0 ? (
-        <EmptyState title="Nenhuma ficha ainda" description="As fichas dos jogadores aparecerão aqui." />
+        <>
+          <EmptyState title="Nenhuma ficha ainda" description="As fichas dos jogadores aparecerão aqui." />
+          <GmSheets campaignId={campaignId} isMaster={isMaster} npcs={npcs} setNpcs={setNpcs} />
+        </>
       ) : (
+        <>
         <div className="page-gutter grid sm:grid-cols-2 lg:grid-cols-3">
           {sheets.map((s) => (
             <button key={s.id} type="button" onClick={() => setOpenId(s.id)}
@@ -218,6 +223,8 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds }) {
             </button>
           ))}
         </div>
+        <GmSheets campaignId={campaignId} isMaster={isMaster} npcs={npcs} setNpcs={setNpcs} />
+        </>
       )}
     </div>
   );

@@ -131,7 +131,7 @@ export default function CampaignDetail() {
             {activeTab === 'NPCs' && (
               <NpcSection campaignId={id} isMaster={isMaster} npcs={npcs} setNpcs={setNpcs} />
             )}
-            {activeTab === 'Fichas' && <SheetsSection campaignId={id} isMaster={isMaster} fightSheetIds={fightSheetIds} />}
+            {activeTab === 'Fichas' && <SheetsSection campaignId={id} isMaster={isMaster} fightSheetIds={fightSheetIds} npcs={npcs} setNpcs={setNpcs} />}
             {activeTab === 'Agenda' && (
               <TimeSkipPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
             )}

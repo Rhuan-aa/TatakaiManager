@@ -3,6 +3,7 @@ package com.tatakai.manager.service;
 import com.tatakai.manager.dto.request.ApproveCharacterSheetRequest;
 import com.tatakai.manager.dto.request.AttributesPayload;
 import com.tatakai.manager.dto.request.CreateCharacterSheetRequest;
+import com.tatakai.manager.dto.request.CreateGmSheetRequest;
 import com.tatakai.manager.dto.request.GmAdjustmentRequest;
 import com.tatakai.manager.dto.request.InjuryPayload;
 import com.tatakai.manager.dto.request.SetNpcSectionVisibilityRequest;
@@ -648,6 +649,30 @@ public class CharacterSheetService {
                 null, null, saved.getName(), null, null);
         publish(SheetEvent.SHEET_CREATED, saved, ActivityCategory.BUILD, "CREATE_SHEET", userName(requesterId));
         return toResponse(saved, true, Set.of());
+    }
+
+    /**
+     * Ficha instantânea do Mestre (§26.11): cria um NPC só com ficha (sem interações, fora da Agenda), associa à
+     * campanha e cria a ficha COMPLETED. Visível = NPC visível e todas as seções liberadas; senão, tudo oculto.
+     */
+    @Transactional
+    public CharacterSheetResponse createGmSheet(UUID campaignId, CreateGmSheetRequest req, UUID requesterId) {
+        CampaignMember m = requireMembership(campaignId, requesterId);
+        if (m.getRole() != Role.MASTER) throw new AccessDeniedException("Apenas o Mestre pode criar fichas instantâneas");
+        Npc npc = npcRepository.save(Npc.builder()
+                .id(UUID.randomUUID())
+                .name(req.sheet().name())
+                .ownerId(requesterId)
+                .createdAt(java.time.Instant.now())
+                .build());
+        CampaignNpc cn = campaignNpcRepository.save(CampaignNpc.builder()
+                .campaign(m.getCampaign()).npcId(npc.getId()).visible(req.visible()).bookable(false).build());
+        if (req.visible()) {
+            for (SheetSection sec : NPC_SHEET_SECTIONS) {
+                npcVisibilityRepository.save(NpcSheetVisibility.builder().campaignNpc(cn).section(sec).visible(true).build());
+            }
+        }
+        return createForNpc(npc.getId(), req.sheet(), requesterId);
     }
 
     @Transactional(readOnly = true)

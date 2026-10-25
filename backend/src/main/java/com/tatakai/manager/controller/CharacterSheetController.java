@@ -93,6 +93,13 @@ public class CharacterSheetController {
                 .body(rollService.testRoll(sheetId, request, AuthenticatedUser.id()));
     }
 
+    @PostMapping("/campaigns/{campaignId}/gm-sheets")
+    public ResponseEntity<CharacterSheetResponse> createGmSheet(@PathVariable UUID campaignId,
+                                                                @Valid @RequestBody CreateGmSheetRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(sheetService.createGmSheet(campaignId, request, AuthenticatedUser.id()));
+    }
+
     @PostMapping("/npcs/{npcId}/sheet")
     public ResponseEntity<CharacterSheetResponse> createForNpc(@PathVariable UUID npcId,
                                                                @Valid @RequestBody CreateCharacterSheetRequest request) {

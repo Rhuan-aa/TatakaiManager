@@ -101,8 +101,11 @@ export function SheetFields({ f, set, errors = {} }) {
   );
 }
 
-/** Criação (sem `sheet`) ou edição. Modo NPC: `npcId` (sem aprovação); `initialValues` pré-preenche a criação. */
-export default function CharacterSheetForm({ campaignId, npcId, initialValues, sheet, onSaved, onCancel }) {
+/**
+ * Criação (sem `sheet`) ou edição. Modo NPC: `npcId` (sem aprovação); `initialValues` pré-preenche a criação.
+ * `create(payload)` substitui a criação padrão (ficha instantânea do Mestre) e também dispensa aprovação.
+ */
+export default function CharacterSheetForm({ campaignId, npcId, create, initialValues, sheet, onSaved, onCancel, children }) {
   const toast = useToast();
   const [f, setF] = useState(() => initialSheetFields(sheet, initialValues));
   const [errors, setErrors] = useState({});
@@ -115,7 +118,8 @@ export default function CharacterSheetForm({ campaignId, npcId, initialValues, s
     setBusy(true);
     setErrors({});
     try {
-      let saved = sheet ? await updateSheet(sheet.id, payload()) : await (npcId ? createNpcSheet(npcId, payload()) : createSheet(campaignId, payload()));
+      let saved = sheet ? await updateSheet(sheet.id, payload())
+        : await (create ? create(payload()) : npcId ? createNpcSheet(npcId, payload()) : createSheet(campaignId, payload()));
       if (andSubmit) saved = await submitSheet(saved.id);
       toast(andSubmit ? 'Ficha enviada para aprovação.' : 'Ficha salva.');
       onSaved?.(saved);
@@ -140,10 +144,11 @@ export default function CharacterSheetForm({ campaignId, npcId, initialValues, s
         </label>
       </div>
       <SheetFields f={f} set={set} errors={errors} />
+      {children}
 
       <div className="flex flex-wrap gap-2">
-        <button type="submit" className="btn-secondary" disabled={busy}>{npcId ? 'Salvar ficha' : 'Salvar rascunho'}</button>
-        {!npcId && (
+        <button type="submit" className="btn-secondary" disabled={busy}>{npcId || create ? 'Salvar ficha' : 'Salvar rascunho'}</button>
+        {!npcId && !create && (
           <button type="button" className="btn-primary" disabled={busy} onClick={() => save(true)}>
             Enviar para aprovação
           </button>

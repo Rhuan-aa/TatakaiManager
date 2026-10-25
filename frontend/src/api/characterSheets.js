@@ -58,6 +58,12 @@ export async function getCampaignActivityLog(campaignId, { sheetId, category, fr
   return data;
 }
 
+// Ficha instantânea do Mestre (§26.11): vira um NPC só com ficha, fora da Agenda.
+export async function createGmSheet(campaignId, sheet, visible) {
+  const { data } = await client.post(`/campaigns/${campaignId}/gm-sheets`, { sheet, visible });
+  return data;
+}
+
 export async function createNpcSheet(npcId, body) {
   const { data } = await client.post(`/npcs/${npcId}/sheet`, body);
   return data;

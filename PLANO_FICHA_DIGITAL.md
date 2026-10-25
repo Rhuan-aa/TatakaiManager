@@ -1890,7 +1890,7 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
     até montar o card grande do feed (`RollCard` em destaque). Respeitar `prefers-reduced-motion` (pula direto ao card).
 
 ### 26.4 Fichas e campanha
-11. **Fichas do Mestre (instantâneas)** — o Mestre cria fichas na hora, como quem cria NPC, sem Construção Inicial nem
+11. ✅ **Fichas do Mestre (instantâneas)** — o Mestre cria fichas na hora, como quem cria NPC, sem Construção Inicial nem
     aprovação; cada ficha pode ser **visível ou oculta** para os jogadores (reaproveitar o modelo de ficha de NPC e a
     visibilidade por seção, se couber).
 12. ✅ **Listagem de membros da campanha** — `GET /campaigns/{cid}/members` (membro; senão 403) → `MemberResponse[]`.
@@ -1928,4 +1928,18 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
   treme (HIT), desliza (DODGED) ou encolhe (DEFENDED); COUNTERED treme o atacante; onomatopeia sobre o alvo
   (`POW! −dano`, `ESQUIVOU!`, `BLOQUEIO!`, `CONTRA!`, `ERROU!`).
 - `prefers-reduced-motion`: pula tudo direto para o card, sem golpe.
+
+## 29. Fichas do Mestre instantâneas (item 11 do §26, 25/10/2026)
+
+- **Modelo:** reaproveita NPC + ficha de NPC (F1.1), sem tabela nova. A ficha instantânea é um NPC (Mongo) sem
+  interações, com dono = Mestre, associado à campanha com `bookable = false` (fora da Agenda) e ficha `COMPLETED`.
+- **Rota:** `POST /campaigns/{cid}/gm-sheets` `{sheet: CreateCharacterSheetRequest, visible}` → 201
+  `CharacterSheetResponse` (com `npcId`). Só MASTER (403). `visible = true` → `campaign_npcs.visible = true` e as 4
+  seções de `npc_sheet_visibility` liberadas; `false` → NPC oculto e seções ocultas (padrão).
+  `CharacterSheetService.createGmSheet` → `createForNpc` (log `BUILD/CREATE_SHEET` e `SHEET_CREATED`).
+- **Front:** bloco "Fichas do Mestre" (`components/sheet/GmSheets.jsx`) na aba Fichas: lista os NPCs da campanha com
+  ficha; Mestre cria pela "Ficha rápida" (`CharacterSheetForm` com `create`), alterna Visível/Oculta
+  (`PATCH .../npcs/{nid}/visibility`) e abre a ficha no `NpcSheetPanel` (com os toggles por seção). Jogador vê só
+  as visíveis, com as seções liberadas.
+- Depois da criação dá para editar como qualquer NPC (aba NPCs) e colocar no combate (NPC com `sheetId`).
 
