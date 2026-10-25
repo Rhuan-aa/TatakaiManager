@@ -30,27 +30,38 @@ public record CreateAttackRequest(
         /** Ímpeto: metros em linha reta antes do golpe (§41) */
         @jakarta.validation.constraints.PositiveOrZero @Max(100) Double runMeters,
         /** Esmagar: há superfície sólida adjacente ao alvo (§41) */
-        Boolean surface) {
+        Boolean surface,
+        /** Distância até o alvo em metros (disparo/arremesso, Grande, Dispersão; §42); null = não informada */
+        @jakarta.validation.constraints.PositiveOrZero @Max(5000) Double distanceM) {
+
+    public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
+                               BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
+                               String region, Integer regionPenalty, StrikeSide strikeSide,
+                               com.tatakai.manager.service.rules.GrappleRules.Grip grip, Boolean squeeze,
+                               Double runMeters, Boolean surface) {
+        this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
+                strikeSide, grip, squeeze, runMeters, surface, null);
+    }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
                                BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
                                String region, Integer regionPenalty, StrikeSide strikeSide,
                                com.tatakai.manager.service.rules.GrappleRules.Grip grip, Boolean squeeze) {
         this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
-                strikeSide, grip, squeeze, null, null);
+                strikeSide, grip, squeeze, null, null, null);
     }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
                                BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
                                String region, Integer regionPenalty, StrikeSide strikeSide) {
         this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
-                strikeSide, null, null, null, null);
+                strikeSide, null, null, null, null, null);
     }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
                                BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
                                String region, Integer regionPenalty) {
         this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
-                null, null, null, null, null);
+                null, null, null, null, null, null);
     }
 }

@@ -100,6 +100,9 @@ public class CharacterSheetService {
     private record Access(UUID actorId, String actorName, ActorRole role,
                           boolean master, boolean owner, boolean privileged) {}
 
+    /** Catálogo estático (só leitura do classpath): instanciado aqui para não mexer no construtor. */
+    private final WeaponCatalog weaponCatalog = new WeaponCatalog();
+
     public CharacterSheetService(CharacterSheetRepository sheetRepository,
                                  CampaignMemberRepository memberRepository,
                                  CharacterSheetVisibilityRepository visibilityRepository,
@@ -436,8 +439,10 @@ public class CharacterSheetService {
             }
             case ADD_ITEM -> {
                 ItemPayload p = requireItem(req);
-                s.getInventory().add(InventoryItem.builder().sheet(s).name(p.name())
-                        .quantity(p.quantity()).description(p.description()).weightKg(p.weight()).build());
+                InventoryItem added = InventoryItem.builder().sheet(s).name(p.name())
+                        .quantity(p.quantity()).description(p.description()).weightKg(p.weight()).build();
+                applyKeys(added, p);
+                s.getInventory().add(added);
                 return new Change(ActivityCategory.INVENTORY, "item", null, p.name() + " x" + p.quantity());
             }
             case UPDATE_ITEM -> {
@@ -448,6 +453,7 @@ public class CharacterSheetService {
                 item.setQuantity(p.quantity());
                 item.setDescription(p.description());
                 item.setWeightKg(p.weight());
+                applyKeys(item, p);
                 return new Change(ActivityCategory.INVENTORY, "item:" + item.getId(), before,
                         p.name() + " x" + p.quantity());
             }
@@ -512,6 +518,20 @@ public class CharacterSheetService {
         if (id == null) throw new InvalidCharacterSheetException("Informe o ferimento");
         return s.getInjuries().stream().filter(i -> id.equals(i.getId())).findFirst()
                 .orElseThrow(SheetEntryNotFoundException::new);
+    }
+
+    /** Liga o item ao catálogo de armas/equipamentos/consumíveis (chaves validadas) e define onde ele está. */
+    private void applyKeys(InventoryItem item, ItemPayload p) {
+        if (p.weaponKey() != null && !p.weaponKey().isBlank() && weaponCatalog.find(p.weaponKey()).isEmpty()) {
+            throw new InvalidCharacterSheetException("Arma fora do catálogo: " + p.weaponKey());
+        }
+        item.setWeaponKey(p.weaponKey() == null || p.weaponKey().isBlank() ? null : p.weaponKey());
+        item.setEquipmentKey(p.equipmentKey() == null || p.equipmentKey().isBlank() ? null : p.equipmentKey());
+        item.setConsumableKey(p.consumableKey() == null || p.consumableKey().isBlank() ? null : p.consumableKey());
+        if (p.location() != null) item.setLocation(p.location());
+        weaponCatalog.find(item.getWeaponKey()).ifPresent(w -> {
+            if (w.capacity() != null && item.getLoaded() == 0) item.setLoaded(w.capacity()); // chega carregada
+        });
     }
 
     private InventoryItem findItem(CharacterSheet s, UUID id) {
@@ -808,7 +828,7 @@ public class CharacterSheetService {
                         i.isTreated(), i.getCreatedAt()))
                 .toList() : null;
         List<InventoryItemResponse> inventory = showInv ? s.getInventory().stream()
-                .map(i -> new InventoryItemResponse(i.getId(), i.getName(), i.getQuantity(), i.getDescription(), i.getWeightKg()))
+                .map(InventoryItemResponse::of)
                 .toList() : null;
 
         // traços/clãs: ocultos quando a seção TRAITS está oculta; ficha de NPC só para o Mestre

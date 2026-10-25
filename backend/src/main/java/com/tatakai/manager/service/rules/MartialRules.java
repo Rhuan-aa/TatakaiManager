@@ -24,7 +24,7 @@ public final class MartialRules {
     }
 
     /** Famílias de golpe (spec §6.1); iguais aos ataques básicos, o que o catálogo tem de especialização. */
-    public enum Family { SOCO, CHUTE, COTOVELADA, JOELHADA, CABECADA, AGARRAO, MORDIDA, EMPURRAO, ENCONTRAO, PISAO }
+    public enum Family { SOCO, CHUTE, COTOVELADA, JOELHADA, CABECADA, AGARRAO, MORDIDA, EMPURRAO, ENCONTRAO, PISAO, ARMA }
 
     private static String fold(String s) {
         if (s == null) return "";

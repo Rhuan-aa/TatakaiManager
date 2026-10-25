@@ -12,7 +12,9 @@ public record RollProfileResponse(RollSourceType sourceType, UUID sourceId, Stri
         BasicAttack basicAttack, int spCost, int critMargin, int advantage, List<RollPart> hit,
         DamageDice damageDice, List<RollPart> damage, String hitFormula, String damageFormula,
         /** Módulos da montagem (técnica), para a tela pedir Ímpeto, superfície do Esmagar etc. (§41). */
-        List<String> modules) {
+        List<String> modules,
+        /** Arma do perfil (ataque com arma ou técnica armada, §42); null = desarmado. */
+        String weaponKey) {
 
     public record DamageDice(int count, int sides, String source, String text) {}
 }

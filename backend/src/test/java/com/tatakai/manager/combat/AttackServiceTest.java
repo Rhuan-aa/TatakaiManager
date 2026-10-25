@@ -1681,4 +1681,81 @@ class AttackServiceTest {
         service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
         assertThat(npcSheet.getCurrentKp()).isEqualTo(3);
     }
+
+    // ---------- §42: armas ----------
+
+    private final com.tatakai.manager.service.WeaponCatalog weaponCatalog = new com.tatakai.manager.service.WeaponCatalog();
+
+    /** Põe a arma em mãos de A e faz o perfil dela ser o do ataque. */
+    private InventoryItem wield(String key, int loaded) {
+        com.tatakai.manager.service.WeaponCatalog.Def w = weaponCatalog.find(key).orElseThrow();
+        InventoryItem i = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name(w.name()).quantity(1)
+                .weaponKey(key).location(ItemLocation.HAND).loaded(loaded).build();
+        sheetA.getInventory().add(i);
+        lenient().when(profiles.weaponOf(any(), any(), any(), any())).thenAnswer(x -> new Calc(RollSourceType.BASIC_ATTACK,
+                i.getId(), w.name(), null, BasicAttack.ARMA, 0, 20, 0, new ArrayList<>(),
+                com.tatakai.manager.service.rules.RollRules.Dice.parse(w.dice()), new ArrayList<>(), w));
+        return i;
+    }
+
+    private CreateAttackRequest shoot(InventoryItem i, String region, Double distance) {
+        return new CreateAttackRequest(pA.getId(), RollSourceType.BASIC_ATTACK, i.getId(), null, BasicAttack.ARMA,
+                AttackActionKind.MAJOR, List.of(pN.getId()), region, null, null, null, null, null, null, distance);
+    }
+
+    @Test
+    @DisplayName("§42: lâmina abre Ferida e não tira PQ no queixo; Defender com arma evita a Ferida")
+    void bladeWounds() {
+        InventoryItem faca = wield("FACA", 0);
+        npcSheet.setCurrentKp(5);
+        fight(shoot(faca, "queixo", null), ReactionType.NONE, msg(15, 10, 5), null);
+        assertThat(npcSheet.getOpenWounds()).isEqualTo(1);
+        assertThat(npcSheet.getCurrentKp()).isEqualTo(5);
+        // o NPC defende com um bastão: reduziu algum dano → sem Ferida
+        npcSheet.getInventory().add(InventoryItem.builder().id(UUID.randomUUID()).sheet(npcSheet).name("Bastão")
+                .quantity(1).weaponKey("BASTAO").location(ItemLocation.HAND).build());
+        fight(shoot(faca, null, null), ReactionType.DEFEND, msg(15, 10, 6), msg(5, 5, null));
+        assertThat(npcSheet.getOpenWounds()).isEqualTo(1);
+        // Defensiva: +2 no Defender
+        assertThat(rollCalcs.get(rollCalcs.size() - 1).hit()).anyMatch(x -> x.source().startsWith("Arma Defensiva"));
+    }
+
+    @Test
+    @DisplayName("§42: arma de fogo gasta munição, reação com desvantagem, trava no 1 natural; sem munição → 400")
+    void firearm() {
+        InventoryItem glock = wield("GLOCK", 2);
+        fight(shoot(glock, null, 10.0), ReactionType.DODGE, msg(15, 10, 9), msg(5, 5, null));
+        assertThat(glock.getLoaded()).isEqualTo(1);
+        assertThat(lastAdv.get(lastAdv.size() - 1)).isEqualTo(-1); // Esquiva com desvantagem
+        assertThat(npcSheet.getOpenWounds()).isEqualTo(1);
+        AttackResponse jam = fight(shoot(glock, null, 10.0), ReactionType.NONE, msg(3, 1, 9), null);
+        assertThat(jam.targets().get(0).outcome()).isEqualTo(AttackOutcome.MISS);
+        assertThat(glock.isJammed()).isTrue();
+        pA.setPaCurrent(5);
+        assertThatThrownBy(() -> service.declare(enc.getId(), shoot(glock, null, 10.0), player.getId()))
+                .hasMessageContaining("travada");
+        glock.setJammed(false);
+        assertThatThrownBy(() -> service.declare(enc.getId(), shoot(glock, null, 10.0), player.getId()))
+                .hasMessageContaining("sem munição");
+        glock.setLoaded(15);
+        assertThatThrownBy(() -> service.declare(enc.getId(), shoot(glock, null, 150.0), player.getId()))
+                .hasMessageContaining("Fora de alcance");
+    }
+
+    @Test
+    @DisplayName("§42: Rajada acerta mais projéteis conforme a margem; Pesada deixa a Esquiva com desvantagem")
+    void burstAndHeavy() {
+        lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
+                .thenAnswer(x -> Roll.builder().total(3).build());
+        npcSheet.setCurrentHp(100);
+        npcSheet.setHpMax(100);
+        InventoryItem mp5 = wield("MP5", 30);
+        AttackResponse r = fight(shoot(mp5, null, 10.0), ReactionType.DODGE, msg(20, 15, 10), msg(13, 13, null));
+        assertThat(r.targets().get(0).damage()).isEqualTo(10 + 2 * 6); // 3 projéteis: +2 × (2d12+1d10 = 3+3)
+        assertThat(mp5.getLoaded()).isEqualTo(27);
+        sheetA.getInventory().clear();
+        InventoryItem grande = wield("ESPADA_GRANDE", 0);
+        fight(shoot(grande, null, null), ReactionType.NONE, msg(15, 10, 5), null);
+        assertThat(holds(pA, "PESO_DO_ARCO")).isTrue();
+    }
 }

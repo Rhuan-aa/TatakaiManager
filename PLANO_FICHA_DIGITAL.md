@@ -2252,8 +2252,15 @@ Regras puras novas em `service/rules/ModuleRules`; aplicação em `AttackService
   leve quebra, outra −1 dado), Mutilar (CON; crítico → ferimento permanente sem Dado Máximo), Aparar (Defender com arma:
   +1 grau e atacante desarmado sofre metade do dano da arma), Arremessar (sem desvantagem), Disparo Rápido (recarga livre),
   Disparo Estendido (+50% de distância), Transpassar/Supressão (narrativos, aviso ao Mestre).
-- **Base armada**: Controle de Distância e Prontidão (narrativos/1 saque livre por turno), Empunhadura Firme (+2 contra
-  Desarmar), Recarga Treinada (1 recarga livre por turno), Mira Estável (+2 em disparo se não se moveu — informado).
+- **Base armada** (no catálogo de módulos, sem efeito automático por ora): Controle de Distância, Empunhadura Firme,
+  Prontidão, Recarga Treinada, Mira Estável — o Mestre aplica.
+- **Implementado (25/10/2026):** `WeaponCatalog`/`weapons.json` (64 armas), `WeaponRules` (puro), `BasicAttack.ARMA` com
+  `sourceId` = item e `variation` "THROWN" (arremesso improvisado) ou "QUICK" (Golpe Rápido de arma Leve),
+  `RollProfileService.weapon/weaponOf`, `Calc.weapon` (crítico frio de fogo/explosivos em `RollService`),
+  `ArtTechnique.weaponClass` (editor: "Arma (técnica armada)"), ações `DRAW/RELOAD/COCK/UNJAM/TOGGLE_MODE` em
+  `CombatService.act` (`itemId`, `twoHanded`), `GrappleRequest.UNTANGLE` (Enredar), `EncounterResponse…gear`,
+  `RollProfileResponse.weaponKey`, condição `PESO_DO_ARCO`. Agarrão exige as duas mãos livres. Soqueira/Tufa somam no Soco
+  e nas técnicas desarmadas. Dominância (−1 no lado não dominante) não é aplicada: o sistema não sabe em que mão está a arma.
 
 ## 43. Proteções, equipamento de competição e roupas (capítulo Equipamentos) — contrato
 

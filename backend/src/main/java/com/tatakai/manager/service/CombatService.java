@@ -15,6 +15,7 @@ import com.tatakai.manager.dto.response.EncounterResponse;
 import com.tatakai.manager.dto.response.EncounterResponse.ConditionResponse;
 import com.tatakai.manager.dto.response.EncounterResponse.CounterResponse;
 import com.tatakai.manager.entity.CombatCounter;
+import com.tatakai.manager.entity.ItemLocation;
 import com.tatakai.manager.entity.Dominance;
 import com.tatakai.manager.entity.CharacterTechnique;
 import com.tatakai.manager.service.rules.MartialRules;
@@ -106,6 +107,9 @@ public class CombatService {
     private final CampaignRuleService rules;
     private final RollProfileService profiles;
     private final Random random = new SecureRandom();
+
+    /** Catálogo estático de armas (só leitura do classpath). */
+    private final WeaponCatalog weapons = new WeaponCatalog();
 
     public CombatService(EncounterRepository encounters, EncounterParticipantRepository participants,
                          CombatConditionRepository conditions, CombatEventRepository timeline,
@@ -240,7 +244,11 @@ public class CombatService {
                     m == null ? null : m.arts(), m == null ? null : m.bases(),
                     seeResources ? profiles.coreTechniques(s, TechniqueCore.PREPARATION).stream()
                             .map(t -> new EncounterResponse.TechRef(t.technique().getId(), t.variation(), t.name(), t.spCost()))
-                            .toList() : null));
+                            .toList() : null,
+                    s == null ? List.of() : s.getInventory().stream()
+                            .filter(i -> i.getWeaponKey() != null || i.getEquipmentKey() != null || i.getConsumableKey() != null)
+                            .filter(i -> seeResources || i.getLocation() == ItemLocation.HAND || i.getLocation() == ItemLocation.WORN)
+                            .map(com.tatakai.manager.dto.response.InventoryItemResponse::of).toList()));
         }
         UUID current = e.getStatus() == EncounterStatus.ACTIVE && e.getCurrentIndex() < ps.size()
                 ? ps.get(e.getCurrentIndex()).getId() : null;
@@ -481,6 +489,10 @@ public class CombatService {
                 && p.getGuardChangesThisTurn() == 0) {
             pa = 0; // ambidestro: a 1ª troca de guarda do turno é Ação Livre
         }
+        com.tatakai.manager.entity.InventoryItem item = gearItem(s, action, req.itemId());
+        WeaponCatalog.Def weapon = item == null ? null : weapons.find(item.getWeaponKey()).orElse(null);
+        if (action == CombatAction.RELOAD) pa = reloadCost(item, weapon);
+        if (item != null) gearCheck(s, action, item, weapon, req);
         if (action == CombatAction.CHANGE_BASE) {
             pa = CombatRules.baseChangeCost(p.getActiveBaseId() != null, req.baseId() != null);
             BaseRules.Profile target = req.baseId() == null ? null : profiles.baseProfile(s, req.baseId());
@@ -594,10 +606,99 @@ public class CombatService {
                 p.setActiveBaseId(newBase == null ? null : newBase.getId());
                 text.append(newBase == null ? " — sem base ativa" : " — base " + newBase.getName());
             }
+            case DRAW, RELOAD, COCK, UNJAM, TOGGLE_MODE -> text.append(" — ").append(gear(action, item, weapon, req));
             default -> { }
         }
         log(e, p.getId(), CombatEventType.ACTION, text.toString());
         return done(e, "ACTION", userId, master);
+    }
+
+    // ---------- armas em mãos (§42) ----------
+
+    /** Item exigido pelas ações de equipamento (null para as demais ações). */
+    private static com.tatakai.manager.entity.InventoryItem gearItem(CharacterSheet s, CombatAction a, UUID itemId) {
+        if (a != CombatAction.DRAW && a != CombatAction.RELOAD && a != CombatAction.COCK && a != CombatAction.UNJAM
+                && a != CombatAction.TOGGLE_MODE) {
+            return null;
+        }
+        if (itemId == null) throw new InvalidCombatException("Escolha o item");
+        return s.getInventory().stream().filter(i -> i.getId().equals(itemId)).findFirst()
+                .orElseThrow(() -> new InvalidCombatException("Item não encontrado no inventário"));
+    }
+
+    /** Recarga: sem propriedade 1 PA (Ação Menor); Recarga Lenta 3 PA (Ação Maior); Rápida não precisa. */
+    private static int reloadCost(com.tatakai.manager.entity.InventoryItem item, WeaponCatalog.Def w) {
+        if (w == null || w.capacity() == null) throw new InvalidCombatException(item.getName() + " não usa munição");
+        if ("FAST".equals(w.reload())) throw new InvalidCombatException("Recarga Rápida: a recarga já faz parte do ataque");
+        return "SLOW".equals(w.reload()) ? 3 : 1;
+    }
+
+    /** Mãos que o item ocupa: Pesada, Grande, disparo/fogo não Compacta e Empunhadura Variável com as duas = 2. */
+    private static int hands(com.tatakai.manager.entity.InventoryItem i, WeaponCatalog.Def w) {
+        return w != null && (w.forcesTwoHands() || (w.variable() && i.isTwoHanded())) ? 2 : 1;
+    }
+
+    /** Validações das ações de equipamento, antes de gastar PA. */
+    private void gearCheck(CharacterSheet s, CombatAction a, com.tatakai.manager.entity.InventoryItem item,
+                           WeaponCatalog.Def w, CombatActionRequest req) {
+        boolean inHand = item.getLocation() == ItemLocation.HAND;
+        switch (a) {
+            case DRAW -> {
+                if (inHand) return;
+                int used = s.getInventory().stream().filter(i -> i != item && i.getLocation() == ItemLocation.HAND)
+                        .mapToInt(i -> hands(i, weapons.find(i.getWeaponKey()).orElse(null))).sum();
+                boolean two = w != null && (w.forcesTwoHands() || (w.variable() && Boolean.TRUE.equals(req.twoHanded())));
+                if (used + (two ? 2 : 1) > 2) throw new InvalidCombatException("Mãos ocupadas: guarde algo antes");
+            }
+            case RELOAD -> {
+                if (!inHand) throw new InvalidCombatException("A arma precisa estar em mãos");
+            }
+            case COCK -> {
+                if (w == null || !w.slowCock()) throw new InvalidCombatException(item.getName() + " não precisa ser engatilhada");
+                if (!inHand) throw new InvalidCombatException("A arma precisa estar em mãos");
+            }
+            case UNJAM -> {
+                if (!item.isJammed()) throw new InvalidCombatException(item.getName() + " não está travada");
+            }
+            case TOGGLE_MODE -> {
+                if (w == null || w.alt() == null) throw new InvalidCombatException(item.getName() + " não tem outro modo");
+            }
+            default -> { }
+        }
+    }
+
+    /** Aplica a ação de equipamento já validada; devolve o texto para a linha do tempo. */
+    private String gear(CombatAction a, com.tatakai.manager.entity.InventoryItem item, WeaponCatalog.Def w,
+                        CombatActionRequest req) {
+        switch (a) {
+            case DRAW -> {
+                if (item.getLocation() == ItemLocation.HAND) {
+                    item.setLocation(ItemLocation.QUICK);
+                    return "guardou " + item.getName();
+                }
+                item.setTwoHanded(w != null && w.variable() && Boolean.TRUE.equals(req.twoHanded()));
+                String from = item.getLocation() == ItemLocation.DROPPED ? "pegou do chão " : "sacou ";
+                item.setLocation(ItemLocation.HAND);
+                return from + item.getName() + (item.isTwoHanded() ? " (duas mãos)" : "");
+            }
+            case RELOAD -> {
+                item.setLoaded(w.capacity());
+                return "recarregou " + item.getName() + " (" + w.capacity() + ")";
+            }
+            case COCK -> {
+                item.setCocked(true);
+                return "engatilhou " + item.getName();
+            }
+            case UNJAM -> {
+                item.setJammed(false);
+                return "destravou " + item.getName();
+            }
+            case TOGGLE_MODE -> {
+                item.setWeaponKey(w.alt());
+                return item.getName() + " no modo " + weapons.find(w.alt()).map(WeaponCatalog.Def::name).orElse(w.alt());
+            }
+            default -> throw new IllegalStateException();
+        }
     }
 
     /**
@@ -647,6 +748,15 @@ public class CombatService {
         }
         ActorRole role = master ? ActorRole.MASTER : ActorRole.PLAYER;
         VitalService.Ctx ctx = VitalService.Ctx.of(userId, role, "Agarre");
+        CombatCondition tangle = conditions.findByParticipantIdIn(List.of(p.getId())).stream()
+                .filter(c -> GrappleRules.GRABBED.equals(c.getConditionKey()) && AttackService.ENTANGLED.equals(c.getNote()))
+                .findFirst().orElse(null);
+        if (req.action() == GrappleRequest.Action.UNTANGLE
+                || (req.action() == GrappleRequest.Action.ESCAPE && tangle != null && !heldBySomeone(p))) {
+            untangle(e, p, s, tangle, req.action() == GrappleRequest.Action.UNTANGLE ? null
+                    : req.attribute() == null ? Attribute.STR : req.attribute(), ctx);
+            return done(e, "GRAPPLE", userId, master);
+        }
         if (req.action() == GrappleRequest.Action.ESCAPE) {
             escape(e, p, s, req.attribute() == null ? Attribute.STR : req.attribute(), ctx, userId, role);
             return done(e, "GRAPPLE", userId, master);
@@ -723,6 +833,26 @@ public class CombatService {
         return done(e, "GRAPPLE", userId, master);
     }
 
+    private boolean heldBySomeone(EncounterParticipant p) {
+        return conditions.findByParticipantIdIn(List.of(p.getId())).stream()
+                .anyMatch(c -> GrappleRules.HOLDS.contains(c.getConditionKey()) && c.getSourceParticipantId() != null);
+    }
+
+    /** Enredado (§42): sem teste com Ação Maior (3 PA), ou Ação Menor (1 PA) + FOR/DES contra ND 14. */
+    private void untangle(Encounter e, EncounterParticipant p, CharacterSheet s, CombatCondition tangle, Attribute attr,
+                          VitalService.Ctx ctx) {
+        if (tangle == null) throw new InvalidCombatException(p.getName() + " não está enredado");
+        if (attr != null && attr != Attribute.STR && attr != Attribute.DEX) throw new InvalidCombatException("Use Força ou Destreza");
+        int pa = attr == null ? 3 : 1;
+        if (p.getPaCurrent() < pa) throw new InvalidCombatException("PA insuficiente: custa " + pa + " e restam " + p.getPaCurrent());
+        p.setPaCurrent(p.getPaCurrent() - pa);
+        if (attr == null || vital.attributeTest(e, p, s, attr, com.tatakai.manager.service.rules.WeaponRules.ENTANGLE_ND,
+                "Soltar-se da arma", vital.conditionAdvantage(p, s, attr), ctx)) {
+            conditions.delete(tangle);
+            log(e, p.getId(), CombatEventType.ACTION, p.getName() + " se solta (" + pa + " PA)");
+        }
+    }
+
     /** Fuga: a condição mais forte que prende o participante decide custo e desvantagem; vencer solta tudo daquele par. */
     private void escape(Encounter e, EncounterParticipant p, CharacterSheet s, Attribute attr, VitalService.Ctx ctx,
                         UUID userId, ActorRole role) {
@@ -768,8 +898,7 @@ public class CombatService {
         if (base != null && base.traction() != 0) {
             hit.add(new RollPart("HIT", "Tração (base: " + base.name() + ")", base.traction(), null, false));
         }
-        c = new RollProfileService.Calc(c.type(), c.sourceId(), c.name(), c.variation(), c.basic(), c.spCost(),
-                c.critMargin(), c.advantage(), hit, c.dice(), c.damage());
+        c = c.with(c.spCost(), c.critMargin(), c.advantage(), hit, c.damage());
         return rolls.rollCalc(s, e.getCampaignId(), c, adv + vital.conditionAdvantage(p, s, attr),
                 label + ": " + p.getName(), userId, role).total();
     }

@@ -104,6 +104,34 @@ class RollChannelServiceTest {
     private AssemblyVariation variation;
 
     @Test
+    @DisplayName("§42: arma em mãos gera perfis (normal, arremesso, Golpe Rápido); técnica armada usa o dado da arma + Carga")
+    void profile_weapons() {
+        InventoryItem faca = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheet).name("Faca").quantity(1)
+                .weaponKey("FACA").location(ItemLocation.HAND).build();
+        sheet.getInventory().add(faca);
+        List<RollProfileResponse> ps = service.profiles(sheet.getId(), player.getId());
+        List<RollProfileResponse> armas = ps.stream().filter(x -> x.basicAttack() == BasicAttack.ARMA).toList();
+        assertThat(armas).hasSize(3);
+        RollProfileResponse normal = armas.get(0);
+        assertThat(normal.sourceId()).isEqualTo(faca.getId());
+        assertThat(normal.damageFormula()).isEqualTo("2d4+3"); // Leve: melhor de FOR (+3) e DES (+2)
+        assertThat(armas.get(2).damageFormula()).isEqualTo("2d4"); // Golpe Rápido: só o dado
+
+        ArtTechnique cat = martialArtRepository.findById(technique.getCharacterArt().getArtId()).orElseThrow()
+                .getTechniques().get(0);
+        cat.setWeaponClass("Facas");
+        variation.setItems(List.of(item("Dado Maior", 2)));
+        RollProfileResponse t = service.profiles(sheet.getId(), player.getId()).stream()
+                .filter(x -> x.sourceType() == RollSourceType.TECHNIQUE).findFirst().orElseThrow();
+        assertThat(t.damageDice().text()).isEqualTo("2d4+1d4"); // dado da faca + Dado Adicional
+        assertThat(t.spCost()).isEqualTo(8 + 3);                  // gasto + Carga Leve
+
+        faca.setLocation(ItemLocation.QUICK);
+        assertThat(service.profiles(sheet.getId(), player.getId()).stream()
+                .anyMatch(x -> x.sourceType() == RollSourceType.TECHNIQUE)).isFalse(); // sem a arma em mãos
+    }
+
+    @Test
     @DisplayName("§41: Controle sem Dado Maior não causa dano (1º degrau = 1d4); Massa no acerto e Atributo Alternativo no dano")
     void profile_controlMassAlt() {
         variation.setCore(TechniqueCore.CONTROL);
@@ -169,7 +197,7 @@ class RollChannelServiceTest {
         assertThat(p.damageFormula()).isEqualTo("2d12+2d4+5");
         assertThat(p.spCost()).isEqualTo(8); // 10 - 2*COST
         assertThat(p.critMargin()).isEqualTo(20);
-        assertThat(ps.stream().filter(x -> x.sourceType() == RollSourceType.BASIC_ATTACK)).hasSize(BasicAttack.values().length);
+        assertThat(ps.stream().filter(x -> x.sourceType() == RollSourceType.BASIC_ATTACK)).hasSize((int) java.util.Arrays.stream(BasicAttack.values()).filter(BasicAttack::unarmed).count());
     }
 
     @Test

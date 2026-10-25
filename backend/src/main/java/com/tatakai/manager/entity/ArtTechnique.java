@@ -32,4 +32,6 @@ public class ArtTechnique {
     private List<AssemblyVariation> variations = new ArrayList<>();
     /** Itens sobre a escolha entre variações; somam direto no final (ex.: Chute Fantasma). */
     private List<AssemblyItem> extras = new ArrayList<>();
+    /** Técnica armada (§42): classe de arma exigida em mãos (ex.: "Espadas"); null = desarmada. */
+    private String weaponClass;
 }

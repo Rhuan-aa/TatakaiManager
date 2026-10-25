@@ -97,3 +97,5 @@ export async function checkAssembly(body) {
   const { data } = await client.post('/catalog/assembly/check', body);
   return data;
 }
+// Catálogos estáticos de combate (§42–§44)
+export const listWeapons = async () => (await client.get('/catalog/weapons')).data;

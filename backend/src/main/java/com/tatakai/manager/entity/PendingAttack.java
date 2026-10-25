@@ -86,6 +86,10 @@ public class PendingAttack {
     @Column(name = "run_meters")
     private Double runMeters;
 
+    /** Distância até o alvo em metros (armas de disparo/arremesso, §42). */
+    @Column(name = "distance_m")
+    private Double distanceM;
+
     /** Há superfície sólida adjacente ao alvo (Esmagar, §41). */
     @Column(nullable = false, columnDefinition = "boolean not null default false")
     private boolean surface;

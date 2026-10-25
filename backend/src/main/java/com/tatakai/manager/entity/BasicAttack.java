@@ -11,7 +11,8 @@ public enum BasicAttack {
     MORDIDA("Mordida", 1, 2, 0, 0), // sem Força no dano; Ação Menor
     EMPURRAO("Empurrão", 0, 0, 0, 0), // sem dano; Ação Menor; FOR do alvo contra o acerto
     ENCONTRAO("Encontrão", 0, 0, 0, 0), // sem dano; exige 3 m em linha reta; FOR/DES contra acerto + mod. de Peso
-    PISAO("Pisão", 1, 4, 0, 0); // só contra alvo Derrubado; + mod. de Peso no dano
+    PISAO("Pisão", 1, 4, 0, 0), // só contra alvo Derrubado; + mod. de Peso no dano
+    ARMA("Ataque com arma", 0, 0, 0, 0); // dano da arma em mãos (sourceId = item do inventário, §42)
 
     public final String label;
     public final int count;
@@ -29,6 +30,11 @@ public enum BasicAttack {
 
     public boolean dealsDamage() {
         return sides > 0;
+    }
+
+    /** Golpe do próprio corpo (não é o ataque com arma). */
+    public boolean unarmed() {
+        return this != ARMA;
     }
 
     /** Sem a Força no dano (Mordida, e os que não causam dano). */

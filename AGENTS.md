@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 771 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 778 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -531,7 +531,7 @@ no canal `campaign` e recarregam.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 771 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 778 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -893,10 +893,14 @@ de Dado do livro (`RollRules.Dice` com termos extras), Controle sem dano sem Dad
 Golpe no Fôlego, Dano Persistente (`DANO_PERSISTENTE`), Montinho, Arremesso/Cravar pelo chão do encontro
 (`Encounter.floor`), Ímpeto (`runMeters`), Sequência, Varredura/Círculo (limite de alvos), Contragolpe (Golpe como
 Contra-ataque), Encadear (`POST /attacks/{aid}/chain`), Esmagar (`surface`) e as limitações Risco, Desguarnecida,
-Exposta, Uso Restrito, Tardia, Previsível e Exige Base (regras puras em `ModuleRules`).
+Exposta, Uso Restrito, Tardia, Previsível e Exige Base (regras puras em `ModuleRules`). **Armas** (§42): catálogo
+`catalog/weapons.json` (`WeaponCatalog`, `GET /catalog/weapons`), item ligado por `inventory_items.weapon_key` e
+`location` (HAND/QUICK/PACK/WORN/DROPPED), ataque `BasicAttack.ARMA` (`sourceId` = item), técnica armada
+(`ArtTechnique.weaponClass`), munição/trava/Rajada/Dispersão/distância (`distanceM`), Ferida por tipo de dano, propriedades
+e módulos armados (regras puras em `WeaponRules`).
 
 **Pendentes** (detalhes no plano §26.5):
-1. **Armas, proteções e consumíveis** — contrato no plano §42–§44 (capítulos Armas, Equipamentos e Consumíveis).
+1. **Proteções e consumíveis** — contrato no plano §43–§44 (capítulos Equipamentos e Consumíveis).
 2. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição, Duas Etapas e os efeitos únicos das
    Artes Clássicas (Foco, Ritmo, Pop, Embalo…).
 3. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).
@@ -904,4 +908,5 @@ Exposta, Uso Restrito, Tardia, Previsível e Exige Base (regras puras em `Module
 **Colunas novas sem migração automática** (bancos com `ddl-auto=validate`): `combat_conditions.progress`,
 `inventory_items.weight_kg`, `encounter_participants.stabilize_failures`/`fluid_switch_used`,
 `character_sheets.knockout_sequel`, `attack_targets.defender_id`/`reaction_technique_id`/`reaction_variation`,
-`pending_attacks.grip`/`squeeze`/`run_meters`/`surface`, `encounters.floor`. Dropar `pending_attacks_basic_attack_check` (Mordida/Empurrão/Encontrão/Pisão, §11.11). Ao implementar um item, escreva o contrato numa seção nova do plano e marque-o aqui.
+`pending_attacks.grip`/`squeeze`/`run_meters`/`surface`/`distance_m`, `encounters.floor`, `inventory_items.weapon_key`/
+`equipment_key`/`consumable_key`/`location`/`loaded`/`jammed`/`cocked`/`broken`/`damaged`/`two_handed`. Dropar `pending_attacks_basic_attack_check` (Mordida/Empurrão/Encontrão/Pisão/Arma, §11.11). Ao implementar um item, escreva o contrato numa seção nova do plano e marque-o aqui.

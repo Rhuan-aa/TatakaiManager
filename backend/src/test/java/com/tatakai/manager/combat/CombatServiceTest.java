@@ -1122,4 +1122,39 @@ class CombatServiceTest {
         baseAct(p[0], b.getId(), player.getId());     // entra de novo: já usou a Troca Fluida -> 1 PA
         assertThat(p[0].getPaCurrent()).isEqualTo(3);
     }
+
+    // ---------- §42: armas em mãos ----------
+
+    @Test
+    @DisplayName("§42: sacar/guardar (mãos ocupadas), recarregar, engatilhar e trocar modo")
+    void gear() {
+        EncounterParticipant[] p = started();
+        InventoryItem grande = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Espada Grande")
+                .quantity(1).weaponKey("ESPADA_GRANDE").location(ItemLocation.QUICK).build();
+        InventoryItem faca = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Faca")
+                .quantity(1).weaponKey("FACA").location(ItemLocation.HAND).build();
+        InventoryItem taurus = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Taurus")
+                .quantity(1).weaponKey("TAURUS").location(ItemLocation.QUICK).loaded(0).build();
+        InventoryItem tufa = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Tufa")
+                .quantity(1).weaponKey("TUFA").location(ItemLocation.QUICK).build();
+        sheetA.getInventory().addAll(List.of(grande, faca, taurus, tufa));
+        java.util.function.BiConsumer<CombatAction, InventoryItem> gear = (a, i) -> service.act(enc.getId(),
+                new CombatActionRequest(p[0].getId(), a, null, null, null, null, null, null, null, null, null, i.getId(), null),
+                player.getId());
+        p[0].setPaCurrent(10);
+        assertThatThrownBy(() -> gear.accept(CombatAction.DRAW, grande)).hasMessageContaining("Mãos ocupadas");
+        gear.accept(CombatAction.DRAW, faca);   // guarda a faca
+        assertThat(faca.getLocation()).isEqualTo(ItemLocation.QUICK);
+        gear.accept(CombatAction.DRAW, grande); // agora cabe (duas mãos)
+        assertThat(grande.getLocation()).isEqualTo(ItemLocation.HAND);
+        assertThat(p[0].getPaCurrent()).isEqualTo(8);
+        gear.accept(CombatAction.DRAW, grande);
+        gear.accept(CombatAction.DRAW, taurus);
+        gear.accept(CombatAction.RELOAD, taurus); // Recarga Lenta: 3 PA
+        assertThat(taurus.getLoaded()).isEqualTo(6);
+        assertThat(p[0].getPaCurrent()).isEqualTo(3);
+        assertThatThrownBy(() -> gear.accept(CombatAction.COCK, taurus)).hasMessageContaining("não precisa");
+        gear.accept(CombatAction.TOGGLE_MODE, tufa);
+        assertThat(tufa.getWeaponKey()).isEqualTo("TUFA_BRANCA");
+    }
 }

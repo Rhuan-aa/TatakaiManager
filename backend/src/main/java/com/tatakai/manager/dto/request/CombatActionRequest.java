@@ -23,21 +23,32 @@ public record CombatActionRequest(
         Boolean medical,
         /** Ação Preparada com técnica de núcleo Preparação (§38) */
         UUID techniqueId,
-        @Size(max = 100) String variation) {
+        @Size(max = 100) String variation,
+        /** Sacar/guardar, recarregar, engatilhar, destravar, trocar modo: o item do inventário (§42) */
+        UUID itemId,
+        /** Sacar arma de Empunhadura Variável com as duas mãos */
+        Boolean twoHanded) {
+
+    public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
+                               UUID targetParticipantId, Guard guard, UUID baseId, Boolean medical, UUID techniqueId,
+                               String variation) {
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, medical, techniqueId,
+                variation, null, null);
+    }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId, Guard guard, UUID baseId, Boolean medical) {
-        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, medical, null, null);
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, medical, null, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId, Guard guard, UUID baseId) {
-        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, null, null, null);
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, null, null, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId) {
-        this(participantId, action, spCost, slow, label, targetParticipantId, null, null, null, null, null);
+        this(participantId, action, spCost, slow, label, targetParticipantId, null, null, null, null, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label) {

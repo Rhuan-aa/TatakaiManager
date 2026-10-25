@@ -21,7 +21,7 @@ public final class TechniqueRules {
 
     /** Técnica de Reação: tipo de reação que ela substitui, bônus e módulos que agem no resultado. */
     public record Reaction(ReactionType type, int bonus, boolean escalated, boolean punitive, boolean opening,
-                           boolean absorb, boolean breath, boolean interrupt, List<String> triggers) {}
+                           boolean absorb, boolean breath, boolean interrupt, List<String> triggers, boolean parry) {}
 
     /** Técnica de Preparação: Reforço por tipo de reação, Carga (+dano no próximo golpe), Leitura, Sustentação. */
     public record Preparation(Map<ReactionType, Integer> reinforce, int charge, boolean reading, boolean sustain,
@@ -40,7 +40,7 @@ public final class TechniqueRules {
         return new Reaction(type, bonus, has(items, "Redução Escalonada"), has(items, "Bloqueio Punitivo"),
                 has(items, "Abertura"), has(items, "Absorção"), has(items, "Fôlego Tático"), has(items, "Interromper"),
                 items.stream().filter(i -> i.getKind() == AssemblyItemKind.LIMITATION && i.getLabel() != null
-                        && i.getLabel().startsWith("Gatilho")).map(AssemblyItem::getLabel).toList());
+                        && i.getLabel().startsWith("Gatilho")).map(AssemblyItem::getLabel).toList(), has(items, "Aparar"));
     }
 
     public static Preparation preparation(List<AssemblyItem> items) {

@@ -19,6 +19,7 @@ import NotebookPanel from './NotebookPanel';
 import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, KEIKEN, label } from './sheetRules';
 import { RARITY, rarityTagStyle } from '../ui/rarity';
 import RichText from '../ui/RichText';
+import { ITEM_LOCATION } from '../ui/gear';
 
 const kg = (v) => (Math.round((v ?? 0) * 10) / 10).toString().replace('.', ',');
 // Carga (capítulo de Condições): efeitos de cada estado acima da Carga
@@ -451,6 +452,8 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             {sheet.inventory.map((i) => (
               <li key={i.id}>
                 {i.quantity}× <strong>{i.name}</strong>{i.weightKg > 0 && ` · ${kg(i.weightKg * i.quantity)} kg`}
+                {i.location && i.location !== 'PACK' && <span className="tag ml-1">{ITEM_LOCATION[i.location]}</span>}
+                {(i.jammed || i.broken || i.damaged) && <span className="tag tag-accent ml-1">{i.broken ? 'quebrada' : i.jammed ? 'travada' : 'danificada'}</span>}
                 {i.description && ` — ${i.description}`}
               </li>
             ))}

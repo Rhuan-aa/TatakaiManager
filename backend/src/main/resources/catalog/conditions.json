@@ -272,5 +272,13 @@
     "exit": "Some sozinho depois dos turnos do módulo",
     "defaultExpiresAt": "COUNTER",
     "stack": "RENEW"
+  },
+  {
+    "key": "PESO_DO_ARCO",
+    "name": "Peso do arco",
+    "effect": "Esquiva com desvantagem (arma Pesada)",
+    "exit": "Início do próximo turno",
+    "defaultExpiresAt": "START_OF_TARGET_TURN",
+    "stack": "RENEW"
   }
 ]

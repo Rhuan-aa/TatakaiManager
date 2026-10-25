@@ -133,7 +133,8 @@ public class SheetExportService {
                 res ? s.getLimiterAdjustments() : null, res ? s.getLimiterCarry() : null,
                 inv ? s.getMoney() : null,
                 inv ? s.getInventory().stream()
-                        .map(i -> new ItemData(i.getName(), i.getQuantity(), i.getDescription(), i.getWeightKg())).toList() : null,
+                        .map(i -> new ItemData(i.getName(), i.getQuantity(), i.getDescription(), i.getWeightKg(),
+                                i.getWeaponKey(), i.getEquipmentKey(), i.getConsumableKey())).toList() : null,
                 inj ? s.getInjuries().stream()
                         .map(i -> new InjuryData(i.getType(), i.getRegion(), i.getSeverity(), i.getHpMaxReduction(),
                                 i.getLimiterReduction(), i.getAffectedAttribute(), i.isTreated())).toList() : null);
@@ -216,7 +217,8 @@ public class SheetExportService {
             for (ItemData i : d.inventory()) {
                 s.getInventory().add(InventoryItem.builder().sheet(s).name(i.name())
                         .quantity(Math.max(i.quantity(), 0)).description(i.description())
-                        .weightKg(i.weightKg() == null ? 0 : Math.max(0, i.weightKg())).build());
+                        .weightKg(i.weightKg() == null ? 0 : Math.max(0, i.weightKg())).weaponKey(i.weaponKey())
+                        .equipmentKey(i.equipmentKey()).consumableKey(i.consumableKey()).build());
             }
         }
         if (d.injuries() != null) {

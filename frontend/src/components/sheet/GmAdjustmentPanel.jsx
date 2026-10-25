@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { listTraits } from '../../api/catalog';
+import { listTraits, listWeapons } from '../../api/catalog';
+import { ITEM_LOCATION } from '../ui/gear';
 import { gmAdjust } from '../../api/characterSheets';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
@@ -39,7 +40,8 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
   const [targetId, setTargetId] = useState('');
   const [reason, setReason] = useState('');
   const [injury, setInjury] = useState({ type: 'CUTTING', region: '', severity: 'MINOR', damage: '', affectedAttribute: '' });
-  const [item, setItem] = useState({ name: '', quantity: 1, description: '', weightKg: '' });
+  const [item, setItem] = useState({ name: '', quantity: 1, description: '', weightKg: '', weaponKey: '', location: '' });
+  const [weapons, setWeapons] = useState([]);
   const [busy, setBusy] = useState(false);
 
   const [catalog, setCatalog] = useState([]);
@@ -51,6 +53,13 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
       .catch((e) => active && toast(parseApiError(e).message, 'error'));
     return () => { active = false; };
   }, [action, campaignId, sheet.campaignId, catalog.length, toast]);
+
+  useEffect(() => {
+    if (!ACTIONS[action].item || weapons.length) return undefined;
+    let active = true;
+    listWeapons().then((w) => active && setWeapons(w.filter((x) => !x.hidden))).catch(() => {});
+    return () => { active = false; };
+  }, [action, weapons.length]);
 
   const cfg = ACTIONS[action];
   const reset = () => { setField(''); setValue(''); setTargetId(''); };
@@ -72,7 +81,8 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
       };
     }
     if (cfg.item) body.item = { ...item, quantity: Number(item.quantity), description: item.description || null,
-      weightKg: item.weightKg === '' ? null : Number(item.weightKg) };
+      weightKg: item.weightKg === '' ? null : Number(item.weightKg), weaponKey: item.weaponKey || null,
+      location: item.location || null };
     setBusy(true);
     try {
       const updated = await gmAdjust(sheet.id, body);
@@ -127,7 +137,22 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
             </select>
           </label>
         )}
-        {cfg.target && (
+        {cfg.target && (cfg.item || action === 'REMOVE_ITEM') && sheet.inventory?.length > 0 ? (
+          <label className="text-xs uppercase">
+            Item
+            <select required className="field mt-1 w-full" value={targetId} onChange={(e) => {
+              setTargetId(e.target.value);
+              const it = sheet.inventory.find((x) => x.id === e.target.value);
+              if (it && cfg.item) {
+                setItem({ name: it.name, quantity: it.quantity, description: it.description ?? '', weightKg: it.weightKg || '',
+                  weaponKey: it.weaponKey ?? '', location: it.location ?? '' });
+              }
+            }}>
+              <option value="">Escolha…</option>
+              {sheet.inventory.map((it) => <option key={it.id} value={it.id}>{it.quantity}× {it.name}</option>)}
+            </select>
+          </label>
+        ) : cfg.target && (
           <label className="text-xs uppercase">
             {cfg.target}
             <input required className="field mt-1 w-full" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
@@ -173,6 +198,26 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
             Descrição
             <input maxLength={2000} className="field mt-1 w-full" value={item.description}
               onChange={(e) => setItem({ ...item, description: e.target.value })} />
+          </label>
+          <label className="text-xs uppercase">
+            Arma do catálogo
+            <select className="field mt-1 w-full" value={item.weaponKey}
+              onChange={(e) => {
+                const w = weapons.find((x) => x.key === e.target.value);
+                setItem({ ...item, weaponKey: e.target.value, name: item.name || (w?.name ?? '') });
+              }}>
+              <option value="">— item comum —</option>
+              {weapons.map((w) => (
+                <option key={w.key} value={w.key}>{w.name}{w.dice ? ` · ${w.dice}` : w.bonus ? ` · +${w.bonus}` : ''}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs uppercase">
+            Onde está
+            <select className="field mt-1 w-full" value={item.location} onChange={(e) => setItem({ ...item, location: e.target.value })}>
+              <option value="">{action === 'ADD_ITEM' ? 'Mochila (padrão)' : 'Manter'}</option>
+              {Object.entries(ITEM_LOCATION).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
           </label>
         </div>
       )}

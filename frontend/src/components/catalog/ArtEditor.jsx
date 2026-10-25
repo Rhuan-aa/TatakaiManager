@@ -3,6 +3,7 @@ import { checkAssembly, createArt, listModules, submitArt, updateArt } from '../
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 import { ART_CATEGORIES, BASE_FUNCTIONS, CORES, GRADS, emptyBase, emptyTechnique } from './artLabels';
+import { useWeapons } from '../ui/useWeapons';
 
 const emptyItem = () => ({ module: null, label: '', qty: 1, cost: 1, kind: 'UNIQUE', nonAffine: false, onDie: false, note: null });
 const splitList = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
@@ -147,6 +148,20 @@ function MoveFields({ m, onChange, technique }) {
   );
 }
 
+/** Técnica armada (§42): classe de arma exigida em mãos; o dano vira o da arma + Dado Adicional e o gasto soma a Carga. */
+function WeaponClassField({ t, onChange }) {
+  const weapons = useWeapons();
+  const classes = [...new Set(Object.values(weapons).map((w) => w.weaponClass).filter(Boolean))].sort();
+  return (
+    <label className="text-xs uppercase">Arma (técnica armada)
+      <select className="field" value={t.weaponClass ?? ''} onChange={(e) => onChange({ ...t, weaponClass: e.target.value || null })}>
+        <option value="">Desarmada</option>
+        {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+      </select>
+    </label>
+  );
+}
+
 export function TechniqueEditor({ t, category, modules, onChange, onRemove }) {
   const setVar = (i, patch) => onChange({ ...t, variations: t.variations.map((v, j) => (j === i ? { ...v, ...patch } : v)) });
   const two = t.variations.length > 1;
@@ -155,6 +170,7 @@ export function TechniqueEditor({ t, category, modules, onChange, onRemove }) {
       <summary className="cursor-pointer panel-title">{t.name || 'Nova técnica'}</summary>
       <div className="mt-3 flex flex-col gap-3">
         <MoveFields m={t} onChange={onChange} technique />
+        <WeaponClassField t={t} onChange={onChange} />
         {t.variations.map((v, i) => (
           <fieldset key={i} className="flex flex-col gap-2 border-2 border-[var(--line)] p-2">
             <legend className="text-xs font-bold uppercase">{two ? `Variação ${i + 1}` : 'Montagem'}</legend>

@@ -1,6 +1,29 @@
 import { useEffect, useState } from 'react';
 import { getRollProfiles } from '../../api/rolls';
+import { useWeapons } from '../ui/useWeapons';
 import { BASIC_HINT, GRIP_LABEL, SIDED_BASICS, STRIKE_SIDE_LABEL } from './combatLabels';
+
+const DAMAGE_TYPE = { BLUNT: 'contundente', SLASH: 'cortante', PIERCE: 'perfurante', FIRE: 'flamejante' };
+
+/** Resumo das propriedades da arma (capítulo Armas). */
+function weaponHint(w) {
+  const p = [DAMAGE_TYPE[w.damageType]];
+  if (w.rangeM) p.push(`alcance ${w.rangeM} m`);
+  if (w.light) p.push('Leve');
+  if (w.heavyStr) p.push(`Pesada (Força ${w.heavyStr})`);
+  if (w.large) p.push('Grande');
+  if (w.defensive) p.push('Defensiva');
+  if (w.impact) p.push(`Impactante (+${w.impact})`);
+  if (w.flexible) p.push('Flexível');
+  if (w.fragile) p.push('Quebradiça');
+  if (w.entangle) p.push('Enredar');
+  if (w.burst) p.push(`Rajada (${w.burst})`);
+  if (w.dispersion) p.push('Dispersão');
+  if (w.unstable) p.push(`Instável (${w.unstable})`);
+  if (w.explosiveRadius) p.push(`área ${w.explosiveRadius} m (ND 14)`);
+  if (w.firearm || w.group === 'FIREARM') p.push('reação do alvo com desvantagem');
+  return p.filter(Boolean).join(' · ');
+}
 
 const KINDS = [{ k: 'MAJOR', label: 'Ação maior', pa: 3 }, { k: 'MINOR_OFFENSIVE', label: 'Menor ofensiva', pa: 2 }];
 
@@ -16,6 +39,8 @@ export default function AttackBuilder({ participant: p, participants, initialKin
   const [squeeze, setSqueeze] = useState(false);
   const [run, setRun] = useState(0);
   const [surface, setSurface] = useState(false);
+  const [distance, setDistance] = useState('');
+  const weapons = useWeapons();
 
   useEffect(() => {
     let active = true;
@@ -27,7 +52,9 @@ export default function AttackBuilder({ participant: p, participants, initialKin
   const grab = prof?.basicAttack === 'AGARRAO';
   const mods = prof?.modules ?? [];
   // §41: Varredura atinge 2 alvos, Círculo todos; o resto, 1
-  const maxTargets = mods.includes('Círculo') ? Infinity : mods.includes('Varredura') ? 2 : 1;
+  const weapon = prof?.weaponKey ? weapons[prof.weaponKey] : null;
+  const maxTargets = weapon?.explosiveRadius || mods.includes('Círculo') ? Infinity : mods.includes('Varredura') ? 2 : 1;
+  const ranged = weapon && (weapon.rangeM || weapon.throwM || prof?.variation === 'THROWN' || weapon.large || weapon.dispersion);
   const sided = prof?.basicAttack ? SIDED_BASICS.includes(prof.basicAttack) : !!prof;
   const stealth = (t) => t.conditions.some((c) => c.key === 'FURTIVO');
   const toggle = (id) => setTargets((cur) => (cur.includes(id) ? cur.filter((x) => x !== id)
@@ -49,6 +76,7 @@ export default function AttackBuilder({ participant: p, participants, initialKin
       ...(grab ? { grip, squeeze } : {}),
       ...(mods.includes('Ímpeto') && run > 0 ? { runMeters: run } : {}),
       ...(mods.includes('Esmagar') ? { surface } : {}),
+      ...(ranged && distance !== '' ? { distanceM: Number(distance) } : {}),
     });
   }
 
@@ -63,7 +91,7 @@ export default function AttackBuilder({ participant: p, participants, initialKin
             <label className="text-xs">Ataque
               <select className="field" value={idx} onChange={(e) => setIdx(Number(e.target.value))}>
                 {profiles.map((x, i) => (
-                  <option key={i} value={i}>{x.name}{x.variation ? ` (${x.variation})` : ''} · {x.spCost} SP</option>
+                  <option key={i} value={i}>{x.name}{x.variation && x.basicAttack !== 'ARMA' ? ` (${x.variation})` : ''} · {x.spCost} SP</option>
                 ))}
               </select>
             </label>
@@ -92,6 +120,13 @@ export default function AttackBuilder({ participant: p, participants, initialKin
                 </label>
               </>
             )}
+            {ranged && (
+              <label className="text-xs" title="Disparo/arremesso: além do alcance com desvantagem, até o dobro; colado (≤ 1,5 m) com desvantagem">
+                Distância (m)
+                <input type="number" min={0} max={5000} step={0.5} className="field !w-24" value={distance}
+                  onChange={(e) => setDistance(e.target.value)} placeholder={weapon?.rangeM ? `${weapon.rangeM} m` : ''} />
+              </label>
+            )}
             {mods.includes('Ímpeto') && (
               <label className="text-xs" title="+2 de dano a cada 1,5 m em linha reta (máx. +6)">Corrida (m)
                 <input type="number" min={0} max={100} step={1.5} className="field !w-20" value={run}
@@ -113,6 +148,7 @@ export default function AttackBuilder({ participant: p, participants, initialKin
           </div>
           {prof && <p className="caption">Acerto: {prof.hitFormula} · Dano: {prof.damageFormula ?? 'nenhum'}</p>}
           {BASIC_HINT[prof?.basicAttack] && <p className="caption">{BASIC_HINT[prof.basicAttack]}</p>}
+          {weapon && <p className="caption">{weaponHint(weapon)}</p>}
           <fieldset className="flex flex-wrap gap-3">
             <legend className="caption">Alvos{maxTargets === 1 ? ' (1)' : maxTargets === 2 ? ' (até 2, Varredura)' : ' (Círculo)'}</legend>
             {participants.filter((t) => t.id !== p.id).map((t) => {

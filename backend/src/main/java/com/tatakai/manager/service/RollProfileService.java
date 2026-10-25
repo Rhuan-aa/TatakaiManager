@@ -30,6 +30,8 @@ import com.tatakai.manager.service.rules.MartialRules;
 import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.service.rules.RollRules;
 import com.tatakai.manager.service.rules.ModuleRules;
+import com.tatakai.manager.service.rules.WeaponRules;
+import com.tatakai.manager.entity.InventoryItem;
 import com.tatakai.manager.service.rules.SheetRules;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -55,11 +58,36 @@ public class RollProfileService {
         public static final Opts NONE = new Opts(null, false, null, null, null);
     }
 
-    /** Resultado do cálculo; dice já vem multiplicado por (1+E). */
+    /**
+     * Resultado do cálculo; dice já vem multiplicado por (1+E). `weapon`: arma usada (ataque com arma ou técnica
+     * armada, §42); null = desarmado.
+     */
     public record Calc(RollSourceType type, UUID sourceId, String name, String variation, BasicAttack basic,
                        int spCost, int critMargin, int advantage, List<RollPart> hit,
-                       RollRules.Dice dice, List<RollPart> damage) {}
+                       RollRules.Dice dice, List<RollPart> damage, WeaponCatalog.Def weapon) {
 
+        public Calc(RollSourceType type, UUID sourceId, String name, String variation, BasicAttack basic, int spCost,
+                    int critMargin, int advantage, List<RollPart> hit, RollRules.Dice dice, List<RollPart> damage) {
+            this(type, sourceId, name, variation, basic, spCost, critMargin, advantage, hit, dice, damage, null);
+        }
+
+        /** Cópia com outro gasto, margem, vantagem e parcelas (mantém dados e arma). */
+        public Calc with(int spCost, int critMargin, int advantage, List<RollPart> hit, List<RollPart> damage) {
+            return new Calc(type, sourceId, name, variation, basic, spCost, critMargin, advantage, hit, dice, damage, weapon);
+        }
+
+        public Calc withDice(RollRules.Dice d) {
+            return new Calc(type, sourceId, name, variation, basic, spCost, critMargin, advantage, hit, d, damage, weapon);
+        }
+
+        /** Arma de fogo e explosivos: o crítico não dobra os dados (Crítico frio). */
+        public boolean coldCritical() {
+            return weapon != null && (weapon.firearm() || weapon.area());
+        }
+    }
+
+    /** Catálogo estático de armas (só leitura do classpath). */
+    private final WeaponCatalog weapons = new WeaponCatalog();
     private final CharacterTechniqueRepository techniqueRepository;
     private final MartialArtRepository martialArtRepository;
 
@@ -77,6 +105,7 @@ public class RollProfileService {
             if (t.getKind() != MoveKind.TECHNIQUE || t.getState() != TechniqueState.ACTIVE) continue;
             ArtTechnique cat = catalog(sheet, t);
             List<AssemblyVariation> vars = variations(cat);
+            if (cat != null && cat.getWeaponClass() != null && wielded(sheet, cat) == null) continue; // sem a arma
             if (vars.isEmpty()) {
                 out.add(technique(sheet, t, null, Opts.NONE));
             } else {
@@ -86,7 +115,14 @@ public class RollProfileService {
                 }
             }
         }
-        for (BasicAttack b : BasicAttack.values()) out.add(basic(sheet, b, Opts.NONE));
+        for (BasicAttack b : BasicAttack.values()) if (b.unarmed()) out.add(basic(sheet, b, Opts.NONE));
+        for (InventoryItem i : inHand(sheet)) {
+            WeaponCatalog.Def w = weapons.find(i.getWeaponKey()).orElse(null);
+            if (w == null || w.augment() || i.isBroken() || w.dice() == null && !w.smoke()) continue;
+            out.add(weapon(sheet, i, Opts.NONE, false, false));
+            if (!w.thrownWeapon() && !w.shooter() && !w.throwOnly()) out.add(weapon(sheet, i, Opts.NONE, true, false));
+            if (w.light()) out.add(weapon(sheet, i, Opts.NONE, false, true));
+        }
         return out;
     }
 
@@ -107,6 +143,7 @@ public class RollProfileService {
             }
             case BASIC_ATTACK -> {
                 if (req.basicAttack() == null) throw new InvalidRollException("Informe o ataque básico");
+                if (req.basicAttack() == BasicAttack.ARMA) yield weaponOf(sheet, req.sourceId(), req.variation(), o);
                 yield basic(sheet, req.basicAttack(), o);
             }
             case ATTRIBUTE_TEST -> {
@@ -140,6 +177,11 @@ public class RollProfileService {
         int degree = qty(items, DICE_MODULE);
         int precision = qty(items, PRECISION_MODULE);
         BaseRules.Profile base = base(sheet, o.baseId());
+        InventoryItem armed = cat != null && cat.getWeaponClass() != null ? wielded(sheet, cat) : null;
+        if (cat != null && cat.getWeaponClass() != null && armed == null) {
+            throw new InvalidRollException("A técnica exige uma arma da classe " + cat.getWeaponClass() + " em mãos");
+        }
+        WeaponCatalog.Def weapon = armed == null ? null : weapons.find(armed.getWeaponKey()).orElse(null);
 
         ModuleRules.AltAttribute alt = ModuleRules.altAttribute(items);
         int weight = SheetRules.weightMod(sheet.getWeightKg());
@@ -158,8 +200,13 @@ public class RollProfileService {
 
         List<RollPart> damage = new ArrayList<>();
         Attribute dmgAttr = alt != null && !alt.test() ? alt.attribute() : Attribute.STR;
-        damage.add(part("DAMAGE", dmgAttr == Attribute.STR ? "FOR" : label(dmgAttr) + " (Atributo Alternativo)",
-                RollRules.modOrZero(sheet.getAttribute(dmgAttr))));
+        if (weapon != null) {
+            damage.addAll(weaponAttribute(sheet, weapon, false));
+        } else {
+            damage.add(part("DAMAGE", dmgAttr == Attribute.STR ? "FOR" : label(dmgAttr) + " (Atributo Alternativo)",
+                    RollRules.modOrZero(sheet.getAttribute(dmgAttr))));
+            damage.addAll(augment(sheet));
+        }
         if (damageBonus > 0) damage.add(part("DAMAGE", "Bonificação DAMAGE", 2 * damageBonus));
         int massDamage = ModuleRules.massDamage(items, weight);
         if (massDamage > 0) damage.add(part("DAMAGE", "Massa", massDamage));
@@ -168,14 +215,21 @@ public class RollProfileService {
         // Controle só causa dano com Dado Maior, e o 1º degrau é 1d4
         boolean control = variation != null && variation.getCore() == TechniqueCore.CONTROL;
         int e = RollRules.strengthExtra(sheet.getStr(), apex);
-        RollRules.Dice dice = control && degree == 0 ? null
-                : RollRules.diceScale(control ? degree - 1 : degree).scaled(1 + e);
+        RollRules.Dice dice;
+        if (weapon != null) {
+            // Dano Armado: dado da arma (Golpe Pesado sobe os dados) + Dado Adicional pelo Dado Maior
+            dice = WeaponRules.heavier(weaponDice(sheet, armed, weapon), qty(items, "Golpe Pesado"));
+            RollRules.Dice extra = WeaponRules.extraDie(degree);
+            if (extra != null) dice = dice.with(extra);
+        } else {
+            dice = control && degree == 0 ? null : RollRules.diceScale(control ? degree - 1 : degree).scaled(1 + e);
+        }
         if (dice == null) damage = new ArrayList<>();
         int sp = RollRules.spCost(cat == null ? null : cat.getSpCostBase(), count(bonuses, MasteryBonus.COST),
-                physical(sheet));
+                physical(sheet)) + (weapon == null ? 0 : weapon.load());
         int adv = t.getMastery() == Mastery.SKETCH ? -1 : 0;
         return new Calc(RollSourceType.TECHNIQUE, t.getId(), t.getName(), variation == null ? null : variation.getName(),
-                null, sp, RollRules.CRIT_MARGIN, adv, hit, dice, damage);
+                null, sp, RollRules.CRIT_MARGIN, adv, hit, dice, damage, weapon);
     }
 
     /** A variação (ou os extras) da técnica tem algum item cujo módulo começa com `prefix` (ex.: "Lenta")? */
@@ -272,6 +326,7 @@ public class RollProfileService {
 
     @Transactional(readOnly = true)
     public Calc basic(CharacterSheet sheet, BasicAttack b, Opts o) {
+        if (!b.unarmed()) throw new InvalidRollException("Escolha a arma em mãos");
         BaseRules.Profile base = base(sheet, o.baseId());
         List<RollPart> hit = new ArrayList<>(attackHit(sheet, o));
         if (b.hitPenalty != 0) hit.add(part("HIT", b.label, b.hitPenalty));
@@ -286,6 +341,7 @@ public class RollProfileService {
         if (!b.noStrength()) damage.add(part("DAMAGE", "FOR", RollRules.modOrZero(sheet.getStr())));
         if (b.flatDamage != 0) damage.add(part("DAMAGE", b.label, b.flatDamage));
         if (b == BasicAttack.PISAO) damage.add(part("DAMAGE", "Peso", SheetRules.weightMod(sheet.getWeightKg())));
+        if (b == BasicAttack.SOCO) damage.addAll(augment(sheet)); // soqueira/tufa endurecem o punho
         damage.addAll(baseDamage(base, o));
         int e = b.noStrength() ? 0 : RollRules.strengthExtra(sheet.getStr(), false);
         return new Calc(RollSourceType.BASIC_ATTACK, null, b.label, null, b, 0, RollRules.CRIT_MARGIN, 0, hit,
@@ -322,7 +378,102 @@ public class RollProfileService {
             damageFormula = c.dice().text() + (flat == 0 ? "" : RollRules.signed(flat));
         }
         return new RollProfileResponse(c.type(), c.sourceId(), c.name(), c.variation(), c.basic(), c.spCost(),
-                c.critMargin(), c.advantage(), c.hit(), dd, c.damage(), hitFormula, damageFormula, modules);
+                c.critMargin(), c.advantage(), c.hit(), dd, c.damage(), hitFormula, damageFormula, modules,
+                c.weapon() == null ? null : c.weapon().key());
+    }
+
+    // ---------- armas (§42) ----------
+
+    /** Itens em mãos (inteiros, não quebrados). */
+    public static List<InventoryItem> inHand(CharacterSheet sheet) {
+        return sheet.getInventory() == null ? List.of() : sheet.getInventory().stream()
+                .filter(i -> i.getLocation() == com.tatakai.manager.entity.ItemLocation.HAND && !i.isBroken()).toList();
+    }
+
+    /** Arma em mãos que serve à técnica armada: mesma classe ("Versátil": mesmo tipo marcial). */
+    private InventoryItem wielded(CharacterSheet sheet, ArtTechnique cat) {
+        boolean versatile = cat.getExtras() != null && cat.getExtras().stream().anyMatch(i -> "Abrangência Versátil".equals(i.getModule()))
+                || variations(cat).stream().anyMatch(v -> v.getItems() != null && v.getItems().stream()
+                        .anyMatch(i -> "Abrangência Versátil".equals(i.getModule())));
+        WeaponCatalog.Def ref = weapons.all().stream().filter(w -> cat.getWeaponClass().equalsIgnoreCase(w.weaponClass()))
+                .findFirst().orElse(null);
+        for (InventoryItem i : inHand(sheet)) {
+            WeaponCatalog.Def w = weapons.find(i.getWeaponKey()).orElse(null);
+            if (w == null || w.augment()) continue;
+            if (cat.getWeaponClass().equalsIgnoreCase(w.weaponClass())) return i;
+            if (versatile && ref != null && ref.martialType().equals(w.martialType())) return i;
+        }
+        return null;
+    }
+
+    /** Dados da arma: Empunhadura Variável com duas mãos, danificada −1 dado, arremesso com Escala pela DES. */
+    private static RollRules.Dice weaponDice(CharacterSheet sheet, InventoryItem item, WeaponCatalog.Def w) {
+        RollRules.Dice d = RollRules.Dice.parse(item.isTwoHanded() && w.variable() ? w.diceTwoHands() : w.dice());
+        if (d == null) return null;
+        if (item.isDamaged()) d = new RollRules.Dice(Math.max(1, d.count() - 1), d.sides(), d.plus());
+        if (w.thrownWeapon() && !w.area()) d = d.scaled(1 + RollRules.strengthExtra(sheet.getDex(), false));
+        return d;
+    }
+
+    /**
+     * Atributo do dano pela categoria: branca/improvisada = FOR (Leve: o melhor de FOR e DES), arremesso e disparo =
+     * DES, fogo e explosivos = nada. Golpe Rápido de arma Leve: só o dado.
+     */
+    private static List<RollPart> weaponAttribute(CharacterSheet sheet, WeaponCatalog.Def w, boolean quick) {
+        if (quick || w.firearm() || w.area()) return List.of();
+        int str = RollRules.modOrZero(sheet.getStr());
+        int dex = RollRules.modOrZero(sheet.getDex());
+        if (w.thrownWeapon() || w.shooter()) return List.of(part("DAMAGE", "DES", dex));
+        if (w.light() && dex > str) return List.of(part("DAMAGE", "DES (Leve)", dex));
+        return List.of(part("DAMAGE", "FOR", str));
+    }
+
+    /** Arma de aumento em mãos (soqueira, tufa): bônus fixo no golpe desarmado. */
+    private List<RollPart> augment(CharacterSheet sheet) {
+        for (InventoryItem i : inHand(sheet)) {
+            WeaponCatalog.Def w = weapons.find(i.getWeaponKey()).orElse(null);
+            if (w != null && w.augment() && w.bonus() != null) return List.of(part("DAMAGE", i.getName(), w.bonus()));
+        }
+        return List.of();
+    }
+
+    /**
+     * Ataque com a arma em mãos (§42): acerto 1d20 + DES; dano pela categoria. `thrown`: arremesso improvisado de arma
+     * corpo a corpo (desvantagem, Pequena −1); `quick`: Golpe Rápido de arma Leve (só o dado).
+     */
+    @Transactional(readOnly = true)
+    public Calc weapon(CharacterSheet sheet, InventoryItem item, Opts o, boolean thrown, boolean quick) {
+        WeaponCatalog.Def w = weapons.find(item.getWeaponKey())
+                .orElseThrow(() -> new InvalidRollException("O item não é uma arma do catálogo"));
+        if (item.isBroken()) throw new InvalidRollException(item.getName() + " está quebrada");
+        List<RollPart> hit = new ArrayList<>(attackHit(sheet, o));
+        int adv = 0;
+        if (thrown) {
+            if (w.small()) hit.add(part("HIT", "Arremesso (Pequena)", -1));
+            else adv--;
+        }
+        if (w.heavyStr() != null && sheet.getStr() < w.heavyStr()) {
+            adv--;
+            hit.add(part("HIT", "Pesada: Força " + w.heavyStr() + " (desvantagem)", 0));
+        }
+        hit.addAll(localized(o));
+        hit.addAll(fatigueParts(sheet, physical(sheet)));
+        List<RollPart> damage = new ArrayList<>(weaponAttribute(sheet, w, quick));
+        String name = item.getName() + (thrown ? " (arremesso)" : quick ? " (Golpe Rápido)" : "");
+        return new Calc(RollSourceType.BASIC_ATTACK, item.getId(), name, thrown ? "THROWN" : quick ? "QUICK" : null,
+                BasicAttack.ARMA, 0, RollRules.CRIT_MARGIN, adv, hit, weaponDice(sheet, item, w), damage, w);
+    }
+
+    /** Ataque com o item em mãos `itemId`; variação "THROWN" (arremesso) ou "QUICK" (Golpe Rápido). */
+    @Transactional(readOnly = true)
+    public Calc weaponOf(CharacterSheet sheet, UUID itemId, String variation, Opts o) {
+        InventoryItem item = inHand(sheet).stream().filter(i -> i.getId().equals(itemId)).findFirst()
+                .orElseThrow(() -> new InvalidRollException("A arma precisa estar em mãos"));
+        return weapon(sheet, item, o, "THROWN".equals(variation), "QUICK".equals(variation));
+    }
+
+    public Optional<WeaponCatalog.Def> weaponDef(InventoryItem item) {
+        return item == null ? Optional.empty() : weapons.find(item.getWeaponKey());
     }
 
     /** Nomes dos módulos da técnica (variação dada) para a tela; vazio se não for técnica. */

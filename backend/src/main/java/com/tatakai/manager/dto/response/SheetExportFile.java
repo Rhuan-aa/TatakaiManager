@@ -57,7 +57,13 @@ public record SheetExportFile(
             Integer money, List<ItemData> inventory,
             List<InjuryData> injuries) {}
 
-    public record ItemData(String name, int quantity, String description, Double weightKg) {}
+    /** weaponKey/equipmentKey/consumableKey: ligação ao catálogo (§42–§44); ausentes em arquivos antigos. */
+    public record ItemData(String name, int quantity, String description, Double weightKg, String weaponKey,
+                           String equipmentKey, String consumableKey) {
+        public ItemData(String name, int quantity, String description, Double weightKg) {
+            this(name, quantity, description, weightKg, null, null, null);
+        }
+    }
 
     public record InjuryData(InjuryType type, String region, InjurySeverity severity, int hpMaxReduction,
                              int limiterReduction, Attribute affectedAttribute, boolean treated) {}

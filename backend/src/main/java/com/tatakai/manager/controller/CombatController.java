@@ -27,10 +27,18 @@ public class CombatController {
 
     private final CombatService combat;
     private final ConditionCatalog conditionCatalog;
+    private final com.tatakai.manager.service.WeaponCatalog weaponCatalog;
 
-    public CombatController(CombatService combat, ConditionCatalog conditionCatalog) {
+    public CombatController(CombatService combat, ConditionCatalog conditionCatalog,
+                            com.tatakai.manager.service.WeaponCatalog weaponCatalog) {
+        this.weaponCatalog = weaponCatalog;
         this.combat = combat;
         this.conditionCatalog = conditionCatalog;
+    }
+
+    @GetMapping("/catalog/weapons")
+    public ResponseEntity<List<com.tatakai.manager.service.WeaponCatalog.Def>> weapons() {
+        return ResponseEntity.ok(weaponCatalog.all());
     }
 
     @GetMapping("/catalog/conditions")

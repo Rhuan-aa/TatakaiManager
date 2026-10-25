@@ -19,5 +19,6 @@ public record GrappleRequest(
         GrappleRules.StrangleType strangleType,
         Boolean twist) {
 
-    public enum Action { ESCAPE, PROJECT, LEG_TAKEDOWN, CONSTRICT, STRANGLE, MAINTAIN, RELEASE }
+    /** UNTANGLE: soltar-se de arma de Enredar sem teste (Ação Maior); ESCAPE nela = Ação Menor + FOR/DES ND 14. */
+    public enum Action { ESCAPE, PROJECT, LEG_TAKEDOWN, CONSTRICT, STRANGLE, MAINTAIN, RELEASE, UNTANGLE }
 }

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useWeapons } from '../ui/useWeapons';
+import { ITEM_LOCATION, gearStatus } from '../ui/gear';
 import { ACTIONS, ACTION_CATEGORIES, ACTION_STANCH, GUARD_LABEL, GRIP_LABEL, HOLD_KEYS, STRANGLE_LABEL, hasCondition } from './combatLabels';
 
 /** Botão de ação do HUD: rótulo, custo e, se indisponível, o motivo visível embaixo. */
@@ -35,10 +37,22 @@ function GrappleGroup({ p, participants, paReason, onGrapple }) {
     .map((t) => ({ t, cs: t.conditions.filter((c) => c.sourceParticipantId === p.id && HOLD_KEYS.includes(c.key)) }))
     .filter((v) => v.cs.length > 0);
 
-  if (!hold && victims.length === 0) return null;
+  const tangled = p.conditions.find((c) => c.key === 'AGARRADO' && c.note === 'ENREDAR' && !c.sourceParticipantId);
+  if (!hold && !tangled && victims.length === 0) return null;
   return (
     <section className="act-group space-y-1.5" style={{ '--act': 'var(--act-major)' }}>
       <h4 className="act-group-title text-sm">Agarre</h4>
+      {tangled && !hold && (
+        <>
+          <ActButton label="Soltar-se (sem teste)" cost="3 PA" reason={paReason(3)} onClick={() => send({ action: 'UNTANGLE' })} />
+          <ActButton label="Soltar-se (teste ND 14)" cost="1 PA" title="FOR ou DES contra ND 14" reason={paReason(1)}
+            onClick={() => send({ action: 'ESCAPE', attribute: escAttr })} />
+          <select className="field !mt-0 !py-0.5 text-xs" aria-label="Atributo para se soltar" value={escAttr}
+            onChange={(e) => setEscAttr(e.target.value)}>
+            <option value="STR">com Força</option><option value="DEX">com Destreza</option>
+          </select>
+        </>
+      )}
       {hold && (
         <>
           <ActButton label={`Escapar de ${holder?.name ?? '?'}`} cost={`${escCost} PA`}
@@ -98,6 +112,49 @@ function GrappleGroup({ p, participants, paReason, onGrapple }) {
               </>
             )}
             <ActButton label="Soltar" cost="0 PA" reason={paReason(0)} onClick={() => send({ action: 'RELEASE', ...on })} />
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/** Armas e itens do catálogo em combate (§42): sacar/guardar, recarregar, engatilhar, destravar, trocar modo. */
+function GearGroup({ p, paReason, onAct }) {
+  const weapons = useWeapons();
+  const [two, setTwo] = useState(false);
+  const items = (p.gear ?? []).filter((i) => i.weaponKey && i.location !== 'WORN');
+  if (items.length === 0) return null;
+  const send = (action, i, extra = {}) => onAct({ participantId: p.id, action, itemId: i.id, ...extra });
+  return (
+    <section className="act-group space-y-1.5" style={{ '--act': 'var(--act-minor)' }}>
+      <h4 className="act-group-title text-sm">Armas</h4>
+      {items.map((i) => {
+        const w = weapons[i.weaponKey];
+        const inHand = i.location === 'HAND';
+        const status = gearStatus(i, w);
+        const reloadPa = w?.reload === 'SLOW' ? 3 : 1;
+        return (
+          <div key={i.id} className="space-y-1 border-t border-[var(--line)] pt-1.5">
+            <p className="text-xs"><strong>{i.name}</strong> · {ITEM_LOCATION[i.location]}{status.length > 0 && ` · ${status.join(', ')}`}</p>
+            <ActButton label={inHand ? 'Guardar' : i.location === 'DROPPED' ? 'Pegar do chão' : 'Sacar'} cost="1 PA"
+              reason={paReason(1)} onClick={() => send('DRAW', i, w?.diceTwoHands && !inHand ? { twoHanded: two } : {})} />
+            {w?.diceTwoHands && !inHand && (
+              <label className="flex items-center gap-1 text-xs">
+                <input type="checkbox" checked={two} onChange={(e) => setTwo(e.target.checked)} /> Duas mãos ({w.diceTwoHands})
+              </label>
+            )}
+            {inHand && w?.capacity && w.reload !== 'FAST' && i.loaded < w.capacity && (
+              <ActButton label="Recarregar" cost={`${reloadPa} PA`} reason={paReason(reloadPa)} onClick={() => send('RELOAD', i)} />
+            )}
+            {inHand && w?.slowCock && !i.cocked && (
+              <ActButton label="Engatilhar" cost="1 PA" reason={paReason(1)} onClick={() => send('COCK', i)} />
+            )}
+            {i.jammed && <ActButton label="Destravar" cost="3 PA" reason={paReason(3)} onClick={() => send('UNJAM', i)} />}
+            {w?.alt && (
+              <ActButton label={`Modo: ${weapons[w.alt]?.name ?? w.alt}`} cost="1 PA" reason={paReason(1)}
+                onClick={() => send('TOGGLE_MODE', i)} />
+            )}
           </div>
         );
       })}
@@ -247,6 +304,7 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
         </label>
       </div>
       {onGrapple && <GrappleGroup p={p} participants={participants} paReason={paReason} onGrapple={onGrapple} />}
+      <GearGroup p={p} paReason={paReason} onAct={onAct} />
       {ACTION_CATEGORIES.map((c) => (
         <section key={c.key} className="act-group space-y-1.5" style={{ '--act': c.color }}>
           <h4 className="act-group-title text-sm">{c.label}</h4>

@@ -55,7 +55,9 @@ public final class CombatRules {
             case MAJOR -> slow ? 4 : 3;
             case PREPARED, EXTINGUISH, STABILIZE -> 3;
             case BREATHE -> 4;
-            case MINOR, SHOVE, CHANGE_GUARD, CHANGE_BASE -> 1;
+            case MINOR, SHOVE, CHANGE_GUARD, CHANGE_BASE, DRAW, COCK, TOGGLE_MODE -> 1;
+            case RELOAD -> 1;  // Recarga Lenta: 3 (CombatService)
+            case UNJAM -> 3;
             case STANCH -> 3;
             case MOVE -> 1;
             case MINOR_OFFENSIVE, DISENGAGE, STAND_UP -> 2;

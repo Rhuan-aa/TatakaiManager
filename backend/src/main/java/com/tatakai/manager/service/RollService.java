@@ -195,7 +195,7 @@ public class RollService {
         List<Integer> allDice = new ArrayList<>(d20s);
         StringBuilder damageText = new StringBuilder();
         if (attack) {
-            int mult = crit ? 2 : 1; // Dano Crítico: todos os dados em dobro
+            int mult = crit && !calc.coldCritical() ? 2 : 1; // Dano Crítico: todos os dados em dobro (arma de fogo não)
             for (RollRules.Dice term : calc.dice().terms()) {
                 int n = term.count() * mult;
                 List<Integer> faces = new ArrayList<>();
