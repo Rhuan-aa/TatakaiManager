@@ -14,7 +14,7 @@ import AttackPanel from './AttackPanel';
 import Timeline from './Timeline';
 import ReactionOverlay from './ReactionOverlay';
 import { playAttack } from './attackFx';
-import { STATUS_LABEL, CLASS_LABEL } from './combatLabels';
+import { STATUS_LABEL, CLASS_LABEL, CLASS_COLOR } from './combatLabels';
 
 export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }) {
   const { user } = useAuth();
@@ -107,7 +107,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
   }, [awaitingId]);
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${enc?.status === 'ACTIVE' ? 'pb-24' : ''}`}>
       <div className="flex flex-wrap items-center gap-2">
         {encounters.length > 0 && (
           <select className="field !w-auto" value={eid ?? ''} onChange={(e) => setEid(e.target.value)} aria-label="Encontro">
@@ -142,15 +142,9 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
                 onClick={() => run(() => api.startEncounter(enc.id))}>Iniciar</button>
             )}
             {enc.status === 'ACTIVE' && (isMaster || isOwner(current)) && (
-              <button className="btn-secondary" onClick={() => run(() => api.nextTurn(enc.id))}>Avançar turno</button>
-            )}
-            {isMaster && enc.status !== 'ENDED' && (
-              <label className="flex items-center gap-1 text-xs">Classificação padrão
-                <select className="field !w-auto !py-0.5" value={enc.defaultClassification ?? 'REAL'}
-                  onChange={(e) => run(() => api.updateEncounter(enc.id, { defaultClassification: e.target.value }))}>
-                  {Object.entries(CLASS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-                </select>
-              </label>
+              <button type="button" className="btn-next-turn" onClick={() => run(() => api.nextTurn(enc.id))}>
+                Avançar turno ▶
+              </button>
             )}
             {isMaster && enc.status === 'ENDED' && onCloseFight && (
               <button className="btn-primary" onClick={() => onCloseFight(enc.participants.filter((p) => !p.npc).map((p) => p.sheetId))}>
@@ -160,6 +154,22 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
             {isMaster && enc.status !== 'ENDED' && (
               <button className="btn-ghost" onClick={() => window.confirm('Encerrar o encontro?') && run(() => api.endEncounter(enc.id))}>Encerrar</button>
             )}
+            {(() => {
+              const cls = enc.defaultClassification ?? 'REAL';
+              return (
+                <span className="class-card ml-auto" style={{ '--cls': CLASS_COLOR[cls] }} title="Classificação da luta">
+                  {isMaster && enc.status !== 'ENDED' ? (
+                    <>
+                      <select aria-label="Classificação da luta" value={cls}
+                        onChange={(e) => run(() => api.updateEncounter(enc.id, { defaultClassification: e.target.value }))}>
+                        {Object.entries(CLASS_LABEL).map(([k, l]) => <option key={k} value={k}>Luta {l}</option>)}
+                      </select>
+                      <span aria-hidden="true">▾</span>
+                    </>
+                  ) : <>Luta {CLASS_LABEL[cls]}</>}
+                </span>
+              );
+            })()}
           </div>
 
           {isMaster && enc.status !== 'ENDED' && (
@@ -182,7 +192,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
           )}
 
           {enc.status === 'ACTIVE' && current && (
-            <div className="panel flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2" aria-live="polite">
+            <div className="panel sticky top-2 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2" aria-live="polite">
               <span className="tag tag-accent">Rodada {enc.round}</span>
               <span className="panel-title text-xl">Turno de {current.name}{isOwner(current) ? ' (você)' : ''}</span>
               <span className="flex items-center gap-1.5" aria-label={`${current.paCurrent} PA`} title={`${current.paCurrent} PA`}>
@@ -197,7 +207,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
 
           <div className={`grid gap-4 ${controlsCurrent ? 'lg:grid-cols-[18rem_1fr]' : ''}`}>
             {controlsCurrent && (
-              <aside className="lg:sticky lg:top-4 lg:self-start">
+              <aside className="lg:sticky lg:top-24 lg:self-start">
                 <ActionBar participant={current} participants={enc.participants} canAct={canAct}
                   onAct={(b) => run(() => api.doAction(enc.id, b))}
                   onAttack={(kind) => setAttacking(kind)} />

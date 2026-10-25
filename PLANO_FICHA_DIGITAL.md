@@ -1906,6 +1906,10 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
 - **Agrupamento:** Maior = Atacar, Estancar, Ação maior, Preparada, Respirar · Menor = Golpe rápido (ataque
   `MINOR_OFFENSIVE`), Ação menor, Menor ofensiva, Atravessar, Trocar guarda, Entrar/Trocar/Sair da base · Movimento =
   Mover, Desengajar, Levantar · Livre = Livre.
+- **Ajustes (25/10/2026):** a faixa "Turno de" é `sticky` (fica no topo ao rolar; o menu de ações fica abaixo dela);
+  **Avançar turno** é um botão fixo no canto inferior direito (`.btn-next-turn`, bloco e sombra amarelos); a
+  **classificação da luta** é um cartão no canto superior direito (`.class-card`, fonte/contorno/sombra pela cor do nível:
+  Fácil `--class-easy` verde, Real `--class-real` amarelo, Letal `--class-lethal` vermelho), com o seletor dentro para o Mestre.
 - **Layout (`CombatPanel`):** faixa de turno (rodada, de quem é a vez, PA em losangos, SP) → grade com `ActionBar` como
   menu lateral fixo (`lg:sticky`, só para quem controla o participante da vez) + coluna com construtor de ataque, ataques
   e rastreador → **linha do tempo embaixo**, largura total. Ação indisponível fica desabilitada com o motivo visível.

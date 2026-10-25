@@ -63,6 +63,11 @@
   --act-minor: #4ade80;   /* Ação Menor: verde */
   --act-move: #60a5fa;    /* Movimento: azul */
   --act-free: #f472b6;    /* Livre: rosa */
+
+  /* Classificação da luta */
+  --class-easy: #4ade80;   /* Fácil: verde */
+  --class-real: #facc15;   /* Real: amarelo */
+  --class-lethal: #f87171; /* Letal: vermelho */
 }
 
 body {
@@ -127,6 +132,10 @@ body {
   --act-minor: #15803d;
   --act-move: #1d4ed8;
   --act-free: #be185d;
+
+  --class-easy: #15803d;
+  --class-real: #a16207;
+  --class-lethal: #b91c1c;
 
   --color-zinc-950: #fafafa;
   --color-zinc-900: #f4f4f5;
@@ -560,6 +569,27 @@ h3,
 .act-cost { font-size: 0.7rem; padding: 0 0.35rem; border: 2px solid var(--line); background: var(--act); color: var(--bg); white-space: nowrap; }
 .pa-pip { width: 0.9rem; height: 0.9rem; border: 2px solid var(--line); transform: rotate(45deg); }
 .pa-pip.on { background: var(--highlight); }
+
+/* Cartão da classificação da luta (cor por nível em --cls) */
+.class-card {
+  display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.75rem;
+  font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--cls); background: var(--panel-bg); border: 3px solid var(--cls); box-shadow: 4px 4px 0 var(--cls);
+}
+.class-card select { background: transparent; color: var(--cls); font: inherit; border: 0; cursor: pointer; padding-right: 0.25rem; }
+.class-card select:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
+.class-card select option { color: var(--text); background: var(--panel-bg); }
+
+/* Avançar turno: botão fixo no canto inferior direito */
+.btn-next-turn {
+  position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 50;
+  padding: 0.75rem 1.25rem; font-family: var(--font-display); font-size: 1.15rem; text-transform: uppercase;
+  letter-spacing: 0.04em; cursor: pointer; color: var(--ink); background: var(--highlight);
+  border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--highlight); transition: transform 80ms, box-shadow 80ms;
+}
+.btn-next-turn:hover { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--highlight); }
+.btn-next-turn:active { transform: translate(6px, 6px); box-shadow: none; }
+.btn-next-turn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
 /* Tela de reação: quadro de quadrinho por cima do combate */
 .reaction-overlay {

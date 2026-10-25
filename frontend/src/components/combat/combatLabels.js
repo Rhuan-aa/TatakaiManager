@@ -53,6 +53,7 @@ export const REACTION_HINT = {
 
 export const ACTION_STANCH = { action: 'STANCH', label: 'Estancar', pa: 3 };
 export const CLASS_LABEL = { EASY: 'Fácil', REAL: 'Real', LETHAL: 'Letal' };
+export const CLASS_COLOR = { EASY: 'var(--class-easy)', REAL: 'var(--class-real)', LETHAL: 'var(--class-lethal)' };
 export const HYSTERIA = {
   FURY: { label: 'Fúria', text: '+4 acerto, +1d6 dano, -2 reações' },
   WALL: { label: 'Muralha', text: '+4 reações e Vontade, -1 PQ por golpe' },
