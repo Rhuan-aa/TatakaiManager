@@ -2011,6 +2011,13 @@ Raspagem`, `fora de …` (ignorado).
 | Enraizado +N | resistência a Empurrar, Derrubar e Quebrar Base (§30) |
 | Calma +N | Testes de Vontade (`VitalService`) |
 | Passada +1,5 m / Pesada −1,5 m | cada Movimentação (mín. 1,5 m) |
+| Fôlego | início de cada turno na base: +SP = mod. de CON (mín. 1) |
+| Economia [em tipo] | técnicas do tipo custam 1 SP a menos (depois dos multiplicadores, mín. 0) |
+| Absorção Contínua | golpes recebidos: −1 PQ |
+| Troca Fluida | entrar nesta base é Ação Livre uma vez por turno (`encounter_participants.fluid_switch_used`) |
+| Punição contra tipo | +1d3 de dano contra lutador do tipo (tipo marcial do defensor, aproximação de "em bases de") |
+| Avanço Pesado | técnica com **Investida** soma o dano de Derrubada do lutador (2 + mod. de Peso) |
+| Resiliência +N | todos os testes de resistência contra Efeitos (§30) |
 
 Tipo do golpe: arte da técnica, senão a arte principal (`MartialService.attackType`), passado em
 `RollProfileService.Opts.attackType`; nas rolagens fora do combate (teste da ficha) só os itens genéricos valem.

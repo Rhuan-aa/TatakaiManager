@@ -1105,4 +1105,21 @@ class CombatServiceTest {
         assertThat(cList).anyMatch(c -> c.getConditionKey().equals("PREPARADO")
                 && c.getNote().equals(dr.getId() + ";;C") && c.getExpiresAt() == ConditionExpiry.START_OF_TARGET_TURN);
     }
+
+    @Test
+    @DisplayName("Troca Fluida: entrar na base é Ação Livre uma vez por turno; a 2ª entrada custa normal")
+    void fluidSwitch() {
+        EncounterParticipant[] p = started();
+        CharacterTechnique b = base(sheetA, TechniqueState.ACTIVE, MoveKind.BASE);
+        com.tatakai.manager.entity.AssemblyItem tf = new com.tatakai.manager.entity.AssemblyItem();
+        tf.setModule("Troca Fluida");
+        tf.setLabel("Troca Fluida");
+        org.mockito.Mockito.lenient().when(profiles.baseProfile(sheetA, b.getId()))
+                .thenReturn(com.tatakai.manager.service.rules.BaseRules.profile("Switch", List.of(tf), false));
+        baseAct(p[0], b.getId(), player.getId());
+        assertThat(p[0].getPaCurrent()).isEqualTo(5); // grátis
+        baseAct(p[0], null, player.getId());          // sai: 1 PA
+        baseAct(p[0], b.getId(), player.getId());     // entra de novo: já usou a Troca Fluida -> 1 PA
+        assertThat(p[0].getPaCurrent()).isEqualTo(3);
+    }
 }

@@ -125,6 +125,10 @@ public class EncounterParticipant {
     @Column(name = "guard_changes_this_turn", nullable = false, columnDefinition = "integer not null default 0")
     private int guardChangesThisTurn;
 
+    /** Troca Fluida já usada neste turno (entrar na base de graça uma vez por turno). */
+    @Column(name = "fluid_switch_used", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean fluidSwitchUsed;
+
     /** CharacterTechnique kind BASE ACTIVE em uso (RN-BASE-03); null = nenhuma. */
     @Column(name = "active_base_id")
     private UUID activeBaseId;

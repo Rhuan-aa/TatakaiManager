@@ -477,6 +477,11 @@ public class CombatService {
         }
         if (action == CombatAction.CHANGE_BASE) {
             pa = CombatRules.baseChangeCost(p.getActiveBaseId() != null, req.baseId() != null);
+            BaseRules.Profile target = req.baseId() == null ? null : profiles.baseProfile(s, req.baseId());
+            if (target != null && target.fluidSwitch() && !p.isFluidSwitchUsed()) {
+                pa = 0; // Troca Fluida: entrar nesta base é Ação Livre uma vez por turno
+                p.setFluidSwitchUsed(true);
+            }
         }
         // Ação Preparada com técnica de Preparação: o gasto é o SP da técnica (§38)
         RollProfileService.CoreTechnique prep = null;
@@ -684,6 +689,7 @@ public class CombatService {
         p.setPaLossNext(0);
         p.setMovesThisTurn(0);
         p.setGuardChangesThisTurn(0);
+        p.setFluidSwitchUsed(false);
         p.setAttackersThisRound(new ArrayList<>());
         vital.onTurnStart(e, p, sheetOf(p), ctx);
         if (VitalRules.activeHysteria(p.getAdrenaline(), p.getHysteria()) == Hysteria.LIGHTNING) {

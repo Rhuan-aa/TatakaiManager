@@ -453,6 +453,12 @@ public class VitalService {
             applyHp(e, p, s, -s.getOpenWounds(), new Ctx(c.userId(), c.role(), "Sangramento", false));
         }
         environmentStart(e, p, s, c);
+        BaseRules.Profile base = baseOf(p, s);
+        if (base != null && base.breath() && !hasCondition(p, DEAD)) { // Fôlego da base
+            int gain = Math.max(1, RollRules.modOrZero(s.getCon()));
+            log(e, p.getId(), CombatEventType.ACTION, p.getName() + " recupera o fôlego na base: +" + gain + " SP");
+            applySp(e, p, s, gain, c);
+        }
         List<CombatCondition> mine = conds(p);
         if (has(mine, DEAD)) return;
         if (has(mine, DYING)) deathSave(e, p, s, c);

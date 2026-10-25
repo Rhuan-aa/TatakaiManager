@@ -88,6 +88,41 @@ public final class BaseRules {
             return v;
         }
 
+        /** Fôlego (Respiração): recupera SP = mod. de CON (mín. 1) no início de cada turno na base. */
+        public boolean breath() {
+            return hasModule("Fôlego");
+        }
+
+        /** Economia: técnicas do tipo custam 1 SP a menos (sem tipo no rótulo: todas). */
+        public boolean economy(MartialType t) {
+            return items.stream().anyMatch(i -> i.module().equals("Economia")
+                    && (i.scope() == Scope.ALL || i.scope() == scopeOf(t)));
+        }
+
+        /** Absorção Contínua: os golpes recebidos causam 1 PQ a menos. */
+        public boolean continuousAbsorb() {
+            return hasModule("Absorção Contínua");
+        }
+
+        /** Troca Fluida: uma vez por turno, entrar nesta base é Ação Livre. */
+        public boolean fluidSwitch() {
+            return hasModule("Troca Fluida");
+        }
+
+        /** Punição: +1d3 de dano contra lutadores do tipo marcial do rótulo ("Punição contra Derrubada"). */
+        public boolean punishes(MartialType defender) {
+            return has("Punição", defender);
+        }
+
+        /** Avanço Pesado: técnicas com Investida somam o dano de Derrubada do lutador. */
+        public boolean heavyAdvance() {
+            return hasModule("Avanço Pesado");
+        }
+
+        private boolean hasModule(String module) {
+            return items.stream().anyMatch(i -> i.module().equals(module));
+        }
+
         /** Fraqueza contra o tipo do atacante: desvantagem nas reações. */
         public boolean weakAgainst(MartialType attacker) {
             return has("Fraqueza", attacker);

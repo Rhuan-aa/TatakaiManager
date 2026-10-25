@@ -246,6 +246,10 @@ public class AttackService {
         int sp = a.getSourceType() == RollSourceType.BASIC_ATTACK
                 ? VitalRules.adjustSp(1, VitalRules.tier(att.getAdrenaline()), ctx.has(att.getId(), "DISSOCIADO"))
                 : calc.spCost();
+        BaseRules.Profile ownBase = profiles.baseProfile(s, att.getActiveBaseId());
+        if (a.getSourceType() == RollSourceType.TECHNIQUE && ownBase != null && ownBase.economy(attackTypeOf(a, att, s))) {
+            sp = Math.max(0, sp - 1); // Economia da base: fixo, depois dos multiplicadores
+        }
         if (sp > 0 && ctx.has(att.getId(), "EXAUSTO")) {
             throw new InvalidCombatException("Exausto: sem técnicas nem ações com custo de SP");
         }
@@ -526,6 +530,7 @@ public class AttackService {
         String moveArt = tech == null || tech.getCharacterArt() == null ? null : tech.getCharacterArt().getArtName();
         if (tech != null) martial.fire(e, att, attSheet, "ART_TECHNIQUE_USED", null, moveArt);
         int attackerCalejo = profiles.calejo(attSheet, att.getActiveBaseId());
+        BaseRules.Profile attBase = profiles.baseProfile(attSheet, att.getActiveBaseId());
 
         for (AttackTarget t : ts) {
             EncounterParticipant tp = ctx.participant(t.getTargetId());
@@ -534,6 +539,7 @@ public class AttackService {
             if (!group.contains(att.getId())) group.add(att.getId());
             tp.setAttackersThisRound(group);
 
+            BaseRules.Profile tpBase = profiles.baseProfile(tsh, tp.getActiveBaseId());
             // quem reage: o próprio alvo ou o aliado que o defende (alvo Inconsciente)
             EncounterParticipant rp = t.getDefenderId() == null ? tp : ctx.participant(t.getDefenderId());
             CharacterSheet rsh = ctx.sheetOf.get(rp.getId());
@@ -590,6 +596,19 @@ public class AttackService {
                 hitDamage += extra.getTotal();
                 log(e, tp.getId(), "Crítico Garantido em " + tp.getName() + " (" + sure + "): +" + extra.getTotal() + " de dano");
             }
+            if (connects && attBase != null) {
+                MartialType dt = martial.fighter(tp, tsh).type();
+                if (attBase.punishes(dt)) { // Punição da base: +1d3 contra o tipo do rótulo
+                    int pun = rolls.rollInternal(attSheet, "1d3", "Punição: " + att.getName() + " → " + tp.getName(), userId, role).getTotal();
+                    hitDamage += pun;
+                    log(e, tp.getId(), "Punição (base de " + att.getName() + "): +" + pun + " de dano");
+                }
+                if (attBase.heavyAdvance() && tech != null && profiles.hasModule(attSheet, tech, a.getVariation(), "Investida")) {
+                    int heavy = EffectRules.takedownDamage(attSheet.getWeightKg()); // dano de Derrubada do lutador
+                    hitDamage += heavy;
+                    log(e, tp.getId(), "Avanço Pesado (base de " + att.getName() + "): +" + heavy + " de dano");
+                }
+            }
             int dmg = connects ? AttackRules.damage(hitDamage, r.mitigationPct(), calejo) : 0;
             int counter = 0;
             if (r.counterHits()) {
@@ -608,7 +627,7 @@ public class AttackService {
                 vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(atk.critical()));
                 int kp = VitalRules.kpLoss(a.getRegion(), headBonus(attSheet, a), 0, atk.critical(),
                         VitalRules.activeHysteria(tp.getAdrenaline(), tp.getHysteria()) == Hysteria.WALL)
-                        - (rr != null && rr.absorb() ? 1 : 0);
+                        - (rr != null && rr.absorb() ? 1 : 0) - (tpBase != null && tpBase.continuousAbsorb() ? 1 : 0);
                 if (kp > 0) vital.applyKp(e, tp, tsh, -kp, vctx);
                 if (permanentInjury(atk, calc)) vital.permanentInjury(e, tp, tsh, dmg, a.getRegion(), vctx);
                 martial.fire(e, att, attSheet, "HIT", tp.getId(), moveArt);

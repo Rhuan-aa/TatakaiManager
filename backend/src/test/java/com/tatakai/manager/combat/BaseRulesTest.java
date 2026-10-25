@@ -79,4 +79,21 @@ class BaseRulesTest {
         assertThat(p.rooted()).isEqualTo(2);
         assertThat(p.resilience()).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("Fôlego, Economia (por tipo), Absorção Contínua, Troca Fluida, Punição e Avanço Pesado")
+    void otherModules() {
+        BaseRules.Profile p = BaseRules.profile("x", List.of(
+                it("Fôlego", "Fôlego", 3), it("Economia", "Economia em Trocação", 2), it("Absorção Contínua", "Absorção Contínua", 3),
+                it("Troca Fluida", "Troca Fluida", 2), it("Punição", "Punição contra Derrubada", 1), it("Avanço Pesado", "Avanço Pesado", 3)), false);
+        assertThat(p.breath()).isTrue();
+        assertThat(p.economy(MartialType.STRIKING)).isTrue();
+        assertThat(p.economy(MartialType.TAKEDOWN)).isFalse();
+        assertThat(p.continuousAbsorb()).isTrue();
+        assertThat(p.fluidSwitch()).isTrue();
+        assertThat(p.punishes(MartialType.TAKEDOWN)).isTrue();
+        assertThat(p.punishes(MartialType.STRIKING)).isFalse();
+        assertThat(p.heavyAdvance()).isTrue();
+        assertThat(BaseRules.profile("y", List.of(it("Economia", "Economia", 2)), false).economy(MartialType.SWEEP)).isTrue();
+    }
 }
