@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getRollProfiles } from '../../api/rolls';
-import { GRIP_LABEL, SIDED_BASICS, STRIKE_SIDE_LABEL } from './combatLabels';
+import { BASIC_HINT, GRIP_LABEL, SIDED_BASICS, STRIKE_SIDE_LABEL } from './combatLabels';
 
 const KINDS = [{ k: 'MAJOR', label: 'Ação maior', pa: 3 }, { k: 'MINOR_OFFENSIVE', label: 'Menor ofensiva', pa: 2 }];
 
@@ -92,7 +92,8 @@ export default function AttackBuilder({ participant: p, participants, initialKin
                 onChange={(e) => setPenalty(Math.min(0, Number(e.target.value)))} />
             </label>
           </div>
-          {prof && <p className="caption">Acerto: {prof.hitFormula} · Dano: {prof.damageFormula}</p>}
+          {prof && <p className="caption">Acerto: {prof.hitFormula} · Dano: {prof.damageFormula ?? 'nenhum'}</p>}
+          {BASIC_HINT[prof?.basicAttack] && <p className="caption">{BASIC_HINT[prof.basicAttack]}</p>}
           <fieldset className="flex flex-wrap gap-3">
             <legend className="caption">Alvos</legend>
             {participants.filter((t) => t.id !== p.id).map((t) => {

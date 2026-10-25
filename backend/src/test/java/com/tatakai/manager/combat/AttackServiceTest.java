@@ -1424,4 +1424,90 @@ class AttackServiceTest {
         assertThat(done.mitigationPct()).isEqualTo(75);
         assertThat(sheetA.getCurrentHp()).isLessThan(hpA); // 1d4 (3) + FOR do defensor
     }
+
+    // ---------- §40: golpes básicos restantes ----------
+
+    private CreateAttackRequest basicOn(BasicAttack b, AttackActionKind kind, String region, EncounterParticipant t) {
+        lenient().when(profiles.basic(any(), any(), any())).thenAnswer(i -> new Calc(RollSourceType.BASIC_ATTACK, null,
+                b.label, null, b, 0, 20, 0, new ArrayList<>(),
+                b.dealsDamage() ? new RollRules.Dice(b.count, b.sides) : null, new ArrayList<>()));
+        lenient().when(profiles.attribute(any(), any())).thenAnswer(x -> calc(RollSourceType.ATTRIBUTE_TEST, "Teste", 0));
+        return new CreateAttackRequest(pA.getId(), RollSourceType.BASIC_ATTACK, null, null, b, kind,
+                List.of(t.getId()), region, null);
+    }
+
+    private void hold(EncounterParticipant victim, String key, EncounterParticipant holder, String note) {
+        cList.add(CombatCondition.builder().id(UUID.randomUUID()).participantId(victim.getId()).conditionKey(key)
+                .sourceParticipantId(holder.getId()).note(note).expiresAt(ConditionExpiry.MANUAL).build());
+    }
+
+    private boolean holds(EncounterParticipant victim, String key) {
+        return cList.stream().anyMatch(c -> c.getParticipantId().equals(victim.getId()) && key.equals(c.getConditionKey()));
+    }
+
+    @Test
+    @DisplayName("§40: Mordida e Empurrão cabem em Ação Menor; Pisão só contra Derrubado")
+    void quickBasicsAndStomp() {
+        assertThat(service.declare(enc.getId(), basicOn(BasicAttack.MORDIDA, AttackActionKind.MINOR_OFFENSIVE, null, pN),
+                player.getId()).reservedPa()).isEqualTo(2);
+        pA.setPaCurrent(5);
+        assertThat(service.declare(enc.getId(), basicOn(BasicAttack.EMPURRAO, AttackActionKind.MINOR_OFFENSIVE, null, pN),
+                player.getId()).reservedPa()).isEqualTo(2);
+        pA.setPaCurrent(5);
+        assertThatThrownBy(() -> service.declare(enc.getId(), basicOn(BasicAttack.ENCONTRAO, AttackActionKind.MINOR_OFFENSIVE,
+                null, pN), player.getId())).isInstanceOf(InvalidCombatException.class);
+        assertThatThrownBy(() -> service.declare(enc.getId(), basicOn(BasicAttack.PISAO, AttackActionKind.MAJOR, null, pN),
+                player.getId())).isInstanceOf(InvalidCombatException.class).hasMessageContaining("Derrubado");
+        cond(pN, "DERRUBADO");
+        assertThat(service.declare(enc.getId(), basicOn(BasicAttack.PISAO, AttackActionKind.MAJOR, null, pN),
+                player.getId()).reservedPa()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("§40: Empurrão sem dano; alvo falha na FOR → empurrado e o Clinch se desfaz")
+    void shove() {
+        hold(pN, "CLINCH", pA, "INICIOU");
+        hold(pA, "CLINCH", pN, null);
+        int hp = npcSheet.getCurrentHp();
+        AttackResponse r = fight(basicOn(BasicAttack.EMPURRAO, AttackActionKind.MAJOR, null, pN), ReactionType.NONE,
+                msg(15, 10, null), msg(5, 5, null));
+        assertThat(r.targets().get(0).outcome()).isEqualTo(AttackOutcome.HIT);
+        assertThat(npcSheet.getCurrentHp()).isEqualTo(hp);
+        assertThat(holds(pN, "CLINCH") || holds(pA, "CLINCH")).isFalse();
+    }
+
+    @Test
+    @DisplayName("§40: Encontrão derruba quem falha; falha crítica derruba o atacante")
+    void bullRush() {
+        fight(basicOn(BasicAttack.ENCONTRAO, AttackActionKind.MAJOR, null, pN), ReactionType.NONE,
+                msg(15, 10, null), msg(5, 5, null));
+        assertThat(holds(pN, "DERRUBADO")).isTrue();
+        fight(basicOn(BasicAttack.ENCONTRAO, AttackActionKind.MAJOR, null, pB), ReactionType.NONE, msg(1, 1, null), null);
+        assertThat(holds(pA, "DERRUBADO")).isTrue();
+    }
+
+    @Test
+    @DisplayName("§40: Mordida — quem agarra o mordedor falha na Mental (ND 12) e solta")
+    void bite() {
+        hold(pA, "AGARRADO", pN, "ARM");
+        fight(basicOn(BasicAttack.MORDIDA, AttackActionKind.MAJOR, null, pN), ReactionType.NONE,
+                msg(15, 10, 1), msg(5, 5, null));
+        assertThat(holds(pA, "AGARRADO")).isFalse();
+    }
+
+    @Test
+    @DisplayName("§40: Cabeçada na face tira 2 PA (1× por rodada); falha crítica −1 PQ; Chute com falha crítica prende a perna")
+    void headbuttAndKick() {
+        npcSheet.setCurrentKp(5);
+        fight(basicOn(BasicAttack.CABECADA, AttackActionKind.MAJOR, "Face", pN), ReactionType.NONE, msg(15, 10, 2), null);
+        assertThat(pN.getPaLossNext()).isEqualTo(2);
+        fight(basicOn(BasicAttack.CABECADA, AttackActionKind.MAJOR, "Face", pN), ReactionType.NONE, msg(15, 10, 2), null);
+        assertThat(pN.getPaLossNext()).isEqualTo(2);
+        sheetA.setCurrentKp(5);
+        fight(basicOn(BasicAttack.CABECADA, AttackActionKind.MAJOR, null, pN), ReactionType.NONE, msg(1, 1, null), null);
+        assertThat(sheetA.getCurrentKp()).isEqualTo(4);
+        fight(basicOn(BasicAttack.CHUTE, AttackActionKind.MAJOR, null, pN), ReactionType.NONE, msg(1, 1, null), null);
+        assertThat(cList.stream().anyMatch(c -> c.getParticipantId().equals(pA.getId()) && "AGARRADO".equals(c.getConditionKey())
+                && pN.getId().equals(c.getSourceParticipantId()) && "LEG".equals(c.getNote()))).isTrue();
+    }
 }

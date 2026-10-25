@@ -211,7 +211,7 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
     ),
     MINOR: (
       <>
-        <ActButton label="Golpe rápido" cost="2 PA" title="Ataque como Ação Menor ofensiva (Técnica Rápida ou Soco)"
+        <ActButton label="Golpe rápido" cost="2 PA" title="Ataque como Ação Menor ofensiva (Técnica Rápida, Soco, Mordida ou Empurrão)"
           reason={paReason(2) ?? (dissociated ? 'Dissociado: sem Ações Menores' : null)} onClick={() => onAttack('MINOR_OFFENSIVE')} />
         <select className="field !mt-0 !py-0.5 text-xs" aria-label="Nova guarda" value={guard} onChange={(e) => setGuard(e.target.value)}>
           <option value="">Guarda… (atual: {GUARD_LABEL[p.guard] ?? '—'})</option>

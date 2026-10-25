@@ -145,7 +145,7 @@ class RollChannelServiceTest {
         assertThat(p.damageFormula()).isEqualTo("4d6+5");
         assertThat(p.spCost()).isEqualTo(8); // 10 - 2*COST
         assertThat(p.critMargin()).isEqualTo(20);
-        assertThat(ps.stream().filter(x -> x.sourceType() == RollSourceType.BASIC_ATTACK)).hasSize(6);
+        assertThat(ps.stream().filter(x -> x.sourceType() == RollSourceType.BASIC_ATTACK)).hasSize(BasicAttack.values().length);
     }
 
     @Test

@@ -76,3 +76,14 @@ export const LATE_COUNTER_LABEL = {
 export const GRIP_LABEL = { ARM: 'Braço', LEG: 'Perna', TORSO: 'Tronco ou nuca (Clinch)', NECK: 'Pescoço' };
 export const STRANGLE_LABEL = { BLOOD: 'Sanguíneo (−1 PQ/turno)', AIR: 'Respiratório (−1d6 SP, Pânico)' };
 export const HOLD_KEYS = ['IMOBILIZADO', 'ESTRANGULADO', 'AGARRADO', 'CLINCH']; // ordem da fuga: a mais forte primeiro
+// Regras especiais dos Ataques Básicos (§40, espelha AttackService.basicHit/basicFumble)
+export const BASIC_HINT = {
+  CHUTE: '+1 PQ na cabeça · falha crítica: perna presa',
+  COTOVELADA: '+1 PQ na cabeça',
+  JOELHADA: '−2 no acerto, exceto contra Agarrado/Clinch · no Clinch +1 PQ na cabeça',
+  CABECADA: 'Na face (região "Face"): −2 PA no próximo turno do alvo, 1× por rodada · falha crítica: −1 PQ em você',
+  MORDIDA: 'Sem Força no dano · quem te agarra faz Mental ND 12 ou solta',
+  EMPURRAO: 'Sem dano · o alvo resiste com FOR: empurrado 1,5 m (3 m no crítico) e desfaz o Clinch',
+  ENCONTRAO: 'Exige 3 m em linha reta · sem dano · alvo resiste com FOR/DES contra acerto + seu mod. de Peso ou cai · falha crítica: você cai',
+  PISAO: 'Só contra alvo Derrubado · + mod. de Peso no dano · +1 PQ na cabeça',
+};

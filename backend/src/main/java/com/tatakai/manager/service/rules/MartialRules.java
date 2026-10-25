@@ -24,7 +24,7 @@ public final class MartialRules {
     }
 
     /** Famílias de golpe (spec §6.1); iguais aos ataques básicos, o que o catálogo tem de especialização. */
-    public enum Family { SOCO, CHUTE, COTOVELADA, JOELHADA, CABECADA, AGARRAO }
+    public enum Family { SOCO, CHUTE, COTOVELADA, JOELHADA, CABECADA, AGARRAO, MORDIDA, EMPURRAO, ENCONTRAO, PISAO }
 
     private static String fold(String s) {
         if (s == null) return "";
@@ -80,6 +80,10 @@ public final class MartialRules {
             if (f.contains("cabecada")) out.add(Family.CABECADA);
             if (f.contains("agarr") || f.contains("clinch") || f.contains("constric") || f.contains("projec")
                     || f.contains("arremess")) out.add(Family.AGARRAO);
+            if (f.contains("mordida")) out.add(Family.MORDIDA);
+            if (f.contains("empurr")) out.add(Family.EMPURRAO);
+            if (f.contains("encontr")) out.add(Family.ENCONTRAO);
+            if (f.contains("pisao") || f.contains("pisot")) out.add(Family.PISAO);
         }
         return out;
     }

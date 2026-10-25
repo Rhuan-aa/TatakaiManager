@@ -253,11 +253,16 @@ public class RollProfileService {
         hit.addAll(baseHit(base, o));
         hit.addAll(localized(o));
         hit.addAll(fatigueParts(sheet, physical(sheet)));
+        if (!b.dealsDamage()) {
+            return new Calc(RollSourceType.BASIC_ATTACK, null, b.label, null, b, 0, RollRules.CRIT_MARGIN, 0, hit,
+                    null, List.of());
+        }
         List<RollPart> damage = new ArrayList<>();
-        damage.add(part("DAMAGE", "FOR", RollRules.modOrZero(sheet.getStr())));
+        if (!b.noStrength()) damage.add(part("DAMAGE", "FOR", RollRules.modOrZero(sheet.getStr())));
         if (b.flatDamage != 0) damage.add(part("DAMAGE", b.label, b.flatDamage));
+        if (b == BasicAttack.PISAO) damage.add(part("DAMAGE", "Peso", SheetRules.weightMod(sheet.getWeightKg())));
         damage.addAll(baseDamage(base, o));
-        int e = RollRules.strengthExtra(sheet.getStr(), false);
+        int e = b.noStrength() ? 0 : RollRules.strengthExtra(sheet.getStr(), false);
         return new Calc(RollSourceType.BASIC_ATTACK, null, b.label, null, b, 0, RollRules.CRIT_MARGIN, 0, hit,
                 new RollRules.Dice(b.count * (1 + e), b.sides), damage);
     }

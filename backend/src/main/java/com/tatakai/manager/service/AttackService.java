@@ -87,6 +87,10 @@ public class AttackService {
 
     private static final String FURTIVE = "FURTIVO";
     private static final String KNOCKED_DOWN = "DERRUBADO";
+    /** Mordida: quem agarra o mordedor faz Mental contra este ND ou solta (§40). */
+    private static final int BITE_ND = 12;
+    /** Regiões da face para a Cabeçada (−2 PA no próximo turno do alvo, §40). */
+    private static final Set<String> FACE = Set.of("face", "rosto", "nariz");
     private static final String DISORIENTED = "DESORIENTADO";
     private static final String RESTRAINED = "IMOBILIZADO";
     private static final Set<String> NO_REACTION = Set.of("VULNERAVEL", "INCONSCIENTE", "MORTO");
@@ -230,13 +234,16 @@ public class AttackService {
         if (req.basicAttack() == BasicAttack.CHUTE && ctx.has(att.getId(), GrappleRules.CLINCH)) {
             throw new InvalidCombatException("No Clinch não cabem golpes de alcance Médio (Chute)");
         }
+        if (req.basicAttack() == BasicAttack.PISAO && targetIds.stream().anyMatch(t -> !ctx.has(t, KNOCKED_DOWN))) {
+            throw new InvalidCombatException("Pisão só contra alvo Derrubado");
+        }
         Calc calc = calcFor(s, a, ctx.has(att.getId(), KNOCKED_DOWN), att, s);
         a.setVariation(calc.variation());
         String name = calc.variation() == null ? calc.name() : calc.name() + " (" + calc.variation() + ")";
         a.setSourceName(name.length() > 100 ? name.substring(0, 100) : name);
 
         boolean slow = false;
-        boolean quick = a.getBasicAttack() == BasicAttack.SOCO;
+        boolean quick = a.getBasicAttack() != null && a.getBasicAttack().quick();
         if (a.getSourceType() == RollSourceType.TECHNIQUE) {
             CharacterTechnique t = technique(s, a);
             slow = profiles.hasModule(s, t, a.getVariation(), "Lenta");
@@ -246,7 +253,7 @@ public class AttackService {
             throw new InvalidCombatException("Dissociado: Ações Menores estão bloqueadas");
         }
         if (a.getActionKind() == AttackActionKind.MINOR_OFFENSIVE && !quick) {
-            throw new InvalidCombatException("Ação Menor Ofensiva exige Técnica Rápida ou o ataque básico Soco");
+            throw new InvalidCombatException("Ação Menor Ofensiva exige Técnica Rápida ou o ataque básico Soco, Mordida ou Empurrão");
         }
         int pa = AttackRules.paCost(a.getActionKind(), slow);
         int sp = a.getSourceType() == RollSourceType.BASIC_ATTACK
@@ -621,8 +628,10 @@ public class AttackService {
                 }
             }
             boolean grab = a.getBasicAttack() == BasicAttack.AGARRAO && a.getSourceType() == RollSourceType.BASIC_ATTACK;
-            int dmg = connects && !(grab && !a.isSqueeze()) ? AttackRules.damage(hitDamage, r.mitigationPct(), calejo) : 0;
+            int dmg = connects && calc.dice() != null && !(grab && !a.isSqueeze())
+                    ? AttackRules.damage(hitDamage, r.mitigationPct(), calejo) : 0;
             if (grab && r.outcome() == AttackOutcome.HIT) grabOn(e, att, attSheet, tp, tsh, a.getGrip());
+            if (r.outcome() == AttackOutcome.HIT) basicHit(e, a, att, attSheet, tp, tsh, tpBase, atk, vctx, userId, role);
             int counter = 0;
             if (r.counterHits()) {
                 RollMessage c = rolls.rollCalc(rsh, e.getCampaignId(), profiles.basic(rsh, BasicAttack.SOCO,
@@ -638,7 +647,7 @@ public class AttackService {
             }
             if (dmg > 0) {
                 vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(atk.critical()));
-                int kp = VitalRules.kpLoss(a.getRegion(), headBonus(attSheet, a), 0, atk.critical(),
+                int kp = VitalRules.kpLoss(a.getRegion(), headBonus(attSheet, a) + basicKp(a, tp, ctx), 0, atk.critical(),
                         VitalRules.activeHysteria(tp.getAdrenaline(), tp.getHysteria()) == Hysteria.WALL)
                         - (rr != null && rr.absorb() ? 1 : 0) - (tpBase != null && tpBase.continuousAbsorb() ? 1 : 0);
                 if (kp > 0) vital.applyKp(e, tp, tsh, -kp, vctx);
@@ -662,10 +671,105 @@ public class AttackService {
             targets.save(t);
             log(e, att.getId(), summary(att, tp, a, t, counter));
         }
+        if (atk.fumble()) basicFumble(e, a, att, attSheet, ctx.participant(ts.get(0).getTargetId()), vctx);
         a.setStatus(AttackStatus.RESOLVED);
         a.setResolvedAt(Instant.now());
         a.setResolvedTurn(e.getTurnCounter());
         attacks.save(a);
+    }
+
+    private static BasicAttack basicOf(PendingAttack a) {
+        return a.getSourceType() == RollSourceType.BASIC_ATTACK ? a.getBasicAttack() : null;
+    }
+
+    /**
+     * Ataques Básicos que acertaram (§40): Mordida faz quem agarra o mordedor testar Mental ND 12 ou soltar; Empurrão
+     * (FOR do alvo contra o acerto) empurra 1,5 m (3 m no crítico) e desfaz o Clinch; Encontrão (melhor de FOR/DES
+     * contra acerto + mod. de Peso de quem avança) derruba; Cabeçada na face tira 2 PA do próximo turno, 1× por rodada.
+     */
+    private void basicHit(Encounter e, PendingAttack a, EncounterParticipant att, CharacterSheet attSheet,
+                          EncounterParticipant tp, CharacterSheet tsh, BaseRules.Profile tpBase, RollMessage atk,
+                          VitalService.Ctx vctx, UUID userId, ActorRole role) {
+        BasicAttack b = basicOf(a);
+        if (b == null) return;
+        switch (b) {
+            case MORDIDA -> {
+                if (holding(tp, att) && !vital.willTest(e, tp, tsh, BITE_ND, "Mordida: manter o agarre", vctx)) {
+                    releasePair(tp, att);
+                    log(e, tp.getId(), tp.getName() + " solta " + att.getName() + " (Mordida)");
+                }
+            }
+            case EMPURRAO -> {
+                EffectRules.Effect fx = EffectRules.of("Empurrar").orElseThrow();
+                if (!resists(e, tp, tsh, fx, "Empurrar", atk.total(), tpBase, userId, role)) {
+                    releasePair(att, tp);
+                    log(e, tp.getId(), tp.getName() + " é empurrado " + (atk.critical() ? "3" : "1,5") + " m por " + att.getName());
+                }
+            }
+            case ENCONTRAO -> {
+                EffectRules.Effect fx = EffectRules.of("Derrubar").orElseThrow();
+                int nd = atk.total() + SheetRules.weightMod(attSheet.getWeightKg());
+                if (!resists(e, tp, tsh, fx, "Derrubar", nd, tpBase, userId, role)) {
+                    AssemblyItem it = new AssemblyItem();
+                    it.setModule(b.label);
+                    applyEffect(e, fx, it, false, att, attSheet, tp, tsh, vctx, userId, role);
+                }
+            }
+            case CABECADA -> {
+                if (FACE.contains(VitalRules.normalizeRegion(a.getRegion())) && !faceHeadbuttThisRound(e, a, tp)) {
+                    tp.setPaLossNext(tp.getPaLossNext() + 2);
+                    log(e, tp.getId(), tp.getName() + " perde 2 PA no próximo turno (Cabeçada na face)");
+                }
+            }
+            default -> { }
+        }
+    }
+
+    /** Falha crítica de Ataque Básico (§40): Cabeçada −1 PQ em quem bate; Chute fica com a perna presa; Encontrão cai. */
+    private void basicFumble(Encounter e, PendingAttack a, EncounterParticipant att, CharacterSheet attSheet,
+                             EncounterParticipant first, VitalService.Ctx vctx) {
+        BasicAttack b = basicOf(a);
+        if (b == BasicAttack.CABECADA) {
+            log(e, att.getId(), att.getName() + " se fere na Cabeçada: −1 PQ");
+            vital.applyKp(e, att, attSheet, -1, vctx);
+        } else if (b == BasicAttack.CHUTE) {
+            grappleHold(e, att, GrappleRules.GRABBED, first, GrappleRules.Grip.LEG.name());
+            log(e, att.getId(), first.getName() + " prende a perna de " + att.getName());
+        } else if (b == BasicAttack.ENCONTRAO) {
+            vital.addEffectCondition(e, att, KNOCKED_DOWN, null, b.label, null);
+            att.setActiveBaseId(null);
+            log(e, att.getId(), att.getName() + " cai no Encontrão");
+        }
+    }
+
+    /** +1 PQ por golpe na cabeça: Chute, Cotovelada, Pisão e Joelhada no Clinch (§40). */
+    private static int basicKp(PendingAttack a, EncounterParticipant tp, Ctx ctx) {
+        BasicAttack b = basicOf(a);
+        if (b == BasicAttack.CHUTE || b == BasicAttack.COTOVELADA || b == BasicAttack.PISAO) return 1;
+        return b == BasicAttack.JOELHADA && ctx.has(tp.getId(), GrappleRules.CLINCH) ? 1 : 0;
+    }
+
+    private boolean faceHeadbuttThisRound(Encounter e, PendingAttack a, EncounterParticipant tp) {
+        List<UUID> ids = attacks.findByEncounterIdAndAttackerIdAndStatus(e.getId(), a.getAttackerId(), AttackStatus.RESOLVED)
+                .stream().filter(x -> x.getRound() == a.getRound() && basicOf(x) == BasicAttack.CABECADA
+                        && FACE.contains(VitalRules.normalizeRegion(x.getRegion())))
+                .map(PendingAttack::getId).toList();
+        return !ids.isEmpty() && targets.findByAttackIdIn(ids).stream()
+                .anyMatch(t -> t.getTargetId().equals(tp.getId()) && t.getOutcome() == AttackOutcome.HIT);
+    }
+
+    /** `holder` mantém `victim` preso (alguma condição de agarre em `victim` com origem em `holder`). */
+    private boolean holding(EncounterParticipant holder, EncounterParticipant victim) {
+        return conditions.findByParticipantIdIn(List.of(victim.getId())).stream()
+                .anyMatch(c -> holder.getId().equals(c.getSourceParticipantId()) && GrappleRules.HOLDS.contains(c.getConditionKey()));
+    }
+
+    /** Desfaz o agarre entre os dois, nos dois sentidos (inclui o Clinch mútuo). */
+    private void releasePair(EncounterParticipant x, EncounterParticipant y) {
+        conditions.findByParticipantIdIn(List.of(x.getId(), y.getId())).stream()
+                .filter(c -> GrappleRules.HOLDS.contains(c.getConditionKey()) && c.getSourceParticipantId() != null
+                        && (c.getParticipantId().equals(x.getId()) ? y : x).getId().equals(c.getSourceParticipantId()))
+                .toList().forEach(conditions::delete);
     }
 
     /**

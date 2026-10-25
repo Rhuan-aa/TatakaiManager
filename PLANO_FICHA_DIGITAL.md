@@ -1900,7 +1900,7 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
 
 ### 26.5 Pendências após os capítulos de Criação Marcial, Ataques Básicos e Armamentos (25/10/2026)
 14. ~~**Tela do agarre**~~ — feito (§39).
-15. **Golpes básicos restantes** — Mordida, Empurrão, Encontrão, Pisão; efeitos especiais da Cabeçada (−2 PA na face,
+15. ~~**Golpes básicos restantes**~~ — feito (§40). Mordida, Empurrão, Encontrão, Pisão; efeitos especiais da Cabeçada (−2 PA na face,
     1×/rodada; falha crítica −1 PQ próprio), do Chute (falha crítica: perna presa) e +1 PQ (Chute, Cotovelada, Joelhada no
     Clinch).
 16. **Chão do encontro** (macio/padrão/duro) — dano de Arremesso/Cravar (+0/+1d4/+2d4 e 1 PQ no duro) e Montinho.
@@ -2164,5 +2164,21 @@ Regras puras em `service/rules/GrappleRules`. Vínculo = condição no alvo com 
   respiratório −1d6 SP e Mental ND 12 (+2/turno) ou `PANICO`; desmaiado e mantido > 3 rodadas: −1/4 do HP máx./rodada.
 - **Tela:** grupo "Agarre" no `ActionBar` (só aparece preso ou agarrando): Escapar (FOR, ou DES quando permitido) e, por
   vítima, as ações cujo pré-requisito a condição atende; `AttackBuilder` com ponto e "Apertar/torcer" no Agarrão.
-- Clinch bloqueia o Chute; Imobilizado não Esquiva. **Pendente:** Mordida, Empurrão, Encontrão, Pisão e efeitos especiais da Cabeçada/Chute.
+- Clinch bloqueia o Chute; Imobilizado não Esquiva.
+
+## 40. Golpes básicos restantes (Ataques Básicos, 25/10/2026)
+
+`BasicAttack` ganhou `MORDIDA` (1d2, sem FOR), `EMPURRAO` e `ENCONTRAO` (sem dano: perfil sem dado) e `PISAO` (1d4 + FOR +
+mod. de Peso); famílias novas em `MartialRules.Family` (especialização por "mordida", "empurr", "encontr", "pisão").
+Ação Menor Ofensiva sem Técnica Rápida: Soco, Mordida e Empurrão (`BasicAttack.quick`). Efeitos em `AttackService`:
+- **No acerto** (`basicHit`): Mordida → quem agarra o mordedor faz Vontade/Mental ND 12 ou solta; Empurrão → alvo resiste
+  com FOR (Enraizado conta) contra o acerto, senão é empurrado 1,5 m (3 m no crítico) e o agarre/Clinch entre os dois se
+  desfaz; Encontrão → melhor de FOR/DES contra acerto + mod. de Peso do atacante, senão Derrubado (com o dano de Derrubada,
+  como o módulo Derrubar); Cabeçada com região Face/Rosto/Nariz → alvo perde 2 PA no próximo turno, 1× por rodada por alvo.
+- **Falha crítica** (`basicFumble`): Cabeçada −1 PQ em quem bate; Chute → perna presa (`AGARRADO` nota `LEG` no atacante,
+  origem = primeiro alvo); Encontrão → atacante Derrubado.
+- **+1 PQ** em golpe na cabeça (`basicKp`): Chute, Cotovelada, Pisão e Joelhada contra alvo em Clinch.
+- Pisão só contra alvos Derrubados (400). Os 3 m em linha reta do Encontrão não são verificados (sem grade).
+- Bancos existentes: dropar `pending_attacks_basic_attack_check` (valores novos no enum, §11.11 do AGENTS).
+- Front: `BASIC_HINT` (combatLabels) mostra a regra de cada básico no `AttackBuilder`.
 
