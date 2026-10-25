@@ -1898,6 +1898,19 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
 13. ✅ **Impressão dos `<details>`** — `beforeprint`/`afterprint` em `main.jsx` abrem e fecham de volta; o botão
     "Imprimir / PDF" abre antes e espera 600 ms para os traços carregarem efeitos/variações.
 
+### 26.5 Pendências após os capítulos de Criação Marcial, Ataques Básicos e Armamentos (25/10/2026)
+14. **Tela do agarre** — backend pronto (§39); falta menu no `ActionBar` e opções do Agarrão no `AttackBuilder`.
+15. **Golpes básicos restantes** — Mordida, Empurrão, Encontrão, Pisão; efeitos especiais da Cabeçada (−2 PA na face,
+    1×/rodada; falha crítica −1 PQ próprio), do Chute (falha crítica: perna presa) e +1 PQ (Chute, Cotovelada, Joelhada no
+    Clinch).
+16. **Chão do encontro** (macio/padrão/duro) — dano de Arremesso/Cravar (+0/+1d4/+2d4 e 1 PQ no duro) e Montinho.
+17. **Armas** — aguardando o subcapítulo "Armas" (tabela). Regras já disponíveis: Criações Armadas (classe, Abrangência,
+    Dado Adicional, Golpe Pesado, Carga no Gasto de Uso, módulos armados e de base armada), mãos ocupadas, locais de item,
+    preço/acesso e condição dos itens.
+18. **Módulos de técnica sem efeito automático** — Dano Persistente, Golpe no Fôlego, Massa, Sequência, Varredura/Círculo,
+    Encadear, Contragolpe, Investida/Ímpeto; Interromper e Esmagar como Efeito de golpe; Gatilho/Exige Base/Exige Posição
+    seguem só como texto.
+
 ## 27. HUD de combate e tela de reação (itens 6, 7 e 9 do §26 — só front, 25/10/2026)
 
 - **Tokens** `--act-major` (vermelho), `--act-minor` (verde), `--act-move` (azul), `--act-free` (rosa) nos dois temas;
