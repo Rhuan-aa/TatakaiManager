@@ -72,3 +72,7 @@ export const LATE_COUNTER_LABEL = {
   FAIL: 'Contra tardio falhou — reação virou falha crítica',
   SAFE: 'Contra tardio falhou (Resposta Segura)',
 };
+// Agarre (§39, espelha GrappleRules)
+export const GRIP_LABEL = { ARM: 'Braço', LEG: 'Perna', TORSO: 'Tronco ou nuca (Clinch)', NECK: 'Pescoço' };
+export const STRANGLE_LABEL = { BLOOD: 'Sanguíneo (−1 PQ/turno)', AIR: 'Respiratório (−1d6 SP, Pânico)' };
+export const HOLD_KEYS = ['IMOBILIZADO', 'ESTRANGULADO', 'AGARRADO', 'CLINCH']; // ordem da fuga: a mais forte primeiro

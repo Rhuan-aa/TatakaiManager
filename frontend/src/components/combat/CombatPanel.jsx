@@ -211,6 +211,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
                 {/* menu acompanha a rolagem: altura da tela abaixo da faixa de turno, com rolagem própria */}
                 <ActionBar participant={current} participants={enc.participants} canAct={canAct}
                   onAct={(b) => run(() => api.doAction(enc.id, b))}
+                  onGrapple={(b) => run(() => api.grapple(enc.id, b))}
                   onAttack={(kind) => setAttacking(kind)} />
               </aside>
             )}

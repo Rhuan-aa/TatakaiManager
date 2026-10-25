@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ACTIONS, ACTION_CATEGORIES, ACTION_STANCH, GUARD_LABEL, hasCondition } from './combatLabels';
+import { ACTIONS, ACTION_CATEGORIES, ACTION_STANCH, GUARD_LABEL, GRIP_LABEL, HOLD_KEYS, STRANGLE_LABEL, hasCondition } from './combatLabels';
 
 /** Botão de ação do HUD: rótulo, custo e, se indisponível, o motivo visível embaixo. */
 function ActButton({ label, cost, reason, onClick, title }) {
@@ -14,7 +14,98 @@ function ActButton({ label, cost, reason, onClick, title }) {
 }
 
 /** Menu lateral de ações do participante da vez, agrupado por tipo (Maior/Menor/Movimento/Livre). */
-export default function ActionBar({ participant: p, participants = [], canAct, onAct, onAttack }) {
+/** Agarre (§39): fuga de quem está preso e golpes de quem agarra, a partir das condições com `sourceParticipantId`. */
+function GrappleGroup({ p, participants, paReason, onGrapple }) {
+  const [escAttr, setEscAttr] = useState('STR');
+  const [strangle, setStrangle] = useState('BLOOD');
+  const [twist, setTwist] = useState(false);
+  const sp = p.resources?.currentSp;
+  const spReason = (n) => (n && sp != null && sp < n ? `SP insuficiente (${sp}/${n})` : null);
+  const send = (body) => onGrapple({ participantId: p.id, ...body });
+
+  // fuga: a condição mais forte que prende p (espelha CombatService.escape)
+  const hold = HOLD_KEYS.map((k) => p.conditions.find((c) => c.key === k && c.sourceParticipantId)).find(Boolean);
+  const holder = hold && participants.find((x) => x.id === hold.sourceParticipantId);
+  const escCost = hold?.key === 'IMOBILIZADO' ? 3 : 1;
+  const dexOk = hold && (hold.key === 'IMOBILIZADO'
+    || (hold.key !== 'CLINCH' && ['TAKEDOWN', 'SWEEP'].includes(p.martialType)));
+
+  // vítimas de p: condições de agarre nos outros com origem em p
+  const victims = participants.filter((t) => t.id !== p.id)
+    .map((t) => ({ t, cs: t.conditions.filter((c) => c.sourceParticipantId === p.id && HOLD_KEYS.includes(c.key)) }))
+    .filter((v) => v.cs.length > 0);
+
+  if (!hold && victims.length === 0) return null;
+  return (
+    <section className="act-group space-y-1.5" style={{ '--act': 'var(--act-major)' }}>
+      <h4 className="act-group-title text-sm">Agarre</h4>
+      {hold && (
+        <>
+          <ActButton label={`Escapar de ${holder?.name ?? '?'}`} cost={`${escCost} PA`}
+            title={`${hold.name}: competição contra quem agarra`}
+            reason={paReason(escCost)}
+            onClick={() => send({ action: 'ESCAPE', attribute: dexOk ? escAttr : 'STR' })} />
+          {dexOk && (
+            <select className="field !mt-0 !py-0.5 text-xs" aria-label="Atributo da fuga" value={escAttr}
+              onChange={(e) => setEscAttr(e.target.value)}>
+              <option value="STR">com Força</option><option value="DEX">com Destreza</option>
+            </select>
+          )}
+        </>
+      )}
+      {victims.map(({ t, cs }) => {
+        const grab = cs.find((c) => c.key === 'AGARRADO');
+        const initiated = cs.some((c) => c.key === 'CLINCH' && c.note === 'INICIOU');
+        const downed = hasCondition(t, 'DERRUBADO');
+        const kept = cs.filter((c) => c.key === 'ESTRANGULADO' || (c.key === 'IMOBILIZADO' && c.note === 'CONSTRICAO'));
+        const constricted = kept.some((c) => c.key === 'IMOBILIZADO');
+        const on = { targetParticipantId: t.id };
+        return (
+          <div key={t.id} className="space-y-1.5 border-t border-[var(--line)] pt-1.5">
+            <p className="text-xs font-bold">{t.name}: {cs.map((c) => c.name + (GRIP_LABEL[c.note] ? ` (${GRIP_LABEL[c.note]})` : '')).join(', ')}</p>
+            {(initiated || grab?.note === 'TORSO') && (
+              <ActButton label="Projeção" cost="3 PA · 1 SP" title="FOR × melhor de FOR/DES: Derrubado + dano, solta"
+                reason={paReason(3) ?? spReason(1)} onClick={() => send({ action: 'PROJECT', ...on })} />
+            )}
+            {grab?.note === 'LEG' && (
+              <ActButton label="Derrubar pela perna" cost="3 PA · 1 SP" title="FOR × FOR: Derrubado"
+                reason={paReason(3) ?? spReason(1)} onClick={() => send({ action: 'LEG_TAKEDOWN', ...on })} />
+            )}
+            {grab && (grab.note === 'ARM' || downed) && (
+              <ActButton label="Constrição" cost="3 PA · 1 SP" title="FOR × FOR: Imobilizado (fuga sem desvantagem)"
+                reason={paReason(3) ?? spReason(1)} onClick={() => send({ action: 'CONSTRICT', ...on })} />
+            )}
+            {(initiated || grab?.note === 'NECK') && (
+              <>
+                <ActButton label="Estrangular" cost="3 PA" reason={paReason(3)}
+                  onClick={() => send({ action: 'STRANGLE', strangleType: strangle, ...on })} />
+                <select className="field !mt-0 !py-0.5 text-xs" aria-label="Tipo de estrangulamento" value={strangle}
+                  onChange={(e) => setStrangle(e.target.value)}>
+                  {Object.entries(STRANGLE_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                </select>
+              </>
+            )}
+            {kept.length > 0 && (
+              <>
+                <ActButton label="Manter o agarre" cost="2 PA · 1 SP" title="Sem manter, estrangulamento/constrição se desfaz no fim do turno"
+                  reason={paReason(2) ?? spReason(1)}
+                  onClick={() => send({ action: 'MAINTAIN', ...(constricted && twist ? { twist: true } : {}), ...on })} />
+                {constricted && (
+                  <label className="flex items-center gap-1 text-xs">
+                    <input type="checkbox" checked={twist} onChange={(e) => setTwist(e.target.checked)} /> Torcer (1d2 + FOR)
+                  </label>
+                )}
+              </>
+            )}
+            <ActButton label="Soltar" cost="0 PA" reason={paReason(0)} onClick={() => send({ action: 'RELEASE', ...on })} />
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+export default function ActionBar({ participant: p, participants = [], canAct, onAct, onAttack, onGrapple }) {
   const [spCost, setSpCost] = useState(1);
   const [label, setLabel] = useState('');
   const [slow, setSlow] = useState(false);
@@ -155,6 +246,7 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
             onChange={(e) => setLabel(e.target.value)} />
         </label>
       </div>
+      {onGrapple && <GrappleGroup p={p} participants={participants} paReason={paReason} onGrapple={onGrapple} />}
       {ACTION_CATEGORIES.map((c) => (
         <section key={c.key} className="act-group space-y-1.5" style={{ '--act': c.color }}>
           <h4 className="act-group-title text-sm">{c.label}</h4>

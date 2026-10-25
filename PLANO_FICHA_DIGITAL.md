@@ -1899,7 +1899,7 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
     "Imprimir / PDF" abre antes e espera 600 ms para os traços carregarem efeitos/variações.
 
 ### 26.5 Pendências após os capítulos de Criação Marcial, Ataques Básicos e Armamentos (25/10/2026)
-14. **Tela do agarre** — backend pronto (§39); falta menu no `ActionBar` e opções do Agarrão no `AttackBuilder`.
+14. ~~**Tela do agarre**~~ — feito (§39).
 15. **Golpes básicos restantes** — Mordida, Empurrão, Encontrão, Pisão; efeitos especiais da Cabeçada (−2 PA na face,
     1×/rodada; falha crítica −1 PQ próprio), do Chute (falha crítica: perna presa) e +1 PQ (Chute, Cotovelada, Joelhada no
     Clinch).
@@ -2148,7 +2148,7 @@ com itens e Gasto de Uso). A lista de **ataques** (`list`) passa a ignorar varia
 - Front: tela de reação com "Técnicas de Reação" (bônus previsto, SP, gatilhos), botões no painel de ataques, resumo
   "Esquiva com Aú"; menu Ação Maior com "Nome (Preparação)".
 
-## 39. Agarre (Ataques Básicos, 25/10/2026) — backend feito, tela pendente
+## 39. Agarre (Ataques Básicos, 25/10/2026)
 
 Regras puras em `service/rules/GrappleRules`. Vínculo = condição no alvo com `sourceParticipantId` (quem agarra) e nota.
 - **Agarrão** (`CreateAttackRequest.grip` ARM|LEG|TORSO|NECK, `squeeze`): no acerto, tronco/nuca → `CLINCH` mútuo (nota
@@ -2162,6 +2162,7 @@ Regras puras em `service/rules/GrappleRules`. Vínculo = condição no alvo com 
   Estrangulamento/Constrição não mantidos no turno de quem agarra se desfazem no fim dele. **Tração** soma nas competições.
 - Estrangulado (início do turno da vítima): sanguíneo −1 PQ (zerou: desmaia sem teste, dura enquanto mantido + 1 rodada);
   respiratório −1d6 SP e Mental ND 12 (+2/turno) ou `PANICO`; desmaiado e mantido > 3 rodadas: −1/4 do HP máx./rodada.
-- Clinch bloqueia o Chute; Imobilizado não Esquiva. **Pendente:** tela (menu de agarre e opções do Agarrão no construtor
-  de ataque), Mordida, Empurrão, Encontrão, Pisão e efeitos especiais da Cabeçada/Chute.
+- **Tela:** grupo "Agarre" no `ActionBar` (só aparece preso ou agarrando): Escapar (FOR, ou DES quando permitido) e, por
+  vítima, as ações cujo pré-requisito a condição atende; `AttackBuilder` com ponto e "Apertar/torcer" no Agarrão.
+- Clinch bloqueia o Chute; Imobilizado não Esquiva. **Pendente:** Mordida, Empurrão, Encontrão, Pisão e efeitos especiais da Cabeçada/Chute.
 

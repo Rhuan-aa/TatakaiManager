@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getRollProfiles } from '../../api/rolls';
-import { SIDED_BASICS, STRIKE_SIDE_LABEL } from './combatLabels';
+import { GRIP_LABEL, SIDED_BASICS, STRIKE_SIDE_LABEL } from './combatLabels';
 
 const KINDS = [{ k: 'MAJOR', label: 'Ação maior', pa: 3 }, { k: 'MINOR_OFFENSIVE', label: 'Menor ofensiva', pa: 2 }];
 
@@ -12,6 +12,8 @@ export default function AttackBuilder({ participant: p, participants, initialKin
   const [region, setRegion] = useState('');
   const [penalty, setPenalty] = useState(0);
   const [side, setSide] = useState('');
+  const [grip, setGrip] = useState('ARM');
+  const [squeeze, setSqueeze] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -20,6 +22,7 @@ export default function AttackBuilder({ participant: p, participants, initialKin
   }, [p.sheetId]);
 
   const prof = profiles?.[idx];
+  const grab = prof?.basicAttack === 'AGARRAO';
   const sided = prof?.basicAttack ? SIDED_BASICS.includes(prof.basicAttack) : !!prof;
   const stealth = (t) => t.conditions.some((c) => c.key === 'FURTIVO');
   const toggle = (id) => setTargets((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
@@ -37,6 +40,7 @@ export default function AttackBuilder({ participant: p, participants, initialKin
       ...(region.trim() ? { region: region.trim() } : {}),
       regionPenalty: -Math.abs(penalty),
       ...(sided && side ? { strikeSide: side } : {}),
+      ...(grab ? { grip, squeeze } : {}),
     });
   }
 
@@ -67,6 +71,18 @@ export default function AttackBuilder({ participant: p, participants, initialKin
                   {Object.entries(STRIKE_SIDE_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                 </select>
               </label>
+            )}
+            {grab && (
+              <>
+                <label className="text-xs">Ponto do agarre
+                  <select className="field" value={grip} onChange={(e) => setGrip(e.target.value)}>
+                    {Object.entries(GRIP_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                  </select>
+                </label>
+                <label className="flex items-center gap-1 self-end text-xs" title="Sem apertar/torcer o Agarrão não causa dano">
+                  <input type="checkbox" checked={squeeze} onChange={(e) => setSqueeze(e.target.checked)} /> Apertar/torcer (1d2 + FOR)
+                </label>
+              </>
             )}
             <label className="text-xs">Região
               <input className="field" maxLength={40} value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Cabeça…" />

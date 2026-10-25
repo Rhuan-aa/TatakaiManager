@@ -886,25 +886,23 @@ Crítico Garantido = dano crítico no alvo (inconsciente por SP/PQ sem reação,
 Estabilizar aliado À Beira da Morte e Sequela de Nocaute (regra opcional) (§35). Aliado consciente
 Defende/Contra-ataca no lugar de alvo Inconsciente (`guardians`, `defenderId`, §36). Técnicas de Reação e de
 Preparação (`TechniqueRules`, `coreTechniques`, §38). Módulos de base Fôlego, Economia, Absorção Contínua, Troca Fluida,
-Punição e Avanço Pesado (§31). Agarre — **só backend** (`GrappleRules`, `POST /encounters/{eid}/grapple`, §39).
+Punição e Avanço Pesado (§31). Agarre (`GrappleRules`, `POST /encounters/{eid}/grapple`, §39; tela: grupo "Agarre" no
+`ActionBar` e ponto/apertar do Agarrão no `AttackBuilder`).
 
 **Pendentes** (detalhes no plano §26.5):
-1. **Tela do agarre:** botões no `ActionBar` (escapar com FOR/DES; projeção, derrubar pela perna, constrição, estrangular
-   sanguíneo/respiratório, manter com torção, soltar — a partir das condições com `sourceParticipantId`) e, no
-   `AttackBuilder`, ponto do agarre (`grip`) e "apertar/torcer" (`squeeze`) quando o ataque for Agarrão.
-2. **Golpes básicos restantes** (Ataques Básicos): Mordida (1d2 perfurante, sem FOR, Ação Menor, Raspagem; quem agarra o
+1. **Golpes básicos restantes** (Ataques Básicos): Mordida (1d2 perfurante, sem FOR, Ação Menor, Raspagem; quem agarra o
    mordedor faz Mental ND 12 ou solta), Empurrão (Ação Menor, sem dano, FOR vs acerto → 1,5/3 m; desfaz Clinch), Encontrão
    (exige 3 m em linha reta; FOR/DES vs acerto + mod. de Peso → Derrubado; falha crítica derruba o atacante), Pisão (alvo
    Derrubado, 1d4 + FOR + mod. de Peso, +1 PQ na cabeça) e efeitos especiais: Cabeçada na face −2 PA (1×/rodada; falha
    crítica −1 PQ no próprio), Chute (falha crítica: perna presa), Joelhada no Clinch +1 PQ, Chute/Cotovelada +1 PQ.
-3. **Chão do encontro** (macio/padrão/duro) para Arremesso, Cravar e Montinho (módulos de Potência) e o dano de chão.
-4. **Armas** — falta o subcapítulo "Armas" (tabela de armas). Já há regras no material: classes, Carga no Gasto de Uso,
+2. **Chão do encontro** (macio/padrão/duro) para Arremesso, Cravar e Montinho (módulos de Potência) e o dano de chão.
+3. **Armas** — falta o subcapítulo "Armas" (tabela de armas). Já há regras no material: classes, Carga no Gasto de Uso,
    Dado Adicional/Golpe Pesado, módulos armados (Desarmar, Puxar, Mutilar, Quebrar Arma, Aparar…), mãos ocupadas
    (Agarrão exige duas mãos livres), locais de item (mão, Acesso Rápido, mochila) e condição do item.
-5. Técnicas ainda sem efeito automático: Dano Persistente, Golpe no Fôlego, Massa, Sequência, Varredura/Círculo, Encadear,
+4. Técnicas ainda sem efeito automático: Dano Persistente, Golpe no Fôlego, Massa, Sequência, Varredura/Círculo, Encadear,
    Contragolpe, Investida/Ímpeto (sem grade), Interromper/Esmagar como Efeito de golpe; Gatilho/Exige Base/Exige Posição
    só como texto.
-6. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).
+5. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).
 
 **Colunas novas sem migração automática** (bancos com `ddl-auto=validate`): `combat_conditions.progress`,
 `inventory_items.weight_kg`, `encounter_participants.stabilize_failures`/`fluid_switch_used`,

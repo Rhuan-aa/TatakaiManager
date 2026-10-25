@@ -35,3 +35,5 @@ export const cancelAttack = (aid) => post(`/attacks/${aid}/cancel`);
 export const setCounter = async (eid, id, value) =>
   (await client.patch(`/encounters/${eid}/counters/${id}`, { value })).data;
 export const lateCounter = (aid, tid, body) => post(`/attacks/${aid}/targets/${tid}/late-counter`, body);
+// Agarre (§39): { participantId, action, targetParticipantId?, attribute?, strangleType?, twist? }
+export const grapple = (eid, body) => post(`/encounters/${eid}/grapple`, body);
