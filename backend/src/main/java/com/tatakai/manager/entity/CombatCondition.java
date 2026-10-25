@@ -44,6 +44,9 @@ public class CombatCondition {
 
     private Integer intensity;
 
+    /** Contador da condição: testes de Congelando feitos, sucessos contra o Envenenado (§33). */
+    private Integer progress;
+
     @Column(length = 200)
     private String note;
 }

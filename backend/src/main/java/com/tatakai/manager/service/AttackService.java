@@ -443,7 +443,8 @@ public class AttackService {
 
         int adv = (ctx.has(att.getId(), RESTRAINED) ? -1 : 0) + (ctx.has(att.getId(), DISORIENTED) ? -1 : 0)
                 + (ctx.hasAny(ts.get(0).getTargetId(), EASY_TARGET) ? 1 : 0)
-                + (ctx.has(att.getId(), "DISSOCIADO") ? -1 : 0);
+                + (ctx.has(att.getId(), "DISSOCIADO") ? -1 : 0)
+                + (ctx.has(att.getId(), VitalService.BURNING) ? -1 : 0); // Queimando: desvantagem em precisão
         String targetNames = names(ctx, ts);
         RollMessage atk = rolls.rollCalc(attSheet, e.getCampaignId(), calc, adv,
                 "Ataque: " + att.getName() + " → " + targetNames, userId, role);
@@ -553,7 +554,7 @@ public class AttackService {
                         rc = new Calc(rc.type(), rc.sourceId(), rc.name(), rc.variation(), rc.basic(), rc.spCost(),
                                 rc.critMargin(), rc.advantage(), hit, rc.dice(), rc.damage());
                     }
-                    RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), rc, 0,
+                    RollMessage res = rolls.rollCalc(tsh, e.getCampaignId(), rc, vital.conditionAdvantage(tp, fx.resist()),
                             "Resistir a " + label + ": " + tp.getName() + " vs " + atk.total(), userId, role);
                     if (EffectRules.resisted(res.total(), atk.total())) {
                         log(e, tp.getId(), tp.getName() + " resistiu a " + label + " (" + res.total() + " vs " + atk.total() + ")");
@@ -677,6 +678,8 @@ public class AttackService {
         if (!defend && ctx.has(tp.getId(), KNOCKED_DOWN)) adv--;
         if (reaction == ReactionType.DODGE && ctx.has(tp.getId(), DISORIENTED)) adv--;
         if (ctx.has(tp.getId(), STUNNED) || ctx.has(tp.getId(), PARALYZED)) adv--;
+        if (defend && ctx.has(tp.getId(), VitalService.POISONED)) adv--;   // Envenenado: CON
+        if (!defend && ctx.has(tp.getId(), VitalService.FREEZING)) adv--;  // Congelando: DES
         if (mu.inter().label() != null) hit.add(new RollPart("HIT", mu.inter().label(), 0, null, false));
         if (mu.inter().result() == -1) adv++;
         String label = switch (reaction) {

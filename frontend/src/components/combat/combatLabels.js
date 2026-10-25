@@ -19,6 +19,7 @@ export const ACTIONS = [
   { action: 'MAJOR', label: 'Ação maior', pa: 3, sp: true, ask: true, cat: 'MAJOR' },
   { action: 'PREPARED', label: 'Preparada', pa: 3, sp: true, ask: true, cat: 'MAJOR' },
   { action: 'BREATHE', label: 'Respirar', pa: 4, cat: 'MAJOR' },
+  { action: 'EXTINGUISH', label: 'Apagar chamas', pa: 3, cat: 'MAJOR', needs: 'QUEIMANDO' },
   { action: 'MINOR', label: 'Ação menor', pa: 1, cat: 'MINOR' },
   { action: 'MINOR_OFFENSIVE', label: 'Menor ofensiva', pa: 2, sp: true, cat: 'MINOR' },
   { action: 'SHOVE', label: 'Atravessar', pa: 1, cat: 'MINOR' },

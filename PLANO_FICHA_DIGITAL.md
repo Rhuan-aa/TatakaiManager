@@ -2025,3 +2025,19 @@ Fora: Tração (sem motor de competição de agarre), "Penalidade fora de chutes
 - Fora: Crítico Garantido contra ferimento não tratado, 2 meses de recuperação do Membro Inútil (o Mestre trata),
   ferimentos cortantes/perfurantes (dependem de armas).
 
+## 33. Condições de ambiente automáticas (capítulo de Condições, 25/10/2026)
+
+Regras puras em `service/rules/EnvironmentRules`; processamento em `VitalService` (início do turno, fim do turno, Apagar
+chamas). Coluna nova `combat_conditions.progress` (contador; `ddl-auto=update` cria).
+
+| Condição | Nível (`intensity`) | Início do turno | Outros efeitos | Saída |
+|---|---|---|---|---|
+| Queimando | Comum 1d4 / Intenso 2d6 / Avassalador 2d8 | dano no HP | desvantagem nos ataques | ação **Apagar chamas** (`EXTINGUISH`, 3 PA): DES vs ND 13/15/17; o Mestre remove (água) |
+| Congelando | — | CON vs ND 14 +2 por teste (`progress`); falha: 1d3 HP + 1 Desgaste Físico | Mover ÷2; desvantagem em FOR/DES (Esquiva, Contra, resistências) | o Mestre remove (2 turnos longe do frio) |
+| Envenenado | Fraco 1d4 SP ND 12 / Moderado 1d6 ND 14 / Letal 2d6 ND 17 | dano (SP no Fraco) | desvantagem em CON (Defender, salvaguarda, resistências); **fim do turno:** CON vs ND | 2 sucessos (`progress`) ou o Mestre (antídoto) |
+| Sufocando | — | −1d6 SP | SP 0 → Inconsciente **sem** Teste de Vontade | o Mestre remove (voltou a respirar) |
+
+- **Acúmulo:** a mesma condição não se acumula. Reaplicar renova e, nas que têm nível, vale o mais forte.
+  `ConditionCatalog.Def.levels` substitui o antigo `stack: SUM` do Envenenado, e o seletor de condição mostra os níveis.
+- "Apagar chamas" só aparece no menu de ações quando o lutador está Queimando.
+

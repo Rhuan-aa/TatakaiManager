@@ -56,7 +56,8 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
     ...(label.trim() ? { label: label.trim() } : {}),
   });
 
-  const actionButtons = (cat) => ACTIONS.filter((a) => a.cat === cat).map((a) => {
+  // ações situacionais (ex.: Apagar chamas) só aparecem quando a condição está presente
+  const actionButtons = (cat) => ACTIONS.filter((a) => a.cat === cat && (!a.needs || hasCondition(p, a.needs))).map((a) => {
     const pa = a.action === 'MAJOR' && slow ? 4 : a.pa;
     return <ActButton key={a.action} label={a.label} reason={disabledReason(a)} onClick={() => act(a)}
       cost={`${pa} PA${a.sp ? ` · ${effSp(a)} SP` : ''}`} />;

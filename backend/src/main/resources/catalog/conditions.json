@@ -122,26 +122,36 @@
   {
     "key": "QUEIMANDO",
     "name": "Queimando",
-    "effect": "Dano no início do turno; desvantagem em foco/precisão",
-    "exit": "Ação Maior + DES vs ND 13/15/17; água apaga",
+    "effect": "Dano no início do turno (1d4/2d6/2d8); desvantagem nos ataques",
+    "exit": "Apagar chamas: Ação Maior + DES vs ND 13/15/17; água apaga",
     "defaultExpiresAt": "MANUAL",
-    "stack": "RENEW"
+    "stack": "RENEW",
+    "levels": [
+      "Comum (1d4, ND 13)",
+      "Intenso (2d6, ND 15)",
+      "Avassalador (2d8, ND 17)"
+    ]
   },
   {
     "key": "CONGELANDO",
     "name": "Congelando",
-    "effect": "Movimento ÷2; desvantagem FOR/DES; teste CON ND 14 +2/turno, falha: 1d3 + 1 Desgaste Físico",
-    "exit": "2 turnos longe do frio",
-    "defaultExpiresAt": "COUNTER",
+    "effect": "Movimento ÷2; desvantagem em FOR/DES (Esquiva e Contra); CON ND 14 +2/turno, falha: 1d3 + 1 Desgaste Físico",
+    "exit": "2 turnos seguidos longe do frio, ou fonte de calor (o Mestre remove)",
+    "defaultExpiresAt": "MANUAL",
     "stack": "RENEW"
   },
   {
     "key": "ENVENENADO",
     "name": "Envenenado",
-    "effect": "Dano no início; desvantagem em CON; teste no fim",
+    "effect": "Dano no início do turno; desvantagem em CON (e em Defender); teste de CON no fim do turno",
     "exit": "2 sucessos ou antídoto",
     "defaultExpiresAt": "MANUAL",
-    "stack": "SUM"
+    "stack": "RENEW",
+    "levels": [
+      "Fraco (1d4 no SP, ND 12)",
+      "Moderado (1d6, ND 14)",
+      "Letal (2d6, ND 17)"
+    ]
   },
   {
     "key": "SUFOCANDO",

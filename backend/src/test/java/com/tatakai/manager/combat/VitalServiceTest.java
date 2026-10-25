@@ -410,4 +410,71 @@ class VitalServiceTest {
         assertThat(s.getOpenWounds()).isZero();
         assertThat(cList).extracting(CombatCondition::getConditionKey).containsExactly("INCONSCIENTE");
     }
+
+    // ---------- §33: condições de ambiente ----------
+
+    private void add(String key, Integer intensity) {
+        cList.add(CombatCondition.builder().id(UUID.randomUUID()).participantId(p.getId()).conditionKey(key)
+                .expiresAt(ConditionExpiry.MANUAL).intensity(intensity).build());
+    }
+
+    @Test
+    @DisplayName("§33 Queimando: dano do nível no início do turno; Apagar chamas com DES contra o ND do nível")
+    void burning() {
+        add("QUEIMANDO", 2);
+        d4 = 7;
+        vital.onTurnStart(enc, p, s, ctx);
+        assertThat(s.getCurrentHp()).isEqualTo(33);
+        totals.add(14); // < ND 15 (Intenso)
+        vital.extinguish(enc, p, s, ctx);
+        assertThat(cond("QUEIMANDO")).isPresent();
+        totals.add(15);
+        vital.extinguish(enc, p, s, ctx);
+        assertThat(cond("QUEIMANDO")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("§33 Congelando: CON ND 14 e sobe +2; falha = 1d3 de dano e +1 Desgaste Físico")
+    void freezing() {
+        add("CONGELANDO", null);
+        totals.add(14); // passa ND 14
+        vital.onTurnStart(enc, p, s, ctx);
+        assertThat(s.getCurrentHp()).isEqualTo(40);
+        d4 = 2;
+        totals.add(15); // falha ND 16
+        vital.onTurnStart(enc, p, s, ctx);
+        assertThat(s.getCurrentHp()).isEqualTo(38);
+        assertThat(s.getPhysicalFatigue()).isEqualTo(1);
+        assertThat(purposes).anyMatch(x -> x.contains("ND 16"));
+    }
+
+    @Test
+    @DisplayName("§33 Envenenado: Fraco tira SP; CON no fim do turno com desvantagem; 2 sucessos eliminam")
+    void poison() {
+        add("ENVENENADO", 1);
+        d4 = 3;
+        vital.onTurnStart(enc, p, s, ctx);
+        assertThat(s.getCurrentSp()).isEqualTo(7);
+        totals.add(12);
+        vital.onTurnEnd(enc, p, s, ctx);
+        assertThat(cond("ENVENENADO")).isPresent();
+        assertThat(advs.get(advs.size() - 1)).isEqualTo(-1);
+        totals.add(11); // falha não conta
+        vital.onTurnEnd(enc, p, s, ctx);
+        totals.add(13);
+        vital.onTurnEnd(enc, p, s, ctx);
+        assertThat(cond("ENVENENADO")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("§33 Sufocando: −1d6 SP por turno; SP 0 → Inconsciente sem Teste de Vontade")
+    void suffocating() {
+        add("SUFOCANDO", null);
+        s.setCurrentSp(2);
+        d4 = 4;
+        vital.onTurnStart(enc, p, s, ctx);
+        assertThat(s.getCurrentSp()).isZero();
+        assertThat(cond("INCONSCIENTE")).isPresent();
+        assertThat(purposes).noneMatch(x -> x.contains("Vontade"));
+    }
 }

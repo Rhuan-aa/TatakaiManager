@@ -615,7 +615,7 @@ class CombatServiceTest {
     }
 
     @Test
-    @DisplayName("Condição repetida renova (substitui); stack SUM soma a intensidade")
+    @DisplayName("Condição repetida renova; com níveis vale o mais forte (não acumula)")
     void conditionStack() {
         EncounterParticipant[] p = started();
         cond(p[1], "DESORIENTADO", null, null, null);
@@ -625,11 +625,11 @@ class CombatServiceTest {
         assertThat(cList.get(0).getExpiresAt()).isEqualTo(ConditionExpiry.MANUAL);
         assertThat(cList.get(0).getAppliedTurn()).isEqualTo(2);
 
-        cond(p[1], "ENVENENADO", null, null, 2);
         cond(p[1], "ENVENENADO", null, null, 3);
+        cond(p[1], "ENVENENADO", null, null, 2);
         assertThat(cList).hasSize(2);
         assertThat(cList.stream().filter(c -> c.getConditionKey().equals("ENVENENADO")).findFirst().orElseThrow().getIntensity())
-                .isEqualTo(5);
+                .isEqualTo(3); // não acumula: vale o nível mais forte
     }
 
     @Test

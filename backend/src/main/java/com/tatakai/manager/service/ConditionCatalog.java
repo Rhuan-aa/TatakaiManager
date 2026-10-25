@@ -14,11 +14,15 @@ import java.util.Optional;
 @Component
 public class ConditionCatalog {
 
-    /** stack: RENEW (substitui) ou SUM (soma a intensidade). */
+    /**
+     * Condição não se acumula consigo mesma: reaplicar renova; com `levels` (Queimando, Envenenado), vale o nível mais
+     * forte (intensidade 1..N). `stack` fica só por compatibilidade do JSON.
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     public record Def(String key, String name, String effect, String exit,
-                      ConditionExpiry defaultExpiresAt, String stack) {
-        public boolean sums() {
-            return "SUM".equals(stack);
+                      ConditionExpiry defaultExpiresAt, String stack, List<String> levels) {
+        public boolean leveled() {
+            return levels != null && !levels.isEmpty();
         }
     }
 

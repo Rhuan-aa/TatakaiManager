@@ -23,6 +23,8 @@ import com.tatakai.manager.service.RollProfileService.Calc;
 import com.tatakai.manager.service.rules.CombatRules;
 import com.tatakai.manager.service.rules.RollRules;
 import com.tatakai.manager.service.rules.BaseRules;
+import com.tatakai.manager.service.rules.EnvironmentRules;
+import com.tatakai.manager.entity.Attribute;
 import com.tatakai.manager.service.rules.SheetRules;
 import com.tatakai.manager.entity.PermanentInjury;
 import com.tatakai.manager.entity.InjuryType;
@@ -50,6 +52,10 @@ public class VitalService {
     public static final String EXHAUSTED = "EXAUSTO";
     public static final String DISSOCIATED = "DISSOCIADO";
     public static final String DISORIENTED = "DESORIENTADO";
+    public static final String BURNING = "QUEIMANDO";
+    public static final String FREEZING = "CONGELANDO";
+    public static final String POISONED = "ENVENENADO";
+    public static final String SUFFOCATING = "SUFOCANDO";
 
     /** Quem causa a alteração (para log de ficha/rolagens) e o motivo; critical = golpe crítico. */
     public record Ctx(UUID userId, ActorRole role, String reason, boolean critical) {
@@ -167,6 +173,7 @@ public class VitalService {
             hit.add(new RollPart("HIT", "Muralha", 4, null, false));
         }
         int adv = mental && tier != VitalRules.Tier.NONE ? 1 : 0;
+        if (!mental && hasCondition(p, POISONED)) adv--; // Envenenado: desvantagem em CON
         Calc calc = new Calc(RollSourceType.ATTRIBUTE_TEST, null, mental ? "Vontade" : "Constituição", null, null, 0,
                 RollRules.CRIT_MARGIN, 0, hit, null, List.of());
         RollMessage m = rolls.rollCalc(s, e.getCampaignId(), calc, adv,
@@ -274,6 +281,11 @@ public class VitalService {
 
     private void spZero(Encounter e, EncounterParticipant p, CharacterSheet s, Ctx c) {
         boolean dissociated = VitalRules.dissociated(s.getMentalFatigue());
+        if (hasCondition(p, SUFFOCATING)) { // Sufocando: SP 0 → Inconsciente sem o Teste de Vontade
+            log(e, p.getId(), CombatEventType.ACTION, p.getName() + " desmaia sem ar");
+            unconsciousBySp(e, p);
+            return;
+        }
         if (dissociated || !test(e, p, s, true, VitalRules.SP_ZERO_ND, "SP 0", c)) {
             unconsciousBySp(e, p);
         } else {
@@ -434,12 +446,112 @@ public class VitalService {
             log(e, p.getId(), CombatEventType.ACTION, p.getName() + " sangra: " + s.getOpenWounds() + " de dano");
             applyHp(e, p, s, -s.getOpenWounds(), new Ctx(c.userId(), c.role(), "Sangramento", false));
         }
+        environmentStart(e, p, s, c);
         List<CombatCondition> mine = conds(p);
         if (has(mine, DEAD)) return;
         if (has(mine, DYING)) deathSave(e, p, s, c);
         if (p.getExhaustionNd() != null && has(mine, EXHAUSTED) && s.getCurrentSp() == 0) exhaustionTest(e, p, s, c);
         setAdrenaline(p, p.getAdrenaline() + 2);
         if (VitalRules.crisisByLowHp(s.getCurrentHp(), s.getHpMax())) crisis(e, p);
+    }
+
+    // ---------- condições de ambiente (§33) ----------
+
+    /** Teste de atributo (1d20 + mod. − Desgaste) contra `nd`, com a vantagem dada; registra na linha do tempo. */
+    public boolean attributeTest(Encounter e, EncounterParticipant p, CharacterSheet s, Attribute a, int nd,
+                                 String label, int adv, Ctx c) {
+        List<RollPart> hit = new ArrayList<>();
+        String name = RollProfileService.label(a);
+        hit.add(new RollPart("HIT", name, RollRules.modOrZero(s.getAttribute(a)), null, false));
+        boolean mentalAttr = a == Attribute.INT || a == Attribute.CHA || a == Attribute.MEN;
+        int pen = CombatRules.fatiguePenalty(mentalAttr ? s.getMentalFatigue() : s.getPhysicalFatigue());
+        if (pen > 0) hit.add(new RollPart("HIT", mentalAttr ? "Desgaste Mental" : "Desgaste Físico", -pen, null, false));
+        Calc calc = new Calc(RollSourceType.ATTRIBUTE_TEST, null, "Teste de " + name, null, null, 0,
+                RollRules.CRIT_MARGIN, 0, hit, null, List.of());
+        RollMessage m = rolls.rollCalc(s, e.getCampaignId(), calc, adv, label + ": " + p.getName() + " — ND " + nd,
+                c.userId(), c.role());
+        boolean ok = m.total() >= nd;
+        log(e, p.getId(), CombatEventType.ACTION, p.getName() + ": " + label + " " + m.total() + " vs ND " + nd
+                + " — " + (ok ? "sucesso" : "falha"));
+        return ok;
+    }
+
+    /** Desvantagem do próprio corpo num teste de atributo: Envenenado (CON), Congelando (FOR/DES). */
+    public int conditionAdvantage(EncounterParticipant p, Attribute a) {
+        int adv = 0;
+        if (a == Attribute.CON && hasCondition(p, POISONED)) adv--;
+        if ((a == Attribute.STR || a == Attribute.DEX) && hasCondition(p, FREEZING)) adv--;
+        return adv;
+    }
+
+    private int rollDamage(CharacterSheet s, String dice, String purpose, Ctx c) {
+        return rolls.rollInternal(s, dice, purpose, c.userId(), c.role()).getTotal();
+    }
+
+    /** Início do turno: fogo, frio, veneno e falta de ar. */
+    private void environmentStart(Encounter e, EncounterParticipant p, CharacterSheet s, Ctx c) {
+        for (CombatCondition k : conds(p)) {
+            switch (k.getConditionKey()) {
+                case BURNING -> {
+                    EnvironmentRules.Level l = EnvironmentRules.level(EnvironmentRules.BURN, k.getIntensity());
+                    int d = rollDamage(s, l.dice(), "Queimando (" + l.label() + "): " + p.getName(), c);
+                    log(e, p.getId(), CombatEventType.ACTION, p.getName() + " queima: " + d + " de dano");
+                    applyHp(e, p, s, -d, new Ctx(c.userId(), c.role(), "Queimando", false));
+                }
+                case FREEZING -> {
+                    int tests = k.getProgress() == null ? 0 : k.getProgress();
+                    k.setProgress(tests + 1);
+                    conditions.save(k);
+                    if (!attributeTest(e, p, s, Attribute.CON, EnvironmentRules.freezeNd(tests), "Congelando", 0, c)) {
+                        int d = rollDamage(s, EnvironmentRules.FREEZE_DAMAGE, "Congelando: " + p.getName(), c);
+                        int before = s.getPhysicalFatigue();
+                        s.setPhysicalFatigue(before + 1);
+                        record(s, c, "COMBAT_FREEZE", "physicalFatigue", before, before + 1);
+                        log(e, p.getId(), CombatEventType.ACTION, p.getName() + " congela: " + d + " de dano e +1 Desgaste Físico");
+                        applyHp(e, p, s, -d, new Ctx(c.userId(), c.role(), "Congelando", false));
+                    }
+                }
+                case POISONED -> {
+                    EnvironmentRules.Level l = EnvironmentRules.level(EnvironmentRules.POISON, k.getIntensity());
+                    int d = rollDamage(s, l.dice(), "Veneno (" + l.label() + "): " + p.getName(), c);
+                    log(e, p.getId(), CombatEventType.ACTION, p.getName() + " sofre o veneno: " + d + (l.sp() ? " de SP" : " de dano"));
+                    if (l.sp()) applySp(e, p, s, -d, c);
+                    else applyHp(e, p, s, -d, new Ctx(c.userId(), c.role(), "Veneno", false));
+                }
+                case SUFFOCATING -> {
+                    int d = rollDamage(s, EnvironmentRules.SUFFOCATE_SP, "Sufocando: " + p.getName(), c);
+                    log(e, p.getId(), CombatEventType.ACTION, p.getName() + " sufoca: −" + d + " SP");
+                    applySp(e, p, s, -d, c);
+                }
+                default -> { }
+            }
+            if (hasCondition(p, DEAD)) return;
+        }
+    }
+
+    /** Fim do turno: teste de CON contra o veneno; 2 sucessos eliminam. */
+    public void onTurnEnd(Encounter e, EncounterParticipant p, CharacterSheet s, Ctx c) {
+        for (CombatCondition k : conds(p)) {
+            if (!POISONED.equals(k.getConditionKey()) || hasCondition(p, DEAD)) continue;
+            EnvironmentRules.Level l = EnvironmentRules.level(EnvironmentRules.POISON, k.getIntensity());
+            if (!attributeTest(e, p, s, Attribute.CON, l.nd(), "Resistir ao veneno", conditionAdvantage(p, Attribute.CON), c)) continue;
+            int ok = (k.getProgress() == null ? 0 : k.getProgress()) + 1;
+            if (ok >= EnvironmentRules.POISON_CURE) removeCondition(e, p, POISONED);
+            else {
+                k.setProgress(ok);
+                conditions.save(k);
+            }
+        }
+    }
+
+    /** Apagar chamas (Ação Maior): DES contra o ND da intensidade; sucesso encerra o Queimando. */
+    public void extinguish(Encounter e, EncounterParticipant p, CharacterSheet s, Ctx c) {
+        CombatCondition k = conds(p).stream().filter(x -> BURNING.equals(x.getConditionKey())).findFirst().orElse(null);
+        if (k == null) return;
+        EnvironmentRules.Level l = EnvironmentRules.level(EnvironmentRules.BURN, k.getIntensity());
+        if (attributeTest(e, p, s, Attribute.DEX, l.nd(), "Apagar chamas", conditionAdvantage(p, Attribute.DEX), c)) {
+            removeCondition(e, p, BURNING);
+        }
     }
 
     public void onRoundEnd(Encounter e, List<EncounterParticipant> ps) {

@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 730 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 735 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -530,7 +530,7 @@ broadcast: outros clientes só veem ao recarregar o TimeSkip.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 730 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 735 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -796,7 +796,7 @@ Contrato em `PLANO_FICHA_DIGITAL.md` §22 (F6b–d ainda não feitas). Entidades
 tabelas novas). `CombatService` (+ `CombatController`) concentra encontro, iniciativa (via `RollService.rollInternal`),
 turnos/rodadas, PA, ações, condições e linha do tempo; regras puras em `service/rules/CombatRules` (bônus de iniciativa,
 recarga de PA, custos, curva de deslocamento, decisões de expiração RN-TURNO-01). Catálogo estático de condições:
-`catalog/conditions.json` via `ConditionCatalog` (`GET /catalog/conditions`; só `ENVENENADO` tem `stack: SUM`).
+`catalog/conditions.json` via `ConditionCatalog` (`GET /catalog/conditions`; `levels` em Queimando/Envenenado, §33).
 Rotas: `/campaigns/{cid}/encounters` (GET/POST), `/encounters/{eid}` (+ `/events`, `/start`, `/actions`, `/next-turn`,
 `/end`, `/participants[/{pid}[/reroll-initiative|/conditions]]`, `DELETE /conditions/{id}`); mutações devolvem o
 `EncounterResponse` completo. `resources` só ao Mestre e ao dono da ficha (NPC: só Mestre). WS: `CombatUpdateMessage` →
@@ -881,6 +881,7 @@ golpe (`RollReveal` + `revealQueue` + `combat/attackFx.js`, plano §28), fichas 
 não reage, mas o ataque precisa de total ≥ 10 (`AttackRules.VULNERABLE_ND`); Atordoado reage com desvantagem e sem
 Contra; Paralisado não age e só reage após Vontade ND 15, com desvantagem (plano §30). Base ativa: valor e escopo
 de cada item lidos do rótulo (`BaseRules`) em acerto, dano, reações, Calejamento, Enraizado, Calma e Movimentação (§31). Ferimento
-Permanente (Rompimento) criado sozinho no crítico com dado máximo; Limitador de HP e duração por tipo (§32). **Pendentes:** técnicas
+Permanente (Rompimento) criado sozinho no crítico com dado máximo; Limitador de HP e duração por tipo (§32).
+Condições de ambiente (Queimando, Congelando, Envenenado, Sufocando) processadas por turno (`EnvironmentRules`, §33). **Pendentes:** técnicas
 de Reação, armas, Tração (competição de agarre). Ao implementar um item, escreva o contrato numa seção
 nova do plano e marque-o aqui.

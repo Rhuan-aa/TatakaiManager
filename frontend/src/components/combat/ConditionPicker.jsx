@@ -26,7 +26,7 @@ export default function ConditionPicker({ participant, participants, onSubmit, o
       key,
       ...(expiresAt ? { expiresAt } : {}),
       ...(exp === 'COUNTER' ? { turnsRemaining: Number(turns) } : {}),
-      ...(def?.stack === 'SUM' ? { intensity: Number(intensity) } : {}),
+      ...(def?.levels?.length ? { intensity: Number(intensity) } : {}),
       ...(source ? { sourceParticipantId: source } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
     });
@@ -52,8 +52,10 @@ export default function ConditionPicker({ participant, participants, onSubmit, o
         {exp === 'COUNTER' && (
           <input type="number" min={1} className="field !w-20" value={turns} onChange={(e) => setTurns(e.target.value)} aria-label="Turnos" />
         )}
-        {def?.stack === 'SUM' && (
-          <input type="number" min={1} className="field !w-20" value={intensity} onChange={(e) => setIntensity(e.target.value)} aria-label="Intensidade" />
+        {def?.levels?.length > 0 && (
+          <select className="field !w-auto" value={intensity} onChange={(e) => setIntensity(e.target.value)} aria-label="Nível">
+            {def.levels.map((l, i) => <option key={l} value={i + 1}>{l}</option>)}
+          </select>
         )}
         <select className="field !w-auto" value={source} onChange={(e) => setSource(e.target.value)}>
           <option value="">Sem origem</option>

@@ -489,6 +489,9 @@ public class CombatService {
                 throw new InvalidCombatException("Só é possível estancar a si mesmo ou a um aliado");
             }
         }
+        if (action == CombatAction.EXTINGUISH && !keys.contains(VitalService.BURNING)) {
+            throw new InvalidCombatException(p.getName() + " não está Queimando");
+        }
         CharacterTechnique newBase = null;
         if (action == CombatAction.CHANGE_GUARD && req.guard() == null) {
             throw new InvalidCombatException("Informe a guarda");
@@ -519,6 +522,7 @@ public class CombatService {
                 p.setMovesThisTurn(p.getMovesThisTurn() + 1);
                 BaseRules.Profile base = vital.baseOf(p, s);
                 double d = CombatRules.moveDistance(p.getMovesThisTurn(), s.getDex(), base == null ? 0 : base.moveMeters());
+                if (keys.contains(VitalService.FREEZING)) d = d / 2; // Congelando: Movimentação pela metade
                 text.append(" — Moveu ").append(d == Math.floor(d) ? String.valueOf((int) d) : String.valueOf(d).replace('.', ',')).append(" m");
             }
             case STAND_UP -> {
@@ -526,6 +530,7 @@ public class CombatService {
                 log(e, p.getId(), CombatEventType.CONDITION_REMOVED, p.getName() + " não está mais Derrubado");
             }
             case STANCH -> vital.stanch(e, p, stanchTarget, sheetOf(stanchTarget), ctx);
+            case EXTINGUISH -> vital.extinguish(e, p, s, ctx);
             case CHANGE_GUARD -> {
                 p.setGuard(req.guard());
                 p.setGuardChangedAt(java.time.Instant.now()); // reinicia o Timing
@@ -587,6 +592,7 @@ public class CombatService {
                 else c.setTurnsRemaining(left);
             }
         }
+        vital.onTurnEnd(e, p, sheetOf(p), ctx);
         p.setPaCurrent(0);
         log(e, p.getId(), CombatEventType.TURN_END, "Fim do turno de " + p.getName());
     }
@@ -681,16 +687,15 @@ public class CombatService {
         Integer turns = expiry == ConditionExpiry.COUNTER ? req.turnsRemaining() : null;
         CombatCondition existing = conditions.findByParticipantIdIn(List.of(p.getId())).stream()
                 .filter(c -> c.getConditionKey().equals(def.key())).findFirst().orElse(null);
-        CombatCondition c;
-        if (existing == null) {
-            c = CombatCondition.builder().participantId(p.getId()).conditionKey(def.key()).build();
-        } else {
-            c = existing;
-            if (def.sums()) {
-                c.setIntensity((c.getIntensity() == null ? 1 : c.getIntensity()) + (req.intensity() == null ? 1 : req.intensity()));
-            }
+        CombatCondition c = existing != null ? existing
+                : CombatCondition.builder().participantId(p.getId()).conditionKey(def.key()).build();
+        // não acumula: com níveis vale o mais forte; sem níveis, só renova
+        Integer level = req.intensity();
+        if (def.leveled()) {
+            level = Math.max(level == null ? 1 : level,
+                    existing == null || existing.getIntensity() == null ? 0 : existing.getIntensity());
         }
-        if (existing == null || !def.sums()) c.setIntensity(req.intensity());
+        c.setIntensity(level);
         c.setSourceParticipantId(req.sourceParticipantId());
         c.setExpiresAt(expiry);
         c.setAppliedTurn(e.getTurnCounter());
@@ -698,7 +703,8 @@ public class CombatService {
         c.setNote(req.note());
         conditions.save(c);
         log(e, p.getId(), CombatEventType.CONDITION_ADDED, p.getName() + ": " + def.name()
-                + (existing == null ? " aplicada" : def.sums() ? " acumulada" : " renovada"));
+                + (def.leveled() ? " (" + def.levels().get(Math.min(def.levels().size(), level) - 1) + ")" : "")
+                + (existing == null ? " aplicada" : " renovada"));
         onConditionApplied(e, p, def.key());
         return done(e, "CONDITION", userId, true);
     }
