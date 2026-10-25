@@ -466,6 +466,7 @@ mas os testes atuais são unitários com Mockito e não sobem contexto Spring.
 | `components/npc/NpcImagePicker.jsx` | preview; reporta `{file, remove}` ao form; imagem carregada como blob autenticado → `URL.createObjectURL` |
 | `components/timeskip/TimeSkipPanel.jsx` | lista/seleciona TimeSkip, criar (Mestre), "avançar dia" (`currentDay + 1`), encerrar, excluir; renderiza `TimeSkipActivityManager` (Mestre) e `SlotGrid`. `activitiesVersion` força o `SlotGrid` a recarregar o catálogo |
 | `components/timeskip/TimeSkipActivityManager.jsx` | CRUD do catálogo de atividades customizadas |
+| `components/combat/ActionBar.jsx`, `ReactionOverlay.jsx` | HUD: menu lateral de ações por cor/tipo; tela de reação por cima do combate |
 | `components/booking/SlotGrid.jsx` | **a grade de agendamento** (ver §5.4) |
 | `components/log/LogPanel.jsx` | feed de logs; Mestre posta log livre, edita, exclui; jogador escolhe um dos próprios bookings do TimeSkip ativo |
 | `components/ErrorBoundary.jsx` | captura erro de render; botões "Recarregar" e "Sair e entrar de novo" |
@@ -872,7 +873,7 @@ reducao)` depois da % e antes do mínimo 1.
 
 Backlog em `PLANO_FICHA_DIGITAL.md` §26. **Feitos:** base ativa (bônus no básico e na técnica; entrar/sair 1 PA, trocar
 2 PA — `CombatRules.baseChangeCost`), última luta visível (`EncounterResponse.endedAt`), listagem de membros
-(`GET /campaigns/{cid}/members`), impressão dos `<details>` (`beforeprint` em `main.jsx`). **Pendentes:** efeitos de
-módulo automáticos, técnicas de Reação, armas, HUD de combate por tipo de ação e cor, animações de ataque, tela de reação
-estilizada, rolagem em duas etapas, fichas instantâneas do Mestre. Ao implementar um item, escreva o contrato numa seção
+(`GET /campaigns/{cid}/members`), impressão dos `<details>` (`beforeprint` em `main.jsx`), HUD de combate por tipo de
+ação/cor e tela de reação (`ActionBar` lateral + `ReactionOverlay`, contrato no plano §27). **Pendentes:** efeitos de
+módulo automáticos, técnicas de Reação, armas, animações de ataque, rolagem em duas etapas, fichas instantâneas do Mestre. Ao implementar um item, escreva o contrato numa seção
 nova do plano e marque-o aqui.

@@ -12,6 +12,7 @@ import ConditionPicker from './ConditionPicker';
 import AttackBuilder from './AttackBuilder';
 import AttackPanel from './AttackPanel';
 import Timeline from './Timeline';
+import ReactionOverlay from './ReactionOverlay';
 import { STATUS_LABEL, CLASS_LABEL } from './combatLabels';
 
 export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }) {
@@ -27,7 +28,8 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
   const [pickFor, setPickFor] = useState(null);
   const [addSheet, setAddSheet] = useState('');
   const [attacks, setAttacks] = useState([]);
-  const [attacking, setAttacking] = useState(false);
+  const [attacking, setAttacking] = useState(null); // null | 'MAJOR' | 'MINOR_OFFENSIVE'
+  const [minimized, setMinimized] = useState(() => new Set()); // alvos cuja tela de reação foi adiada
 
   const fail = useCallback((err) => toast(parseApiError(err).message, 'error'), [toast]);
 
@@ -82,7 +84,16 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
 
   const current = enc?.participants.find((p) => p.id === enc.currentParticipantId);
   const isOwner = (p) => p?.ownerUserId && p.ownerUserId === user?.userId;
-  const canAct = enc?.status === 'ACTIVE' && !!current && (isMaster || isOwner(current));
+  const controlsCurrent = enc?.status === 'ACTIVE' && !!current && (isMaster || isOwner(current));
+  const canAct = controlsCurrent;
+  // primeiro alvo pendente que espera a minha reação (e que não adiei)
+  const awaiting = attacks.filter((a) => a.status === 'AWAITING_REACTIONS')
+    .flatMap((a) => a.targets.map((t) => ({ a, t })))
+    .find(({ t }) => t.canRespond && !t.reaction && t.options && !minimized.has(t.id));
+  const awaitingId = awaiting?.t.id;
+  const minimize = useCallback(() => {
+    if (awaitingId) setMinimized((m) => new Set(m).add(awaitingId));
+  }, [awaitingId]);
 
   return (
     <div className="space-y-4">
@@ -115,7 +126,6 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
                 Última luta{enc.endedAt ? ` — encerrada em ${new Date(enc.endedAt).toLocaleString('pt-BR')}` : ''}, rodada {enc.round}
               </span>
             )}
-            {enc.status === 'ACTIVE' && <span className="tag">Rodada {enc.round}</span>}
             {isMaster && enc.status === 'SETUP' && (
               <button className="btn-primary" disabled={enc.participants.length === 0}
                 onClick={() => run(() => api.startEncounter(enc.id))}>Iniciar</button>
@@ -160,32 +170,48 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
               onSubmit={(pid, body) => run(() => api.addCondition(enc.id, pid, body)).then(() => setPickFor(null))} />
           )}
 
-          {enc.status === 'ACTIVE' && current && (isMaster || isOwner(current)) && (
-            <>
-              <ActionBar participant={current} participants={enc.participants} canAct={canAct} onAct={(b) => run(() => api.doAction(enc.id, b))}
-                onAttack={() => setAttacking((v) => !v)} />
-              {attacking && canAct && (
-                <AttackBuilder participant={current} participants={enc.participants} onCancel={() => setAttacking(false)}
-                  onSubmit={(b) => run(() => api.declareAttack(enc.id, b)).then(() => setAttacking(false))} />
-              )}
-            </>
+          {enc.status === 'ACTIVE' && current && (
+            <div className="panel flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2" aria-live="polite">
+              <span className="tag tag-accent">Rodada {enc.round}</span>
+              <span className="panel-title text-xl">Turno de {current.name}{isOwner(current) ? ' (você)' : ''}</span>
+              <span className="flex items-center gap-1.5" aria-label={`${current.paCurrent} PA`} title={`${current.paCurrent} PA`}>
+                {Array.from({ length: Math.max(5, current.paCurrent) }, (_, i) => (
+                  <span key={i} className={`pa-pip${i < current.paCurrent ? ' on' : ''}`} />
+                ))}
+                <span className="ml-1 text-sm font-bold">{current.paCurrent} PA</span>
+              </span>
+              {current.resources?.currentSp != null && <span className="text-sm font-bold">{current.resources.currentSp} SP</span>}
+            </div>
           )}
 
-          <AttackPanel
-            pending={attacks.filter((a) => a.status === 'AWAITING_REACTIONS')}
-            resolved={attacks.filter((a) => a.status === 'RESOLVED').slice(0, 5)}
-            canCancel={(a) => {
-              if (a.status !== 'AWAITING_REACTIONS') return false;
-              const att = enc.participants.find((x) => x.id === a.attackerId);
-              return isMaster || isOwner(att);
-            }}
-            onReact={(aid, tid, r) => run(() => api.respondReaction(aid, tid, r))}
-            onCancel={(aid) => run(() => api.cancelAttack(aid))}
-            onLateCounter={(aid, tid, b) => run(() => api.lateCounter(aid, tid, b))}
-            targetSheetId={(t) => enc.participants.find((x) => x.id === (t.targetId))?.sheetId} />
+          <div className={`grid gap-4 ${controlsCurrent ? 'lg:grid-cols-[18rem_1fr]' : ''}`}>
+            {controlsCurrent && (
+              <aside className="lg:sticky lg:top-4 lg:self-start">
+                <ActionBar participant={current} participants={enc.participants} canAct={canAct}
+                  onAct={(b) => run(() => api.doAction(enc.id, b))}
+                  onAttack={(kind) => setAttacking(kind)} />
+              </aside>
+            )}
+            <div className="min-w-0 space-y-4">
+              {attacking && canAct && (
+                <AttackBuilder key={attacking} participant={current} participants={enc.participants} initialKind={attacking}
+                  onCancel={() => setAttacking(null)}
+                  onSubmit={(b) => run(() => api.declareAttack(enc.id, b)).then(() => setAttacking(null))} />
+              )}
 
-          <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
-            <div>
+              <AttackPanel
+                pending={attacks.filter((a) => a.status === 'AWAITING_REACTIONS')}
+                resolved={attacks.filter((a) => a.status === 'RESOLVED').slice(0, 5)}
+                canCancel={(a) => {
+                  if (a.status !== 'AWAITING_REACTIONS') return false;
+                  const att = enc.participants.find((x) => x.id === a.attackerId);
+                  return isMaster || isOwner(att);
+                }}
+                onReact={(aid, tid, r) => run(() => api.respondReaction(aid, tid, r))}
+                onCancel={(aid) => run(() => api.cancelAttack(aid))}
+                onLateCounter={(aid, tid, b) => run(() => api.lateCounter(aid, tid, b))}
+                targetSheetId={(t) => enc.participants.find((x) => x.id === (t.targetId))?.sheetId} />
+
               {enc.participants.length === 0
                 ? <p className="caption">Sem participantes.</p>
                 : <InitiativeTracker enc={enc} isMaster={isMaster} canControl={(p) => isMaster || isOwner(p)}
@@ -198,11 +224,18 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
                     onCounter={(id, v) => run(() => api.setCounter(enc.id, id, v))}
                     onPickCondition={setPickFor} />}
             </div>
-            <div>
-              <h3 className="panel-title mb-2 text-lg">Linha do tempo</h3>
-              <Timeline events={events} />
-            </div>
           </div>
+
+          <section>
+            <h3 className="panel-title mb-2 text-lg">Linha do tempo</h3>
+            <Timeline events={events} />
+          </section>
+
+          {awaiting && (
+            <ReactionOverlay attack={awaiting.a} target={awaiting.t}
+              onReact={(aid, tid, r) => run(() => api.respondReaction(aid, tid, r))}
+              onMinimize={minimize} />
+          )}
         </>
       )}
     </div>

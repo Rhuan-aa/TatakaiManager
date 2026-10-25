@@ -4,10 +4,10 @@ import { SIDED_BASICS, STRIKE_SIDE_LABEL } from './combatLabels';
 
 const KINDS = [{ k: 'MAJOR', label: 'Ação maior', pa: 3 }, { k: 'MINOR_OFFENSIVE', label: 'Menor ofensiva', pa: 2 }];
 
-export default function AttackBuilder({ participant: p, participants, onSubmit, onCancel }) {
+export default function AttackBuilder({ participant: p, participants, initialKind = 'MAJOR', onSubmit, onCancel }) {
   const [profiles, setProfiles] = useState(null);
   const [idx, setIdx] = useState(0);
-  const [kind, setKind] = useState('MAJOR');
+  const [kind, setKind] = useState(initialKind);
   const [targets, setTargets] = useState([]);
   const [region, setRegion] = useState('');
   const [penalty, setPenalty] = useState(0);

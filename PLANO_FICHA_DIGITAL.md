@@ -1877,12 +1877,12 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
    um não encerrado, senão o mais recente); cabeçalho "Última luta — encerrada em …" (`EncounterResponse.endedAt`).
 
 ### 26.2 HUD de combate (UX)
-6. **Menu lateral de ações por tipo**, com cor fixa por categoria: **Ação Maior** (vermelho), **Ação Menor** (verde),
+6. ✅ **Menu lateral de ações por tipo**, com cor fixa por categoria: **Ação Maior** (vermelho), **Ação Menor** (verde),
    **Movimento** (azul), **Livre** (rosa). A linha do tempo desce para baixo do HUD. Cores como tokens no `index.css`.
-7. **HUD mais amigável** — revisão geral de hierarquia: turno atual e PA em destaque, ação disponível óbvia, menos
+7. ✅ **HUD mais amigável** — revisão geral de hierarquia: turno atual e PA em destaque, ação disponível óbvia, menos
    campos soltos; ações indisponíveis desabilitadas com o motivo.
 8. **Animações de ataque** durante o combate (golpe saindo do atacante para o alvo, impacto no acerto, esquiva/defesa).
-9. **Tela de reação estilizada** — quando o usuário recebe um ataque, abre por cima da área de combate uma seleção de
+9. ✅ **Tela de reação estilizada** — quando o usuário recebe um ataque, abre por cima da área de combate uma seleção de
    reação em destaque (estilo quadrinho), com as opções e o custo de cada uma; hoje é um item dentro do `AttackPanel`.
 
 ### 26.3 Rolagens
@@ -1897,4 +1897,20 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
     O formulário de canal personalizado usa os PLAYERs da campanha (antes: só quem tinha ficha).
 13. ✅ **Impressão dos `<details>`** — `beforeprint`/`afterprint` em `main.jsx` abrem e fecham de volta; o botão
     "Imprimir / PDF" abre antes e espera 600 ms para os traços carregarem efeitos/variações.
+
+## 27. HUD de combate e tela de reação (itens 6, 7 e 9 do §26 — só front, 25/10/2026)
+
+- **Tokens** `--act-major` (vermelho), `--act-minor` (verde), `--act-move` (azul), `--act-free` (rosa) nos dois temas;
+  classes `.act-group`, `.act-btn`, `.act-cost`, `.pa-pip`. Categoria de cada ação em `combatLabels.ACTIONS[].cat` e
+  grupos em `ACTION_CATEGORIES`.
+- **Agrupamento:** Maior = Atacar, Estancar, Ação maior, Preparada, Respirar · Menor = Golpe rápido (ataque
+  `MINOR_OFFENSIVE`), Ação menor, Menor ofensiva, Atravessar, Trocar guarda, Entrar/Trocar/Sair da base · Movimento =
+  Mover, Desengajar, Levantar · Livre = Livre.
+- **Layout (`CombatPanel`):** faixa de turno (rodada, de quem é a vez, PA em losangos, SP) → grade com `ActionBar` como
+  menu lateral fixo (`lg:sticky`, só para quem controla o participante da vez) + coluna com construtor de ataque, ataques
+  e rastreador → **linha do tempo embaixo**, largura total. Ação indisponível fica desabilitada com o motivo visível.
+- **Tela de reação (`ReactionOverlay`):** abre por cima quando há alvo `canRespond` sem reação num ataque
+  `AWAITING_REACTIONS`; cartões Defender/Esquiva/Contra-ataque/Sem reação com atributo + bônus previsto
+  (`predictedBonus`), resumo da regra (`REACTION_HINT`, espelha `AttackRules.resolve`) e custo (Contra = 1 SP).
+  "Decidir depois" / Esc adia aquele alvo (os botões inline do `AttackPanel` continuam). Sem mudança de backend.
 

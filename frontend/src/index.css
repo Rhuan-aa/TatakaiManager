@@ -57,6 +57,12 @@
   --mastery-specialized: #f472b6;  /* Especializada: rosa */
   --mastery-mastered: #fb923c;     /* Masterizada: laranja */
   --keiken: #fb923c;               /* Keiken: laranja */
+
+  /* Categorias de ação no combate (HUD) */
+  --act-major: #f87171;   /* Ação Maior: vermelho */
+  --act-minor: #4ade80;   /* Ação Menor: verde */
+  --act-move: #60a5fa;    /* Movimento: azul */
+  --act-free: #f472b6;    /* Livre: rosa */
 }
 
 body {
@@ -116,6 +122,11 @@ body {
   --mastery-specialized: #be185d;
   --mastery-mastered: #c2410c;
   --keiken: #c2410c;
+
+  --act-major: #b91c1c;
+  --act-minor: #15803d;
+  --act-move: #1d4ed8;
+  --act-free: #be185d;
 
   --color-zinc-950: #fafafa;
   --color-zinc-900: #f4f4f5;
@@ -531,6 +542,51 @@ h3,
   75% { transform: rotate(280deg) scale(1.1) translateX(-4px); }
   100% { transform: rotate(360deg) scale(1); }
 }
+
+/* HUD de combate: grupos de ação por cor (--act vem do grupo) */
+.act-group { border-left: 6px solid var(--act); padding-left: 0.6rem; }
+.act-group-title { color: var(--act); font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; }
+.act-btn {
+  display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 0.5rem;
+  padding: 0.35rem 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: left; cursor: pointer;
+  background: var(--panel-bg); color: var(--text);
+  border: 2px solid var(--line); border-left: 6px solid var(--act); box-shadow: 2px 2px 0 var(--line);
+  transition: transform 80ms, box-shadow 80ms;
+}
+.act-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--act) 18%, var(--panel-bg)); }
+.act-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
+.act-btn:disabled { cursor: not-allowed; opacity: 0.45; }
+.act-btn:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
+.act-cost { font-size: 0.7rem; padding: 0 0.35rem; border: 2px solid var(--line); background: var(--act); color: var(--bg); white-space: nowrap; }
+.pa-pip { width: 0.9rem; height: 0.9rem; border: 2px solid var(--line); transform: rotate(45deg); }
+.pa-pip.on { background: var(--highlight); }
+
+/* Tela de reação: quadro de quadrinho por cima do combate */
+.reaction-overlay {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 1rem;
+  background: color-mix(in srgb, var(--ink) 70%, transparent); animation: fade-in 150ms ease-out;
+}
+.reaction-card {
+  width: 100%; max-height: 90vh; overflow-y: auto; padding: 1.5rem 1.25rem 1.25rem;
+  background: var(--panel-bg); color: var(--text); border: 4px solid var(--line); box-shadow: 8px 8px 0 var(--accent);
+  animation: pop-in 220ms ease-out;
+  background-image: radial-gradient(color-mix(in srgb, var(--text) 10%, transparent) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.reaction-burst {
+  position: absolute; z-index: 1; top: -1.4rem; left: 1rem; padding: 0.15rem 0.9rem; font-family: var(--font-display);
+  font-size: 1.8rem; text-transform: uppercase; color: var(--ink); background: var(--highlight);
+  border: 3px solid var(--ink); transform: rotate(-4deg); animation: onomatopoeia-pop 350ms ease-out;
+}
+.reaction-option {
+  display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem; text-align: left; cursor: pointer;
+  background: var(--panel-bg); color: var(--text); border: 3px solid var(--line); box-shadow: 4px 4px 0 var(--line);
+  transition: transform 80ms, box-shadow 80ms;
+}
+.reaction-option:hover:not(:disabled) { background: color-mix(in srgb, var(--highlight) 22%, var(--panel-bg)); }
+.reaction-option:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: none; }
+.reaction-option:disabled { cursor: not-allowed; opacity: 0.45; }
+.reaction-option:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
 
 /* Respeita quem prefere menos movimento */
 @media (prefers-reduced-motion: reduce) {
