@@ -181,7 +181,10 @@ public class RollProfileService {
         BaseRules.Profile base = base(sheet, o.baseId());
         InventoryItem armed = cat != null && cat.getWeaponClass() != null ? wielded(sheet, cat) : null;
         if (cat != null && cat.getWeaponClass() != null && armed == null) {
-            throw new InvalidRollException("A técnica exige uma arma da classe " + cat.getWeaponClass() + " em mãos");
+            String single = ModuleRules.singleWeapon(items);
+            throw new InvalidRollException(single != null && !single.isEmpty()
+                    ? "A técnica exige a arma única " + single + " em mãos"
+                    : "A técnica exige uma arma da classe " + cat.getWeaponClass() + " em mãos");
         }
         WeaponCatalog.Def weapon = armed == null ? null : weapons.find(armed.getWeaponKey()).orElse(null);
 
@@ -232,6 +235,13 @@ public class RollProfileService {
         int adv = t.getMastery() == Mastery.SKETCH ? -1 : 0;
         return new Calc(RollSourceType.TECHNIQUE, t.getId(), t.getName(), variation == null ? null : variation.getName(),
                 null, sp, RollRules.CRIT_MARGIN, adv, hit, dice, damage, weapon);
+    }
+
+    /** A técnica é armada (exige uma classe de arma)? */
+    @Transactional(readOnly = true)
+    public boolean isArmed(CharacterSheet sheet, CharacterTechnique t) {
+        ArtTechnique cat = catalog(sheet, t);
+        return cat != null && cat.getWeaponClass() != null;
     }
 
     /** A variação (ou os extras) da técnica tem algum item cujo módulo começa com `prefix` (ex.: "Lenta")? */
@@ -392,16 +402,28 @@ public class RollProfileService {
                 .filter(i -> i.getLocation() == com.tatakai.manager.sheet.entity.ItemLocation.HAND && !i.isBroken()).toList();
     }
 
-    /** Arma em mãos que serve à técnica armada: mesma classe ("Versátil": mesmo tipo marcial). */
+    private static String fold(String s) {
+        return s == null ? "" : java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").toLowerCase(java.util.Locale.ROOT).trim();
+    }
+
+    /** Arma em mãos que serve à técnica armada: mesma classe ("Versátil": mesmo tipo marcial; "Arma Única": nome/chave). */
     private InventoryItem wielded(CharacterSheet sheet, ArtTechnique cat) {
-        boolean versatile = cat.getExtras() != null && cat.getExtras().stream().anyMatch(i -> "Abrangência Versátil".equals(i.getModule()))
-                || variations(cat).stream().anyMatch(v -> v.getItems() != null && v.getItems().stream()
-                        .anyMatch(i -> "Abrangência Versátil".equals(i.getModule())));
+        List<AssemblyItem> all = new ArrayList<>();
+        if (cat.getExtras() != null) all.addAll(cat.getExtras());
+        for (AssemblyVariation v : variations(cat)) if (v.getItems() != null) all.addAll(v.getItems());
+        String single = ModuleRules.singleWeapon(all);
+        String singleFold = single == null ? "" : fold(single);
+        boolean versatile = ModuleRules.has(all, "Abrangência Versátil");
         WeaponCatalog.Def ref = weapons.all().stream().filter(w -> cat.getWeaponClass().equalsIgnoreCase(w.weaponClass()))
                 .findFirst().orElse(null);
         for (InventoryItem i : inHand(sheet)) {
             WeaponCatalog.Def w = weapons.find(i.getWeaponKey()).orElse(null);
             if (w == null || w.augment()) continue;
+            if (!singleFold.isEmpty() && !fold(i.getName()).equals(singleFold)
+                    && !fold(w.name()).equals(singleFold) && !fold(w.key()).equals(singleFold)) {
+                continue;
+            }
             if (cat.getWeaponClass().equalsIgnoreCase(w.weaponClass())) return i;
             if (versatile && ref != null && ref.martialType().equals(w.martialType())) return i;
         }

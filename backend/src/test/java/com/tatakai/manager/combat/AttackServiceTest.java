@@ -1860,4 +1860,70 @@ class AttackServiceTest {
         assertThat(rollCalcs.get(0).damage()).anyMatch(x -> x.source().equals("Luvas de MMA") && x.value() == -3);
         assertThat(rollCalcs.get(1).hit()).anyMatch(x -> x.source().equals("Luvas de Boxe") && x.value() == 2);
     }
+
+    @Test
+    @DisplayName("§41/§42: Contragolpe aplica Efeitos no atacante; Transpassar divide o dano no 2º alvo; Supressão aplica SUPRIMIDO")
+    void counterStrikeEffectsPierceAndSuppression() {
+        lenient().when(profiles.attribute(any(), any())).thenAnswer(x -> calc(RollSourceType.ATTRIBUTE_TEST, "Teste", 0));
+        CharacterTechnique npcTech = CharacterTechnique.builder().id(UUID.randomUUID()).sheet(npcSheet)
+                .kind(MoveKind.TECHNIQUE).state(TechniqueState.ACTIVE).name("Rasteira Contra").build();
+        lenient().when(profiles.coreTechniques(any(), org.mockito.ArgumentMatchers.eq(TechniqueCore.STRIKE)))
+                .thenAnswer(x -> x.getArgument(0) == npcSheet ? List.of(new com.tatakai.manager.roll.service.RollProfileService
+                        .CoreTechnique(npcTech, null, "Rasteira Contra", 2, List.of(
+                                mod("Contragolpe", 3, AssemblyItemKind.MODULE),
+                                mod("Derrubar", 2, AssemblyItemKind.EFFECT)), false))
+                        : List.of());
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        queue.add(msg(10, 10, 5));    // ataque de A
+        queue.add(msg(16, 16, null)); // reação Contragolpe do NPC
+        queue.add(msg(14, 10, 4));    // dano do revide
+        queue.add(msg(5, 5, null));   // A falha em resistir a Derrubar (5 vs 14)
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.COUNTER, null, npcTech.getId(), null, master.getId());
+        assertThat(holds(pA, "DERRUBADO")).isTrue();
+
+        // Transpassar: 2 alvos, 2º recebe metade do dano
+        cList.clear();
+        techItems.clear();
+        techItems.add(mod("Transpassar", 2, AssemblyItemKind.MODULE));
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        queue.add(msg(15, 10, 8));
+        r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pB, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        AttackResponse done = service.respond(r.id(), r.targets().get(1).id(), ReactionType.NONE, master.getId());
+        assertThat(done.targets().get(0).damage()).isEqualTo(8);
+        assertThat(done.targets().get(1).damage()).isEqualTo(4);
+
+        // Supressão: deixa SUPRIMIDO quem falha no teste de Mental, dando desvantagem no próximo ataque
+        techItems.clear();
+        techItems.add(mod("Supressão", 3, AssemblyItemKind.MODULE));
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        queue.add(msg(15, 10, 4));
+        queue.add(msg(5, 5, null)); // NPC falha em Mental vs 15
+        r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
+        service.respond(r.id(), r.targets().get(0).id(), ReactionType.NONE, master.getId());
+        assertThat(holds(pN, "SUPRIMIDO")).isTrue();
+    }
+
+    @Test
+    @DisplayName("§42: Dominância com arma de 1 mão dá −1 no lado de trás (sem bônus de guarda); Mira Estável dá +2 sem mover")
+    void weaponDominanceAndSteadyAim() {
+        InventoryItem glock = wield("GLOCK", 15);
+        UUID baseId = UUID.randomUUID();
+        pA.setActiveBaseId(baseId);
+        AssemblyItem steady = item("Mira Estável", "Mira Estável", AssemblyItemKind.MODULE);
+        lenient().when(profiles.baseProfile(sheetA, baseId))
+                .thenReturn(com.tatakai.manager.combat.service.rules.BaseRules.profile("Postura de Tiro", List.of(steady), false));
+        rollCalcs.clear();
+        CreateAttackRequest req = new CreateAttackRequest(pA.getId(), RollSourceType.BASIC_ATTACK, glock.getId(), null,
+                BasicAttack.ARMA, AttackActionKind.MAJOR, List.of(pN.getId()), null, null, StrikeSide.BACK, null, null, null, null, 10.0);
+        fight(req, ReactionType.NONE, msg(15, 10, 6), null);
+        Calc used = rollCalcs.get(0);
+        assertThat(used.hit()).anyMatch(x -> x.source().startsWith("Mira Estável") && x.value() == 2);
+        assertThat(used.hit()).anyMatch(x -> x.source().equals("Dominância: lado não dominante −1") && x.value() == -1);
+        assertThat(used.hit()).noneMatch(x -> x.source().startsWith("Guarda:"));
+    }
 }

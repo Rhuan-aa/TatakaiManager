@@ -507,7 +507,19 @@ public class CombatService {
         }
         com.tatakai.manager.sheet.entity.InventoryItem item = gearItem(s, action, req.itemId());
         WeaponCatalog.Def weapon = item == null ? null : weapons.find(item.getWeaponKey()).orElse(null);
-        if (action == CombatAction.RELOAD) pa = reloadCost(item, weapon);
+        BaseRules.Profile activeBase = profiles.baseProfile(s, p.getActiveBaseId());
+        if (action == CombatAction.DRAW && activeBase != null && activeBase.readiness() && !p.isReadinessUsed()) {
+            pa = 0; // Prontidão: sacar/guardar arma é Ação Livre uma vez por turno
+            p.setReadinessUsed(true);
+        }
+        if (action == CombatAction.RELOAD) {
+            pa = reloadCost(item, weapon);
+            if (activeBase != null && activeBase.trainedReload() && !p.isTrainedReloadUsed() && weapon != null
+                    && (weapon.shooter() || "Pólvora".equals(weapon.martialType()) || "Artesanais".equals(weapon.martialType()))) {
+                pa = 0; // Recarga Treinada: Pólvora ou Artesanais têm 1 recarga por turno como Ação Livre
+                p.setTrainedReloadUsed(true);
+            }
+        }
         ConsumableCatalog.Def consumable = action == CombatAction.USE_ITEM ? consumables.find(item.getConsumableKey())
                 .orElseThrow(() -> new InvalidCombatException(item.getName() + " não é um consumível do catálogo")) : null;
         EncounterParticipant useTarget = consumable == null ? null
@@ -627,7 +639,9 @@ public class CombatService {
             }
             case CHANGE_BASE -> {
                 p.setActiveBaseId(newBase == null ? null : newBase.getId());
-                text.append(newBase == null ? " — sem base ativa" : " — base " + newBase.getName());
+                BaseRules.Profile entered = newBase == null ? null : profiles.baseProfile(s, newBase.getId());
+                text.append(newBase == null ? " — sem base ativa" : " — base " + newBase.getName()
+                        + (entered != null && entered.distanceControl() ? " (Controle de Distância)" : ""));
             }
             case DRAW, RELOAD, COCK, UNJAM, TOGGLE_MODE -> text.append(" — ").append(gear(action, item, weapon, req));
             case USE_ITEM -> text.append(" — ").append(useItem(e, p, s, item, consumable, useTarget, ctx, userId, actor));
@@ -1180,6 +1194,8 @@ public class CombatService {
         p.setMovesThisTurn(0);
         p.setGuardChangesThisTurn(0);
         p.setFluidSwitchUsed(false);
+        p.setReadinessUsed(false);
+        p.setTrainedReloadUsed(false);
         p.setAttackersThisRound(new ArrayList<>());
         vital.onTurnStart(e, p, sheetOf(p), ctx);
         if (VitalRules.activeHysteria(p.getAdrenaline(), p.getHysteria()) == Hysteria.LIGHTNING) {

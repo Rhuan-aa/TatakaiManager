@@ -17,7 +17,12 @@ import java.util.regex.Pattern;
 public final class BaseRules {
 
     /** A que o item se aplica: todos, uma reação, um tipo marcial de ataque, ou algo não modelado (ignorado). */
-    public enum Scope { ALL, DEFEND, DODGE, COUNTER, STRIKING, TAKEDOWN, SWEEP, OTHER }
+    public enum Scope {
+        ALL, DEFEND, DODGE, COUNTER,
+        STRIKING, TAKEDOWN, SWEEP,
+        BLADE, BLUNT, PIERCING, GUNPOWDER, RANGED_CRAFT,
+        OTHER
+    }
 
     public record Item(String module, Scope scope, double value) {}
 
@@ -124,6 +129,31 @@ public final class BaseRules {
             return hasModule("Avanço Pesado");
         }
 
+        /** Controle de Distância (base armada): entrar no alcance da arma provoca Ataque de Oportunidade. */
+        public boolean distanceControl() {
+            return hasModule("Controle de Distância");
+        }
+
+        /** Empunhadura Firme (base armada): +2 para resistir a Desarmar e competições pela arma (Esboço: +1). */
+        public int firmGrip() {
+            return hasModule("Empunhadura Firme") ? (sketch ? 1 : 2) : 0;
+        }
+
+        /** Prontidão (base armada): sacar, guardar ou trocar de arma é Ação Livre 1× por turno. */
+        public boolean readiness() {
+            return hasModule("Prontidão");
+        }
+
+        /** Recarga Treinada (base armada): Pólvora ou Artesanais têm 1 recarga por turno como Ação Livre. */
+        public boolean trainedReload() {
+            return hasModule("Recarga Treinada");
+        }
+
+        /** Mira Estável (base armada): +2 no acerto de disparos se não se moveu no turno (Esboço: +1). */
+        public int steadyAim() {
+            return hasModule("Mira Estável") ? (sketch ? 1 : 2) : 0;
+        }
+
         private boolean hasModule(String module) {
             return items.stream().anyMatch(i -> i.module().equals(module));
         }
@@ -191,9 +221,14 @@ public final class BaseRules {
         if (l.contains("contra-ataque")) return Scope.COUNTER;
         if (l.contains("defender")) return Scope.DEFEND;
         if (l.contains("esquiva")) return Scope.DODGE;
-        if (l.contains("trocação")) return Scope.STRIKING;
+        if (l.contains("trocação") || l.contains("trocacao")) return Scope.STRIKING;
         if (l.contains("derrubada")) return Scope.TAKEDOWN;
         if (l.contains("raspagem")) return Scope.SWEEP;
+        if (l.contains("lâmina") || l.contains("lamina")) return Scope.BLADE;
+        if (!l.startsWith("calejamento") && l.contains("contundente")) return Scope.BLUNT;
+        if (l.contains("perfurante")) return Scope.PIERCING;
+        if (l.contains("pólvora") || l.contains("polvora")) return Scope.GUNPOWDER;
+        if (l.contains("artesanais") || l.contains("artesanal")) return Scope.RANGED_CRAFT;
         return Scope.ALL;
     }
 
@@ -203,6 +238,11 @@ public final class BaseRules {
             case STRIKING -> Scope.STRIKING;
             case TAKEDOWN -> Scope.TAKEDOWN;
             case SWEEP -> Scope.SWEEP;
+            case BLADE -> Scope.BLADE;
+            case BLUNT -> Scope.BLUNT;
+            case PIERCING -> Scope.PIERCING;
+            case GUNPOWDER -> Scope.GUNPOWDER;
+            case RANGED_CRAFT -> Scope.RANGED_CRAFT;
             case GENERAL -> Scope.OTHER;
         };
     }

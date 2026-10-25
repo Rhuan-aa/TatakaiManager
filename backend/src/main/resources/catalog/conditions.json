@@ -304,5 +304,13 @@
     "exit": "Fim do combate",
     "defaultExpiresAt": "END_OF_COMBAT",
     "stack": "RENEW"
+  },
+  {
+    "key": "SUPRIMIDO",
+    "name": "Suprimido",
+    "effect": "Desvantagem na próxima ação ofensiva",
+    "exit": "Fim do próximo turno ou ao atacar",
+    "defaultExpiresAt": "END_OF_TARGET_TURN",
+    "stack": "RENEW"
   }
 ]

@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 781 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 785 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -912,7 +912,13 @@ e módulos armados (regras puras em `WeaponRules`). **Proteções e equipamento*
 (`EquipmentCatalog`, `GET /catalog/equipment`), item `equipment_key` vestido (`location = WORN`); redução por região/tipo
 depois da Defesa, peso da armadura, luvas, capacetes, protetor bucal, kimono e roupas (`EquipmentRules`).
 **Consumíveis** (§44): `catalog/consumables.json` (`ConsumableCatalog`, `GET /catalog/consumables`), item `consumable_key`,
-ação `USE_ITEM` (atadura, gaze, sais de amônia, isotônica, giz, spray de pimenta, estimulante).
+ação `USE_ITEM` (atadura, gaze, sais de amônia, isotônica, giz, spray de pimenta, estimulante). **Complementos de Criação
+Marcial e Armas** (§46): tipos marciais armados em `MartialType` (`BLADE`, `BLUNT`, `PIERCING`, `GUNPOWDER`, `RANGED_CRAFT`)
+e matriz armada em `MartialRules` (`Lâmina > Contundente > Perfurante > Lâmina`, `Pólvora > Artesanais`), Efeitos do
+Contragolpe no atacante, Golpe no Fôlego/Dano Persistente/Montinho/proteção/Ferida no 2º acerto da Sequência, Encadear pelo
+mesmo tipo marcial, dominância com arma de 1 mão (`−1` no lado não dominante, sem guarda), Abrangência `Arma Única`, módulos
+de base armada (`Controle de Distância`, `Empunhadura Firme`, `Prontidão`, `Recarga Treinada`, `Mira Estável`), módulos
+armados de técnica (`Arremessar`, `Transpassar`, `Supressão` com condição `SUPRIMIDO`) e seletores dedicados no `ArtEditor`.
 
 **Pendentes** (lista completa no plano §45; antigos em §26.5):
 1. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição, Duas Etapas e os efeitos únicos das
@@ -920,7 +926,7 @@ ação `USE_ITEM` (atadura, gaze, sais de amônia, isotônica, giz, spray de pim
 2. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).
 
 **Colunas novas sem migração automática** (bancos com `ddl-auto=validate`): `combat_conditions.progress`,
-`inventory_items.weight_kg`, `encounter_participants.stabilize_failures`/`fluid_switch_used`,
+`inventory_items.weight_kg`, `encounter_participants.stabilize_failures`/`fluid_switch_used`/`readiness_used`/`trained_reload_used`,
 `character_sheets.knockout_sequel`, `attack_targets.defender_id`/`reaction_technique_id`/`reaction_variation`,
 `pending_attacks.grip`/`squeeze`/`run_meters`/`surface`/`distance_m`, `encounters.floor`, `inventory_items.weapon_key`/
 `equipment_key`/`consumable_key`/`location`/`loaded`/`jammed`/`cocked`/`broken`/`damaged`/`two_handed`. Dropar `pending_attacks_basic_attack_check` (Mordida/Empurrão/Encontrão/Pisão/Arma, §11.11). Ao implementar um item, escreva o contrato numa seção nova do plano e marque-o aqui.

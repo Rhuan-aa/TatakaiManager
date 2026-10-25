@@ -62,7 +62,10 @@ export const HYSTERIA = {
 export const hasCondition = (p, key) => p.conditions.some((c) => c.key === key);
 export const conditionNote = (p, key) => p.conditions.find((c) => c.key === key)?.note;
 
-export const MARTIAL_TYPE_LABEL = { STRIKING: 'Trocação', TAKEDOWN: 'Derrubada', SWEEP: 'Raspagem', GENERAL: 'Geral' };
+export const MARTIAL_TYPE_LABEL = {
+  STRIKING: 'Trocação', TAKEDOWN: 'Derrubada', SWEEP: 'Raspagem', GENERAL: 'Geral',
+  BLADE: 'Lâmina', BLUNT: 'Contundente', PIERCING: 'Perfurante', GUNPOWDER: 'Pólvora', RANGED_CRAFT: 'Artesanais',
+};
 export const GUARD_LABEL = { NATURAL: 'Natural', INVERTED: 'Invertida', FRONTAL: 'Frontal' };
 export const LEAD_FOOT_LABEL = { LEFT: 'pé esquerdo à frente', RIGHT: 'pé direito à frente' };
 export const STRIKE_SIDE_LABEL = { FRONT: 'Frente', BACK: 'Trás' };

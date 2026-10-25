@@ -97,4 +97,36 @@ class BaseRulesTest {
         assertThat(p.heavyAdvance()).isTrue();
         assertThat(BaseRules.profile("y", List.of(it("Economia", "Economia", 2)), false).economy(MartialType.SWEEP)).isTrue();
     }
+
+    @Test
+    @DisplayName("Módulos armados de base e escopos armados: Controle de Distância, Empunhadura Firme, Prontidão, Recarga Treinada, Mira Estável")
+    void armedBaseModules() {
+        assertThat(BaseRules.scope("Precisão +1 em Lâmina")).isEqualTo(BaseRules.Scope.BLADE);
+        assertThat(BaseRules.scope("Precisão +1 em Contundente")).isEqualTo(BaseRules.Scope.BLUNT);
+        assertThat(BaseRules.scope("Precisão +1 em Perfurante")).isEqualTo(BaseRules.Scope.PIERCING);
+        assertThat(BaseRules.scope("Precisão +1 em Pólvora")).isEqualTo(BaseRules.Scope.GUNPOWDER);
+        assertThat(BaseRules.scope("Precisão +1 em Artesanais")).isEqualTo(BaseRules.Scope.RANGED_CRAFT);
+        assertThat(BaseRules.scope("Calejamento 3 contundente")).isEqualTo(BaseRules.Scope.ALL);
+
+        BaseRules.Profile p = BaseRules.profile("Iai", List.of(
+                it("Controle de Distância", "Controle de Distância", 3),
+                it("Empunhadura Firme", "Empunhadura Firme", 2),
+                it("Prontidão", "Prontidão", 2),
+                it("Recarga Treinada", "Recarga Treinada", 2),
+                it("Mira Estável", "Mira Estável", 2),
+                it("Precisão", "Precisão +1 em Lâmina", 1)), false);
+        assertThat(p.distanceControl()).isTrue();
+        assertThat(p.firmGrip()).isEqualTo(2);
+        assertThat(p.readiness()).isTrue();
+        assertThat(p.trainedReload()).isTrue();
+        assertThat(p.steadyAim()).isEqualTo(2);
+        assertThat(p.precision(MartialType.BLADE)).isEqualTo(1);
+        assertThat(p.precision(MartialType.BLUNT)).isZero();
+
+        BaseRules.Profile sketch = BaseRules.profile("Iai", List.of(
+                it("Empunhadura Firme", "Empunhadura Firme", 2),
+                it("Mira Estável", "Mira Estável", 2)), true);
+        assertThat(sketch.firmGrip()).isEqualTo(1);
+        assertThat(sketch.steadyAim()).isEqualTo(1);
+    }
 }

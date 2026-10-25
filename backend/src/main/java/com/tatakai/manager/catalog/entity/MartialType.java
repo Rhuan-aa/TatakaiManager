@@ -1,8 +1,11 @@
 package com.tatakai.manager.catalog.entity;
 
-/** Tipo marcial desarmado (spec §6.2). */
+/** Tipo marcial desarmado ou armado (spec §6.2). */
 public enum MartialType {
-    STRIKING("Trocação"), TAKEDOWN("Derrubada"), SWEEP("Raspagem"), GENERAL("Geral");
+    STRIKING("Trocação"), TAKEDOWN("Derrubada"), SWEEP("Raspagem"),
+    BLADE("Lâmina"), BLUNT("Contundente"), PIERCING("Perfurante"),
+    GUNPOWDER("Pólvora"), RANGED_CRAFT("Artesanais"),
+    GENERAL("Geral");
 
     private final String label;
 

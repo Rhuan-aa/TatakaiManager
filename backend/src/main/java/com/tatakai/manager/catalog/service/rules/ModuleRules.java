@@ -23,6 +23,7 @@ public final class ModuleRules {
     /** Alvos sem Varredura/Círculo. */
     public static final int SINGLE = 1;
     public static final int SWEEP = 2;
+    public static final int SUPPRESSION = 3;
     /** Ímpeto: +2 a cada 1,5 m, até +6. */
     public static final int IMPETUS_MAX = 6;
     /** Impacto do Esmagar: 1d4+3 e +1 PQ. */
@@ -87,7 +88,8 @@ public final class ModuleRules {
 
     public static int maxTargets(List<AssemblyItem> items) {
         if (has(items, "Círculo")) return Integer.MAX_VALUE;
-        return has(items, "Varredura") ? SWEEP : SINGLE;
+        if (has(items, "Supressão")) return SUPPRESSION;
+        return has(items, "Varredura") || has(items, "Transpassar") ? SWEEP : SINGLE;
     }
 
     /** Tardia: rodada mínima (3, 5 ou 7); 1 sem a limitação. */
@@ -120,6 +122,16 @@ public final class ModuleRules {
         if (i == null) return null;
         String raw = i.getNote() != null && !i.getNote().isBlank() ? i.getNote() : i.getLabel() == null ? "" : i.getLabel();
         return raw.replaceFirst("(?i)^\\s*exige base\\s*[:\\-–(]?\\s*", "").replaceAll("\\)\\s*$", "").trim();
+    }
+
+    /**
+     * Arma Única: null sem a limitação; "" = sem nome; senão o nome/chave da arma específica (rótulo/nota sem o prefixo).
+     */
+    public static String singleWeapon(List<AssemblyItem> items) {
+        AssemblyItem i = find(items, "Arma Única");
+        if (i == null) return null;
+        String raw = i.getNote() != null && !i.getNote().isBlank() ? i.getNote() : i.getLabel() == null ? "" : i.getLabel();
+        return raw.replaceFirst("(?iu)^\\s*arma\\s+[uú]nica\\s*[:\\-–(]?\\s*", "").replaceAll("\\)\\s*$", "").trim();
     }
 
     /** Encadear: gasto da técnica nova +25%, arredondado para cima. */

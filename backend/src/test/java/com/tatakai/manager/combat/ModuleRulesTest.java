@@ -49,7 +49,12 @@ class ModuleRulesTest {
         assertThat(ModuleRules.impetus(20.0)).isEqualTo(6);
         assertThat(ModuleRules.maxTargets(List.of())).isEqualTo(1);
         assertThat(ModuleRules.maxTargets(List.of(it("Varredura", null, 3)))).isEqualTo(2);
+        assertThat(ModuleRules.maxTargets(List.of(it("Transpassar", null, 2)))).isEqualTo(2);
+        assertThat(ModuleRules.maxTargets(List.of(it("Supressão", null, 3)))).isEqualTo(3);
         assertThat(ModuleRules.maxTargets(List.of(it("Círculo", null, 4)))).isEqualTo(Integer.MAX_VALUE);
+        assertThat(ModuleRules.singleWeapon(List.of(it("Arma Única", "Arma Única: Katana", -1)))).isEqualTo("Katana");
+        assertThat(ModuleRules.singleWeapon(List.of(it("Arma Única", "Arma Única", -1)))).isEmpty();
+        assertThat(ModuleRules.singleWeapon(List.of())).isNull();
         assertThat(ModuleRules.minRound(List.of())).isEqualTo(1);
         assertThat(ModuleRules.minRound(List.of(it("Tardia", null, -1)))).isEqualTo(3);
         assertThat(ModuleRules.minRound(List.of(it("Tardia (3)", null, -3)))).isEqualTo(7);

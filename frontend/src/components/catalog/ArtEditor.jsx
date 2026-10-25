@@ -16,7 +16,37 @@ function moduleCost(mod, it) {
   return c;
 }
 
-function ItemsEditor({ items, modules, base, onChange }) {
+const ALT_ATTR_OPTIONS = [
+  { value: 'Atributo Alternativo (DES no dano)', label: 'DES no dano (substitui FOR)' },
+  { value: 'Atributo Alternativo (INT no dano)', label: 'INT no dano (substitui FOR)' },
+  { value: 'Atributo Alternativo (INT no acerto)', label: 'INT no teste de acerto (substitui DES)' },
+];
+
+const MASS_OPTIONS = [
+  { value: 'Massa (dano)', label: 'No dano (+Mod. de Peso)' },
+  { value: 'Massa (acerto)', label: 'No acerto (+metade do Mod. de Peso, máx. +3)' },
+];
+
+function parseAltAttr(it) {
+  const t = `${it.label ?? ''} ${it.note ?? ''}`.toLowerCase();
+  if (/\bint/.test(t) && (t.includes('acerto') || t.includes('teste'))) return ALT_ATTR_OPTIONS[2].value;
+  if (/\bint/.test(t)) return ALT_ATTR_OPTIONS[1].value;
+  return ALT_ATTR_OPTIONS[0].value;
+}
+
+function parseMass(it) {
+  const t = `${it.label ?? ''} ${it.note ?? ''}`.toLowerCase();
+  return t.includes('acerto') ? MASS_OPTIONS[1].value : MASS_OPTIONS[0].value;
+}
+
+function parseSuffix(it, prefix) {
+  const raw = it.note && it.note.trim() ? it.note : (it.label ?? '');
+  return raw.replace(new RegExp(`^\\s*${prefix}\\s*[:\\-–(]?\\s*`, 'i'), '').replace(/\)\s*$/, '').trim();
+}
+
+function ItemsEditor({ items, modules, base, baseNames = [], onChange }) {
+  const weapons = useWeapons();
+  const weaponNames = Object.values(weapons).filter((w) => !w.hidden).map((w) => w.name).sort();
   const byName = Object.fromEntries(modules.map((m) => [m.name, m]));
   const groups = [...new Set(modules.map((m) => m.group))];
   const set = (i, patch) => onChange(items.map((it, j) => {
@@ -36,9 +66,12 @@ function ItemsEditor({ items, modules, base, onChange }) {
         return (
           <div key={i} className="grid grid-cols-2 items-end gap-2 border-t-2 border-[var(--line)] pt-2 sm:grid-cols-[2fr_2fr_4rem_4rem_auto]">
             <label className="text-xs uppercase">Módulo
-              <select className="field" value={it.module ?? ''} onChange={(e) => set(i, {
-                module: e.target.value || null, label: e.target.value || it.label, qty: 1,
-              })}>
+              <select className="field" value={it.module ?? ''} onChange={(e) => {
+                const m = e.target.value || null;
+                const defaultLabel = m === 'Atributo Alternativo' ? ALT_ATTR_OPTIONS[0].value
+                  : m === 'Massa' ? MASS_OPTIONS[0].value : (m || it.label);
+                set(i, { module: m, label: defaultLabel, note: null, qty: 1 });
+              }}>
                 <option value="">— Item único / livre —</option>
                 {groups.map((g) => (
                   <optgroup key={g} label={g}>
@@ -49,10 +82,50 @@ function ItemsEditor({ items, modules, base, onChange }) {
                 ))}
               </select>
             </label>
-            <label className="text-xs uppercase">Rótulo
-              <input className="field" maxLength={200} value={it.label} onChange={(e) => set(i, { label: e.target.value })}
-                placeholder={mod ? 'Ex.: Ponto Vital na Têmpora' : 'Nome do item único'} />
-            </label>
+            {it.module === 'Atributo Alternativo' ? (
+              <label className="text-xs uppercase">Atributo e aplicação
+                <select className="field" value={parseAltAttr(it)} onChange={(e) => set(i, { label: e.target.value, note: null })}>
+                  {ALT_ATTR_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </label>
+            ) : it.module === 'Massa' ? (
+              <label className="text-xs uppercase">Aplicação da Massa
+                <select className="field" value={parseMass(it)} onChange={(e) => set(i, { label: e.target.value, note: null })}>
+                  {MASS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </label>
+            ) : it.module === 'Exige Base' ? (
+              <label className="text-xs uppercase">Base exigida
+                <input className="field" list={`bases-list-${i}`} maxLength={100} value={parseSuffix(it, 'Exige Base')}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    set(i, { note: v, label: v.trim() ? `Exige Base: ${v.trim()}` : 'Exige Base' });
+                  }}
+                  placeholder="Vazio = qualquer base" />
+                {baseNames.length > 0 && (
+                  <datalist id={`bases-list-${i}`}>
+                    {baseNames.map((n) => <option key={n} value={n} />)}
+                  </datalist>
+                )}
+              </label>
+            ) : it.module === 'Arma Única' ? (
+              <label className="text-xs uppercase">Arma específica
+                <input className="field" list={`weapons-list-${i}`} maxLength={100} value={parseSuffix(it, 'Arma [UÚ]nica')}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    set(i, { note: v, label: v.trim() ? `Arma Única: ${v.trim()}` : 'Arma Única' });
+                  }}
+                  placeholder="Ex.: Katana, Bastão Longo…" />
+                <datalist id={`weapons-list-${i}`}>
+                  {weaponNames.map((n) => <option key={n} value={n} />)}
+                </datalist>
+              </label>
+            ) : (
+              <label className="text-xs uppercase">Rótulo
+                <input className="field" maxLength={200} value={it.label} onChange={(e) => set(i, { label: e.target.value })}
+                  placeholder={mod ? 'Ex.: Ponto Vital na Têmpora' : 'Nome do item único'} />
+              </label>
+            )}
             <label className="text-xs uppercase">Qtd
               <input type="number" min={1} className="field" disabled={!mod?.perUnit} value={it.qty}
                 onChange={(e) => set(i, { qty: Number(e.target.value) || 1 })} />
@@ -162,7 +235,7 @@ function WeaponClassField({ t, onChange }) {
   );
 }
 
-export function TechniqueEditor({ t, category, modules, onChange, onRemove }) {
+export function TechniqueEditor({ t, category, modules, baseNames = [], onChange, onRemove }) {
   const setVar = (i, patch) => onChange({ ...t, variations: t.variations.map((v, j) => (j === i ? { ...v, ...patch } : v)) });
   const two = t.variations.length > 1;
   return (
@@ -186,7 +259,7 @@ export function TechniqueEditor({ t, category, modules, onChange, onRemove }) {
                 </select>
               </label>
             </div>
-            <ItemsEditor items={v.items} modules={modules} onChange={(items) => setVar(i, { items })} />
+            <ItemsEditor items={v.items} modules={modules} baseNames={baseNames} onChange={(items) => setVar(i, { items })} />
             {two && (
               <button type="button" className="btn-ghost self-start text-sm"
                 onClick={() => onChange({ ...t, variations: t.variations.filter((_, j) => j !== i), extras: [] })}>Remover variação</button>
@@ -202,7 +275,7 @@ export function TechniqueEditor({ t, category, modules, onChange, onRemove }) {
         {two && (
           <fieldset className="flex flex-col gap-2 border-2 border-[var(--line)] p-2">
             <legend className="text-xs font-bold uppercase">Sobre a escolha da variação (soma direto)</legend>
-            <ItemsEditor items={t.extras} modules={modules} onChange={(extras) => onChange({ ...t, extras })} />
+            <ItemsEditor items={t.extras} modules={modules} baseNames={baseNames} onChange={(extras) => onChange({ ...t, extras })} />
           </fieldset>
         )}
         <CheckBar category={category} technique={t} />
@@ -322,6 +395,7 @@ export default function ArtEditor({ campaignId, art, canChooseCategory, onSaved,
         <h4 className="panel-title">Técnicas</h4>
         {f.techniques.map((t, i) => (
           <TechniqueEditor key={i} t={t} category={f.category} modules={techModules}
+            baseNames={f.bases.map((b) => b.name).filter(Boolean)}
             onChange={(v) => setList('techniques', i, v)} onRemove={() => dropList('techniques', i)} />
         ))}
         <button type="button" className="btn-secondary self-start" onClick={() => setF((p) => ({ ...p, techniques: [...p.techniques, emptyTechnique()] }))}>+ Técnica</button>

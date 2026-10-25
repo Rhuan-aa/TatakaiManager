@@ -296,7 +296,7 @@ public class AttackService {
         if (s.getCurrentSp() < sp) {
             throw new InvalidCombatException("SP insuficiente: custa " + sp + " e restam " + s.getCurrentSp());
         }
-        fireCheck(a, calc, gun, calc.weapon() != null && extendedShot(s, a));
+        fireCheck(s, a, calc, gun, calc.weapon() != null && extendedShot(s, a));
         ActorRole role = master ? ActorRole.MASTER : ActorRole.PLAYER;
         att.setPaCurrent(att.getPaCurrent() - pa);
         att.setEngagedThisRound(true);
@@ -338,8 +338,10 @@ public class AttackService {
                 ? profiles.items(s, technique(s, a), a.getVariation()) : List.of();
         int max = ModuleRules.maxTargets(items);
         if (targetCount > max) {
+            String multi = ModuleRules.has(items, "Supressão") ? "Supressão"
+                    : ModuleRules.has(items, "Transpassar") ? "Transpassar" : "Varredura";
             throw new InvalidCombatException(max == ModuleRules.SINGLE ? "Este golpe atinge um alvo só (Varredura: 2; Círculo: todos)"
-                    : "Varredura atinge no máximo " + max + " alvos");
+                    : multi + " atinge no máximo " + max + " alvos");
         }
         if (items.isEmpty()) return;
         int min = ModuleRules.minRound(items);
@@ -474,7 +476,13 @@ public class AttackService {
         if (next.getId().equals(old.getId())) throw new InvalidCombatException("Escolha outra técnica");
         TechniqueCore oc = profiles.core(s, old, a.getVariation());
         TechniqueCore nc = profiles.core(s, next, variation);
-        if ((oc == null ? TechniqueCore.STRIKE : oc) != (nc == null ? TechniqueCore.STRIKE : nc)) {
+        if (nc == TechniqueCore.REACTION || nc == TechniqueCore.PREPARATION) {
+            throw new InvalidCombatException("Encadear exige outra técnica do mesmo tipo");
+        }
+        MartialService.Fighter fa = martial.fighter(att, s);
+        MartialType ot = martial.attackType(fa, old);
+        MartialType nt = martial.attackType(fa, next);
+        if (ot != nt || (ot == null && (oc == null ? TechniqueCore.STRIKE : oc) != (nc == null ? TechniqueCore.STRIKE : nc))) {
             throw new InvalidCombatException("Encadear exige outra técnica do mesmo tipo");
         }
         List<UUID> targetIds = targets.findByAttackIdIn(List.of(a.getId())).stream().map(AttackTarget::getTargetId).toList();
@@ -637,10 +645,10 @@ public class AttackService {
     /** Defensor de um alvo: seu lutador marcial e a interação com o atacante. */
     private record Matchup(MartialService.Fighter defender, Inter inter) {}
 
-    private Inter interaction(MartialService.Fighter fa, CharacterTechnique tech, EncounterParticipant att,
+    private Inter interaction(PendingAttack a, MartialService.Fighter fa, CharacterTechnique tech, EncounterParticipant att,
                               CharacterSheet attSheet, MartialService.Fighter fd, EncounterParticipant tp,
                               CharacterSheet tsh) {
-        MartialType at = martial.attackType(fa, tech);
+        MartialType at = attackTypeOf(a, att, attSheet);
         MartialType dt = fd.type();
         int w = MartialRules.winner(at, dt);
         if (w == 0) return Inter.NONE;
@@ -668,7 +676,7 @@ public class AttackService {
             EncounterParticipant tp = ctx.participant(t.getTargetId());
             CharacterSheet tsh = ctx.sheetOf.get(tp.getId());
             MartialService.Fighter fd = martial.fighter(tp, tsh);
-            matchups.put(tp.getId(), new Matchup(fd, interaction(fa, tech, att, attSheet, fd, tp, tsh)));
+            matchups.put(tp.getId(), new Matchup(fd, interaction(a, fa, tech, att, attSheet, fd, tp, tsh)));
         }
         calc = withMartial(calc, a, att, attSheet, downed, fa, tech, matchups.get(ts.get(0).getTargetId()).inter());
         calc = withSituation(calc, a, att, ctx.participant(ts.get(0).getTargetId()), ctx);
@@ -677,11 +685,13 @@ public class AttackService {
         InventoryItem gun = weapon == null ? null : weaponItem(attSheet, a, calc);
         if (weapon != null && weapon.dispersion()) calc = calc.withDice(WeaponRules.dispersed(calc.dice(), a.getDistanceM()));
 
+        boolean thrownTech = tech != null && ModuleRules.has(items, "Arremessar")
+                && a.getDistanceM() != null && a.getDistanceM() > WeaponRules.CLOSE_M;
         int adv = (ctx.has(att.getId(), RESTRAINED) ? -1 : 0) + (ctx.has(att.getId(), DISORIENTED) ? -1 : 0)
                 + (ctx.hasAny(ts.get(0).getTargetId(), EASY_TARGET) ? 1 : 0)
                 + (ctx.has(att.getId(), "DISSOCIADO") ? -1 : 0)
                 + (ctx.has(att.getId(), VitalService.BURNING) ? -1 : 0) // Queimando: desvantagem em precisão
-                + rangeAdvantage(a, weapon, weapon != null && extendedShot(attSheet, a));
+                + rangeAdvantage(a, weapon, weapon != null && extendedShot(attSheet, a), thrownTech);
         String targetNames = names(ctx, ts);
         RollMessage atk = rolls.rollCalc(attSheet, e.getCampaignId(), calc, adv,
                 "Ataque: " + att.getName() + " → " + targetNames, userId, role);
@@ -718,11 +728,12 @@ public class AttackService {
             // quem reage: o próprio alvo ou o aliado que o defende (alvo Inconsciente)
             EncounterParticipant rp = t.getDefenderId() == null ? tp : ctx.participant(t.getDefenderId());
             CharacterSheet rsh = ctx.sheetOf.get(rp.getId());
-            Matchup mu = rp == tp ? matchups.get(tp.getId()) : guardianMatchup(fa, tech, att, attSheet, rp, rsh);
+            Matchup mu = rp == tp ? matchups.get(tp.getId()) : guardianMatchup(a, fa, tech, att, attSheet, rp, rsh);
             if (rp != tp) log(e, rp.getId(), rp.getName() + " reage no lugar de " + tp.getName());
             RollProfileService.CoreTechnique rt = reactionTechnique(rsh, t);
             TechniqueRules.Reaction rr = rt == null ? null : TechniqueRules.reaction(rt.items());
             if (rt != null) log(e, rp.getId(), rp.getName() + " reage com " + rt.name());
+            RollProfileService.CoreTechnique counterTech = rt == null ? counterTech(rsh, t) : null;
             Calc counterCalc = rt == null ? counterCalc(rsh, rp, t, ctx) : null;
             if (counterCalc != null) log(e, rp.getId(), rp.getName() + " contra-ataca com " + counterCalc.name() + " (Contragolpe)");
 
@@ -773,6 +784,7 @@ public class AttackService {
             boolean connects = (r.outcome() != AttackOutcome.MISS && r.outcome() != AttackOutcome.DODGED) || areaDodge;
             int hitDamage = atk.damageTotal() == null ? 0 : atk.damageTotal();
             if (areaDodge) hitDamage /= 2; // explosão: Esquiva bem-sucedida = metade
+            if (ts.indexOf(t) > 0 && ModuleRules.has(items, "Transpassar")) hitDamage /= 2; // 2º alvo recebe metade do dano
             if (connects && weapon != null && weapon.burst() != null && r.outcome() != AttackOutcome.MISS) {
                 int shots = WeaponRules.burstHits(weapon.burst(), atk.total(), rmsg == null ? 0 : rmsg.total(), atk.critical());
                 for (int i = 1; i < shots; i++) hitDamage += rollDice(attSheet, calc.dice(), "Rajada: " + att.getName(), userId, role);
@@ -820,8 +832,15 @@ public class AttackService {
                         "Contra-ataque: " + rp.getName() + " → " + att.getName(), userId, role);
                 int raw = c.damageTotal() == null ? 0 : c.damageTotal();
                 counter = raw <= 0 ? 0 : AttackRules.damage(raw, 0, attackerCalejo);
-                attacksAttacker(e, att, attSheet, counter, new VitalService.Ctx(userId, role,
-                        "Contra-ataque de " + rp.getName(), c.critical()));
+                VitalService.Ctx cctx = new VitalService.Ctx(userId, role, "Contra-ataque de " + rp.getName(), c.critical());
+                attacksAttacker(e, att, attSheet, counter, cctx);
+                if (counterTech != null) {
+                    PendingAttack ca = PendingAttack.builder().sourceType(RollSourceType.TECHNIQUE)
+                            .sourceId(counterTech.technique().getId()).variation(counterTech.variation())
+                            .surface(a.isSurface()).build();
+                    applyEffects(e, ca, counterTech.technique(), counterTech.items(), rp, rsh, att, attSheet, c, cctx, userId, role);
+                    armedModules(e, ca, counterTech.items(), rp, att, attSheet, c, userId, role);
+                }
             }
             if (rr != null && reacted) {
                 reactionAftermath(e, rt, rr, r.outcome(), rp, rsh, att, attSheet, rmsg, userId, role);
@@ -874,7 +893,8 @@ public class AttackService {
                     second = rolls.rollCalc(attSheet, e.getCampaignId(), calc, adv,
                             "Sequência (2º acerto): " + att.getName() + " → " + targetNames, userId, role);
                 }
-                dmg += sequenceHit(e, a, items, applied, second, t, rmsg, breaksGuard, calejo, att, tp, tsh, vctx);
+                dmg += sequenceHit(e, a, items, applied, second, t, rmsg, rsh, weapon, breaksGuard, calejo, att, attSheet,
+                        tp, tsh, vctx, userId, role);
             }
             switch (r.outcome()) {
                 case DEFENDED -> martial.fire(e, rp, rsh, "DEFEND_SUCCESS", att.getId(), null);
@@ -918,26 +938,31 @@ public class AttackService {
     }
 
     /** Antes de gastar PA: travada, Engatilhamento Lento, munição e alcance máximo (2× o alcance). */
-    private void fireCheck(PendingAttack a, Calc calc, InventoryItem gun, boolean extended) {
+    private void fireCheck(CharacterSheet s, PendingAttack a, Calc calc, InventoryItem gun, boolean extended) {
         WeaponCatalog.Def w = calc.weapon();
         if (w == null || gun == null) return;
         if (gun.isJammed()) throw new InvalidCombatException(gun.getName() + " está travada: destrave (Ação Maior)");
         if (w.slowCock() && !gun.isCocked()) throw new InvalidCombatException("Engatilhe " + gun.getName() + " antes (Ação Menor)");
-        int shots = w.burst() == null ? 1 : w.burst();
+        boolean supp = a.getSourceType() == RollSourceType.TECHNIQUE
+                && profiles.hasModule(s, technique(s, a), a.getVariation(), "Supressão");
+        int shots = (w.burst() == null ? 1 : w.burst()) * (supp ? 2 : 1);
         if (w.capacity() != null && !"FAST".equals(w.reload()) && gun.getLoaded() < shots) {
             throw new InvalidCombatException(gun.getName() + " sem munição: recarregue");
         }
-        Double range = rangeOf(a, w, extended);
+        boolean thrownTech = a.getSourceType() == RollSourceType.TECHNIQUE
+                && profiles.hasModule(s, technique(s, a), a.getVariation(), "Arremessar");
+        Double range = rangeOf(a, w, extended, thrownTech);
         if (range != null && a.getDistanceM() != null && a.getDistanceM() > 2 * range) {
             throw new InvalidCombatException("Fora de alcance: " + gun.getName() + " alcança até " + (2 * range) + " m");
         }
     }
 
-    /** Alcance efetivo: disparo/arremesso da tabela (Disparo Estendido +50%), arremesso improvisado 6 m. */
-    private static Double rangeOf(PendingAttack a, WeaponCatalog.Def w, boolean extended) {
+    /** Alcance efetivo: disparo/arremesso da tabela (Disparo Estendido +50%), arremesso improvisado ou módulo Arremessar 6 m. */
+    private static Double rangeOf(PendingAttack a, WeaponCatalog.Def w, boolean extended, boolean thrownTech) {
         Double r;
-        if ("THROWN".equals(a.getVariation())) r = w.throwM() != null ? w.throwM() : Double.valueOf(WeaponRules.IMPROVISED_THROW_M);
-        else if (w.rangeM() != null) r = w.rangeM();
+        if ("THROWN".equals(a.getVariation()) || (thrownTech && a.getDistanceM() != null && a.getDistanceM() > WeaponRules.CLOSE_M)) {
+            r = w.throwM() != null ? w.throwM() : Double.valueOf(WeaponRules.IMPROVISED_THROW_M);
+        } else if (w.rangeM() != null) r = w.rangeM();
         else r = w.throwOnly() ? w.throwM() : null;
         if (r != null && extended) r = r * 1.5;
         return r;
@@ -954,9 +979,15 @@ public class AttackService {
                              InventoryItem gun) {
         WeaponCatalog.Def w = calc.weapon();
         if (w == null || gun == null) return;
-        if (w.capacity() != null && !"FAST".equals(w.reload())) gun.setLoaded(gun.getLoaded() - (w.burst() == null ? 1 : w.burst()));
+        boolean supp = a.getSourceType() == RollSourceType.TECHNIQUE
+                && profiles.hasModule(s, technique(s, a), a.getVariation(), "Supressão");
+        int shots = (w.burst() == null ? 1 : w.burst()) * (supp ? 2 : 1);
+        if (w.capacity() != null && !"FAST".equals(w.reload())) gun.setLoaded(Math.max(0, gun.getLoaded() - shots));
         if (w.slowCock()) gun.setCocked(false);
-        boolean thrown = w.thrownWeapon() || w.throwOnly() || "THROWN".equals(a.getVariation());
+        boolean thrownTech = a.getSourceType() == RollSourceType.TECHNIQUE
+                && profiles.hasModule(s, technique(s, a), a.getVariation(), "Arremessar")
+                && a.getDistanceM() != null && a.getDistanceM() > WeaponRules.CLOSE_M;
+        boolean thrown = w.thrownWeapon() || w.throwOnly() || "THROWN".equals(a.getVariation()) || thrownTech;
         if (!thrown) return;
         if (gun.getQuantity() > 1) {
             gun.setQuantity(gun.getQuantity() - 1);
@@ -968,11 +999,11 @@ public class AttackService {
     }
 
     /** Distância (§42): disparo/arremesso de X a 2X com desvantagem, colado com desvantagem; Grande colada também. */
-    private static int rangeAdvantage(PendingAttack a, WeaponCatalog.Def w, boolean extended) {
+    private static int rangeAdvantage(PendingAttack a, WeaponCatalog.Def w, boolean extended, boolean thrownTech) {
         if (w == null) return 0;
         int adv = 0;
-        Double range = rangeOf(a, w, extended);
-        if (range != null && (w.shooter() || w.thrownWeapon() || "THROWN".equals(a.getVariation()))) {
+        Double range = rangeOf(a, w, extended, thrownTech);
+        if (range != null && (w.shooter() || w.thrownWeapon() || "THROWN".equals(a.getVariation()) || thrownTech)) {
             Integer r = WeaponRules.rangeAdvantage(range, a.getDistanceM(), w.dispersion());
             adv += r == null ? 0 : r;
         }
@@ -1086,7 +1117,7 @@ public class AttackService {
         return !resists(e, tp, tsh, fx, "Mutilar", atk.total(), profiles.baseProfile(tsh, tp.getActiveBaseId()), userId, role);
     }
 
-    /** Módulos armados no acerto: Desarmar, Quebrar Arma, Puxar; Transpassar e Supressão ficam com o Mestre. */
+    /** Módulos armados no acerto: Desarmar, Quebrar Arma, Puxar, Supressão. */
     private void armedModules(Encounter e, PendingAttack a, List<AssemblyItem> items, EncounterParticipant att,
                               EncounterParticipant tp, CharacterSheet tsh, RollMessage atk, UUID userId, ActorRole role) {
         BaseRules.Profile db = profiles.baseProfile(tsh, tp.getActiveBaseId());
@@ -1111,8 +1142,11 @@ public class AttackService {
                 db, userId, role)) {
             log(e, tp.getId(), tp.getName() + " é puxado 1 quadrado na direção de " + att.getName());
         }
-        for (String m : List.of("Transpassar", "Supressão")) {
-            if (ModuleRules.has(items, m)) log(e, tp.getId(), m + " de " + att.getName() + ": aplicar manualmente");
+        if (ModuleRules.has(items, "Supressão") && !resists(e, tp, tsh,
+                new EffectRules.Effect(EffectRules.Kind.CONDITION, "SUPRIMIDO", Attribute.MEN, null, ConditionExpiry.END_OF_TARGET_TURN),
+                "Supressão", atk.total(), db, userId, role)) {
+            vital.addEffectCondition(e, tp, "SUPRIMIDO", ConditionExpiry.END_OF_TARGET_TURN, "Supressão", att.getId());
+            log(e, tp.getId(), tp.getName() + " fica Suprimido (Supressão): desvantagem no próximo ataque se sair da cobertura");
         }
     }
 
@@ -1267,21 +1301,47 @@ public class AttackService {
 
     /**
      * Sequência (§41): o 2º acerto compara com o resultado da mesma reação (o alvo não rola de novo); metade do dano,
-     * sem Efeitos nem contra-ataque. Empurrão Contínuo: se o Empurrar do 1º valeu, a distância aumenta pela metade.
+     * sem Efeitos nem contra-ataque. Golpe no Fôlego, Dano Persistente, Montinho, proteção e Ferida por tipo de dano
+     * valem também neste acerto. Empurrão Contínuo: se o Empurrar do 1º valeu, a distância aumenta pela metade.
      * Devolve o dano causado.
      */
     private int sequenceHit(Encounter e, PendingAttack a, List<AssemblyItem> items, Set<String> applied, RollMessage second,
-                            AttackTarget t, RollMessage rmsg, boolean breaksGuard, int calejo, EncounterParticipant att,
-                            EncounterParticipant tp, CharacterSheet tsh, VitalService.Ctx vctx) {
+                            AttackTarget t, RollMessage rmsg, CharacterSheet rsh, WeaponCatalog.Def weapon,
+                            boolean breaksGuard, int calejo, EncounterParticipant att, CharacterSheet attSheet,
+                            EncounterParticipant tp, CharacterSheet tsh, VitalService.Ctx vctx, UUID userId, ActorRole role) {
         AttackRules.Result r2 = AttackRules.resolve(t.getReaction(), second.total(), second.critical(), second.fumble(),
                 rmsg == null ? 0 : rmsg.total(), rmsg != null && rmsg.critical(), breaksGuard);
         boolean hit = r2.outcome() != AttackOutcome.MISS && r2.outcome() != AttackOutcome.DODGED
                 && r2.outcome() != AttackOutcome.COUNTERED;
         int raw = second.damageTotal() == null ? 0 : second.damageTotal() / 2;
+        if (hit && ModuleRules.has(items, "Montinho")) {
+            int pile = Math.max(0, rolls.rollInternal(attSheet, "1d4", "Montinho (Sequência): " + att.getName() + " → " + tp.getName(),
+                    userId, role).getTotal() + SheetRules.weightMod(attSheet.getWeightKg())) / 2;
+            raw += pile;
+        }
         int d = hit ? AttackRules.damage(raw, r2.mitigationPct(), calejo) : 0;
+        d = afterProtection(e, d, a, weapon, tp, tsh);
         log(e, tp.getId(), "Sequência de " + att.getName() + ": 2º acerto " + second.total()
                 + (hit ? " — " + d + " de dano em " + tp.getName() : " — não passou"));
-        if (d > 0) vital.applyHp(e, tp, tsh, -d, vctx.withCritical(second.critical()));
+        if (d > 0) {
+            ModuleRules.Breath breath = ModuleRules.breath(items);
+            if (breath == ModuleRules.Breath.SP_ONLY) {
+                log(e, tp.getId(), "Golpe no Fôlego (Sequência): " + d + " de dano no SP de " + tp.getName());
+                vital.applySp(e, tp, tsh, -d, vctx);
+            } else {
+                vital.applyHp(e, tp, tsh, -d, vctx.withCritical(second.critical()));
+            }
+            if (breath == ModuleRules.Breath.BOTH) {
+                int dice = diceTotal(second) / 2;
+                if (dice > 0) {
+                    log(e, tp.getId(), "Golpe no Fôlego (Sequência): −" + dice + " SP em " + tp.getName());
+                    vital.applySp(e, tp, tsh, -dice, vctx);
+                }
+            }
+            int persist = ModuleRules.persistentTurns(items);
+            if (persist > 0 && d / 2 > 0) persistent(e, att, tp, d / 2, persist);
+            woundsByType(e, weapon, t, r2, rsh, tp, tsh, second, vctx);
+        }
         if (hit && applied.contains("Empurrar") && ModuleRules.has(items, "Empurrão Contínuo")) {
             log(e, tp.getId(), tp.getName() + " é empurrado mais metade da distância (Empurrão Contínuo)");
         }
@@ -1441,6 +1501,9 @@ public class AttackService {
         if (db != null && EffectRules.ROOTED.contains(label) && db.rooted() != 0) {
             hit.add(new RollPart("HIT", "Enraizado (base: " + db.name() + ")", db.rooted(), null, false));
         }
+        if (db != null && ("Desarmar".equals(label) || "Quebrar Arma".equals(label)) && db.firmGrip() != 0) {
+            hit.add(new RollPart("HIT", "Empunhadura Firme (base: " + db.name() + ")", db.firmGrip(), null, false));
+        }
         if (db != null && db.resilience() != 0) {
             hit.add(new RollPart("HIT", "Resiliência (base: " + db.name() + ")", db.resilience(), null, false));
         }
@@ -1489,6 +1552,14 @@ public class AttackService {
             hit.add(new RollPart("HIT", "Abertura (vantagem)", 0, null, false));
             conditions.delete(opening);
         }
+        // Suprimido: o próximo ataque tem desvantagem (consumida aqui)
+        CombatCondition supp = conditions.findByParticipantIdIn(List.of(att.getId())).stream()
+                .filter(k -> "SUPRIMIDO".equals(k.getConditionKey())).findFirst().orElse(null);
+        if (supp != null) {
+            adv--;
+            hit.add(new RollPart("HIT", "Suprimido (desvantagem)", 0, null, false));
+            conditions.delete(supp);
+        }
         // Carga da Preparação: +dano no próximo golpe (consumida)
         Prepared pr = c.dice() == null ? null : prepared(att, ctx.sheetOf.get(att.getId()));
         if (pr != null && pr.prep().charge() > 0 && pr.flags().contains("C")) {
@@ -1510,7 +1581,24 @@ public class AttackService {
             halve(hit, "DES", "Fora da especialização: DES/2");
         }
         StrikeSide side = a.getStrikeSide();
-        if (side != null && (tech != null || (basic && MartialRules.oneSided(a.getBasicAttack())))) {
+        if (c.weapon() != null) {
+            BaseRules.Profile ownBase = profiles.baseProfile(s, att.getActiveBaseId());
+            if (ownBase != null && ownBase.steadyAim() > 0 && c.weapon().shooter() && !"THROWN".equals(a.getVariation())
+                    && att.getMovesThisTurn() == 0) {
+                hit.add(new RollPart("HIT", "Mira Estável (base: " + ownBase.name() + ")", ownBase.steadyAim(), null, false));
+            }
+            // Arma de uma mão: sem bônus de guarda; lado não dominante sofre −1 no acerto (Duas Mãos: nenhum modificador)
+            InventoryItem wi = weaponItem(s, a, c);
+            boolean twoHands = c.weapon().forcesTwoHands() || (wi != null && wi.isTwoHanded() && c.weapon().variable());
+            if (!twoHands && s.getDominance() != Dominance.AMBIDEXTROUS) {
+                List<InventoryItem> handWeapons = RollProfileService.inHand(s).stream()
+                        .filter(i -> weapons.find(i.getWeaponKey()).map(w -> !w.augment()).orElse(false)).toList();
+                boolean secondHand = handWeapons.size() > 1 && wi != null && handWeapons.get(1).getId().equals(wi.getId());
+                if (side == StrikeSide.BACK || secondHand) {
+                    hit.add(new RollPart("HIT", "Dominância: lado não dominante −1", -1, null, false));
+                }
+            }
+        } else if (side != null && (tech != null || (basic && MartialRules.oneSided(a.getBasicAttack())))) {
             Guard g = MartialRules.effectiveGuard(att.getGuard(), downed);
             int gh = MartialRules.guardHit(g, side, s.getDominance() == Dominance.AMBIDEXTROUS);
             if (gh != 0) hit.add(new RollPart("HIT", gh > 0 ? "Guarda: frente +1" : "Guarda invertida: trás −1", gh, null, false));
@@ -1750,12 +1838,17 @@ public class AttackService {
         static final Boost NONE = new Boost(List.of(), 0);
     }
 
-    /** Perfil do Golpe com Contragolpe escolhido como Contra-ataque deste alvo (null = Contra-ataque comum). */
-    private Calc counterCalc(CharacterSheet rsh, EncounterParticipant rp, AttackTarget t, Ctx ctx) {
+    /** Técnica de Golpe com Contragolpe escolhida como Contra-ataque deste alvo (null = Contra-ataque comum). */
+    private RollProfileService.CoreTechnique counterTech(CharacterSheet rsh, AttackTarget t) {
         if (t.getReaction() != ReactionType.COUNTER || t.getReactionTechniqueId() == null || rsh == null) return null;
-        RollProfileService.CoreTechnique ct = counterStrikes(rsh).stream()
+        return counterStrikes(rsh).stream()
                 .filter(x -> x.technique().getId().equals(t.getReactionTechniqueId())
                         && java.util.Objects.equals(x.variation(), t.getReactionVariation())).findFirst().orElse(null);
+    }
+
+    /** Perfil do Golpe com Contragolpe escolhido como Contra-ataque deste alvo (null = Contra-ataque comum). */
+    private Calc counterCalc(CharacterSheet rsh, EncounterParticipant rp, AttackTarget t, Ctx ctx) {
+        RollProfileService.CoreTechnique ct = counterTech(rsh, t);
         if (ct == null) return null;
         var o = new RollProfileService.Opts(martial.validBase(rsh, rp.getActiveBaseId()), knocked(ctx, rp), null, null,
                 martial.attackType(martial.fighter(rp, rsh), ct.technique()));
@@ -1902,15 +1995,29 @@ public class AttackService {
                 .toList();
     }
 
-    private Matchup guardianMatchup(MartialService.Fighter fa, CharacterTechnique tech, EncounterParticipant att,
-                                    CharacterSheet attSheet, EncounterParticipant gp, CharacterSheet gsh) {
+    private Matchup guardianMatchup(PendingAttack a, MartialService.Fighter fa, CharacterTechnique tech,
+                                    EncounterParticipant att, CharacterSheet attSheet, EncounterParticipant gp,
+                                    CharacterSheet gsh) {
         MartialService.Fighter fd = martial.fighter(gp, gsh);
-        return new Matchup(fd, interaction(fa, tech, att, attSheet, fd, gp, gsh));
+        return new Matchup(fd, interaction(a, fa, tech, att, attSheet, fd, gp, gsh));
     }
 
-    /** Tipo marcial do golpe: arte da técnica, senão a arte principal (escopo dos itens de base, §31). */
+    /** Tipo marcial do golpe: arte da técnica, tipo da arma em mãos (se golpe armado sem arte), senão a arte principal (§31). */
     private MartialType attackTypeOf(PendingAttack a, EncounterParticipant att, CharacterSheet attSheet) {
+        if (a.getSourceType() == RollSourceType.BASIC_ATTACK && a.getBasicAttack() == BasicAttack.ARMA) {
+            InventoryItem it = attSheet.getInventory().stream().filter(i -> i.getId().equals(a.getSourceId())).findFirst().orElse(null);
+            MartialType wt = it == null ? null : weapons.find(it.getWeaponKey()).map(w -> MartialRules.type(w.martialType())).orElse(null);
+            if (wt != null) return wt;
+        }
         CharacterTechnique t = a.getSourceType() == RollSourceType.TECHNIQUE ? technique(attSheet, a) : null;
+        if (t != null && t.getCharacterArt() == null && profiles.isArmed(attSheet, t)) {
+            MartialType wt = RollProfileService.inHand(attSheet).stream()
+                    .map(i -> weapons.find(i.getWeaponKey()).orElse(null))
+                    .filter(w -> w != null && !w.augment())
+                    .map(w -> MartialRules.type(w.martialType())).filter(java.util.Objects::nonNull)
+                    .findFirst().orElse(null);
+            if (wt != null) return wt;
+        }
         return martial.attackType(martial.fighter(att, attSheet), t);
     }
 

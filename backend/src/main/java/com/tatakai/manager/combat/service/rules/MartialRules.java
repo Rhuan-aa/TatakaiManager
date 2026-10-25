@@ -31,28 +31,41 @@ public final class MartialRules {
         return Normalizer.normalize(s, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase().trim();
     }
 
-    /** "Trocação"→STRIKING, "Derrubada"→TAKEDOWN, "Raspagem"→SWEEP, qualquer texto com "Geral"→GENERAL. */
+    /** Normaliza o tipo marcial (desarmado ou armado, spec §6.2); qualquer texto com "Geral"→GENERAL. */
     public static MartialType type(String raw) {
         String f = fold(raw);
         if (f.contains("geral")) return MartialType.GENERAL;
         if (f.contains("trocacao")) return MartialType.STRIKING;
         if (f.contains("derrubada")) return MartialType.TAKEDOWN;
         if (f.contains("raspagem")) return MartialType.SWEEP;
+        if (f.contains("lamina")) return MartialType.BLADE;
+        if (f.contains("contundente")) return MartialType.BLUNT;
+        if (f.contains("perfurante")) return MartialType.PIERCING;
+        if (f.contains("polvora")) return MartialType.GUNPOWDER;
+        if (f.contains("artesanais") || f.contains("artesanal")) return MartialType.RANGED_CRAFT;
         return null;
+    }
+
+    private static boolean unarmed(MartialType t) {
+        return t == MartialType.STRIKING || t == MartialType.TAKEDOWN || t == MartialType.SWEEP;
     }
 
     private static boolean beats(MartialType a, MartialType b) {
         return (a == MartialType.STRIKING && b == MartialType.TAKEDOWN)
                 || (a == MartialType.TAKEDOWN && b == MartialType.SWEEP)
-                || (a == MartialType.SWEEP && b == MartialType.STRIKING);
+                || (a == MartialType.SWEEP && b == MartialType.STRIKING)
+                || (a == MartialType.BLADE && b == MartialType.BLUNT)
+                || (a == MartialType.BLUNT && b == MartialType.PIERCING)
+                || (a == MartialType.PIERCING && b == MartialType.BLADE)
+                || (a == MartialType.GUNPOWDER && b == MartialType.RANGED_CRAFT);
     }
 
-    /** +1 atacante vence, −1 defensor vence, 0 nada. GENERAL vence os três e não perde; GENERAL × GENERAL = nada. */
+    /** +1 atacante vence, −1 defensor vence, 0 nada. GENERAL vence os três desarmados e não perde; GENERAL × GENERAL = nada. */
     public static int winner(MartialType atk, MartialType def) {
         if (atk == null || def == null) return 0;
         if (atk == MartialType.GENERAL && def == MartialType.GENERAL) return 0;
-        if (atk == MartialType.GENERAL) return 1;
-        if (def == MartialType.GENERAL) return -1;
+        if (atk == MartialType.GENERAL && unarmed(def)) return 1;
+        if (def == MartialType.GENERAL && unarmed(atk)) return -1;
         return beats(atk, def) ? 1 : beats(def, atk) ? -1 : 0;
     }
 

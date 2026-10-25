@@ -1253,4 +1253,36 @@ class CombatServiceTest {
         assertThat(iso.getQuantity()).isEqualTo(1);
         assertThatThrownBy(() -> use.accept(sais, p[1].getId())).hasMessageContaining("aliado");
     }
+
+    @Test
+    @DisplayName("§42 Base armada: Prontidão (1º sacar/guardar grátis) e Recarga Treinada (1ª recarga grátis)")
+    void armedBaseReadinessAndReload() {
+        EncounterParticipant[] p = started();
+        CharacterTechnique b = base(sheetA, TechniqueState.ACTIVE, MoveKind.BASE);
+        com.tatakai.manager.catalog.entity.AssemblyItem pr = new com.tatakai.manager.catalog.entity.AssemblyItem();
+        pr.setModule("Prontidão");
+        com.tatakai.manager.catalog.entity.AssemblyItem rt = new com.tatakai.manager.catalog.entity.AssemblyItem();
+        rt.setModule("Recarga Treinada");
+        com.tatakai.manager.catalog.entity.AssemblyItem cd = new com.tatakai.manager.catalog.entity.AssemblyItem();
+        cd.setModule("Controle de Distância");
+        org.mockito.Mockito.lenient().when(profiles.baseProfile(sheetA, b.getId()))
+                .thenReturn(com.tatakai.manager.combat.service.rules.BaseRules.profile("Iai", List.of(pr, rt, cd), false));
+        baseAct(p[0], b.getId(), player.getId()); // 1 PA
+        assertThat(p[0].getPaCurrent()).isEqualTo(4);
+        assertThat(eventList).anyMatch(ev -> ev.getText().contains("Controle de Distância"));
+
+        InventoryItem glock = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Glock")
+                .quantity(1).weaponKey("GLOCK").location(ItemLocation.QUICK).loaded(0).build();
+        sheetA.getInventory().add(glock);
+        java.util.function.BiConsumer<CombatAction, InventoryItem> gear = (a, i) -> service.act(enc.getId(),
+                new CombatActionRequest(p[0].getId(), a, null, null, null, null, null, null, null, null, null, i.getId(), null),
+                player.getId());
+        gear.accept(CombatAction.DRAW, glock);   // 1º sacar do turno com Prontidão: 0 PA
+        assertThat(p[0].getPaCurrent()).isEqualTo(4);
+        gear.accept(CombatAction.RELOAD, glock); // 1ª recarga do turno com Recarga Treinada: 0 PA
+        assertThat(p[0].getPaCurrent()).isEqualTo(4);
+        assertThat(glock.getLoaded()).isEqualTo(15);
+        gear.accept(CombatAction.DRAW, glock);   // 2º sacar/guardar no mesmo turno: 1 PA
+        assertThat(p[0].getPaCurrent()).isEqualTo(3);
+    }
 }

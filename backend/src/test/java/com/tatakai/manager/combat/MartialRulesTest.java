@@ -28,18 +28,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MartialRulesTest {
 
     @Test
-    @DisplayName("Tipo marcial: normaliza os textos reais do catálogo")
+    @DisplayName("Tipo marcial: normaliza os textos reais do catálogo (desarmados e armados)")
     void types() {
         assertThat(MartialRules.type("Trocação")).isEqualTo(STRIKING);
         assertThat(MartialRules.type("Derrubada")).isEqualTo(TAKEDOWN);
         assertThat(MartialRules.type("Raspagem")).isEqualTo(SWEEP);
         assertThat(MartialRules.type("Combate Desarmado - Geral")).isEqualTo(GENERAL);
+        assertThat(MartialRules.type("Lâmina")).isEqualTo(BLADE);
+        assertThat(MartialRules.type("Contundente")).isEqualTo(BLUNT);
+        assertThat(MartialRules.type("Perfurante")).isEqualTo(PIERCING);
+        assertThat(MartialRules.type("Pólvora")).isEqualTo(GUNPOWDER);
+        assertThat(MartialRules.type("Artesanais")).isEqualTo(RANGED_CRAFT);
         assertThat(MartialRules.type(null)).isNull();
-        assertThat(MartialRules.type("Lâmina")).isNull();
+        assertThat(MartialRules.type("Inexistente")).isNull();
     }
 
     @Test
-    @DisplayName("Matriz: Trocação > Derrubada > Raspagem > Trocação; GENERAL vence os três e não perde")
+    @DisplayName("Matriz: Trocação > Derrubada > Raspagem > Trocação; Lâmina > Contundente > Perfurante > Lâmina; Pólvora > Artesanais")
     void matrix() {
         assertThat(MartialRules.winner(STRIKING, TAKEDOWN)).isEqualTo(1);
         assertThat(MartialRules.winner(TAKEDOWN, SWEEP)).isEqualTo(1);
@@ -49,6 +54,14 @@ class MartialRulesTest {
         assertThat(MartialRules.winner(GENERAL, SWEEP)).isEqualTo(1);
         assertThat(MartialRules.winner(STRIKING, GENERAL)).isEqualTo(-1);
         assertThat(MartialRules.winner(GENERAL, GENERAL)).isZero();
+        assertThat(MartialRules.winner(GENERAL, BLADE)).isZero();
+        assertThat(MartialRules.winner(BLADE, BLUNT)).isEqualTo(1);
+        assertThat(MartialRules.winner(BLUNT, PIERCING)).isEqualTo(1);
+        assertThat(MartialRules.winner(PIERCING, BLADE)).isEqualTo(1);
+        assertThat(MartialRules.winner(BLUNT, BLADE)).isEqualTo(-1);
+        assertThat(MartialRules.winner(GUNPOWDER, RANGED_CRAFT)).isEqualTo(1);
+        assertThat(MartialRules.winner(RANGED_CRAFT, GUNPOWDER)).isEqualTo(-1);
+        assertThat(MartialRules.winner(BLADE, STRIKING)).isZero();
         assertThat(MartialRules.winner(null, STRIKING)).isZero();
         assertThat(MartialRules.winner(STRIKING, null)).isZero();
     }

@@ -53,9 +53,12 @@ export default function AttackBuilder({ participant: p, participants, initialKin
   const mods = prof?.modules ?? [];
   // §41: Varredura atinge 2 alvos, Círculo todos; o resto, 1
   const weapon = prof?.weaponKey ? weapons[prof.weaponKey] : null;
-  const maxTargets = weapon?.explosiveRadius || mods.includes('Círculo') ? Infinity : mods.includes('Varredura') ? 2 : 1;
-  const ranged = weapon && (weapon.rangeM || weapon.throwM || prof?.variation === 'THROWN' || weapon.large || weapon.dispersion);
-  const sided = prof?.basicAttack ? SIDED_BASICS.includes(prof.basicAttack) : !!prof;
+  const maxTargets = weapon?.explosiveRadius || mods.includes('Círculo') ? Infinity
+    : mods.includes('Supressão') ? 3
+    : mods.includes('Varredura') || mods.includes('Transpassar') ? 2 : 1;
+  const ranged = weapon && (weapon.rangeM || weapon.throwM || prof?.variation === 'THROWN' || weapon.large || weapon.dispersion || mods.includes('Arremessar'));
+  const oneHandWeapon = weapon && !weapon.twoHands && !weapon.heavyStr && !weapon.large && !(weapon.rangeM && !weapon.compact);
+  const sided = prof?.basicAttack ? SIDED_BASICS.includes(prof.basicAttack) || oneHandWeapon : !!prof && (!weapon || oneHandWeapon);
   const stealth = (t) => t.conditions.some((c) => c.key === 'FURTIVO');
   const toggle = (id) => setTargets((cur) => (cur.includes(id) ? cur.filter((x) => x !== id)
     : maxTargets === 1 ? [id] : cur.length >= maxTargets ? cur : [...cur, id]));
@@ -150,7 +153,9 @@ export default function AttackBuilder({ participant: p, participants, initialKin
           {BASIC_HINT[prof?.basicAttack] && <p className="caption">{BASIC_HINT[prof.basicAttack]}</p>}
           {weapon && <p className="caption">{weaponHint(weapon)}</p>}
           <fieldset className="flex flex-wrap gap-3">
-            <legend className="caption">Alvos{maxTargets === 1 ? ' (1)' : maxTargets === 2 ? ' (até 2, Varredura)' : ' (Círculo)'}</legend>
+            <legend className="caption">
+              Alvos{maxTargets === 1 ? ' (1)' : maxTargets === 2 ? ` (até 2, ${mods.includes('Transpassar') ? 'Transpassar' : 'Varredura'})` : maxTargets === 3 ? ' (até 3, Supressão)' : ' (Círculo)'}
+            </legend>
             {participants.filter((t) => t.id !== p.id).map((t) => {
               const hidden = stealth(t);
               return (

@@ -132,6 +132,14 @@ public class EncounterParticipant {
     @Column(name = "fluid_switch_used", nullable = false, columnDefinition = "boolean not null default false")
     private boolean fluidSwitchUsed;
 
+    /** Prontidão já usada neste turno (sacar/guardar arma de graça uma vez por turno). */
+    @Column(name = "readiness_used", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean readinessUsed;
+
+    /** Recarga Treinada já usada neste turno (recarregar Pólvora/Artesanais de graça uma vez por turno). */
+    @Column(name = "trained_reload_used", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean trainedReloadUsed;
+
     /** CharacterTechnique kind BASE ACTIVE em uso (RN-BASE-03); null = nenhuma. */
     @Column(name = "active_base_id")
     private UUID activeBaseId;

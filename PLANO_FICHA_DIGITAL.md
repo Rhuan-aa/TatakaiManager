@@ -2312,20 +2312,20 @@ seção nova e risque o item aqui.
 3. Sem grade/posição: Investida, Acompanhar, Reposicionar, Controle de Distância, Ataque de Oportunidade, adjacência e
    alcance Curto/Médio/Longo dos golpes (só a distância informada no ataque com arma é usada).
 4. Limitações só em texto: Gatilho, Exige Posição, Duas Etapas.
-5. Contragolpe aplica só dano e gasto: os Efeitos da técnica usada como Contra-ataque não são aplicados.
-6. Sequência: o 2º acerto não aplica Golpe no Fôlego, Dano Persistente, Montinho nem Ferida por tipo de dano.
-7. Encadear: "outra técnica do mesmo tipo" foi lida como mesmo núcleo (Golpe/Controle), não mesmo tipo marcial.
-8. Atributo Alternativo/Massa/Exige Base dependem do rótulo ou da nota do item ("INT", "teste", "acerto", nome da base):
-   o editor não tem campo próprio para isso.
+5. ~~Contragolpe aplica só dano e gasto: os Efeitos da técnica usada como Contra-ataque não são aplicados.~~ (feito, §46)
+6. ~~Sequência: o 2º acerto não aplica Golpe no Fôlego, Dano Persistente, Montinho nem Ferida por tipo de dano.~~ (feito, §46)
+7. ~~Encadear: "outra técnica do mesmo tipo" foi lida como mesmo núcleo (Golpe/Controle), não mesmo tipo marcial.~~ (feito, §46)
+8. ~~Atributo Alternativo/Massa/Exige Base dependem do rótulo ou da nota do item ("INT", "teste", "acerto", nome da base):
+   o editor não tem campo próprio para isso.~~ (feito, §46)
 
 **Armas**
-9. Dominância com arma de uma mão (−1 no lado não dominante): o sistema não sabe em que mão está a arma.
-10. Tipos marciais armados (Lâmina, Contundente, Perfurante, Pólvora, Artesanais) não existem em `MartialType`: interação
-    marcial, especialização, Precisão/Força do Golpe de base "em Lâmina" e artes armadas do catálogo não funcionam.
-11. Abrangência "Arma Única" não é conferida (a técnica aceita qualquer arma da classe).
-12. Módulos de base armada sem efeito: Controle de Distância, Empunhadura Firme (+2 contra Desarmar), Prontidão (saque
-    livre), Recarga Treinada (recarga livre), Mira Estável (+2 sem se mover).
-13. Módulos armados manuais: Transpassar, Supressão, Puxar (só registra), Arremessar (técnica arremessada sem desvantagem).
+9. ~~Dominância com arma de uma mão (−1 no lado não dominante): o sistema não sabe em que mão está a arma.~~ (feito, §46)
+10. ~~Tipos marciais armados (Lâmina, Contundente, Perfurante, Pólvora, Artesanais) não existem em `MartialType`: interação
+    marcial, especialização, Precisão/Força do Golpe de base "em Lâmina" e artes armadas do catálogo não funcionam.~~ (feito, §46)
+11. ~~Abrangência "Arma Única" não é conferida (a técnica aceita qualquer arma da classe).~~ (feito, §46)
+12. ~~Módulos de base armada sem efeito: Controle de Distância, Empunhadura Firme (+2 contra Desarmar), Prontidão (saque
+    livre), Recarga Treinada (recarga livre), Mira Estável (+2 sem se mover).~~ (feito, §46)
+13. ~~Módulos armados manuais: Transpassar, Supressão, Puxar (só registra), Arremessar (técnica arremessada sem desvantagem).~~ (feito, §46)
 14. Explosivos: o resto do raio (metade do dano), o desvio de 1d3 quadrados no erro e a área em chamas da Incendiária por
     3 rodadas não são calculados; Fumaça não aplica cobertura nem desvantagem.
 15. Munição: não há estoque (recarregar sempre enche); flechas/virotes e cartuchos não são gastos do inventário.
@@ -2351,3 +2351,37 @@ seção nova e risque o item aqui.
 26. Estimulante de Combate: o SP máximo −25% até o Repouso é só um aviso.
 27. Bombas (Ciclo Leve/Pesado/Veterinário): ciclo Carga → Queda → Rastro, Treinos Plenos extras, Marcas de Abuso,
     Abstinência, Sequelas e antidoping — nada implementado.
+
+## 46. Criação Marcial e Armas — complementos (25/10/2026)
+
+- **Tipos marciais armados** (`MartialType`): `BLADE("Lâmina")`, `BLUNT("Contundente")`, `PIERCING("Perfurante")`,
+  `GUNPOWDER("Pólvora")`, `RANGED_CRAFT("Artesanais")`. Matriz em `MartialRules`: `Lâmina > Contundente > Perfurante > Lâmina`
+  e `Pólvora > Artesanais` (`GENERAL` só vence os 3 desarmados). Escopos armados em `BaseRules.Scope`; `AttackService.attackTypeOf`
+  usa o tipo marcial da arma em mãos quando o golpe é `BasicAttack.ARMA` ou técnica armada avulsa.
+- **Contragolpe**: quando `counterHits()` é verdadeiro e a reação usou um Golpe com `Contragolpe`, `AttackService.resolve`
+  aplica os `EFFECT` e módulos armados da técnica contra o atacante (`rp` → `att`).
+- **Sequência**: o 2º acerto em `AttackService.sequenceHit` aplica Montinho (pela metade), redução de proteção
+  (`afterProtection`), Golpe no Fôlego (`SP_ONLY` e `BOTH`), Dano Persistente e Ferida por tipo de dano (`woundsByType`).
+- **Encadear**: `AttackService.chain` confere mesmo `MartialType` entre as duas técnicas (rejeitando núcleos `REACTION` e
+  `PREPARATION`; quando ambas não têm tipo marcial, exige o mesmo núcleo).
+- **Dominância com arma de 1 mão**: armas nunca recebem bônus de guarda desarmada (+1 frente / +1d2 trás); armas de duas
+  mãos não recebem modificador de guarda nem de dominância; arma de 1 mão no lado não dominante (`StrikeSide.BACK` ou 2ª
+  arma em `HAND`, quando não ambidestro) sofre `−1` no acerto (`"Dominância: lado não dominante −1"`).
+- **Abrangência "Arma Única"**: `ModuleRules.singleWeapon` extrai o nome/chave da arma do rótulo/nota; `RollProfileService.wielded`
+  exige que a arma em mãos coincida com a arma única declarada.
+- **Módulos de base armada** (`BaseRules.Profile`, `CombatService`, `AttackService`, `EncounterParticipant`):
+  - `Controle de Distância`: registrado na linha do tempo ao assumir a base.
+  - `Empunhadura Firme`: `+2` (Esboço: `+1`) para resistir a `Desarmar` e `Quebrar Arma`.
+  - `Prontidão`: 1º `DRAW` do turno custa 0 PA (`EncounterParticipant.readinessUsed`, zera em `beginTurn`).
+  - `Recarga Treinada`: 1º `RELOAD` do turno de arma de Pólvora/Artesanais custa 0 PA (`EncounterParticipant.trainedReloadUsed`).
+  - `Mira Estável`: `+2` no acerto (Esboço: `+1`) de disparos (`weapon.shooter()`) quando `movesThisTurn == 0`.
+- **Módulos armados de técnica**:
+  - `Arremessar`: permite arremessar arma corpo a corpo até 6 m (`rangeOf`, `consumeShot`, `rangeAdvantage`) sem a
+    desvantagem de arremesso improvisado.
+  - `Transpassar`: `ModuleRules.maxTargets` = 2; o 2º alvo em `AttackService.resolve` recebe metade do dano (`hitDamage /= 2`).
+  - `Supressão`: `ModuleRules.maxTargets` = 3; consome o dobro da munição (`fireCheck`/`consumeShot`); no acerto, o alvo
+    testa `MEN` contra `atk.total()` e na falha recebe a condição `SUPRIMIDO` (`END_OF_TARGET_TURN`), que dá desvantagem no
+    próximo ataque (`withSituation`).
+- **Campos dedicados no `ArtEditor`**: seletores/inputs próprios em `ItemsEditor` para `Atributo Alternativo` (DES/INT +
+  dano/acerto), `Massa` (dano/acerto), `Exige Base` (datalist com as bases da arte) e `Arma Única` (datalist com o catálogo
+  de armas).
