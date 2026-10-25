@@ -207,7 +207,8 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
 
           <div className={`grid gap-4 ${controlsCurrent ? 'lg:grid-cols-[18rem_1fr]' : ''}`}>
             {controlsCurrent && (
-              <aside className="lg:sticky lg:top-24 lg:self-start">
+              <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-2 lg:pb-2">
+                {/* menu acompanha a rolagem: altura da tela abaixo da faixa de turno, com rolagem própria */}
                 <ActionBar participant={current} participants={enc.participants} canAct={canAct}
                   onAct={(b) => run(() => api.doAction(enc.id, b))}
                   onAttack={(kind) => setAttacking(kind)} />

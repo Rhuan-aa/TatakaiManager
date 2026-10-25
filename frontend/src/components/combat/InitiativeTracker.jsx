@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { expiresLabel, CLASS_LABEL, HYSTERIA, hasCondition, conditionNote, MARTIAL_TYPE_LABEL, GUARD_LABEL, LEAD_FOOT_LABEL } from './combatLabels';
+import { expiresLabel, CLASS_LABEL, HYSTERIA, hasCondition, conditionNote, MARTIAL_TYPE_LABEL, GUARD_LABEL, LEAD_FOOT_LABEL, CLASS_COLOR } from './combatLabels';
 
 function Bar({ name, value, max, color }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
@@ -100,11 +100,16 @@ export default function InitiativeTracker({ enc, isMaster, canControl = () => fa
 
             <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px]">
               {isMaster ? (
-                <select className="field !w-auto !py-0 text-[11px]" aria-label={`Classificação de ${p.name}`} value={p.classification ?? 'REAL'}
+                <select className="field !w-auto !py-0 text-[11px] font-bold" aria-label={`Classificação de ${p.name}`} value={p.classification ?? 'REAL'}
+                  style={{ color: CLASS_COLOR[p.classification ?? 'REAL'], borderColor: CLASS_COLOR[p.classification ?? 'REAL'] }}
                   onChange={(e) => onAdjust(p.id, { classification: e.target.value })}>
                   {Object.entries(CLASS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                 </select>
-              ) : p.classification && <span className="tag">{CLASS_LABEL[p.classification]}</span>}
+              ) : p.classification && (
+                <span className="tag" style={{ color: CLASS_COLOR[p.classification], borderColor: CLASS_COLOR[p.classification] }}>
+                  {CLASS_LABEL[p.classification]}
+                </span>
+              )}
               <span className="tag" title="Time">Time {p.team ?? '—'}</span>
               {p.openWounds > 0 && <span className="tag tag-accent" title="Feridas abertas (sangramento)">Feridas {p.openWounds}</span>}
               {hasCondition(p, 'MORTO') && <span className="tag tag-accent">Morto</span>}
