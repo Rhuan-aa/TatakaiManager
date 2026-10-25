@@ -577,7 +577,7 @@ h3,
   color: var(--cls); background: var(--panel-bg); border: 3px solid var(--cls); box-shadow: 4px 4px 0 var(--cls);
 }
 .class-card select { background: transparent; color: var(--cls); font: inherit; border: 0; cursor: pointer; padding-right: 0.25rem; }
-.class-card select:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
+.class-card select:focus, .class-card select:focus-visible { outline: none; }
 .class-card select option { color: var(--text); background: var(--panel-bg); }
 
 /* Avançar turno: botão fixo no canto inferior direito */
@@ -587,7 +587,11 @@ h3,
   letter-spacing: 0.04em; cursor: pointer; color: var(--ink); background: var(--highlight);
   border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--highlight); transition: transform 80ms, box-shadow 80ms;
 }
-.btn-next-turn:hover { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--highlight); }
+/* hover: inverte — fundo do painel, fonte e sombra amarelas, contorno branco (--line: preto no tema claro) */
+.btn-next-turn:hover {
+  color: var(--highlight); background: var(--panel-bg); border-color: var(--line);
+  transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--highlight);
+}
 .btn-next-turn:active { transform: translate(6px, 6px); box-shadow: none; }
 .btn-next-turn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
