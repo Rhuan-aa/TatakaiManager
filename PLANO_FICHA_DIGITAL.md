@@ -1978,4 +1978,9 @@ Empurrar: FOR) e fica num só lugar (`EffectRules`).
 - **Vulnerável (regra da mesa, 25/10/2026):** o alvo não reage, mas o ataque só acerta com **total ≥ 10**
   (`AttackRules.VULNERABLE_ND`); abaixo disso o desfecho é `MISS` (sem dano nem efeitos). Crítico acerta sempre.
   Vale só para Vulnerável (Atordoado/Inconsciente seguem acertando direto).
+- **Atordoado (regra da mesa, 25/10/2026):** continua perdendo o próximo turno, mas **pode reagir** — com
+  **desvantagem** e **sem Contra-ataque** (opção indisponível; `respond` COUNTER → 400). Saiu de `NO_REACTION`.
+- **Paralisado (texto novo):** deslocamento zero e **nenhuma ação** (`act`/`declare` → 400). Pode tentar reagir:
+  antes da rolagem passa em **Vontade ND 15** (`VitalService.willTest`); falhou → reação vira `NONE`. Reage com
+  **desvantagem**; falha automática em testes de FOR/DES (resistência a efeitos); ataques contra ele têm vantagem.
 

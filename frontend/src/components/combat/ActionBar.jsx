@@ -32,7 +32,9 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
     const v = Math.max(0, spCost - (flow ? 1 : 0));
     return dissociated && (a.action === 'MAJOR' || a.action === 'PREPARED') ? v * 2 : v;
   };
-  const paReason = (pa) => (!canAct ? 'Não é o seu turno' : p.paCurrent < pa ? `PA insuficiente (${p.paCurrent}/${pa})` : null);
+  const paralyzed = hasCondition(p, 'PARALISADO');
+  const paReason = (pa) => (!canAct ? 'Não é o seu turno' : paralyzed ? 'Paralisado: nenhuma ação'
+    : p.paCurrent < pa ? `PA insuficiente (${p.paCurrent}/${pa})` : null);
 
   function disabledReason(a) {
     const pa = a.action === 'MAJOR' && slow ? 4 : a.pa;

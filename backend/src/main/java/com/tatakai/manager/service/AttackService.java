@@ -82,7 +82,11 @@ public class AttackService {
     private static final String KNOCKED_DOWN = "DERRUBADO";
     private static final String DISORIENTED = "DESORIENTADO";
     private static final String RESTRAINED = "IMOBILIZADO";
-    private static final Set<String> NO_REACTION = Set.of("VULNERAVEL", "ATORDOADO", "INCONSCIENTE", "MORTO");
+    private static final Set<String> NO_REACTION = Set.of("VULNERAVEL", "INCONSCIENTE", "MORTO");
+    /** Reagem com desvantagem; Atordoado não contra-ataca, Paralisado precisa de Vontade ND 15 antes. */
+    private static final String STUNNED = "ATORDOADO";
+    private static final String PARALYZED = "PARALISADO";
+    public static final int PARALYZED_REACTION_ND = 15;
     private static final Random DICE = new java.security.SecureRandom();
     private static final Set<String> EASY_TARGET = Set.of("AGARRADO", "IMOBILIZADO", "PARALISADO");
 
@@ -213,6 +217,7 @@ public class AttackService {
         if (ctx.hasAny(att.getId(), Set.of("INCONSCIENTE", "MORTO"))) {
             throw new InvalidCombatException(att.getName() + " está fora de combate e não pode agir");
         }
+        if (ctx.has(att.getId(), PARALYZED)) throw new InvalidCombatException(att.getName() + " está Paralisado e não pode agir");
         Calc calc = calcFor(s, a, ctx.has(att.getId(), KNOCKED_DOWN), att, s);
         a.setVariation(calc.variation());
         String name = calc.variation() == null ? calc.name() : calc.name() + " (" + calc.variation() + ")";
@@ -282,6 +287,9 @@ public class AttackService {
             throw new AccessDeniedException("Apenas o dono do alvo ou o Mestre pode reagir");
         }
         if (t.getReaction() != null) throw new CombatConflictException("Este alvo já respondeu");
+        if (reaction == ReactionType.COUNTER && ctx.has(t.getTargetId(), STUNNED)) {
+            throw new InvalidCombatException("Atordoado não pode Contra-atacar");
+        }
         if (reaction == ReactionType.COUNTER && ts0.getCurrentSp() < 1) {
             throw new InvalidCombatException("Contra-ataque exige 1 SP");
         }
@@ -377,10 +385,11 @@ public class AttackService {
                 + martial.read(tsh, att, ctx.sheetOf.get(att.getId()))
                 + (incomum(att, ctx.sheetOf.get(att.getId()), tp, tsh, ctx) ? 1 : 0);
         boolean sp = tsh.getCurrentSp() >= 1;
+        boolean stunned = ctx.has(tp.getId(), STUNNED);
         return List.of(
                 new Option(ReactionType.DEFEND, true, null, RollRules.modOrZero(tsh.getCon()) + common),
                 new Option(ReactionType.DODGE, true, null, RollRules.modOrZero(tsh.getDex()) + common),
-                new Option(ReactionType.COUNTER, sp, sp ? null : "SP insuficiente",
+                new Option(ReactionType.COUNTER, sp && !stunned, stunned ? "Atordoado: sem Contra-ataque" : sp ? null : "SP insuficiente",
                         RollRules.modOrZero(tsh.getDex()) + common),
                 new Option(ReactionType.NONE, true, null, 0));
     }
@@ -448,6 +457,12 @@ public class AttackService {
             tp.setAttackersThisRound(group);
 
             RollMessage rmsg = null;
+            if (t.getReaction() != ReactionType.NONE && !atk.fumble() && ctx.has(tp.getId(), PARALYZED)
+                    && !vital.willTest(e, tp, tsh, PARALYZED_REACTION_ND, "Paralisado: reagir",
+                            VitalService.Ctx.of(userId, role, "Paralisado"))) {
+                log(e, tp.getId(), tp.getName() + " não consegue reagir (Paralisado)");
+                t.setReaction(ReactionType.NONE);
+            }
             if (t.getReaction() != ReactionType.NONE && !atk.fumble()) {
                 rmsg = reactionRoll(e, a, att, attSheet, tp, tsh, t.getReaction(), group.size(), ctx, matchups.get(tp.getId()),
                         userId, role);
@@ -642,6 +657,7 @@ public class AttackService {
         int adv = ctx.has(tp.getId(), "DISSOCIADO") ? -1 : 0;
         if (!defend && ctx.has(tp.getId(), KNOCKED_DOWN)) adv--;
         if (reaction == ReactionType.DODGE && ctx.has(tp.getId(), DISORIENTED)) adv--;
+        if (ctx.has(tp.getId(), STUNNED) || ctx.has(tp.getId(), PARALYZED)) adv--;
         if (mu.inter().label() != null) hit.add(new RollPart("HIT", mu.inter().label(), 0, null, false));
         if (mu.inter().result() == -1) adv++;
         String label = switch (reaction) {

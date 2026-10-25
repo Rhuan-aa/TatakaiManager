@@ -285,9 +285,9 @@ class AttackServiceTest {
     }
 
     @Test
-    @DisplayName("Alvo Vulnerável/Atordoado/Inconsciente: reação NONE automática e resolve na hora")
+    @DisplayName("Alvo Vulnerável/Inconsciente: reação NONE automática e resolve na hora")
     void autoNone() {
-        cond(pN, "ATORDOADO");
+        cond(pN, "VULNERAVEL");
         queue.add(msg(15, 10, 7));
         AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
         assertThat(r.status()).isEqualTo(AttackStatus.RESOLVED);
@@ -1147,5 +1147,51 @@ class AttackServiceTest {
         r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
         assertThat(r.targets().get(0).outcome()).isEqualTo(AttackOutcome.HIT);
         assertThat(npcSheet.getCurrentHp()).isEqualTo(25);
+    }
+
+    @Test
+    @DisplayName("Atordoado reage (sem Contra-ataque) e com desvantagem")
+    void stunnedReactsWithDisadvantage() {
+        cond(pN, "ATORDOADO");
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), master.getId());
+        assertThat(r.status()).isEqualTo(AttackStatus.AWAITING_REACTIONS);
+        AttackResponse.TargetResponse t = r.targets().get(0);
+        assertThat(t.options()).filteredOn(o -> o.reaction() == ReactionType.COUNTER)
+                .singleElement().satisfies(o -> assertThat(o.available()).isFalse());
+        assertThatThrownBy(() -> service.respond(r.id(), t.id(), ReactionType.COUNTER, master.getId()))
+                .isInstanceOf(InvalidCombatException.class);
+        queue.add(msg(15, 10, 7));
+        queue.add(msg(18, 15, null));
+        service.respond(r.id(), t.id(), ReactionType.DODGE, master.getId());
+        assertThat(lastAdv.get(lastAdv.size() - 1)).isEqualTo(-1);
+    }
+
+    @Test
+    @DisplayName("Paralisado: não age; para reagir passa em Vontade ND 15 (falhou -> sem reação), e reage com desvantagem")
+    void paralyzedReaction() {
+        cond(pN, "PARALISADO");
+        AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), master.getId());
+        queue.add(msg(15, 10, 7));
+        queue.add(msg(10, 9, null)); // Vontade 10 < 15: não reage
+        AttackResponse.TargetResponse t = service.respond(r.id(), r.targets().get(0).id(), ReactionType.DODGE, master.getId())
+                .targets().get(0);
+        assertThat(t.reaction()).isEqualTo(ReactionType.NONE);
+        assertThat(t.outcome()).isEqualTo(AttackOutcome.HIT);
+
+        pA.setPaCurrent(5);
+        sheetA.setCurrentSp(10);
+        AttackResponse r2 = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), master.getId());
+        queue.add(msg(15, 10, 7));
+        queue.add(msg(16, 14, null)); // Vontade ok
+        queue.add(msg(18, 15, null)); // esquiva
+        AttackResponse.TargetResponse t2 = service.respond(r2.id(), r2.targets().get(0).id(), ReactionType.DODGE, master.getId())
+                .targets().get(0);
+        assertThat(t2.outcome()).isEqualTo(AttackOutcome.DODGED);
+        assertThat(lastAdv.get(lastAdv.size() - 1)).isEqualTo(-1);
+
+        cond(pA, "PARALISADO");
+        pA.setPaCurrent(5);
+        assertThatThrownBy(() -> service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId()))
+                .isInstanceOf(InvalidCombatException.class);
     }
 }

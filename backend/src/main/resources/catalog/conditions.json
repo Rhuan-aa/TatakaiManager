@@ -58,7 +58,7 @@
   {
     "key": "ATORDOADO",
     "name": "Atordoado",
-    "effect": "Perde próximo turno; sem Contra; Defender/Esquiva com desvantagem",
+    "effect": "Perde o próximo turno; pode reagir com desvantagem, mas não Contra-atacar",
     "exit": "Fim do turno perdido",
     "defaultExpiresAt": "END_OF_TARGET_TURN",
     "stack": "RENEW"
@@ -66,7 +66,7 @@
   {
     "key": "PARALISADO",
     "name": "Paralisado",
-    "effect": "Deslocamento 0, sem ações físicas, falha automática FOR/DES, ataques contra com vantagem",
+    "effect": "Deslocamento 0, nenhuma ação; para reagir passa antes em Vontade ND 15 e reage com desvantagem; falha automática em FOR/DES; ataques contra ele têm vantagem",
     "exit": "Conforme causa",
     "defaultExpiresAt": "COUNTER",
     "stack": "RENEW"

@@ -447,6 +447,7 @@ public class CombatService {
         if (keys.contains(VitalService.UNCONSCIOUS) || keys.contains(VitalService.DEAD)) {
             throw new InvalidCombatException(p.getName() + " está fora de combate e não pode agir");
         }
+        if (keys.contains("PARALISADO")) throw new InvalidCombatException(p.getName() + " está Paralisado e não pode agir");
         boolean dissociated = keys.contains(VitalService.DISSOCIATED);
         if (dissociated && (action == CombatAction.MINOR || action == CombatAction.MINOR_OFFENSIVE)) {
             throw new InvalidCombatException("Dissociado: Ações Menores estão bloqueadas");

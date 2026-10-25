@@ -134,6 +134,11 @@ public class VitalService {
 
     // ---------- testes automáticos ----------
 
+    /** Teste de Vontade (1d20 + mod. MEN, Fluxo/Muralha/Desgaste) contra `nd`; registra na linha do tempo. */
+    public boolean willTest(Encounter e, EncounterParticipant p, CharacterSheet s, int nd, String label, Ctx c) {
+        return test(e, p, s, true, nd, label, c);
+    }
+
     private boolean test(Encounter e, EncounterParticipant p, CharacterSheet s, boolean mental, int nd, String label,
                          Ctx c) {
         List<RollPart> hit = new ArrayList<>();

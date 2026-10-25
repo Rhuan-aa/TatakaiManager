@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 723 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 725 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -530,7 +530,7 @@ broadcast: outros clientes só veem ao recarregar o TimeSkip.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 723 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 725 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -878,6 +878,7 @@ ação/cor e tela de reação (`ActionBar` lateral + `ReactionOverlay`, plano §
 golpe (`RollReveal` + `revealQueue` + `combat/attackFx.js`, plano §28), fichas instantâneas do Mestre
 (`POST /campaigns/{cid}/gm-sheets` → NPC só com ficha, `GmSheets.jsx`, plano §29), efeitos de módulo no acerto
 (`EffectRules` + `AttackService.applyEffects`, resistência contra o total do ataque, plano §30); alvo Vulnerável
-não reage, mas o ataque precisa de total ≥ 10 (`AttackRules.VULNERABLE_ND`). **Pendentes:** técnicas
+não reage, mas o ataque precisa de total ≥ 10 (`AttackRules.VULNERABLE_ND`); Atordoado reage com desvantagem e sem
+Contra; Paralisado não age e só reage após Vontade ND 15, com desvantagem (plano §30). **Pendentes:** técnicas
 de Reação, armas, bônus de base para resistir a efeitos, Ferimentos Permanentes completos. Ao implementar um item, escreva o contrato numa seção
 nova do plano e marque-o aqui.
