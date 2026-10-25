@@ -1,7 +1,8 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.service.EquipmentCatalog;
-import com.tatakai.manager.service.rules.EquipmentRules;
+import com.tatakai.manager.catalog.service.EquipmentCatalog;
+import com.tatakai.manager.combat.service.rules.EquipmentRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

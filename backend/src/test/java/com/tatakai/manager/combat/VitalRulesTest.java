@@ -1,8 +1,10 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.entity.Hysteria;
-import com.tatakai.manager.service.rules.VitalRules;
-import com.tatakai.manager.service.rules.VitalRules.Tier;
+import com.tatakai.manager.combat.service.rules.VitalRules.Tier;
+
+import com.tatakai.manager.combat.entity.Hysteria;
+import com.tatakai.manager.combat.service.rules.VitalRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -42,18 +42,24 @@ TatakaiManager/
 │   ├── pom.xml
 │   ├── Dockerfile             # multi-stage temurin 21; roda como usuário não-root
 │   └── src/
-│       ├── main/java/com/tatakai/manager/
+│       ├── main/java/com/tatakai/manager/   # monólito modular: um pacote por domínio
 │       │   ├── TatakaiManagerApplication.java
-│       │   ├── config/SecurityConfig.java
-│       │   ├── security/      # JwtService, JwtAuthenticationFilter, AuthenticatedUser, TextSanitizer
-│       │   ├── websocket/     # WebSocketConfig, StompAuthChannelInterceptor, SlotEventPublisher
-│       │   ├── controller/    # 8 controllers REST (finos: só delegam ao service)
-│       │   ├── service/       # 8 services — TODA regra de negócio e autorização mora aqui
-│       │   ├── repository/    # Spring Data JPA (+ 1 MongoRepository: NpcRepository)
-│       │   ├── entity/        # entidades JPA + documento Mongo Npc + enums
-│       │   ├── dto/request/   # records com Bean Validation
-│       │   ├── dto/response/  # records de saída
-│       │   └── exception/     # exceções de domínio + GlobalExceptionHandler
+│       │   ├── shared/        # config/SecurityConfig, security/ (JWT, TextSanitizer), websocket/ (config,
+│       │   │                  #   StompAuthChannelInterceptor, CampaignEventPublisher), exception/ (handler, 403)
+│       │   ├── auth/          # User, login/registro
+│       │   ├── campaign/      # Campaign, membros, Role, regras opcionais
+│       │   ├── npc/           # Npc (Mongo), CampaignNpc, imagem
+│       │   ├── timeskip/      # TimeSkip, dias, atividades, Booking, eventos de slot
+│       │   ├── log/           # InteractionLog
+│       │   ├── catalog/       # traços, clãs, artes, instintos, marcos, armas/equip./consumíveis/condições
+│       │   ├── sheet/         # CharacterSheet, visibilidade, inventário, ferimentos, activity log, export
+│       │   ├── build/         # Construção Inicial (CharacterBuild)
+│       │   ├── martial/       # artes/técnicas da ficha, Caderno, Forja
+│       │   ├── progression/   # lutas, Rivais, Instintos, PS, treino
+│       │   ├── roll/          # rolagens e canais
+│       │   └── combat/        # encontro, ataque, vitais, interação marcial
+│       │   # dentro de cada módulo, as camadas: controller/ service/ service/rules/ repository/
+│       │   #   entity/ dto/request/ dto/response/ exception/ websocket/ (só as que o módulo usa)
 │       ├── main/resources/
 │       │   ├── application.properties.example   # o .properties real NÃO é versionado
 │       │   └── schema.sql                        # DDL de referência (desatualizado, ver §11)
@@ -131,6 +137,10 @@ Navegador (SPA React)
 ## 4. Backend em detalhe
 
 ### 4.1 Padrão de camadas (siga ao adicionar features)
+
+Caminhos como `service/rules/X`, `entity/Npc.java` ou `dto/request` neste documento são relativos ao
+módulo dono da classe (ex.: `combat/service/rules/AttackRules`). Classe nova vai no módulo do seu domínio;
+módulos podem importar uns dos outros (não há verificação de ciclo). O que é infra comum vai em `shared/`.
 
 1. **Controller**: mapeia rota, aplica `@Valid` no body, pega o usuário com
    `AuthenticatedUser.id()` e chama **um** método do service. Retorna `201` em

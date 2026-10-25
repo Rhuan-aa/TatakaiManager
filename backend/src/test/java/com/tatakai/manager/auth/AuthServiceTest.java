@@ -1,14 +1,15 @@
 package com.tatakai.manager.auth;
 
-import com.tatakai.manager.dto.request.LoginRequest;
-import com.tatakai.manager.dto.request.RegisterRequest;
-import com.tatakai.manager.dto.response.AuthResponse;
-import com.tatakai.manager.entity.User;
-import com.tatakai.manager.exception.EmailAlreadyUsedException;
-import com.tatakai.manager.exception.InvalidCredentialsException;
-import com.tatakai.manager.repository.UserRepository;
-import com.tatakai.manager.security.JwtService;
-import com.tatakai.manager.service.AuthService;
+import com.tatakai.manager.auth.dto.request.LoginRequest;
+import com.tatakai.manager.auth.dto.request.RegisterRequest;
+import com.tatakai.manager.auth.dto.response.AuthResponse;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.auth.exception.EmailAlreadyUsedException;
+import com.tatakai.manager.auth.exception.InvalidCredentialsException;
+import com.tatakai.manager.auth.repository.UserRepository;
+import com.tatakai.manager.auth.service.AuthService;
+import com.tatakai.manager.shared.security.JwtService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

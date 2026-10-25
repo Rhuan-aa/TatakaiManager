@@ -1,8 +1,9 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.service.WeaponCatalog;
-import com.tatakai.manager.service.rules.RollRules;
-import com.tatakai.manager.service.rules.WeaponRules;
+import com.tatakai.manager.catalog.service.WeaponCatalog;
+import com.tatakai.manager.combat.service.rules.WeaponRules;
+import com.tatakai.manager.roll.service.rules.RollRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -1,23 +1,53 @@
 package com.tatakai.manager.sheet;
 
-import com.tatakai.manager.dto.request.AttributesPayload;
-import com.tatakai.manager.dto.request.CreateCharacterSheetRequest;
-import com.tatakai.manager.dto.request.CreateGmSheetRequest;
-import com.tatakai.manager.dto.request.GmAdjustmentRequest;
-import com.tatakai.manager.dto.request.SetNpcSectionVisibilityRequest;
-import com.tatakai.manager.dto.request.UpdateCharacterSheetRequest;
-import com.tatakai.manager.dto.response.CharacterSheetResponse;
-import com.tatakai.manager.dto.response.NpcSectionVisibilityResponse;
-import com.tatakai.manager.dto.response.SheetUpdateMessage;
-import com.tatakai.manager.entity.*;
-import com.tatakai.manager.exception.AccessDeniedException;
-import com.tatakai.manager.exception.CharacterSheetNotFoundException;
-import com.tatakai.manager.exception.InvalidCharacterSheetException;
-import com.tatakai.manager.exception.NpcNotFoundException;
-import com.tatakai.manager.exception.NpcSheetAlreadyExistsException;
-import com.tatakai.manager.repository.*;
-import com.tatakai.manager.service.CharacterSheetService;
-import com.tatakai.manager.service.SheetActivityLogService;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.auth.repository.UserRepository;
+import com.tatakai.manager.build.entity.BuildStatus;
+import com.tatakai.manager.build.repository.CharacterBuildRepository;
+import com.tatakai.manager.campaign.entity.Campaign;
+import com.tatakai.manager.campaign.entity.CampaignMember;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.campaign.service.CampaignRuleService;
+import com.tatakai.manager.catalog.entity.TraitCategory;
+import com.tatakai.manager.catalog.entity.TraitDefinition;
+import com.tatakai.manager.catalog.entity.TraitRarity;
+import com.tatakai.manager.catalog.service.CatalogService;
+import com.tatakai.manager.npc.entity.CampaignNpc;
+import com.tatakai.manager.npc.entity.Npc;
+import com.tatakai.manager.npc.exception.NpcNotFoundException;
+import com.tatakai.manager.npc.repository.CampaignNpcRepository;
+import com.tatakai.manager.npc.repository.NpcRepository;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.sheet.dto.request.ApproveCharacterSheetRequest;
+import com.tatakai.manager.sheet.dto.request.AttributesPayload;
+import com.tatakai.manager.sheet.dto.request.CreateCharacterSheetRequest;
+import com.tatakai.manager.sheet.dto.request.CreateGmSheetRequest;
+import com.tatakai.manager.sheet.dto.request.GmAdjustmentRequest;
+import com.tatakai.manager.sheet.dto.request.SetNpcSectionVisibilityRequest;
+import com.tatakai.manager.sheet.dto.request.UpdateCharacterSheetRequest;
+import com.tatakai.manager.sheet.dto.response.CharacterSheetResponse;
+import com.tatakai.manager.sheet.dto.response.NpcSectionVisibilityResponse;
+import com.tatakai.manager.sheet.dto.response.SheetUpdateMessage;
+import com.tatakai.manager.sheet.entity.ActivityCategory;
+import com.tatakai.manager.sheet.entity.ActorRole;
+import com.tatakai.manager.sheet.entity.BodyType;
+import com.tatakai.manager.sheet.entity.CharacterSheet;
+import com.tatakai.manager.sheet.entity.CharacterTrait;
+import com.tatakai.manager.sheet.entity.Dominance;
+import com.tatakai.manager.sheet.entity.GmAction;
+import com.tatakai.manager.sheet.entity.NpcSheetVisibility;
+import com.tatakai.manager.sheet.entity.SheetSection;
+import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
+import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
+import com.tatakai.manager.sheet.exception.NpcSheetAlreadyExistsException;
+import com.tatakai.manager.sheet.exception.SheetEntryNotFoundException;
+import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
+import com.tatakai.manager.sheet.repository.CharacterSheetVisibilityRepository;
+import com.tatakai.manager.sheet.repository.NpcSheetVisibilityRepository;
+import com.tatakai.manager.sheet.service.CharacterSheetService;
+import com.tatakai.manager.sheet.service.SheetActivityLogService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,9 +85,9 @@ class NpcSheetServiceTest {
     @Mock private NpcSheetVisibilityRepository npcVisibilityRepository;
     @Mock private NpcRepository npcRepository;
     @Mock private UserRepository userRepository;
-    @Mock private com.tatakai.manager.service.CampaignRuleService ruleService;
-    @Mock private com.tatakai.manager.service.CatalogService catalogService;
-    @Mock private com.tatakai.manager.repository.CharacterBuildRepository buildRepository;
+    @Mock private com.tatakai.manager.campaign.service.CampaignRuleService ruleService;
+    @Mock private com.tatakai.manager.catalog.service.CatalogService catalogService;
+    @Mock private com.tatakai.manager.build.repository.CharacterBuildRepository buildRepository;
 
     private CharacterSheetService service;
     private User owner;
@@ -252,7 +282,7 @@ class NpcSheetServiceTest {
 
         assertThatThrownBy(() -> service.applyGmAdjustment(sheet.getId(), new GmAdjustmentRequest(
                 GmAction.ADD_TRAIT, null, null, "criação", null, null, foreign.getId()), owner.getId()))
-                .isInstanceOf(com.tatakai.manager.exception.SheetEntryNotFoundException.class);
+                .isInstanceOf(com.tatakai.manager.sheet.exception.SheetEntryNotFoundException.class);
     }
 
     @Test
@@ -261,7 +291,7 @@ class NpcSheetServiceTest {
         assertThatThrownBy(() -> service.submit(sheet.getId(), owner.getId()))
                 .isInstanceOf(InvalidCharacterSheetException.class);
         assertThatThrownBy(() -> service.approve(sheet.getId(),
-                new com.tatakai.manager.dto.request.ApproveCharacterSheetRequest(true, null), owner.getId()))
+                new com.tatakai.manager.sheet.dto.request.ApproveCharacterSheetRequest(true, null), owner.getId()))
                 .isInstanceOf(InvalidCharacterSheetException.class);
     }
 

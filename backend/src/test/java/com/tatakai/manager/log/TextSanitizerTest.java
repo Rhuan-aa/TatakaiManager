@@ -1,6 +1,7 @@
 package com.tatakai.manager.log;
 
-import com.tatakai.manager.security.TextSanitizer;
+import com.tatakai.manager.shared.security.TextSanitizer;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

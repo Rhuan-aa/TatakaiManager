@@ -1,10 +1,11 @@
 package com.tatakai.manager.booking;
 
-import com.tatakai.manager.entity.User;
-import com.tatakai.manager.repository.CampaignMemberRepository;
-import com.tatakai.manager.repository.UserRepository;
-import com.tatakai.manager.security.JwtService;
-import com.tatakai.manager.websocket.StompAuthChannelInterceptor;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.auth.repository.UserRepository;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.shared.security.JwtService;
+import com.tatakai.manager.shared.websocket.StompAuthChannelInterceptor;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

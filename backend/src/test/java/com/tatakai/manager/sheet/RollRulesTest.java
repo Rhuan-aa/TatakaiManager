@@ -1,7 +1,8 @@
 package com.tatakai.manager.sheet;
 
-import com.tatakai.manager.entity.FatigueBand;
-import com.tatakai.manager.service.rules.RollRules;
+import com.tatakai.manager.roll.service.rules.RollRules;
+import com.tatakai.manager.sheet.entity.FatigueBand;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

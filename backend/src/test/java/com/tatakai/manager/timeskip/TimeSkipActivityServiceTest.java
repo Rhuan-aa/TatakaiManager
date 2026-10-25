@@ -1,17 +1,23 @@
 package com.tatakai.manager.timeskip;
 
-import com.tatakai.manager.dto.request.TimeSkipActivityRequest;
-import com.tatakai.manager.dto.response.TimeSkipActivityResponse;
-import com.tatakai.manager.entity.*;
-import com.tatakai.manager.exception.AccessDeniedException;
-import com.tatakai.manager.exception.InvalidActivityNameException;
-import com.tatakai.manager.exception.TimeSkipActivityNotFoundException;
-import com.tatakai.manager.exception.TimeSkipClosedException;
-import com.tatakai.manager.exception.TimeSkipNotFoundException;
-import com.tatakai.manager.repository.CampaignMemberRepository;
-import com.tatakai.manager.repository.TimeSkipActivityRepository;
-import com.tatakai.manager.repository.TimeSkipRepository;
-import com.tatakai.manager.service.TimeSkipActivityService;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.campaign.entity.Campaign;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.timeskip.dto.request.TimeSkipActivityRequest;
+import com.tatakai.manager.timeskip.dto.response.TimeSkipActivityResponse;
+import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.TimeSkipActivity;
+import com.tatakai.manager.timeskip.entity.TimeSkipStatus;
+import com.tatakai.manager.timeskip.exception.InvalidActivityNameException;
+import com.tatakai.manager.timeskip.exception.TimeSkipActivityNotFoundException;
+import com.tatakai.manager.timeskip.exception.TimeSkipClosedException;
+import com.tatakai.manager.timeskip.exception.TimeSkipNotFoundException;
+import com.tatakai.manager.timeskip.repository.TimeSkipActivityRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipRepository;
+import com.tatakai.manager.timeskip.service.TimeSkipActivityService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

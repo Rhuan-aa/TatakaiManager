@@ -1,5 +1,7 @@
 package com.tatakai.manager.websocket;
 
+import com.tatakai.manager.shared.websocket.CampaignEventPublisher;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

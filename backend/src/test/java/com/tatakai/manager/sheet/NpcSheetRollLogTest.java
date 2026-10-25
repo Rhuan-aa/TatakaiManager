@@ -1,13 +1,23 @@
 package com.tatakai.manager.sheet;
 
-import com.tatakai.manager.dto.request.RollRequest;
-import com.tatakai.manager.dto.response.RollMessage;
-import com.tatakai.manager.dto.response.SheetActivityLogResponse;
-import com.tatakai.manager.entity.*;
-import com.tatakai.manager.exception.CharacterSheetNotFoundException;
-import com.tatakai.manager.repository.*;
-import com.tatakai.manager.service.RollService;
-import com.tatakai.manager.service.SheetActivityLogService;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.auth.repository.UserRepository;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.roll.dto.request.RollRequest;
+import com.tatakai.manager.roll.dto.response.RollMessage;
+import com.tatakai.manager.roll.entity.Roll;
+import com.tatakai.manager.roll.repository.RollRepository;
+import com.tatakai.manager.roll.service.RollService;
+import com.tatakai.manager.sheet.dto.response.SheetActivityLogResponse;
+import com.tatakai.manager.sheet.entity.ActivityCategory;
+import com.tatakai.manager.sheet.entity.ActorRole;
+import com.tatakai.manager.sheet.entity.CharacterSheet;
+import com.tatakai.manager.sheet.entity.SheetActivityLog;
+import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
+import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
+import com.tatakai.manager.sheet.repository.SheetActivityLogRepository;
+import com.tatakai.manager.sheet.service.SheetActivityLogService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

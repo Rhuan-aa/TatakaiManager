@@ -1,9 +1,10 @@
 package com.tatakai.manager.catalog;
 
-import com.tatakai.manager.entity.Mastery;
-import com.tatakai.manager.entity.MasteryBonus;
-import com.tatakai.manager.entity.MoveKind;
-import com.tatakai.manager.service.rules.MasteryRules;
+import com.tatakai.manager.catalog.entity.MoveKind;
+import com.tatakai.manager.martial.entity.Mastery;
+import com.tatakai.manager.martial.entity.MasteryBonus;
+import com.tatakai.manager.martial.service.rules.MasteryRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

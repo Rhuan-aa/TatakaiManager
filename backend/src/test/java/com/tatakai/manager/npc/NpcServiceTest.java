@@ -1,15 +1,40 @@
 package com.tatakai.manager.npc;
 
-import com.tatakai.manager.dto.request.*;
-import com.tatakai.manager.dto.response.CampaignNpcResponse;
-import com.tatakai.manager.dto.response.NpcResponse;
-import com.tatakai.manager.dto.response.NpcSummaryResponse;
-import com.tatakai.manager.entity.*;
-import com.tatakai.manager.exception.AccessDeniedException;
-import com.tatakai.manager.exception.InvalidImageException;
-import com.tatakai.manager.exception.NpcNotFoundException;
-import com.tatakai.manager.repository.*;
-import com.tatakai.manager.service.NpcService;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.auth.repository.UserRepository;
+import com.tatakai.manager.campaign.dto.response.CampaignUpdateMessage;
+import com.tatakai.manager.campaign.entity.Campaign;
+import com.tatakai.manager.campaign.entity.CampaignMember;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.campaign.repository.CampaignRepository;
+import com.tatakai.manager.log.repository.InteractionLogRepository;
+import com.tatakai.manager.npc.dto.request.CreateNpcRequest;
+import com.tatakai.manager.npc.dto.request.NpcAttributesDto;
+import com.tatakai.manager.npc.dto.request.NpcDetailDto;
+import com.tatakai.manager.npc.dto.request.NpcInteractionDto;
+import com.tatakai.manager.npc.dto.request.UpdateNpcRequest;
+import com.tatakai.manager.npc.dto.response.CampaignNpcResponse;
+import com.tatakai.manager.npc.dto.response.NpcResponse;
+import com.tatakai.manager.npc.dto.response.NpcSummaryResponse;
+import com.tatakai.manager.npc.entity.CampaignNpc;
+import com.tatakai.manager.npc.entity.Npc;
+import com.tatakai.manager.npc.entity.NpcAttributes;
+import com.tatakai.manager.npc.entity.NpcImage;
+import com.tatakai.manager.npc.entity.NpcInteraction;
+import com.tatakai.manager.npc.exception.InvalidImageException;
+import com.tatakai.manager.npc.exception.NpcNotFoundException;
+import com.tatakai.manager.npc.repository.CampaignNpcRepository;
+import com.tatakai.manager.npc.repository.NpcImageRepository;
+import com.tatakai.manager.npc.repository.NpcRepository;
+import com.tatakai.manager.npc.service.NpcService;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.sheet.entity.CharacterSheet;
+import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
+import com.tatakai.manager.sheet.repository.NpcSheetVisibilityRepository;
+import com.tatakai.manager.timeskip.entity.Booking;
+import com.tatakai.manager.timeskip.repository.BookingRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -368,7 +393,7 @@ class NpcServiceTest {
         verify(logRepository).deleteByBookingIn(List.of(b));
         verify(bookingRepository).deleteAll(List.of(b));
         verify(campaignNpcRepository).delete(assoc);
-        verify(events).publishEvent(new com.tatakai.manager.dto.response.CampaignUpdateMessage(campaignId, "NPCS", npc.getId()));
+        verify(events).publishEvent(new com.tatakai.manager.campaign.dto.response.CampaignUpdateMessage(campaignId, "NPCS", npc.getId()));
     }
 
     @Test

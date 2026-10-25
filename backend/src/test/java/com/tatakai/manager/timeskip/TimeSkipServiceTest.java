@@ -1,19 +1,28 @@
 package com.tatakai.manager.timeskip;
 
-import com.tatakai.manager.dto.request.CreateTimeSkipRequest;
-import com.tatakai.manager.dto.response.TimeSkipResponse;
-import com.tatakai.manager.entity.*;
-import com.tatakai.manager.exception.AccessDeniedException;
-import com.tatakai.manager.exception.ActiveTimeSkipExistsException;
-import com.tatakai.manager.exception.InvalidTimeSkipException;
-import com.tatakai.manager.exception.TimeSkipClosedException;
-import com.tatakai.manager.exception.TimeSkipNotFoundException;
-import com.tatakai.manager.repository.BookingRepository;
-import com.tatakai.manager.repository.CampaignMemberRepository;
-import com.tatakai.manager.repository.CampaignRepository;
-import com.tatakai.manager.repository.InteractionLogRepository;
-import com.tatakai.manager.repository.TimeSkipRepository;
-import com.tatakai.manager.service.TimeSkipService;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.campaign.dto.response.CampaignUpdateMessage;
+import com.tatakai.manager.campaign.entity.Campaign;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.campaign.repository.CampaignRepository;
+import com.tatakai.manager.log.repository.InteractionLogRepository;
+import com.tatakai.manager.progression.service.TrainingService;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.timeskip.dto.request.CreateTimeSkipRequest;
+import com.tatakai.manager.timeskip.dto.response.TimeSkipResponse;
+import com.tatakai.manager.timeskip.entity.Booking;
+import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.TimeSkipDay;
+import com.tatakai.manager.timeskip.entity.TimeSkipStatus;
+import com.tatakai.manager.timeskip.exception.ActiveTimeSkipExistsException;
+import com.tatakai.manager.timeskip.exception.InvalidTimeSkipException;
+import com.tatakai.manager.timeskip.exception.TimeSkipClosedException;
+import com.tatakai.manager.timeskip.exception.TimeSkipNotFoundException;
+import com.tatakai.manager.timeskip.repository.BookingRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipRepository;
+import com.tatakai.manager.timeskip.service.TimeSkipService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +45,7 @@ import static org.mockito.Mockito.*;
 class TimeSkipServiceTest {
 
     @Mock private TimeSkipRepository timeSkipRepository;
-    @Mock private com.tatakai.manager.service.TrainingService trainingService;
+    @Mock private com.tatakai.manager.progression.service.TrainingService trainingService;
     @Mock private CampaignRepository campaignRepository;
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private BookingRepository bookingRepository;
@@ -279,7 +288,7 @@ class TimeSkipServiceTest {
         assertThat(res.currentDay()).isEqualTo((short) 4);
         assertThat(ts.getCurrentDay()).isEqualTo((short) 4);
         // §37: os outros clientes da campanha recebem o aviso em tempo real
-        verify(events).publishEvent(new com.tatakai.manager.dto.response.CampaignUpdateMessage(campaign.getId(), "TIMESKIP", ts.getId()));
+        verify(events).publishEvent(new com.tatakai.manager.campaign.dto.response.CampaignUpdateMessage(campaign.getId(), "TIMESKIP", ts.getId()));
     }
 
     @Test

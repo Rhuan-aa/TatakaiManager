@@ -1,17 +1,34 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.dto.response.RollMessage;
-import com.tatakai.manager.entity.*;
-import com.tatakai.manager.exception.InvalidCombatException;
-import com.tatakai.manager.repository.CombatConditionRepository;
-import com.tatakai.manager.repository.CombatEventRepository;
-import com.tatakai.manager.repository.EncounterParticipantRepository;
-import com.tatakai.manager.service.ConditionCatalog;
-import com.tatakai.manager.service.RollProfileService.Calc;
-import com.tatakai.manager.service.RollService;
-import com.tatakai.manager.service.SheetActivityLogService;
-import com.tatakai.manager.service.VitalService;
-import com.tatakai.manager.service.VitalService.Ctx;
+import com.tatakai.manager.roll.service.RollProfileService.Calc;
+import com.tatakai.manager.combat.service.VitalService.Ctx;
+
+import com.tatakai.manager.catalog.service.ConditionCatalog;
+import com.tatakai.manager.combat.entity.CombatClassification;
+import com.tatakai.manager.combat.entity.CombatCondition;
+import com.tatakai.manager.combat.entity.CombatEvent;
+import com.tatakai.manager.combat.entity.ConditionExpiry;
+import com.tatakai.manager.combat.entity.Encounter;
+import com.tatakai.manager.combat.entity.EncounterParticipant;
+import com.tatakai.manager.combat.entity.EncounterStatus;
+import com.tatakai.manager.combat.entity.Hysteria;
+import com.tatakai.manager.combat.exception.InvalidCombatException;
+import com.tatakai.manager.combat.repository.CombatConditionRepository;
+import com.tatakai.manager.combat.repository.CombatEventRepository;
+import com.tatakai.manager.combat.repository.EncounterParticipantRepository;
+import com.tatakai.manager.combat.service.VitalService;
+import com.tatakai.manager.roll.dto.response.RollMessage;
+import com.tatakai.manager.roll.entity.Roll;
+import com.tatakai.manager.roll.entity.RollChannel;
+import com.tatakai.manager.roll.entity.RollMode;
+import com.tatakai.manager.roll.entity.RollPart;
+import com.tatakai.manager.roll.entity.RollSourceType;
+import com.tatakai.manager.roll.service.RollProfileService;
+import com.tatakai.manager.roll.service.RollService;
+import com.tatakai.manager.sheet.entity.ActorRole;
+import com.tatakai.manager.sheet.entity.CharacterSheet;
+import com.tatakai.manager.sheet.service.SheetActivityLogService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -89,7 +106,7 @@ class VitalServiceTest {
         });
         lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
                 .thenAnswer(i -> Roll.builder().total(d4).build());
-        vital = new VitalService(participants, conditions, timeline, activityLog, rolls, new ConditionCatalog(), org.mockito.Mockito.mock(com.tatakai.manager.service.RollProfileService.class));
+        vital = new VitalService(participants, conditions, timeline, activityLog, rolls, new ConditionCatalog(), org.mockito.Mockito.mock(com.tatakai.manager.roll.service.RollProfileService.class));
     }
 
     private Optional<CombatCondition> cond(String key) {

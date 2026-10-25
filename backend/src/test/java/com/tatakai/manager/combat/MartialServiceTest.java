@@ -1,20 +1,22 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.entity.CharacterArt;
-import com.tatakai.manager.entity.CharacterArtStatus;
-import com.tatakai.manager.entity.CharacterSheet;
-import com.tatakai.manager.entity.CombatCounter;
-import com.tatakai.manager.entity.Encounter;
-import com.tatakai.manager.entity.EncounterParticipant;
-import com.tatakai.manager.exception.InvalidCombatException;
-import com.tatakai.manager.repository.CharacterArtRepository;
-import com.tatakai.manager.repository.CharacterTechniqueRepository;
-import com.tatakai.manager.repository.CombatCounterRepository;
-import com.tatakai.manager.repository.CombatEventRepository;
-import com.tatakai.manager.repository.MartialArtRepository;
-import com.tatakai.manager.repository.RivalRepository;
-import com.tatakai.manager.service.ArtCounterCatalog;
-import com.tatakai.manager.service.MartialService;
+import com.tatakai.manager.catalog.repository.MartialArtRepository;
+import com.tatakai.manager.catalog.service.ArtCounterCatalog;
+import com.tatakai.manager.combat.entity.CombatCounter;
+import com.tatakai.manager.combat.entity.CombatEvent;
+import com.tatakai.manager.combat.entity.Encounter;
+import com.tatakai.manager.combat.entity.EncounterParticipant;
+import com.tatakai.manager.combat.exception.InvalidCombatException;
+import com.tatakai.manager.combat.repository.CombatCounterRepository;
+import com.tatakai.manager.combat.repository.CombatEventRepository;
+import com.tatakai.manager.combat.service.MartialService;
+import com.tatakai.manager.martial.entity.CharacterArt;
+import com.tatakai.manager.martial.entity.CharacterArtStatus;
+import com.tatakai.manager.martial.repository.CharacterArtRepository;
+import com.tatakai.manager.martial.repository.CharacterTechniqueRepository;
+import com.tatakai.manager.progression.repository.RivalRepository;
+import com.tatakai.manager.sheet.entity.CharacterSheet;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -150,9 +152,9 @@ class MartialServiceTest {
     void timelineEvents() {
         learn("Karatê");
         fire("DEFEND_SUCCESS");
-        org.mockito.Mockito.verify(timeline, org.mockito.Mockito.times(1)).save(any(com.tatakai.manager.entity.CombatEvent.class));
+        org.mockito.Mockito.verify(timeline, org.mockito.Mockito.times(1)).save(any(com.tatakai.manager.combat.entity.CombatEvent.class));
         fire("DEFEND_SUCCESS");
-        org.mockito.Mockito.verify(timeline, org.mockito.Mockito.times(1)).save(any(com.tatakai.manager.entity.CombatEvent.class));
+        org.mockito.Mockito.verify(timeline, org.mockito.Mockito.times(1)).save(any(com.tatakai.manager.combat.entity.CombatEvent.class));
     }
 
     @Test

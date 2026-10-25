@@ -1,10 +1,12 @@
 package com.tatakai.manager.sheet;
 
-import com.tatakai.manager.entity.BodyType;
-import com.tatakai.manager.entity.FatigueBand;
-import com.tatakai.manager.entity.TrainingVenue;
-import com.tatakai.manager.service.rules.TrainingRules;
-import com.tatakai.manager.service.rules.TrainingRules.Outcome;
+import com.tatakai.manager.progression.service.rules.TrainingRules.Outcome;
+
+import com.tatakai.manager.progression.entity.TrainingVenue;
+import com.tatakai.manager.progression.service.rules.TrainingRules;
+import com.tatakai.manager.sheet.entity.BodyType;
+import com.tatakai.manager.sheet.entity.FatigueBand;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

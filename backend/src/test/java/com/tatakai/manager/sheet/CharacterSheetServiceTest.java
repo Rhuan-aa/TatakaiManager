@@ -1,40 +1,57 @@
 package com.tatakai.manager.sheet;
 
-import com.tatakai.manager.dto.request.ApproveCharacterSheetRequest;
-import com.tatakai.manager.dto.request.AttributesPayload;
-import com.tatakai.manager.dto.request.CreateCharacterSheetRequest;
-import com.tatakai.manager.dto.request.GmAdjustmentRequest;
-import com.tatakai.manager.dto.request.InjuryPayload;
-import com.tatakai.manager.dto.request.ItemPayload;
-import com.tatakai.manager.dto.request.UpdateCharacterSheetRequest;
-import com.tatakai.manager.dto.request.UpdateResourcesRequest;
-import com.tatakai.manager.dto.response.CharacterSheetResponse;
-import com.tatakai.manager.dto.response.SheetUpdateMessage;
-import com.tatakai.manager.entity.ActivityCategory;
-import com.tatakai.manager.entity.ActorRole;
-import com.tatakai.manager.entity.BodyType;
-import com.tatakai.manager.entity.BuildStatus;
-import com.tatakai.manager.entity.Campaign;
-import com.tatakai.manager.entity.CampaignMember;
-import com.tatakai.manager.entity.CharacterSheet;
-import com.tatakai.manager.entity.CharacterSheetVisibility;
-import com.tatakai.manager.entity.Dominance;
-import com.tatakai.manager.entity.GmAction;
-import com.tatakai.manager.entity.InjurySeverity;
-import com.tatakai.manager.entity.InjuryType;
-import com.tatakai.manager.entity.InventoryItem;
-import com.tatakai.manager.entity.Role;
-import com.tatakai.manager.entity.SheetSection;
-import com.tatakai.manager.entity.User;
-import com.tatakai.manager.exception.AccessDeniedException;
-import com.tatakai.manager.exception.CharacterSheetAlreadyExistsException;
-import com.tatakai.manager.exception.InvalidCharacterSheetException;
-import com.tatakai.manager.exception.SheetLockedException;
-import com.tatakai.manager.repository.CampaignMemberRepository;
-import com.tatakai.manager.repository.CharacterSheetRepository;
-import com.tatakai.manager.repository.CharacterSheetVisibilityRepository;
-import com.tatakai.manager.service.CharacterSheetService;
-import com.tatakai.manager.service.SheetActivityLogService;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.auth.repository.UserRepository;
+import com.tatakai.manager.build.entity.BuildGains;
+import com.tatakai.manager.build.entity.BuildStatus;
+import com.tatakai.manager.build.repository.CharacterBuildRepository;
+import com.tatakai.manager.campaign.entity.Campaign;
+import com.tatakai.manager.campaign.entity.CampaignMember;
+import com.tatakai.manager.campaign.entity.OptionalRule;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.campaign.service.CampaignRuleService;
+import com.tatakai.manager.catalog.entity.TraitAcquisition;
+import com.tatakai.manager.catalog.entity.TraitCategory;
+import com.tatakai.manager.catalog.entity.TraitDefinition;
+import com.tatakai.manager.catalog.entity.TraitRarity;
+import com.tatakai.manager.catalog.service.CatalogService;
+import com.tatakai.manager.npc.repository.CampaignNpcRepository;
+import com.tatakai.manager.npc.repository.NpcRepository;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.sheet.dto.request.ApproveCharacterSheetRequest;
+import com.tatakai.manager.sheet.dto.request.AttributesPayload;
+import com.tatakai.manager.sheet.dto.request.CreateCharacterSheetRequest;
+import com.tatakai.manager.sheet.dto.request.GmAdjustmentRequest;
+import com.tatakai.manager.sheet.dto.request.InjuryPayload;
+import com.tatakai.manager.sheet.dto.request.ItemPayload;
+import com.tatakai.manager.sheet.dto.request.UpdateCharacterSheetRequest;
+import com.tatakai.manager.sheet.dto.request.UpdateResourcesRequest;
+import com.tatakai.manager.sheet.dto.response.CharacterSheetResponse;
+import com.tatakai.manager.sheet.dto.response.SheetUpdateMessage;
+import com.tatakai.manager.sheet.entity.ActivityCategory;
+import com.tatakai.manager.sheet.entity.ActorRole;
+import com.tatakai.manager.sheet.entity.BodyType;
+import com.tatakai.manager.sheet.entity.CharacterSheet;
+import com.tatakai.manager.sheet.entity.CharacterSheetVisibility;
+import com.tatakai.manager.sheet.entity.CharacterTrait;
+import com.tatakai.manager.sheet.entity.Dominance;
+import com.tatakai.manager.sheet.entity.GmAction;
+import com.tatakai.manager.sheet.entity.InjurySeverity;
+import com.tatakai.manager.sheet.entity.InjuryType;
+import com.tatakai.manager.sheet.entity.InventoryItem;
+import com.tatakai.manager.sheet.entity.PermanentInjury;
+import com.tatakai.manager.sheet.entity.SheetSection;
+import com.tatakai.manager.sheet.exception.CharacterSheetAlreadyExistsException;
+import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
+import com.tatakai.manager.sheet.exception.SheetEntryNotFoundException;
+import com.tatakai.manager.sheet.exception.SheetLockedException;
+import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
+import com.tatakai.manager.sheet.repository.CharacterSheetVisibilityRepository;
+import com.tatakai.manager.sheet.repository.NpcSheetVisibilityRepository;
+import com.tatakai.manager.sheet.service.CharacterSheetService;
+import com.tatakai.manager.sheet.service.SheetActivityLogService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,13 +84,13 @@ class CharacterSheetServiceTest {
     @Mock private CharacterSheetVisibilityRepository visibilityRepository;
     @Mock private SheetActivityLogService activityLog;
     @Mock private ApplicationEventPublisher events;
-    @Mock private com.tatakai.manager.repository.CampaignNpcRepository campaignNpcRepository;
-    @Mock private com.tatakai.manager.repository.NpcSheetVisibilityRepository npcVisibilityRepository;
-    @Mock private com.tatakai.manager.repository.NpcRepository npcRepository;
-    @Mock private com.tatakai.manager.repository.UserRepository userRepository;
-    @Mock private com.tatakai.manager.service.CampaignRuleService ruleService;
-    @Mock private com.tatakai.manager.service.CatalogService catalogService;
-    @Mock private com.tatakai.manager.repository.CharacterBuildRepository buildRepository;
+    @Mock private com.tatakai.manager.npc.repository.CampaignNpcRepository campaignNpcRepository;
+    @Mock private com.tatakai.manager.sheet.repository.NpcSheetVisibilityRepository npcVisibilityRepository;
+    @Mock private com.tatakai.manager.npc.repository.NpcRepository npcRepository;
+    @Mock private com.tatakai.manager.auth.repository.UserRepository userRepository;
+    @Mock private com.tatakai.manager.campaign.service.CampaignRuleService ruleService;
+    @Mock private com.tatakai.manager.catalog.service.CatalogService catalogService;
+    @Mock private com.tatakai.manager.build.repository.CharacterBuildRepository buildRepository;
 
     private CharacterSheetService service;
 
@@ -151,7 +168,7 @@ class CharacterSheetServiceTest {
     @Test
     @DisplayName("RN-ATR-07: jogador cria ficha com máximos iniciais derivados de CON e atuais = máximos")
     void create_player_ok() {
-        when(ruleService.isEnabled(campaign.getId(), com.tatakai.manager.entity.OptionalRule.FREE_CREATION)).thenReturn(true);
+        when(ruleService.isEnabled(campaign.getId(), com.tatakai.manager.campaign.entity.OptionalRule.FREE_CREATION)).thenReturn(true);
         when(sheetRepository.existsByCampaignMemberId(playerMember.getId())).thenReturn(false);
 
         CharacterSheetResponse r = service.create(campaign.getId(), createReq(), playerUser.getId());
@@ -179,7 +196,7 @@ class CharacterSheetServiceTest {
     @Test
     @DisplayName("segunda ficha do mesmo jogador na campanha é rejeitada")
     void create_second_rejected() {
-        when(ruleService.isEnabled(campaign.getId(), com.tatakai.manager.entity.OptionalRule.FREE_CREATION)).thenReturn(true);
+        when(ruleService.isEnabled(campaign.getId(), com.tatakai.manager.campaign.entity.OptionalRule.FREE_CREATION)).thenReturn(true);
         when(sheetRepository.existsByCampaignMemberId(playerMember.getId())).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(campaign.getId(), createReq(), playerUser.getId()))
@@ -365,7 +382,7 @@ class CharacterSheetServiceTest {
     @Test
     @DisplayName("HP atual é limitado ao máximo efetivo (com ferimentos)")
     void updateResources_clampsToEffectiveMax() {
-        sheet.getInjuries().add(com.tatakai.manager.entity.PermanentInjury.builder().sheet(sheet)
+        sheet.getInjuries().add(com.tatakai.manager.sheet.entity.PermanentInjury.builder().sheet(sheet)
                 .type(InjuryType.CUTTING).severity(InjurySeverity.MINOR).hpMaxReduction(2).build());
 
         CharacterSheetResponse r = service.updateResources(sheet.getId(),
@@ -528,7 +545,7 @@ class CharacterSheetServiceTest {
     @Test
     @DisplayName("Sprint 10 — F2 Construção Inicial: create bloqueado quando FREE_CREATION está desligada")
     void create_blockedWithoutFreeCreation() {
-        when(ruleService.isEnabled(campaign.getId(), com.tatakai.manager.entity.OptionalRule.FREE_CREATION)).thenReturn(false);
+        when(ruleService.isEnabled(campaign.getId(), com.tatakai.manager.campaign.entity.OptionalRule.FREE_CREATION)).thenReturn(false);
 
         assertThatThrownBy(() -> service.create(campaign.getId(), createReq(), playerUser.getId()))
                 .isInstanceOf(InvalidCharacterSheetException.class);
@@ -547,11 +564,11 @@ class CharacterSheetServiceTest {
         assertThat(r.buildStatus()).isEqualTo(BuildStatus.IN_BUILD);
     }
 
-    private com.tatakai.manager.entity.TraitDefinition catalogTrait(UUID campaignId) {
-        return com.tatakai.manager.entity.TraitDefinition.builder().id(UUID.randomUUID()).campaignId(campaignId)
-                .name("Prodígio").rarity(com.tatakai.manager.entity.TraitRarity.RARE)
-                .category(com.tatakai.manager.entity.TraitCategory.values()[0]).version(3)
-                .buildGains(com.tatakai.manager.entity.BuildGains.builder().maxHp(5).build()).build();
+    private com.tatakai.manager.catalog.entity.TraitDefinition catalogTrait(UUID campaignId) {
+        return com.tatakai.manager.catalog.entity.TraitDefinition.builder().id(UUID.randomUUID()).campaignId(campaignId)
+                .name("Prodígio").rarity(com.tatakai.manager.catalog.entity.TraitRarity.RARE)
+                .category(com.tatakai.manager.catalog.entity.TraitCategory.values()[0]).version(3)
+                .buildGains(com.tatakai.manager.build.entity.BuildGains.builder().maxHp(5).build()).build();
     }
 
     @Test
@@ -568,7 +585,7 @@ class CharacterSheetServiceTest {
         assertThat(ct.getTraitId()).isEqualTo(t.getId());
         assertThat(ct.getTraitVersion()).isEqualTo(3);
         assertThat(ct.isGainsApplied()).isFalse();
-        assertThat(ct.getAcquiredIn()).isEqualTo(com.tatakai.manager.entity.TraitAcquisition.CAMPAIGN);
+        assertThat(ct.getAcquiredIn()).isEqualTo(com.tatakai.manager.catalog.entity.TraitAcquisition.CAMPAIGN);
         assertThat(sheet.getHpMax()).isEqualTo(22);
     }
 
@@ -579,7 +596,7 @@ class CharacterSheetServiceTest {
         when(catalogService.findTrait(foreign.getId())).thenReturn(Optional.of(foreign));
         assertThatThrownBy(() -> service.applyGmAdjustment(sheet.getId(), new GmAdjustmentRequest(
                 GmAction.ADD_TRAIT, null, null, "motivo", null, null, foreign.getId()), masterUser.getId()))
-                .isInstanceOf(com.tatakai.manager.exception.SheetEntryNotFoundException.class);
+                .isInstanceOf(com.tatakai.manager.sheet.exception.SheetEntryNotFoundException.class);
 
         var own = catalogTrait(campaign.getId());
         when(catalogService.findTrait(own.getId())).thenReturn(Optional.of(own));
@@ -592,7 +609,7 @@ class CharacterSheetServiceTest {
     @Test
     @DisplayName("Sprint 10 — F2 Construção Inicial: REMOVE_TRAIT remove da ficha")
     void gm_removeTrait() {
-        var ct = com.tatakai.manager.entity.CharacterTrait.builder().id(UUID.randomUUID()).sheet(sheet)
+        var ct = com.tatakai.manager.sheet.entity.CharacterTrait.builder().id(UUID.randomUUID()).sheet(sheet)
                 .name("Prodígio").build();
         sheet.getTraits().add(ct);
 

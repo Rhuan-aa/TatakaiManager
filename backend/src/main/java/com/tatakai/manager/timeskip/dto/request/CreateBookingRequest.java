@@ -1,0 +1,53 @@
+package com.tatakai.manager.timeskip.dto.request;
+
+import com.tatakai.manager.progression.entity.RestQuality;
+import com.tatakai.manager.timeskip.entity.SoloActivityType;
+import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.service.BookingService;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+
+import java.util.UUID;
+
+/**
+ * Agendamento de um slot: com NPC ({@code npcId} + {@code interactionName}), atividade
+ * solo fixa ({@code soloActivityType} + {@code description}) ou atividade solo
+ * customizada do TimeSkip ({@code activityId}) — mutuamente exclusivos, validado em
+ * {@code BookingService}.
+ */
+public record CreateBookingRequest(
+
+        UUID npcId,
+
+        @NotNull(message = "o dia é obrigatório")
+        @Min(value = 1, message = "dia inválido")
+        Short dayNumber,
+
+        @NotNull(message = "o slot é obrigatório")
+        @Min(value = 1, message = "o slot deve ser de 1 a 5")
+        @Max(value = 5, message = "o slot deve ser de 1 a 5")
+        Short slotNumber,
+
+        String interactionName,
+
+        SoloActivityType soloActivityType,
+
+        UUID activityId,
+
+        String description,
+
+        /** TREINO: STR, DEX, CON, INT, CHA, MEN, HP, SP, KP, TECHNIQUE ou GRADUATION. */
+        String trainingTarget,
+
+        /** TREINO de técnica: id da técnica na ficha. */
+        UUID techniqueId,
+
+        /** REPOUSO: qualidade. */
+        RestQuality restQuality,
+
+        /** TREINO de graduação: id da arte na ficha. */
+        UUID characterArtId
+
+) {}

@@ -1,0 +1,13 @@
+package com.tatakai.manager.martial.repository;
+
+import com.tatakai.manager.martial.entity.NotebookDraft;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface NotebookDraftRepository extends JpaRepository<NotebookDraft, UUID> {
+    List<NotebookDraft> findBySheetIdOrderByCreatedAt(UUID sheetId);
+}

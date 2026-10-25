@@ -1,13 +1,40 @@
 package com.tatakai.manager.booking;
 
-import com.tatakai.manager.dto.request.CreateBookingRequest;
-import com.tatakai.manager.dto.response.BookingResponse;
-import com.tatakai.manager.dto.response.SlotUpdateMessage;
-import com.tatakai.manager.entity.*;
-import com.tatakai.manager.exception.*;
-import com.tatakai.manager.repository.*;
-import com.tatakai.manager.service.BookingService;
-import com.tatakai.manager.websocket.SlotEventPublisher;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.auth.repository.UserRepository;
+import com.tatakai.manager.campaign.entity.Campaign;
+import com.tatakai.manager.campaign.entity.CampaignMember;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.log.repository.InteractionLogRepository;
+import com.tatakai.manager.npc.entity.CampaignNpc;
+import com.tatakai.manager.npc.entity.Npc;
+import com.tatakai.manager.npc.entity.NpcInteraction;
+import com.tatakai.manager.npc.exception.NpcNotFoundException;
+import com.tatakai.manager.npc.repository.CampaignNpcRepository;
+import com.tatakai.manager.npc.repository.NpcRepository;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.timeskip.dto.request.CreateBookingRequest;
+import com.tatakai.manager.timeskip.dto.response.BookingResponse;
+import com.tatakai.manager.timeskip.dto.response.SlotUpdateMessage;
+import com.tatakai.manager.timeskip.entity.Booking;
+import com.tatakai.manager.timeskip.entity.SoloActivityType;
+import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.TimeSkipActivity;
+import com.tatakai.manager.timeskip.entity.TimeSkipDay;
+import com.tatakai.manager.timeskip.entity.TimeSkipStatus;
+import com.tatakai.manager.timeskip.exception.BookingAlreadyPassedException;
+import com.tatakai.manager.timeskip.exception.InvalidBookingException;
+import com.tatakai.manager.timeskip.exception.SlotTakenException;
+import com.tatakai.manager.timeskip.exception.TimeSkipActivityNotFoundException;
+import com.tatakai.manager.timeskip.exception.TimeSkipClosedException;
+import com.tatakai.manager.timeskip.repository.BookingRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipActivityRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipDayRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipRepository;
+import com.tatakai.manager.timeskip.service.BookingService;
+import com.tatakai.manager.timeskip.websocket.SlotEventPublisher;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,7 +65,7 @@ class BookingServiceTest {
     @Mock private NpcRepository npcRepository;
     @Mock private TimeSkipActivityRepository timeSkipActivityRepository;
     @Mock private SlotEventPublisher slotEventPublisher;
-    @Mock private com.tatakai.manager.repository.InteractionLogRepository logRepository;
+    @Mock private com.tatakai.manager.log.repository.InteractionLogRepository logRepository;
 
     private BookingService service;
 

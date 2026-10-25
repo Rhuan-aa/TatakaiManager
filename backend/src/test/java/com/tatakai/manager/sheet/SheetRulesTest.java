@@ -1,14 +1,16 @@
 package com.tatakai.manager.sheet;
 
-import com.tatakai.manager.entity.Attribute;
-import com.tatakai.manager.entity.AttributeBand;
-import com.tatakai.manager.entity.BodyType;
-import com.tatakai.manager.entity.FatigueBand;
-import com.tatakai.manager.entity.InjurySeverity;
-import com.tatakai.manager.entity.InjuryType;
-import com.tatakai.manager.entity.PermanentInjury;
-import com.tatakai.manager.entity.ResourceType;
-import com.tatakai.manager.service.rules.SheetRules;
+import com.tatakai.manager.sheet.entity.Attribute;
+import com.tatakai.manager.sheet.entity.AttributeBand;
+import com.tatakai.manager.sheet.entity.BodyType;
+import com.tatakai.manager.sheet.entity.FatigueBand;
+import com.tatakai.manager.sheet.entity.InjurySeverity;
+import com.tatakai.manager.sheet.entity.InjuryType;
+import com.tatakai.manager.sheet.entity.InventoryItem;
+import com.tatakai.manager.sheet.entity.PermanentInjury;
+import com.tatakai.manager.sheet.entity.ResourceType;
+import com.tatakai.manager.sheet.service.rules.SheetRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -190,23 +192,23 @@ class SheetRulesTest {
     @org.junit.jupiter.api.Test
     @org.junit.jupiter.api.DisplayName("§32: gravidade por %, atributo por região, ferimento ativo por tipo/tratamento")
     void permanentInjuryRules() {
-        assertThat(SheetRules.injurySeverity(10, 40)).isEqualTo(com.tatakai.manager.entity.InjurySeverity.MINOR);
-        assertThat(SheetRules.injurySeverity(11, 40)).isEqualTo(com.tatakai.manager.entity.InjurySeverity.MODERATE);
-        assertThat(SheetRules.injurySeverity(21, 40)).isEqualTo(com.tatakai.manager.entity.InjurySeverity.SEVERE);
-        assertThat(SheetRules.injurySeverity(40, 40)).isEqualTo(com.tatakai.manager.entity.InjurySeverity.LETHAL);
-        assertThat(SheetRules.injuryAttribute("Braço esquerdo")).isEqualTo(com.tatakai.manager.entity.Attribute.STR);
-        assertThat(SheetRules.injuryAttribute("Pé")).isEqualTo(com.tatakai.manager.entity.Attribute.DEX);
-        assertThat(SheetRules.injuryAttribute("Fígado")).isEqualTo(com.tatakai.manager.entity.Attribute.CON);
-        assertThat(SheetRules.injuryAttribute("Nariz")).isEqualTo(com.tatakai.manager.entity.Attribute.CHA);
+        assertThat(SheetRules.injurySeverity(10, 40)).isEqualTo(com.tatakai.manager.sheet.entity.InjurySeverity.MINOR);
+        assertThat(SheetRules.injurySeverity(11, 40)).isEqualTo(com.tatakai.manager.sheet.entity.InjurySeverity.MODERATE);
+        assertThat(SheetRules.injurySeverity(21, 40)).isEqualTo(com.tatakai.manager.sheet.entity.InjurySeverity.SEVERE);
+        assertThat(SheetRules.injurySeverity(40, 40)).isEqualTo(com.tatakai.manager.sheet.entity.InjurySeverity.LETHAL);
+        assertThat(SheetRules.injuryAttribute("Braço esquerdo")).isEqualTo(com.tatakai.manager.sheet.entity.Attribute.STR);
+        assertThat(SheetRules.injuryAttribute("Pé")).isEqualTo(com.tatakai.manager.sheet.entity.Attribute.DEX);
+        assertThat(SheetRules.injuryAttribute("Fígado")).isEqualTo(com.tatakai.manager.sheet.entity.Attribute.CON);
+        assertThat(SheetRules.injuryAttribute("Nariz")).isEqualTo(com.tatakai.manager.sheet.entity.Attribute.CHA);
         assertThat(SheetRules.injuryAttribute("Queixo")).isNull();
         assertThat(SheetRules.injuryLimb("perna direita")).isTrue();
-        var cut = com.tatakai.manager.entity.PermanentInjury.builder().type(com.tatakai.manager.entity.InjuryType.CUTTING)
+        var cut = com.tatakai.manager.sheet.entity.PermanentInjury.builder().type(com.tatakai.manager.sheet.entity.InjuryType.CUTTING)
                 .hpMaxReduction(4).treated(true).build();
-        var blunt = com.tatakai.manager.entity.PermanentInjury.builder().type(com.tatakai.manager.entity.InjuryType.BLUNT)
+        var blunt = com.tatakai.manager.sheet.entity.PermanentInjury.builder().type(com.tatakai.manager.sheet.entity.InjuryType.BLUNT)
                 .hpMaxReduction(6).treated(true).build();
         assertThat(SheetRules.injuryHp(java.util.List.of(cut, blunt))).isEqualTo(4); // tratado só some se não for cortante
         assertThat(SheetRules.effectiveHpMax(30, java.util.List.of(cut, blunt))).isEqualTo(26);
-        var lung = com.tatakai.manager.entity.PermanentInjury.builder().type(com.tatakai.manager.entity.InjuryType.PIERCING)
+        var lung = com.tatakai.manager.sheet.entity.PermanentInjury.builder().type(com.tatakai.manager.sheet.entity.InjuryType.PIERCING)
                 .region("Pulmão direito").limiterReduction(15).build();
         assertThat(SheetRules.injurySpLimiter(java.util.List.of(lung, blunt))).isEqualTo(15);
         lung.setTreated(true);
@@ -217,8 +219,8 @@ class SheetRulesTest {
     @org.junit.jupiter.api.DisplayName("Carga: 3 kg por FOR; até 1×/2×/3× = Livre/Sobrecarregado/Limite; acima Impossível")
     void load() {
         var items = java.util.List.of(
-                com.tatakai.manager.entity.InventoryItem.builder().quantity(2).weightKg(10).build(),
-                com.tatakai.manager.entity.InventoryItem.builder().quantity(1).weightKg(5.5).build());
+                com.tatakai.manager.sheet.entity.InventoryItem.builder().quantity(2).weightKg(10).build(),
+                com.tatakai.manager.sheet.entity.InventoryItem.builder().quantity(1).weightKg(5.5).build());
         assertThat(SheetRules.carriedKg(items)).isEqualTo(25.5);
         int carry = SheetRules.carryKg(10); // 30 kg
         assertThat(SheetRules.loadState(30, carry)).isEqualTo(SheetRules.LoadState.FREE);

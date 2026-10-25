@@ -1,24 +1,27 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.entity.BasicAttack;
-import com.tatakai.manager.entity.CharacterArt;
-import com.tatakai.manager.entity.Dominance;
-import com.tatakai.manager.entity.Foot;
-import com.tatakai.manager.entity.Graduation;
-import com.tatakai.manager.entity.Guard;
-import com.tatakai.manager.entity.MartialType;
-import com.tatakai.manager.entity.ReactionType;
-import com.tatakai.manager.entity.StrikeSide;
-import com.tatakai.manager.service.rules.AttackRules;
-import com.tatakai.manager.service.rules.MartialRules;
-import com.tatakai.manager.service.rules.MartialRules.Family;
+import com.tatakai.manager.combat.service.rules.MartialRules.Family;
+
+import com.tatakai.manager.catalog.entity.Graduation;
+import com.tatakai.manager.catalog.entity.MartialType;
+import com.tatakai.manager.combat.entity.BasicAttack;
+import com.tatakai.manager.combat.entity.Foot;
+import com.tatakai.manager.combat.entity.Guard;
+import com.tatakai.manager.combat.entity.ReactionType;
+import com.tatakai.manager.combat.entity.StrikeSide;
+import com.tatakai.manager.combat.service.rules.AttackRules;
+import com.tatakai.manager.combat.service.rules.BaseRules;
+import com.tatakai.manager.combat.service.rules.MartialRules;
+import com.tatakai.manager.martial.entity.CharacterArt;
+import com.tatakai.manager.sheet.entity.Dominance;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
 
-import static com.tatakai.manager.entity.MartialType.*;
+import static com.tatakai.manager.catalog.entity.MartialType.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** F6d: regras puras de interação marcial, especialização, guarda e Calejamento. */

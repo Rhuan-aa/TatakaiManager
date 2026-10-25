@@ -1,0 +1,128 @@
+package com.tatakai.manager.shared.exception;
+
+import com.tatakai.manager.auth.exception.EmailAlreadyUsedException;
+import com.tatakai.manager.auth.exception.InvalidCredentialsException;
+import com.tatakai.manager.auth.exception.UserNotFoundException;
+import com.tatakai.manager.build.exception.InvalidBuildStepException;
+import com.tatakai.manager.campaign.exception.AlreadyMemberException;
+import com.tatakai.manager.campaign.exception.CampaignNotFoundException;
+import com.tatakai.manager.campaign.exception.MemberNotFoundException;
+import com.tatakai.manager.catalog.exception.InvalidMartialArtException;
+import com.tatakai.manager.combat.exception.CombatConflictException;
+import com.tatakai.manager.combat.exception.EncounterNotFoundException;
+import com.tatakai.manager.combat.exception.InvalidCombatException;
+import com.tatakai.manager.log.exception.LogNotFoundException;
+import com.tatakai.manager.npc.exception.InvalidImageException;
+import com.tatakai.manager.npc.exception.NpcAlreadyAssociatedException;
+import com.tatakai.manager.npc.exception.NpcNotFoundException;
+import com.tatakai.manager.roll.exception.InvalidRollException;
+import com.tatakai.manager.roll.exception.RollChannelNameTakenException;
+import com.tatakai.manager.roll.exception.RollNotFoundException;
+import com.tatakai.manager.sheet.exception.CharacterSheetAlreadyExistsException;
+import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
+import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
+import com.tatakai.manager.sheet.exception.NpcSheetAlreadyExistsException;
+import com.tatakai.manager.sheet.exception.SheetEntryNotFoundException;
+import com.tatakai.manager.sheet.exception.SheetLockedException;
+import com.tatakai.manager.timeskip.exception.ActiveTimeSkipExistsException;
+import com.tatakai.manager.timeskip.exception.BookingAlreadyPassedException;
+import com.tatakai.manager.timeskip.exception.BookingNotFoundException;
+import com.tatakai.manager.timeskip.exception.InvalidActivityNameException;
+import com.tatakai.manager.timeskip.exception.InvalidBookingException;
+import com.tatakai.manager.timeskip.exception.InvalidTimeSkipException;
+import com.tatakai.manager.timeskip.exception.SlotTakenException;
+import com.tatakai.manager.timeskip.exception.TimeSkipActivityNotFoundException;
+import com.tatakai.manager.timeskip.exception.TimeSkipClosedException;
+import com.tatakai.manager.timeskip.exception.TimeSkipNotFoundException;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    private Map<String, Object> body(HttpStatus status, String message) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("timestamp", Instant.now().toString());
+        map.put("status", status.value());
+        map.put("error", status.getReasonPhrase());
+        map.put("message", message);
+        return map;
+    }
+
+    @ExceptionHandler(EmailAlreadyUsedException.class)
+    public ResponseEntity<Map<String, Object>> handleEmailUsed(EmailAlreadyUsedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(body(HttpStatus.CONFLICT, ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(body(HttpStatus.UNAUTHORIZED, ex.getMessage()));
+    }
+
+    @ExceptionHandler({CampaignNotFoundException.class, UserNotFoundException.class,
+            NpcNotFoundException.class, TimeSkipNotFoundException.class,
+            BookingNotFoundException.class, MemberNotFoundException.class,
+            TimeSkipActivityNotFoundException.class, LogNotFoundException.class,
+            CharacterSheetNotFoundException.class, SheetEntryNotFoundException.class,
+            RollNotFoundException.class, EncounterNotFoundException.class})
+    public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(body(HttpStatus.NOT_FOUND, ex.getMessage()));
+    }
+
+    @ExceptionHandler({AlreadyMemberException.class, NpcAlreadyAssociatedException.class,
+            ActiveTimeSkipExistsException.class, TimeSkipClosedException.class,
+            SlotTakenException.class, BookingAlreadyPassedException.class,
+            InvalidActivityNameException.class, CharacterSheetAlreadyExistsException.class,
+            NpcSheetAlreadyExistsException.class, RollChannelNameTakenException.class,
+            SheetLockedException.class, CombatConflictException.class, ObjectOptimisticLockingFailureException.class})
+    public ResponseEntity<Map<String, Object>> handleConflict(RuntimeException ex) {
+        String msg = ex instanceof ObjectOptimisticLockingFailureException
+                ? "A ficha foi alterada por outra pessoa. Recarregue e tente de novo."
+                : ex.getMessage();
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(body(HttpStatus.CONFLICT, msg));
+    }
+
+    @ExceptionHandler({InvalidBookingException.class, InvalidTimeSkipException.class,
+            InvalidImageException.class, InvalidCharacterSheetException.class,
+            InvalidBuildStepException.class, InvalidMartialArtException.class,
+            InvalidRollException.class, InvalidCombatException.class})
+    public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
+        return ResponseEntity.badRequest().body(body(HttpStatus.BAD_REQUEST, ex.getMessage()));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(body(HttpStatus.PAYLOAD_TOO_LARGE, "O arquivo excede o tamanho máximo permitido (5 MB)"));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(body(HttpStatus.FORBIDDEN, ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, Object> response = body(HttpStatus.BAD_REQUEST, "Erro de validação");
+        Map<String, String> fields = new HashMap<>();
+        ex.getBindingResult().getFieldErrors()
+                .forEach(err -> fields.put(err.getField(), err.getDefaultMessage()));
+        response.put("fields", fields);
+        return ResponseEntity.badRequest().body(response);
+    }
+}

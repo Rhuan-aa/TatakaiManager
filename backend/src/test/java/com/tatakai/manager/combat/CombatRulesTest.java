@@ -1,8 +1,9 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.entity.CombatAction;
-import com.tatakai.manager.entity.ConditionExpiry;
-import com.tatakai.manager.service.rules.CombatRules;
+import com.tatakai.manager.combat.entity.CombatAction;
+import com.tatakai.manager.combat.entity.ConditionExpiry;
+import com.tatakai.manager.combat.service.rules.CombatRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

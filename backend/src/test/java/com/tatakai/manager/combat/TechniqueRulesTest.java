@@ -1,9 +1,11 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.entity.AssemblyItem;
-import com.tatakai.manager.entity.AssemblyItemKind;
-import com.tatakai.manager.entity.ReactionType;
-import com.tatakai.manager.service.rules.TechniqueRules;
+import com.tatakai.manager.catalog.entity.AssemblyItem;
+import com.tatakai.manager.catalog.entity.AssemblyItemKind;
+import com.tatakai.manager.combat.entity.ReactionType;
+import com.tatakai.manager.combat.service.rules.TechniqueRules;
+import com.tatakai.manager.roll.entity.Roll;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

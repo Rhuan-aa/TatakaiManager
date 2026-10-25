@@ -1,9 +1,10 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.entity.AttackActionKind;
-import com.tatakai.manager.entity.AttackOutcome;
-import com.tatakai.manager.entity.ReactionType;
-import com.tatakai.manager.service.rules.AttackRules;
+import com.tatakai.manager.combat.entity.AttackActionKind;
+import com.tatakai.manager.combat.entity.AttackOutcome;
+import com.tatakai.manager.combat.entity.ReactionType;
+import com.tatakai.manager.combat.service.rules.AttackRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

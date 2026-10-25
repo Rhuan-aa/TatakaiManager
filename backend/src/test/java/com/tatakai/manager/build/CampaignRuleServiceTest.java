@@ -1,18 +1,19 @@
 package com.tatakai.manager.build;
 
-import com.tatakai.manager.dto.request.UpdateCampaignRuleRequest;
-import com.tatakai.manager.dto.response.CampaignRuleResponse;
-import com.tatakai.manager.entity.BuildSettings;
-import com.tatakai.manager.entity.Campaign;
-import com.tatakai.manager.entity.CampaignRuleSetting;
-import com.tatakai.manager.entity.OptionalRule;
-import com.tatakai.manager.entity.Role;
-import com.tatakai.manager.exception.AccessDeniedException;
-import com.tatakai.manager.exception.InvalidCharacterSheetException;
-import com.tatakai.manager.repository.CampaignMemberRepository;
-import com.tatakai.manager.repository.CampaignRepository;
-import com.tatakai.manager.repository.CampaignRuleSettingRepository;
-import com.tatakai.manager.service.CampaignRuleService;
+import com.tatakai.manager.build.entity.BuildSettings;
+import com.tatakai.manager.campaign.dto.request.UpdateCampaignRuleRequest;
+import com.tatakai.manager.campaign.dto.response.CampaignRuleResponse;
+import com.tatakai.manager.campaign.entity.Campaign;
+import com.tatakai.manager.campaign.entity.CampaignRuleSetting;
+import com.tatakai.manager.campaign.entity.OptionalRule;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.campaign.repository.CampaignRepository;
+import com.tatakai.manager.campaign.repository.CampaignRuleSettingRepository;
+import com.tatakai.manager.campaign.service.CampaignRuleService;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

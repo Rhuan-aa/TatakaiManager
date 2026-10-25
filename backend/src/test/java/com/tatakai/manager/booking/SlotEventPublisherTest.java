@@ -1,13 +1,14 @@
 package com.tatakai.manager.booking;
 
-import com.tatakai.manager.dto.response.SlotUpdateMessage;
-import com.tatakai.manager.websocket.SlotEventPublisher;
+import com.tatakai.manager.shared.websocket.CampaignEventPublisher;
+import com.tatakai.manager.timeskip.dto.response.SlotUpdateMessage;
+import com.tatakai.manager.timeskip.websocket.SlotEventPublisher;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import com.tatakai.manager.websocket.CampaignEventPublisher;
 
 import java.util.UUID;
 

@@ -1,18 +1,89 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.dto.request.CreateAttackRequest;
-import com.tatakai.manager.dto.request.LateCounterRequest;
-import com.tatakai.manager.dto.response.AttackResponse;
-import com.tatakai.manager.dto.response.RollMessage;
-import com.tatakai.manager.entity.*;
-import com.tatakai.manager.exception.*;
-import com.tatakai.manager.repository.*;
-import com.tatakai.manager.service.AttackService;
-import com.tatakai.manager.service.RollProfileService;
-import com.tatakai.manager.service.RollProfileService.Calc;
-import com.tatakai.manager.service.RollService;
-import com.tatakai.manager.service.SheetActivityLogService;
-import com.tatakai.manager.service.rules.RollRules;
+import com.tatakai.manager.roll.service.RollProfileService.Calc;
+
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.campaign.entity.Campaign;
+import com.tatakai.manager.campaign.entity.CampaignMember;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.catalog.entity.AssemblyItem;
+import com.tatakai.manager.catalog.entity.AssemblyItemKind;
+import com.tatakai.manager.catalog.entity.Graduation;
+import com.tatakai.manager.catalog.entity.MartialArt;
+import com.tatakai.manager.catalog.entity.MoveKind;
+import com.tatakai.manager.catalog.entity.TechniqueCore;
+import com.tatakai.manager.catalog.repository.MartialArtRepository;
+import com.tatakai.manager.catalog.service.ArtCounterCatalog;
+import com.tatakai.manager.catalog.service.ConditionCatalog;
+import com.tatakai.manager.catalog.service.WeaponCatalog;
+import com.tatakai.manager.combat.dto.request.CreateAttackRequest;
+import com.tatakai.manager.combat.dto.request.LateCounterRequest;
+import com.tatakai.manager.combat.dto.response.AttackResponse;
+import com.tatakai.manager.combat.entity.AttackActionKind;
+import com.tatakai.manager.combat.entity.AttackOutcome;
+import com.tatakai.manager.combat.entity.AttackStatus;
+import com.tatakai.manager.combat.entity.AttackTarget;
+import com.tatakai.manager.combat.entity.BasicAttack;
+import com.tatakai.manager.combat.entity.CombatClassification;
+import com.tatakai.manager.combat.entity.CombatCondition;
+import com.tatakai.manager.combat.entity.CombatCounter;
+import com.tatakai.manager.combat.entity.CombatEvent;
+import com.tatakai.manager.combat.entity.CombatEventType;
+import com.tatakai.manager.combat.entity.ConditionExpiry;
+import com.tatakai.manager.combat.entity.Encounter;
+import com.tatakai.manager.combat.entity.EncounterParticipant;
+import com.tatakai.manager.combat.entity.EncounterStatus;
+import com.tatakai.manager.combat.entity.Floor;
+import com.tatakai.manager.combat.entity.Guard;
+import com.tatakai.manager.combat.entity.Hysteria;
+import com.tatakai.manager.combat.entity.LateCounter;
+import com.tatakai.manager.combat.entity.PendingAttack;
+import com.tatakai.manager.combat.entity.ReactionType;
+import com.tatakai.manager.combat.entity.StrikeSide;
+import com.tatakai.manager.combat.exception.CombatConflictException;
+import com.tatakai.manager.combat.exception.InvalidCombatException;
+import com.tatakai.manager.combat.repository.AttackTargetRepository;
+import com.tatakai.manager.combat.repository.CombatConditionRepository;
+import com.tatakai.manager.combat.repository.CombatCounterRepository;
+import com.tatakai.manager.combat.repository.CombatEventRepository;
+import com.tatakai.manager.combat.repository.EncounterParticipantRepository;
+import com.tatakai.manager.combat.repository.EncounterRepository;
+import com.tatakai.manager.combat.repository.PendingAttackRepository;
+import com.tatakai.manager.combat.service.AttackService;
+import com.tatakai.manager.combat.service.MartialService;
+import com.tatakai.manager.combat.service.VitalService;
+import com.tatakai.manager.combat.service.rules.BaseRules;
+import com.tatakai.manager.martial.entity.CharacterArt;
+import com.tatakai.manager.martial.entity.CharacterArtStatus;
+import com.tatakai.manager.martial.entity.CharacterTechnique;
+import com.tatakai.manager.martial.entity.MasteryBonus;
+import com.tatakai.manager.martial.entity.TechniqueState;
+import com.tatakai.manager.martial.repository.CharacterArtRepository;
+import com.tatakai.manager.martial.repository.CharacterTechniqueRepository;
+import com.tatakai.manager.progression.entity.Rival;
+import com.tatakai.manager.progression.repository.RivalRepository;
+import com.tatakai.manager.roll.dto.response.RollMessage;
+import com.tatakai.manager.roll.entity.Roll;
+import com.tatakai.manager.roll.entity.RollChannel;
+import com.tatakai.manager.roll.entity.RollMode;
+import com.tatakai.manager.roll.entity.RollPart;
+import com.tatakai.manager.roll.entity.RollSourceType;
+import com.tatakai.manager.roll.service.RollProfileService;
+import com.tatakai.manager.roll.service.RollService;
+import com.tatakai.manager.roll.service.rules.RollRules;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.sheet.entity.Attribute;
+import com.tatakai.manager.sheet.entity.CharacterSheet;
+import com.tatakai.manager.sheet.entity.Dominance;
+import com.tatakai.manager.sheet.entity.InjurySeverity;
+import com.tatakai.manager.sheet.entity.InjuryType;
+import com.tatakai.manager.sheet.entity.InventoryItem;
+import com.tatakai.manager.sheet.entity.ItemLocation;
+import com.tatakai.manager.sheet.entity.PermanentInjury;
+import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
+import com.tatakai.manager.sheet.service.SheetActivityLogService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -170,7 +241,7 @@ class AttackServiceTest {
     }
 
     private final List<Integer> lastAdv = new ArrayList<>();
-    private com.tatakai.manager.service.MartialService martial;
+    private com.tatakai.manager.combat.service.MartialService martial;
 
     private EncounterParticipant participant(CharacterSheet s, int idx, boolean npc) {
         return EncounterParticipant.builder().id(UUID.randomUUID()).encounterId(enc.getId()).sheetId(s.getId())
@@ -204,8 +275,8 @@ class AttackServiceTest {
 
     @BeforeEach
     void build() {
-        martial = new com.tatakai.manager.service.MartialService(charArts, martialArts, techniques, rivals, counters,
-                new com.tatakai.manager.service.ArtCounterCatalog(), timeline);
+        martial = new com.tatakai.manager.combat.service.MartialService(charArts, martialArts, techniques, rivals, counters,
+                new com.tatakai.manager.catalog.service.ArtCounterCatalog(), timeline);
         lenient().when(counters.findByParticipantIdIn(any())).thenAnswer(i -> new ArrayList<>(counterRows));
         lenient().when(counters.save(any(CombatCounter.class))).thenAnswer(i -> {
             CombatCounter c = i.getArgument(0);
@@ -215,8 +286,8 @@ class AttackServiceTest {
         });
         service = new AttackService(encounters, participants, conditions, timeline, attackRepo, targetRepo, sheets,
                 techniques, members, rolls, profiles, activityLog, publisher,
-                new com.tatakai.manager.service.VitalService(participants, conditions, timeline, activityLog, rolls,
-                        new com.tatakai.manager.service.ConditionCatalog(), profiles), martial);
+                new com.tatakai.manager.combat.service.VitalService(participants, conditions, timeline, activityLog, rolls,
+                        new com.tatakai.manager.catalog.service.ConditionCatalog(), profiles), martial);
     }
 
     // ---------- declarar ----------
@@ -1079,13 +1150,13 @@ class AttackServiceTest {
 
     // ---------- §30: efeitos de módulo no acerto ----------
 
-    private final List<com.tatakai.manager.entity.AssemblyItem> effectItems = new ArrayList<>();
+    private final List<com.tatakai.manager.catalog.entity.AssemblyItem> effectItems = new ArrayList<>();
 
     private void effect(String module, boolean onDie) {
-        com.tatakai.manager.entity.AssemblyItem it = new com.tatakai.manager.entity.AssemblyItem();
+        com.tatakai.manager.catalog.entity.AssemblyItem it = new com.tatakai.manager.catalog.entity.AssemblyItem();
         it.setModule(module);
         it.setQty(module.equals("Roubar Tempo") ? 2 : 1);
-        it.setKind(com.tatakai.manager.entity.AssemblyItemKind.EFFECT);
+        it.setKind(com.tatakai.manager.catalog.entity.AssemblyItemKind.EFFECT);
         it.setOnDie(onDie);
         effectItems.add(it);
         lenient().when(profiles.effects(any(), any(), any())).thenAnswer(x -> effectItems);
@@ -1214,23 +1285,23 @@ class AttackServiceTest {
     @Test
     @DisplayName("§31: base do defensor soma Guarda/Penalidade na reação certa (previsto e rolagem)")
     void defenderBaseInReactions() {
-        com.tatakai.manager.entity.AssemblyItem g = new com.tatakai.manager.entity.AssemblyItem();
+        com.tatakai.manager.catalog.entity.AssemblyItem g = new com.tatakai.manager.catalog.entity.AssemblyItem();
         g.setModule("Guarda");
         g.setLabel("Guarda +3 em Defender");
-        com.tatakai.manager.entity.AssemblyItem pen = new com.tatakai.manager.entity.AssemblyItem();
+        com.tatakai.manager.catalog.entity.AssemblyItem pen = new com.tatakai.manager.catalog.entity.AssemblyItem();
         pen.setModule("Penalidade");
         pen.setLabel("Penalidade −2 em Esquiva");
         pN.setActiveBaseId(UUID.randomUUID());
         lenient().when(profiles.baseProfile(eq(npcSheet), eq(pN.getActiveBaseId())))
-                .thenReturn(com.tatakai.manager.service.rules.BaseRules.profile("Fudo Dachi", List.of(g, pen), false));
+                .thenReturn(com.tatakai.manager.combat.service.rules.BaseRules.profile("Fudo Dachi", List.of(g, pen), false));
 
         AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
         AttackResponse.TargetResponse t = service.list(enc.getId(), AttackStatus.AWAITING_REACTIONS, master.getId()).stream()
                 .filter(x -> x.id().equals(r.id())).findFirst().get().targets().get(0);
         int defend = t.options().stream().filter(o -> o.reaction() == ReactionType.DEFEND).findFirst().get().predictedBonus();
         int dodge = t.options().stream().filter(o -> o.reaction() == ReactionType.DODGE).findFirst().get().predictedBonus();
-        assertThat(defend - (com.tatakai.manager.service.rules.RollRules.modOrZero(npcSheet.getCon()))).isEqualTo(3);
-        assertThat(dodge - (com.tatakai.manager.service.rules.RollRules.modOrZero(npcSheet.getDex()))).isEqualTo(-2);
+        assertThat(defend - (com.tatakai.manager.roll.service.rules.RollRules.modOrZero(npcSheet.getCon()))).isEqualTo(3);
+        assertThat(dodge - (com.tatakai.manager.roll.service.rules.RollRules.modOrZero(npcSheet.getDex()))).isEqualTo(-2);
 
         queue.add(msg(15, 10, 5));
         queue.add(msg(18, 15, null));
@@ -1317,7 +1388,7 @@ class AttackServiceTest {
         effect("Atordoar", false);
         modules.add("Pressão Fixa");
         sheetA.setStr(30);
-        int nd = 10 + com.tatakai.manager.service.rules.RollRules.modOrZero(30);
+        int nd = 10 + com.tatakai.manager.roll.service.rules.RollRules.modOrZero(30);
         queue.add(msg(25, 15, 5));
         queue.add(msg(nd, 9, null)); // empata com o ND fixo: resiste (contra o teste 25 teria falhado)
         AttackResponse r = service.declare(enc.getId(), technique(AttackActionKind.MAJOR, pN), player.getId());
@@ -1371,8 +1442,8 @@ class AttackServiceTest {
 
     // ---------- §38: técnicas de Reação ----------
 
-    private com.tatakai.manager.entity.AssemblyItem item(String module, String label, AssemblyItemKind kind) {
-        com.tatakai.manager.entity.AssemblyItem it = new com.tatakai.manager.entity.AssemblyItem();
+    private com.tatakai.manager.catalog.entity.AssemblyItem item(String module, String label, AssemblyItemKind kind) {
+        com.tatakai.manager.catalog.entity.AssemblyItem it = new com.tatakai.manager.catalog.entity.AssemblyItem();
         it.setModule(module);
         it.setLabel(label);
         it.setKind(kind);
@@ -1609,7 +1680,7 @@ class AttackServiceTest {
         CharacterTechnique npcTech = CharacterTechnique.builder().id(UUID.randomUUID()).sheet(npcSheet)
                 .kind(MoveKind.TECHNIQUE).state(TechniqueState.ACTIVE).name("Contra-Jab").build();
         lenient().when(profiles.coreTechniques(any(), org.mockito.ArgumentMatchers.eq(TechniqueCore.STRIKE)))
-                .thenAnswer(x -> x.getArgument(0) == npcSheet ? List.of(new com.tatakai.manager.service.RollProfileService
+                .thenAnswer(x -> x.getArgument(0) == npcSheet ? List.of(new com.tatakai.manager.roll.service.RollProfileService
                         .CoreTechnique(npcTech, null, "Contra-Jab", 2, List.of(mod("Contragolpe", 3, AssemblyItemKind.MODULE)), false))
                         : List.of());
         pA.setPaCurrent(5);
@@ -1684,17 +1755,17 @@ class AttackServiceTest {
 
     // ---------- §42: armas ----------
 
-    private final com.tatakai.manager.service.WeaponCatalog weaponCatalog = new com.tatakai.manager.service.WeaponCatalog();
+    private final com.tatakai.manager.catalog.service.WeaponCatalog weaponCatalog = new com.tatakai.manager.catalog.service.WeaponCatalog();
 
     /** Põe a arma em mãos de A e faz o perfil dela ser o do ataque. */
     private InventoryItem wield(String key, int loaded) {
-        com.tatakai.manager.service.WeaponCatalog.Def w = weaponCatalog.find(key).orElseThrow();
+        com.tatakai.manager.catalog.service.WeaponCatalog.Def w = weaponCatalog.find(key).orElseThrow();
         InventoryItem i = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name(w.name()).quantity(1)
                 .weaponKey(key).location(ItemLocation.HAND).loaded(loaded).build();
         sheetA.getInventory().add(i);
         lenient().when(profiles.weaponOf(any(), any(), any(), any())).thenAnswer(x -> new Calc(RollSourceType.BASIC_ATTACK,
                 i.getId(), w.name(), null, BasicAttack.ARMA, 0, 20, 0, new ArrayList<>(),
-                com.tatakai.manager.service.rules.RollRules.Dice.parse(w.dice()), new ArrayList<>(), w));
+                com.tatakai.manager.roll.service.rules.RollRules.Dice.parse(w.dice()), new ArrayList<>(), w));
         return i;
     }
 

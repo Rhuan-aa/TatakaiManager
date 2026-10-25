@@ -1,25 +1,26 @@
 package com.tatakai.manager.catalog;
 
-import com.tatakai.manager.dto.response.AssemblyCheck;
-import com.tatakai.manager.entity.ArtBase;
-import com.tatakai.manager.entity.ArtCategory;
-import com.tatakai.manager.entity.ArtTechnique;
-import com.tatakai.manager.entity.AssemblyItem;
-import com.tatakai.manager.entity.AssemblyItemKind;
-import com.tatakai.manager.entity.AssemblyVariation;
-import com.tatakai.manager.entity.Graduation;
-import com.tatakai.manager.entity.TechniqueCore;
-import com.tatakai.manager.service.rules.AssemblyRules;
+import com.tatakai.manager.catalog.dto.response.AssemblyCheck;
+import com.tatakai.manager.catalog.entity.ArtBase;
+import com.tatakai.manager.catalog.entity.ArtCategory;
+import com.tatakai.manager.catalog.entity.ArtTechnique;
+import com.tatakai.manager.catalog.entity.AssemblyItem;
+import com.tatakai.manager.catalog.entity.AssemblyItemKind;
+import com.tatakai.manager.catalog.entity.AssemblyVariation;
+import com.tatakai.manager.catalog.entity.Graduation;
+import com.tatakai.manager.catalog.entity.TechniqueCore;
+import com.tatakai.manager.catalog.service.rules.AssemblyRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.tatakai.manager.entity.AssemblyItemKind.EFFECT;
-import static com.tatakai.manager.entity.AssemblyItemKind.LIMITATION;
-import static com.tatakai.manager.entity.AssemblyItemKind.MODULE;
-import static com.tatakai.manager.entity.AssemblyItemKind.UNIQUE;
+import static com.tatakai.manager.catalog.entity.AssemblyItemKind.EFFECT;
+import static com.tatakai.manager.catalog.entity.AssemblyItemKind.LIMITATION;
+import static com.tatakai.manager.catalog.entity.AssemblyItemKind.MODULE;
+import static com.tatakai.manager.catalog.entity.AssemblyItemKind.UNIQUE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AssemblyRulesTest {

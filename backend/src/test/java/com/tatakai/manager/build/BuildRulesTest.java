@@ -1,11 +1,12 @@
 package com.tatakai.manager.build;
 
-import com.tatakai.manager.entity.Attribute;
-import com.tatakai.manager.entity.BuildGains;
-import com.tatakai.manager.entity.Dominance;
-import com.tatakai.manager.entity.TraitRarity;
-import com.tatakai.manager.service.rules.BuildRules;
-import com.tatakai.manager.service.rules.SheetRules;
+import com.tatakai.manager.build.entity.BuildGains;
+import com.tatakai.manager.build.service.rules.BuildRules;
+import com.tatakai.manager.catalog.entity.TraitRarity;
+import com.tatakai.manager.sheet.entity.Attribute;
+import com.tatakai.manager.sheet.entity.Dominance;
+import com.tatakai.manager.sheet.service.rules.SheetRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

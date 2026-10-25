@@ -1,12 +1,18 @@
 package com.tatakai.manager.sheet;
 
-import com.tatakai.manager.dto.response.SectionVisibilityResponse;
-import com.tatakai.manager.entity.*;
-import com.tatakai.manager.exception.AccessDeniedException;
-import com.tatakai.manager.exception.MemberNotFoundException;
-import com.tatakai.manager.repository.CampaignMemberRepository;
-import com.tatakai.manager.repository.CharacterSheetVisibilityRepository;
-import com.tatakai.manager.service.SheetVisibilityService;
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.campaign.entity.Campaign;
+import com.tatakai.manager.campaign.entity.CampaignMember;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.exception.MemberNotFoundException;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.sheet.dto.response.SectionVisibilityResponse;
+import com.tatakai.manager.sheet.entity.CharacterSheetVisibility;
+import com.tatakai.manager.sheet.entity.SheetSection;
+import com.tatakai.manager.sheet.repository.CharacterSheetVisibilityRepository;
+import com.tatakai.manager.sheet.service.SheetVisibilityService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

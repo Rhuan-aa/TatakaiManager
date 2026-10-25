@@ -1,11 +1,14 @@
 package com.tatakai.manager.progression;
 
-import com.tatakai.manager.entity.FightClassification;
-import com.tatakai.manager.entity.Graduation;
-import com.tatakai.manager.entity.KeikenRank;
-import com.tatakai.manager.entity.Mastery;
-import com.tatakai.manager.service.rules.ProgressionRules;
-import com.tatakai.manager.service.rules.ProgressionRules.Requirement;
+import com.tatakai.manager.progression.service.rules.ProgressionRules.Requirement;
+
+import com.tatakai.manager.catalog.entity.Graduation;
+import com.tatakai.manager.martial.entity.Mastery;
+import com.tatakai.manager.progression.entity.FightClassification;
+import com.tatakai.manager.progression.entity.KeikenRank;
+import com.tatakai.manager.progression.service.rules.ProgressionRules;
+import com.tatakai.manager.sheet.service.rules.SheetRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -47,7 +50,7 @@ class ProgressionRulesTest {
     @Test
     @DisplayName("F4b — PS = dificuldade 1/2/3 + min(Marcos, 4) + floor(modQ(TAL)/2); sparring 0")
     void fightPs() {
-        int halfTal = com.tatakai.manager.service.rules.SheetRules.modQ(25) / 2;
+        int halfTal = com.tatakai.manager.sheet.service.rules.SheetRules.modQ(25) / 2;
         assertThat(ProgressionRules.fightPs(FightClassification.EASY, 0, 25)).isEqualTo(1 + halfTal);
         assertThat(ProgressionRules.fightPs(FightClassification.LETHAL, 6, 25)).isEqualTo(3 + 4 + halfTal);
         assertThat(ProgressionRules.fightPs(FightClassification.SPARRING, 3, 25)).isZero();

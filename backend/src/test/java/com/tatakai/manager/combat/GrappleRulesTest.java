@@ -1,8 +1,9 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.entity.Attribute;
-import com.tatakai.manager.entity.MartialType;
-import com.tatakai.manager.service.rules.GrappleRules;
+import com.tatakai.manager.catalog.entity.MartialType;
+import com.tatakai.manager.combat.service.rules.GrappleRules;
+import com.tatakai.manager.sheet.entity.Attribute;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

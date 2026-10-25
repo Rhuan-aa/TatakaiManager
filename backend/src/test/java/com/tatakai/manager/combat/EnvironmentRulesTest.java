@@ -1,6 +1,7 @@
 package com.tatakai.manager.combat;
 
-import com.tatakai.manager.service.rules.EnvironmentRules;
+import com.tatakai.manager.combat.service.rules.EnvironmentRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

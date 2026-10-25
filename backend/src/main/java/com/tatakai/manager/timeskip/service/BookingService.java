@@ -1,0 +1,361 @@
+package com.tatakai.manager.timeskip.service;
+
+import com.tatakai.manager.auth.entity.User;
+import com.tatakai.manager.auth.exception.UserNotFoundException;
+import com.tatakai.manager.auth.repository.UserRepository;
+import com.tatakai.manager.campaign.entity.Role;
+import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
+import com.tatakai.manager.log.repository.InteractionLogRepository;
+import com.tatakai.manager.npc.entity.CampaignNpc;
+import com.tatakai.manager.npc.entity.Npc;
+import com.tatakai.manager.npc.entity.NpcInteraction;
+import com.tatakai.manager.npc.exception.NpcNotFoundException;
+import com.tatakai.manager.npc.repository.CampaignNpcRepository;
+import com.tatakai.manager.npc.repository.NpcRepository;
+import com.tatakai.manager.progression.entity.RestQuality;
+import com.tatakai.manager.progression.service.rules.TrainingRules;
+import com.tatakai.manager.shared.exception.AccessDeniedException;
+import com.tatakai.manager.timeskip.dto.request.CreateBookingRequest;
+import com.tatakai.manager.timeskip.dto.response.BookingResponse;
+import com.tatakai.manager.timeskip.dto.response.SlotUpdateMessage;
+import com.tatakai.manager.timeskip.entity.Booking;
+import com.tatakai.manager.timeskip.entity.SoloActivityType;
+import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.TimeSkipActivity;
+import com.tatakai.manager.timeskip.entity.TimeSkipDay;
+import com.tatakai.manager.timeskip.entity.TimeSkipStatus;
+import com.tatakai.manager.timeskip.exception.BookingAlreadyPassedException;
+import com.tatakai.manager.timeskip.exception.BookingNotFoundException;
+import com.tatakai.manager.timeskip.exception.InvalidBookingException;
+import com.tatakai.manager.timeskip.exception.SlotTakenException;
+import com.tatakai.manager.timeskip.exception.TimeSkipActivityNotFoundException;
+import com.tatakai.manager.timeskip.exception.TimeSkipClosedException;
+import com.tatakai.manager.timeskip.exception.TimeSkipNotFoundException;
+import com.tatakai.manager.timeskip.repository.BookingRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipActivityRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipDayRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipRepository;
+import com.tatakai.manager.timeskip.websocket.SlotEventPublisher;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+@Service
+public class BookingService {
+
+    private final BookingRepository bookingRepository;
+    private final TimeSkipRepository timeSkipRepository;
+    private final TimeSkipDayRepository timeSkipDayRepository;
+    private final CampaignNpcRepository campaignNpcRepository;
+    private final CampaignMemberRepository memberRepository;
+    private final UserRepository userRepository;
+    private final NpcRepository npcRepository;
+    private final TimeSkipActivityRepository timeSkipActivityRepository;
+    private final SlotEventPublisher slotEventPublisher;
+    private final InteractionLogRepository logRepository;
+
+    public BookingService(BookingRepository bookingRepository,
+                          TimeSkipRepository timeSkipRepository,
+                          TimeSkipDayRepository timeSkipDayRepository,
+                          CampaignNpcRepository campaignNpcRepository,
+                          CampaignMemberRepository memberRepository,
+                          UserRepository userRepository,
+                          NpcRepository npcRepository,
+                          TimeSkipActivityRepository timeSkipActivityRepository,
+                          SlotEventPublisher slotEventPublisher,
+                          InteractionLogRepository logRepository) {
+        this.bookingRepository = bookingRepository;
+        this.timeSkipRepository = timeSkipRepository;
+        this.timeSkipDayRepository = timeSkipDayRepository;
+        this.campaignNpcRepository = campaignNpcRepository;
+        this.memberRepository = memberRepository;
+        this.userRepository = userRepository;
+        this.npcRepository = npcRepository;
+        this.timeSkipActivityRepository = timeSkipActivityRepository;
+        this.slotEventPublisher = slotEventPublisher;
+        this.logRepository = logRepository;
+    }
+
+    // ---------- US-13: agendar ----------
+
+    @Transactional
+    public BookingResponse book(UUID campaignId, UUID timeSkipId, UUID requesterId,
+                                CreateBookingRequest req) {
+        Role role = requireMembership(campaignId, requesterId);
+
+        TimeSkip timeSkip = loadTimeSkipOfCampaign(timeSkipId, campaignId);
+        if (timeSkip.getStatus() != TimeSkipStatus.ACTIVE) {
+            throw new TimeSkipClosedException();
+        }
+
+        TimeSkipDay day = timeSkipDayRepository
+                .findByTimeSkipIdAndDayNumber(timeSkipId, req.dayNumber())
+                .orElseThrow(() -> new InvalidBookingException("Dia inválido para este TimeSkip"));
+
+        // Tempo de jogo: não se agenda em um dia que já passou
+        if (day.getDayNumber() < timeSkip.getCurrentDay()) {
+            throw new InvalidBookingException("Não é possível agendar em um dia que já passou");
+        }
+
+        Booking booking = req.npcId() != null
+                ? buildNpcBooking(campaignId, role, day, req, requesterId)
+                : buildSoloBooking(day, req, requesterId);
+
+        validatePlacementAndConflicts(day, booking, requesterId);
+
+        BookingResponse response;
+        try {
+            response = toResponse(bookingRepository.save(booking));
+        } catch (DataIntegrityViolationException e) {
+            // Dois jogadores passaram pela verificação ao mesmo tempo; o banco rejeitou o segundo
+            throw new SlotTakenException();
+        }
+
+        // US-15: notifica as telas dos demais jogadores em tempo real
+        slotEventPublisher.publish(SlotUpdateMessage.booked(campaignId, response, timeSkipId));
+        return response;
+    }
+
+    private Booking buildNpcBooking(UUID campaignId, Role role, TimeSkipDay day,
+                                    CreateBookingRequest req, UUID requesterId) {
+        if (req.interactionName() == null || req.interactionName().isBlank()) {
+            throw new InvalidBookingException("o tipo de interação é obrigatório");
+        }
+
+        CampaignNpc association = campaignNpcRepository
+                .findByCampaignIdAndNpcId(campaignId, req.npcId())
+                .orElseThrow(NpcNotFoundException::new);
+        // Jogador não enxerga (nem agenda) NPC oculto — 404 para não revelar existência
+        if (!association.isVisible() && role != Role.MASTER) {
+            throw new NpcNotFoundException();
+        }
+        if (!association.isBookable()) {
+            throw new InvalidBookingException("Este NPC não está disponível para agendamento");
+        }
+
+        Npc npc = npcRepository.findById(association.getNpcId()).orElseThrow(NpcNotFoundException::new);
+        NpcInteraction interaction = npc.getInteractions().stream()
+                .filter(i -> i.getName().equals(req.interactionName()))
+                .findFirst()
+                .orElseThrow(() -> new InvalidBookingException(
+                        "Este NPC não aceita a interação: " + req.interactionName()));
+
+        return Booking.builder()
+                .timeSkipDay(day)
+                .npcId(npc.getId())
+                .npcName(npc.getName())
+                .user(loadUser(requesterId))
+                .slotNumber(req.slotNumber())
+                .interactionName(interaction.getName())
+                .idlePointCost(interaction.getIdlePointCost())
+                .build();
+    }
+
+    // ---------- treino solo: mesmo slot, sem NPC ----------
+
+    private static final short FIXED_SOLO_ACTIVITY_COST = 1;
+
+    private Booking buildSoloBooking(TimeSkipDay day, CreateBookingRequest req, UUID requesterId) {
+        if (req.soloActivityType() == null && req.activityId() == null) {
+            throw new InvalidBookingException("o tipo da atividade solo é obrigatório");
+        }
+        if (req.soloActivityType() != null && req.activityId() != null) {
+            throw new InvalidBookingException(
+                    "informe o tipo fixo ou a atividade customizada, não os dois");
+        }
+
+        if (req.activityId() != null) {
+            TimeSkipActivity activity = timeSkipActivityRepository
+                    .findByIdAndTimeSkipId(req.activityId(), day.getTimeSkip().getId())
+                    .orElseThrow(TimeSkipActivityNotFoundException::new);
+            return Booking.builder()
+                    .timeSkipDay(day)
+                    .user(loadUser(requesterId))
+                    .slotNumber(req.slotNumber())
+                    .timeSkipActivityId(activity.getId())
+                    .activityName(activity.getName())
+                    .description(activity.getDescription())
+                    .idlePointCost(activity.getIdlePointCost())
+                    .build();
+        }
+
+        String target = null;
+        UUID techniqueId = null;
+        UUID characterArtId = null;
+        RestQuality quality = null;
+        if (req.soloActivityType() == SoloActivityType.TREINO && req.trainingTarget() != null) {
+            target = req.trainingTarget();
+            if (!TrainingRules.TARGETS.contains(target)) throw new InvalidBookingException("alvo de treino inválido");
+            if (TrainingRules.TECHNIQUE.equals(target)) {
+                if (req.techniqueId() == null) throw new InvalidBookingException("escolha a técnica a treinar");
+                techniqueId = req.techniqueId();
+            }
+            if (TrainingRules.GRADUATION.equals(target)) {
+                if (req.characterArtId() == null) throw new InvalidBookingException("escolha a arte a graduar");
+                characterArtId = req.characterArtId();
+            }
+        } else if (req.soloActivityType() == SoloActivityType.FORJA) {
+            // a Forja em andamento é resolvida ao avançar o dia (sem Forja, a sessão é perdida)
+        } else if (req.soloActivityType() == SoloActivityType.REPOUSO) {
+            if (req.restQuality() == null) throw new InvalidBookingException("escolha a qualidade do Repouso");
+            quality = req.restQuality();
+        } else if (req.description() == null || req.description().isBlank()) {
+            throw new InvalidBookingException("a descrição da atividade solo é obrigatória");
+        }
+        return Booking.builder()
+                .timeSkipDay(day)
+                .user(loadUser(requesterId))
+                .slotNumber(req.slotNumber())
+                .soloActivityType(req.soloActivityType())
+                .description(req.description())
+                .trainingTarget(target)
+                .techniqueId(techniqueId)
+                .restQuality(quality)
+                .characterArtId(characterArtId)
+                .idlePointCost(FIXED_SOLO_ACTIVITY_COST)
+                .build();
+    }
+
+    private User loadUser(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Usuário autenticado não encontrado"));
+    }
+
+    // ---------- ocupação da agenda: cada ponto de ócio ocupa um slot ----------
+
+    /**
+     * Regras de ocupação: uma ação de custo N >= 1 ocupa N slots consecutivos a partir
+     * do selecionado e precisa caber dentro dos {@link TimeSkipDay#SLOTS_PER_DAY} slots
+     * do dia. Ações de custo zero usam exclusivamente o slot extra
+     * ({@link TimeSkipDay#EXTRA_SLOT_NUMBER}), limitado a uma por jogador por dia.
+     * Verificação otimista; a constraint única (dia, npc, slot) segue como garantia
+     * final em concorrência para o slot inicial de reservas com NPC.
+     */
+    private void validatePlacementAndConflicts(TimeSkipDay day, Booking booking, UUID requesterId) {
+        short slot = booking.getSlotNumber();
+        short cost = booking.getIdlePointCost();
+
+        if (slot == TimeSkipDay.EXTRA_SLOT_NUMBER) {
+            if (cost != 0) {
+                throw new InvalidBookingException("o slot extra aceita apenas ações de custo zero");
+            }
+            if (bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumber(
+                    day.getId(), requesterId, TimeSkipDay.EXTRA_SLOT_NUMBER)) {
+                throw new InvalidBookingException("você já usou o slot extra deste dia");
+            }
+        } else {
+            if (cost == 0) {
+                throw new InvalidBookingException("ações de custo zero devem usar o slot extra do dia");
+            }
+            if (slot + cost - 1 > TimeSkipDay.SLOTS_PER_DAY) {
+                throw new InvalidBookingException(
+                        "a ação custa " + cost + " pontos de ócio e não cabe a partir do slot " + slot);
+            }
+        }
+
+        List<Booking> occupied = booking.getNpcId() != null
+                // Faixa do NPC: nenhum jogador pode sobrepor os slots já tomados do NPC no dia
+                ? bookingRepository.findByTimeSkipDayIdAndNpcId(day.getId(), booking.getNpcId())
+                // Faixa solo: o jogador não pode sobrepor as próprias atividades solo do dia
+                : bookingRepository.findByTimeSkipDayIdAndUserIdAndNpcIdIsNull(day.getId(), requesterId);
+        if (occupied.stream().anyMatch(b -> overlaps(b, slot, cost))) {
+            throw new SlotTakenException();
+        }
+    }
+
+    /** Faixa ocupada por uma reserva: [slot, slot + max(custo,1) - 1]; o slot extra ocupa só ele mesmo. */
+    private static short endSlot(short slot, short cost) {
+        return (short) (slot + Math.max(cost, 1) - 1);
+    }
+
+    private static boolean overlaps(Booking existing, short slot, short cost) {
+        return existing.getSlotNumber() <= endSlot(slot, cost)
+                && slot <= endSlot(existing.getSlotNumber(), existing.getIdlePointCost());
+    }
+
+    // ---------- US-14: cancelar ----------
+
+    @Transactional
+    public void cancel(UUID bookingId, UUID requesterId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(BookingNotFoundException::new);
+        if (!booking.getUser().getId().equals(requesterId)) {
+            throw new AccessDeniedException("Você só pode cancelar os seus próprios agendamentos");
+        }
+
+        // Captura os dados do slot antes de remover, para o broadcast
+        TimeSkip timeSkip = booking.getTimeSkipDay().getTimeSkip();
+
+        // Tempo de jogo: só é possível desmarcar agendamentos cujo dia ainda não passou
+        if (booking.getTimeSkipDay().getDayNumber() < timeSkip.getCurrentDay()) {
+            throw new BookingAlreadyPassedException();
+        }
+
+        UUID campaignId = timeSkip.getCampaign().getId();
+        SlotUpdateMessage message = SlotUpdateMessage.cancelled(
+                campaignId, timeSkip.getId(), booking.getId(), booking.getNpcId(),
+                booking.getTimeSkipDay().getDayNumber(), booking.getSlotNumber());
+
+        // logs ligados ao agendamento saem antes dele (FK interaction_logs.booking_id)
+        logRepository.deleteByBookingIn(List.of(booking));
+        bookingRepository.delete(booking);
+
+        // US-15: libera o slot nas telas dos jogadores em tempo real
+        slotEventPublisher.publish(message);
+    }
+
+    // ---------- US-12: visualizar disponibilidade ----------
+
+    @Transactional(readOnly = true)
+    public List<BookingResponse> listBookings(UUID campaignId, UUID timeSkipId, UUID requesterId) {
+        if (!memberRepository.existsByCampaignIdAndUserId(campaignId, requesterId)) {
+            throw new AccessDeniedException("Você não pertence a esta campanha");
+        }
+        loadTimeSkipOfCampaign(timeSkipId, campaignId);
+        return bookingRepository.findByTimeSkipDay_TimeSkipId(timeSkipId).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // ---------- helpers ----------
+
+    private Role requireMembership(UUID campaignId, UUID requesterId) {
+        return memberRepository.findByCampaignIdAndUserId(campaignId, requesterId)
+                .orElseThrow(() -> new AccessDeniedException("Você não pertence a esta campanha"))
+                .getRole();
+    }
+
+    private TimeSkip loadTimeSkipOfCampaign(UUID timeSkipId, UUID campaignId) {
+        TimeSkip timeSkip = timeSkipRepository.findById(timeSkipId)
+                .orElseThrow(TimeSkipNotFoundException::new);
+        if (!timeSkip.getCampaign().getId().equals(campaignId)) {
+            throw new TimeSkipNotFoundException();
+        }
+        return timeSkip;
+    }
+
+    private BookingResponse toResponse(Booking b) {
+        return new BookingResponse(
+                b.getId(),
+                b.getNpcId(),
+                b.getNpcName(),
+                b.getUser().getId(),
+                b.getUser().getName(),
+                b.getTimeSkipDay().getDayNumber(),
+                b.getSlotNumber(),
+                b.getInteractionName(),
+                b.getIdlePointCost(),
+                b.getSoloActivityType(),
+                b.getTimeSkipActivityId(),
+                b.getActivityName(),
+                b.getDescription(),
+                b.getCreatedAt(),
+                b.getTrainingTarget(),
+                b.getTechniqueId(),
+                b.getRestQuality(), b.getCharacterArtId());
+    }
+}
