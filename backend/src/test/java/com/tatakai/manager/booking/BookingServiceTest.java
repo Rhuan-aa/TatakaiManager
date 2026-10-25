@@ -38,6 +38,7 @@ class BookingServiceTest {
     @Mock private NpcRepository npcRepository;
     @Mock private TimeSkipActivityRepository timeSkipActivityRepository;
     @Mock private SlotEventPublisher slotEventPublisher;
+    @Mock private com.tatakai.manager.repository.InteractionLogRepository logRepository;
 
     private BookingService service;
 
@@ -52,7 +53,7 @@ class BookingServiceTest {
     void setUp() {
         service = new BookingService(bookingRepository, timeSkipRepository, timeSkipDayRepository,
                 campaignNpcRepository, memberRepository, userRepository, npcRepository,
-                timeSkipActivityRepository, slotEventPublisher);
+                timeSkipActivityRepository, slotEventPublisher, logRepository);
 
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Ana").build();
@@ -597,7 +598,10 @@ class BookingServiceTest {
 
         service.cancel(booking.getId(), player.getId());
 
-        verify(bookingRepository).delete(booking);
+        // logs ligados ao agendamento saem antes dele (FK interaction_logs.booking_id)
+        var order = org.mockito.Mockito.inOrder(logRepository, bookingRepository);
+        order.verify(logRepository).deleteByBookingIn(java.util.List.of(booking));
+        order.verify(bookingRepository).delete(booking);
 
         // US-15: broadcast de CANCELLED liberando o slot
         var captor = org.mockito.ArgumentCaptor.forClass(SlotUpdateMessage.class);

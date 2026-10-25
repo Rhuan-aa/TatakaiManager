@@ -598,14 +598,9 @@ no `*ServiceTest` correspondente primeiro.
 
 ## 11. Problemas conhecidos e armadilhas (verificados lendo o código)
 
-1. **Log de jogador quebrado no front** — `LogPanel.jsx` (`handleSubmit`) envia
-   `bookingId: Number(selectedBookingId)`. Ids são UUID → `NaN` → serializa como
-   `null` → backend trata como log livre → **403 "Apenas o Mestre pode adicionar
-   um log livre"**. Correção: enviar a string do UUID sem `Number(...)`.
-2. **Cancelar booking que já tem log** — `BookingService.cancel` deleta o booking
-   sem apagar logs que o referenciam (`interaction_logs.booking_id` FK) → erro de
-   integridade no Postgres (500). Delete de TimeSkip e remoção de NPC tratam isso;
-   `cancel` não.
+1. ~~Log de jogador quebrado no front~~ — **corrigido**: `LogPanel` envia o UUID do booking como string.
+2. ~~Cancelar booking que já tem log~~ — **corrigido**: `BookingService.cancel` apaga os logs ligados
+   (`deleteByBookingIn`) antes do booking.
 3. **`schema.sql`** — corrigido (slot 1..5, `updated_at` em logs) e com as tabelas
    da ficha. Bancos antigos criados com o DDL velho ainda têm o CHECK 1..4:
    Hibernate `update` não remove CHECKs antigos — dropar manualmente.

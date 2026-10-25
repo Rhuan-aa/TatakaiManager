@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getRollProfiles, listRollChannels, rollTest } from '../../api/rolls';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
-import RollCard from '../rolls/RollCard';
+import RollReveal from '../rolls/RollReveal';
 import RollBox from './RollBox';
 import { ATTRS } from './sheetRules';
 
@@ -136,7 +136,7 @@ export default function RollsPanel({ sheetId, campaignId, isMaster, isNpc, refre
         </label>
       )}
 
-      <div aria-live="polite">{result && <RollCard roll={result} />}</div>
+      <div aria-live="polite">{result && <RollReveal key={result.id} roll={result} fresh />}</div>
 
       <div>
         <h4 className="caption mb-1">Ataques e técnicas</h4>

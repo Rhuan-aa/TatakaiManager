@@ -264,7 +264,7 @@ function ArtCard({ ca, moves, isMaster, canAct, run }) {
           <button type="button" className="btn-ghost px-2 text-xs" onClick={() => run(api.removeCharacterArt, ca.id)}>Remover arte</button>
         )}
       </div>
-      <div className="collapsible-body space-y-3" hidden={!open}>
+      <div className={`collapsible-body space-y-3${open ? '' : ' is-collapsed'}`}>
       {ca.graduationCost != null && <GraduationInfo ca={ca} isMaster={isMaster} run={run} />}
       <MoveList title="Bases" moves={moves.filter((m) => m.kind === 'BASE')} {...sub} />
       <MoveList title="Técnicas" moves={moves.filter((m) => m.kind === 'TECHNIQUE')} {...sub} />

@@ -524,7 +524,7 @@ public class CombatService {
                 p.setGuard(req.guard());
                 p.setGuardChangedAt(java.time.Instant.now()); // reinicia o Timing
                 p.setGuardChangesThisTurn(p.getGuardChangesThisTurn() + 1);
-                text.append(" — guarda ").append(req.guard());
+                text.append(" — guarda ").append(req.guard().label());
             }
             case CHANGE_BASE -> {
                 p.setActiveBaseId(newBase == null ? null : newBase.getId());

@@ -5,7 +5,7 @@ function Bar({ name, value, max, color }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   return (
     <div className="flex items-center gap-2 text-[11px]">
-      <span className="w-6 shrink-0">{name}</span>
+      <span className="min-w-6 shrink-0 whitespace-nowrap">{name}</span>
       <div className="meter flex-1" style={{ height: 8, borderWidth: 2 }} role="meter" aria-label={name}
         aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
         <div className="meter-fill" style={{ width: `${pct}%`, '--meter-color': color }} />
@@ -19,7 +19,7 @@ function AdrenalineMeter({ value }) {
   const pct = Math.max(0, Math.min(100, value * 10));
   return (
     <div className="flex items-center gap-2 text-[11px]">
-      <span className="w-6 shrink-0" title="Adrenalina">Adr</span>
+      <span className="shrink-0 whitespace-nowrap">Adrenalina</span>
       <div className="relative flex-1">
         <div className="meter" style={{ height: 8, borderWidth: 2 }} role="meter" aria-label="Adrenalina"
           aria-valuenow={value} aria-valuemin={0} aria-valuemax={10}>

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import RollCard from '../rolls/RollCard';
+import { useEffect, useRef, useState } from 'react';
+import RollReveal from '../rolls/RollReveal';
 import { getRollProfiles } from '../../api/rolls';
 import { OUTCOME_LABEL, REACTION_LABEL, LATE_COUNTER_LABEL } from './combatLabels';
 
@@ -33,13 +33,13 @@ function LateCounterPicker({ sheetId, onPick, onClose }) {
   );
 }
 
-function Resolved({ a, targetSheetId, onLateCounter }) {
+function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
   const [picking, setPicking] = useState(null);
 
   return (
     <div className="panel space-y-2 p-3">
       <div className="text-sm"><strong>{a.attackerName}</strong> atacou com {a.sourceName}{a.region ? ` (${a.region})` : ''} · rodada {a.round}</div>
-      {a.attackRoll && <RollCard roll={a.attackRoll} />}
+      {a.attackRoll && <RollReveal roll={a.attackRoll} fresh={fresh} />}
       {a.targets.map((t) => (
         <div key={t.id} className="space-y-1">
           <div className="text-sm">
@@ -59,7 +59,7 @@ function Resolved({ a, targetSheetId, onLateCounter }) {
             ? <LateCounterPicker sheetId={targetSheetId(t)} onClose={() => setPicking(null)}
                 onPick={(body) => { onLateCounter(a.id, t.id, body); setPicking(null); }} />
             : <button type="button" className="btn-secondary px-3 py-1 text-xs" onClick={() => setPicking(t.id)}>Contra-ataque tardio</button>)}
-          {t.reactionRoll && <RollCard roll={t.reactionRoll} />}
+          {t.reactionRoll && <RollReveal roll={t.reactionRoll} fresh={fresh} />}
         </div>
       ))}
     </div>
@@ -67,6 +67,7 @@ function Resolved({ a, targetSheetId, onLateCounter }) {
 }
 
 export default function AttackPanel({ pending, resolved, canCancel, onReact, onCancel, onLateCounter, targetSheetId }) {
+  const initialIds = useRef(new Set(resolved.map((a) => a.id))); // já resolvidos ao montar: sem animação
   return (
     <div className="space-y-3">
       {pending.length > 0 && <h3 className="panel-title text-lg">Ataques pendentes</h3>}
@@ -96,7 +97,7 @@ export default function AttackPanel({ pending, resolved, canCancel, onReact, onC
       {resolved.length > 0 && (
         <details open={resolved.some((a) => a.targets.some((t) => t.canLateCounter && !t.lateCounter))}>
           <summary className="caption cursor-pointer">Ataques resolvidos ({resolved.length})</summary>
-          <div className="mt-2 space-y-2">{resolved.map((a) => <Resolved key={a.id} a={a} targetSheetId={targetSheetId} onLateCounter={onLateCounter} />)}</div>
+          <div className="mt-2 space-y-2">{resolved.map((a) => <Resolved key={a.id} a={a} fresh={!initialIds.current.has(a.id)} targetSheetId={targetSheetId} onLateCounter={onLateCounter} />)}</div>
         </details>
       )}
     </div>

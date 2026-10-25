@@ -27,6 +27,7 @@ public class BookingService {
     private final NpcRepository npcRepository;
     private final TimeSkipActivityRepository timeSkipActivityRepository;
     private final SlotEventPublisher slotEventPublisher;
+    private final InteractionLogRepository logRepository;
 
     public BookingService(BookingRepository bookingRepository,
                           TimeSkipRepository timeSkipRepository,
@@ -36,7 +37,8 @@ public class BookingService {
                           UserRepository userRepository,
                           NpcRepository npcRepository,
                           TimeSkipActivityRepository timeSkipActivityRepository,
-                          SlotEventPublisher slotEventPublisher) {
+                          SlotEventPublisher slotEventPublisher,
+                          InteractionLogRepository logRepository) {
         this.bookingRepository = bookingRepository;
         this.timeSkipRepository = timeSkipRepository;
         this.timeSkipDayRepository = timeSkipDayRepository;
@@ -46,6 +48,7 @@ public class BookingService {
         this.npcRepository = npcRepository;
         this.timeSkipActivityRepository = timeSkipActivityRepository;
         this.slotEventPublisher = slotEventPublisher;
+        this.logRepository = logRepository;
     }
 
     // ---------- US-13: agendar ----------
@@ -268,6 +271,8 @@ public class BookingService {
                 campaignId, timeSkip.getId(), booking.getId(), booking.getNpcId(),
                 booking.getTimeSkipDay().getDayNumber(), booking.getSlotNumber());
 
+        // logs ligados ao agendamento saem antes dele (FK interaction_logs.booking_id)
+        logRepository.deleteByBookingIn(List.of(booking));
         bookingRepository.delete(booking);
 
         // US-15: libera o slot nas telas dos jogadores em tempo real

@@ -427,7 +427,7 @@ class CombatServiceTest {
         assertThat(p[0].getGuard()).isEqualTo(Guard.INVERTED);
         assertThat(p[0].getGuardChangedAt()).isNotNull();
         assertThat(p[0].getPaCurrent()).isEqualTo(4);
-        assertThat(eventList).anyMatch(e -> e.getText().contains("guarda INVERTED"));
+        assertThat(eventList).anyMatch(e -> e.getText().contains("guarda invertida"));
         assertThatThrownBy(() -> guardAct(p[0], null, player.getId())).isInstanceOf(InvalidCombatException.class);
         assertThat(p[0].getPaCurrent()).isEqualTo(4);
     }

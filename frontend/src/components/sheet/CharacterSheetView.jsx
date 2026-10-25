@@ -183,7 +183,7 @@ function Block({ title, aside, collapsible, defaultOpen = false, children }) {
         ) : <h3 className="panel-title">{title}</h3>}
         {aside}
       </div>
-      <div className="collapsible-body" hidden={!open}>{children}</div>
+      <div className={`collapsible-body${open ? '' : ' is-collapsed'}`}>{children}</div>
     </section>
   );
 }

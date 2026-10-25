@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createRollChannel, deleteRollChannel, gmRoll, listCampaignRolls, listRollChannels, revealRoll, updateRollChannel,
 } from '../../api/rolls';
@@ -7,7 +7,8 @@ import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 import { useCampaignTopic, useStompDestination } from '../../hooks/useWebSocket';
 import { DICE_REGEX } from '../sheet/sheetRules';
-import RollCard, { RollRow } from './RollCard';
+import { RollRow } from './RollCard';
+import RollReveal from './RollReveal';
 
 const upsert = (list = [], r) => [r, ...list.filter((x) => x.id !== r.id)].slice(0, 100);
 
@@ -108,6 +109,7 @@ export default function RollFeed({ campaignId, isMaster }) {
   const [showHistory, setShowHistory] = useState(false);
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState(null); // null | 'new' | channel
+  const histIds = useRef(new Set()); // ids vindos do histórico: nunca animam
 
   useEffect(() => {
     let active = true;
@@ -121,7 +123,7 @@ export default function RollFeed({ campaignId, isMaster }) {
     let active = true;
     const custom = tab !== 'PUBLIC' && tab !== 'GM_PRIVATE';
     listCampaignRolls(campaignId, custom ? 'CUSTOM' : tab, custom ? tab : undefined)
-      .then((d) => active && setRolls((m) => ({ ...m, [tab]: m[tab] ? m[tab] : d })))
+      .then((d) => { if (!active) return; d.forEach((r) => histIds.current.add(r.id)); setRolls((m) => ({ ...m, [tab]: m[tab] ? m[tab] : d })); })
       .catch((e) => toast(parseApiError(e).message, 'error'));
     return () => { active = false; };
   }, [campaignId, tab, rolls, toast]);
@@ -198,7 +200,7 @@ export default function RollFeed({ campaignId, isMaster }) {
 
       {!latest && <p className="caption">Nenhuma rolagem.</p>}
       {latest && (
-        <RollCard key={latest.id} roll={latest} onReveal={canReveal && !latest.revealed ? () => reveal(latest) : undefined} />
+        <RollReveal key={latest.id} roll={latest} fresh={!histIds.current.has(latest.id)} onReveal={canReveal && !latest.revealed ? () => reveal(latest) : undefined} />
       )}
       {history.length > 0 && (
         <div>

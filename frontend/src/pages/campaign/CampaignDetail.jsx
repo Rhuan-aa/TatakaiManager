@@ -59,7 +59,7 @@ export default function CampaignDetail() {
     { key: 'NPCs', label: 'NPCs', icon: 'users', active: activeTab === 'NPCs', onClick: () => setActiveTab('NPCs') },
     { key: 'Fichas', label: 'Fichas', icon: 'sheet', active: activeTab === 'Fichas', onClick: () => { setFightSheetIds(undefined); setActiveTab('Fichas'); } },
     { key: 'Agenda', label: 'Agenda', icon: 'calendar', active: activeTab === 'Agenda', onClick: () => setActiveTab('Agenda') },
-    { key: 'Combate', label: 'Combate', icon: 'calendar', active: activeTab === 'Combate', onClick: () => setActiveTab('Combate') },
+    { key: 'Combate', label: 'Combate', icon: 'swords', active: activeTab === 'Combate', onClick: () => setActiveTab('Combate') },
     { key: 'Rolagens', label: 'Rolagens', icon: 'scroll', active: activeTab === 'Rolagens', onClick: () => setActiveTab('Rolagens') },
     { key: 'Logs', label: 'Logs', icon: 'scroll', active: activeTab === 'Logs', onClick: () => setActiveTab('Logs') },
     { key: 'Catálogo', label: 'Catálogo', icon: 'book', active: activeTab === 'Catálogo', onClick: () => setActiveTab('Catálogo') },

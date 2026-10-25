@@ -522,6 +522,16 @@ h3,
   }
 }
 
+/* Rolagem: d20 girando antes de revelar o resultado */
+.dice-rolling { animation: dice-tumble 450ms linear infinite; }
+@keyframes dice-tumble {
+  0% { transform: rotate(0) scale(1); }
+  25% { transform: rotate(100deg) scale(1.12) translateX(4px); }
+  50% { transform: rotate(190deg) scale(0.92); }
+  75% { transform: rotate(280deg) scale(1.1) translateX(-4px); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
 /* Respeita quem prefere menos movimento */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -537,6 +547,9 @@ h3,
   }
 }
 
+/* Recolhido por classe, não por [hidden]: o preflight do Tailwind força [hidden] com !important em camada. */
+.collapsible-body.is-collapsed { display: none; }
+
 @media print {
   aside, nav, header, button, input, select, textarea, .no-print, [role='status'], .halftone, .speed-lines {
     display: none !important;
@@ -546,5 +559,5 @@ h3,
   .pl-16 { padding-left: 0 !important; }
   .panel { background: #fff !important; border: 2px solid #000 !important; break-inside: avoid; }
   main { max-width: none !important; padding: 0 !important; }
-  .collapsible-body[hidden] { display: block !important; }
+  .collapsible-body.is-collapsed { display: block !important; }
 }

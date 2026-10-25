@@ -48,6 +48,13 @@ const ICONS = {
       <path d="M3 9h18M8 2v4M16 2v4" />
     </>
   ),
+  swords: svg(
+    <>
+      <path d="M4 4l9 9M4 4v4l1 1M4 4h4l1 1" />
+      <path d="M20 4l-9 9M20 4v4l-1 1M20 4h-4l-1 1" />
+      <path d="M9 15l-4 4M15 15l4 4M7 17l-2-2M17 17l2-2" />
+    </>
+  ),
   scroll: svg(
     <>
       <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
