@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 780 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 781 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -531,7 +531,7 @@ no canal `campaign` e recarregam.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 780 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 781 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -900,12 +900,13 @@ Exposta, Uso Restrito, Tardia, Previsível e Exige Base (regras puras em `Module
 e módulos armados (regras puras em `WeaponRules`). **Proteções e equipamento** (§43): `catalog/equipment.json`
 (`EquipmentCatalog`, `GET /catalog/equipment`), item `equipment_key` vestido (`location = WORN`); redução por região/tipo
 depois da Defesa, peso da armadura, luvas, capacetes, protetor bucal, kimono e roupas (`EquipmentRules`).
+**Consumíveis** (§44): `catalog/consumables.json` (`ConsumableCatalog`, `GET /catalog/consumables`), item `consumable_key`,
+ação `USE_ITEM` (atadura, gaze, sais de amônia, isotônica, giz, spray de pimenta, estimulante).
 
 **Pendentes** (detalhes no plano §26.5):
-1. **Consumíveis** — contrato no plano §44 (capítulo Consumíveis).
-2. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição, Duas Etapas e os efeitos únicos das
+1. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição, Duas Etapas e os efeitos únicos das
    Artes Clássicas (Foco, Ritmo, Pop, Embalo…).
-3. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).
+2. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).
 
 **Colunas novas sem migração automática** (bancos com `ddl-auto=validate`): `combat_conditions.progress`,
 `inventory_items.weight_kg`, `encounter_participants.stabilize_failures`/`fluid_switch_used`,

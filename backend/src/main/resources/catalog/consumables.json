@@ -1,0 +1,228 @@
+[
+  {
+    "key": "ATADURA",
+    "name": "Atadura",
+    "group": "MEDICAL",
+    "use": "SELF",
+    "effect": "STANCH",
+    "text": "Estanca todas as Feridas abertas",
+    "price": "¼",
+    "access": "Livre"
+  },
+  {
+    "key": "GAZE",
+    "name": "Gaze Hemostática",
+    "group": "MEDICAL",
+    "use": "SELF",
+    "effect": "STANCH_HEAL",
+    "text": "Estanca todas as Feridas e recupera 1d4 HP",
+    "price": "1",
+    "access": "Restrito"
+  },
+  {
+    "key": "TALA",
+    "name": "Tala",
+    "group": "MEDICAL",
+    "use": "ALLY",
+    "effect": null,
+    "text": "Ação Maior: suspende até o fim da cena os efeitos de Ataques Localizados no Joelho ou num membro",
+    "price": "½",
+    "access": "Livre"
+  },
+  {
+    "key": "SAIS_AMONIA",
+    "name": "Sais de Amônia",
+    "group": "MEDICAL",
+    "use": "ALLY",
+    "effect": "WAKE_KP",
+    "text": "Inconsciente por PQ acorda com 1 PQ e fica Desorientado; 1× por combate em cada lutador",
+    "price": "½",
+    "access": "Livre"
+  },
+  {
+    "key": "ANALGESICO",
+    "name": "Analgésico",
+    "group": "MEDICAL",
+    "use": "SELF",
+    "effect": null,
+    "text": "Dose: ignora 2 de Desgaste Físico até o próximo Repouso; Colateral: +1 Desgaste Físico no Repouso",
+    "price": "½",
+    "access": "Livre",
+    "dose": true
+  },
+  {
+    "key": "CALMANTE",
+    "name": "Calmante",
+    "group": "MEDICAL",
+    "use": "NONE",
+    "effect": null,
+    "text": "Dose, fora de combate: o próximo Repouso remove +1 Desgaste Mental; desvantagem em Iniciativa no dia",
+    "price": "½",
+    "access": "Restrito",
+    "dose": true
+  },
+  {
+    "key": "KIT_CUTMAN",
+    "name": "Kit de Cutman (5 usos)",
+    "group": "MEDICAL",
+    "use": "NONE",
+    "effect": null,
+    "text": "Fora de combate ou entre rounds: fecha Feridas, trata Meio-Cego dos Olhos, remove Desorientado ou recupera 2d6 HP",
+    "price": "2",
+    "access": "Restrito"
+  },
+  {
+    "key": "CREATINA",
+    "name": "Creatina (pote de 1 semana)",
+    "group": "SUPPLEMENT",
+    "use": "NONE",
+    "effect": null,
+    "text": "1×/combate, SP abaixo de 25%: +1d4 SP; +0,2 kg na 1ª semana",
+    "price": "½",
+    "access": "Livre"
+  },
+  {
+    "key": "POMADA",
+    "name": "Pomada Muscular",
+    "group": "SUPPLEMENT",
+    "use": "NONE",
+    "effect": null,
+    "text": "Dose, fora de combate: −1 Desgaste Físico",
+    "price": "½",
+    "access": "Livre",
+    "dose": true
+  },
+  {
+    "key": "GIZ",
+    "name": "Giz de Magnésio",
+    "group": "SUPPLEMENT",
+    "use": "SELF",
+    "effect": "GRIP_CHALK",
+    "text": "3 rodadas: +1 nas competições de Força para manter ou escapar de Agarrado/Imobilizado",
+    "price": "¼",
+    "access": "Livre"
+  },
+  {
+    "key": "TERMOGENICO",
+    "name": "Termogênico",
+    "group": "SUPPLEMENT",
+    "use": "NONE",
+    "effect": null,
+    "text": "Dose: −0,3 kg a mais na Alimentação; +1 Desgaste Mental e desvantagem em Iniciativa no dia",
+    "price": "½",
+    "access": "Livre",
+    "dose": true
+  },
+  {
+    "key": "SPRAY_PIMENTA",
+    "name": "Spray de Pimenta (3 usos)",
+    "group": "TACTICAL",
+    "use": "OFFENSIVE",
+    "effect": "PEPPER",
+    "text": "DES contra CON do alvo: Olho Irritado por 1d4 rodadas, só sai com água",
+    "price": "½",
+    "access": "Restrito"
+  },
+  {
+    "key": "SAQUINHO_PO",
+    "name": "Saquinho de Pó",
+    "group": "TACTICAL",
+    "use": "NONE",
+    "effect": null,
+    "text": "Lançamento Rápido com vantagem",
+    "price": "¼",
+    "access": "Livre"
+  },
+  {
+    "key": "ISOTONICA",
+    "name": "Bebida Isotônica",
+    "group": "STIMULANT",
+    "use": "SELF",
+    "effect": "SP_1D6",
+    "text": "Recupera 1d6 SP",
+    "price": "¼",
+    "access": "Livre"
+  },
+  {
+    "key": "ENERGETICO",
+    "name": "Energético",
+    "group": "STIMULANT",
+    "use": "NONE",
+    "effect": null,
+    "text": "Dose: +1 de adrenalina inicial e +1 na Iniciativa do próximo combate no dia; +1 Desgaste Físico no Repouso",
+    "price": "¼",
+    "access": "Livre",
+    "dose": true
+  },
+  {
+    "key": "ESTIMULANTE",
+    "name": "Estimulante de Combate",
+    "group": "STIMULANT",
+    "use": "SELF",
+    "effect": "STIMULANT",
+    "text": "3 rodadas: imune a Desorientado e Atordoado, +2 em Vontade; depois +2 Desgaste Físico, +1 Mental e SP máximo −25% até o Repouso",
+    "price": "3",
+    "access": "Ilegal",
+    "dose": true
+  },
+  {
+    "key": "RACAO",
+    "name": "Ração de Campo",
+    "group": "FOOD",
+    "use": "NONE",
+    "effect": null,
+    "text": "Um dia de Sustento na Alimentação",
+    "price": "½",
+    "access": "Livre"
+  },
+  {
+    "key": "SUPLEMENTO_PROTEICO",
+    "name": "Suplemento Proteico",
+    "group": "FOOD",
+    "use": "NONE",
+    "effect": null,
+    "text": "Todo ganho de peso é músculo se treinar",
+    "price": "½/dia, 2/semana",
+    "access": "Livre"
+  },
+  {
+    "key": "HIPERCALORICO",
+    "name": "Hipercalórico",
+    "group": "FOOD",
+    "use": "NONE",
+    "effect": null,
+    "text": "Sustento conta como Fartura (+0,2 kg)",
+    "price": "½/dia, 2/semana",
+    "access": "Livre"
+  },
+  {
+    "key": "CICLO_LEVE",
+    "name": "Bomba: Ciclo Leve (oral)",
+    "group": "BOMB",
+    "use": "NONE",
+    "effect": null,
+    "text": "+1 Treino Pleno/semana em FOR e CON; +1 Desgaste Mental/semana; Queda e Rastro (ver capítulo)",
+    "price": "4 (Ilegal: dobra)",
+    "access": "Ilegal"
+  },
+  {
+    "key": "CICLO_PESADO",
+    "name": "Bomba: Ciclo Pesado (injetável)",
+    "group": "BOMB",
+    "use": "NONE",
+    "effect": null,
+    "text": "+1 Treino Pleno/semana em FOR, CON e HP; SP máx −10; +2 Desgaste Mental e CON ND 14 por semana",
+    "price": "10 (Ilegal: dobra)",
+    "access": "Ilegal"
+  },
+  {
+    "key": "BOMBA_VETERINARIO",
+    "name": "Bomba de Veterinário",
+    "group": "BOMB",
+    "use": "NONE",
+    "effect": null,
+    "text": "Como o Ciclo Pesado; 1d6: 1–2 adulterada (sem efeito, +2 Desgaste Físico)",
+    "price": "5 (Ilegal: dobra)",
+    "access": "Ilegal"
+  }
+]

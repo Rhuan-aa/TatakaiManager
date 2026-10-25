@@ -49,6 +49,8 @@ public class VitalService {
     public static final String UNCONSCIOUS = "INCONSCIENTE";
     /** Catálogo estático de equipamentos (só leitura do classpath, §43). */
     private final EquipmentCatalog equipment = new EquipmentCatalog();
+    /** Estimulante de Combate (§44): imune a Desorientado e Atordoado, +2 em Vontade. */
+    public static final String STIMULATED = "ESTIMULADO";
     /** Dano Persistente (§41): intensidade = dano no início do turno. */
     public static final String PERSISTENT = "DANO_PERSISTENTE";
     public static final String DYING = "BEIRA_DA_MORTE";
@@ -124,6 +126,10 @@ public class VitalService {
     /** Aplica (ou renova) uma condição e registra na linha do tempo. */
     public void addCondition(Encounter e, EncounterParticipant p, String key, ConditionExpiry expiry, Integer turns,
                              String note) {
+        if ((DISORIENTED.equals(key) || "ATORDOADO".equals(key)) && hasCondition(p, STIMULATED)) {
+            log(e, p.getId(), CombatEventType.ACTION, p.getName() + " está estimulado: ignora " + name(key));
+            return;
+        }
         CombatCondition c = conds(p).stream().filter(x -> key.equals(x.getConditionKey())).findFirst()
                 .orElseGet(() -> CombatCondition.builder().participantId(p.getId()).conditionKey(key).build());
         c.setExpiresAt(expiry);
@@ -174,6 +180,7 @@ public class VitalService {
                 RollRules.modOrZero(mental ? s.getMen() : s.getCon()), null, false));
         int pen = CombatRules.fatiguePenalty(mental ? s.getMentalFatigue() : s.getPhysicalFatigue());
         if (pen > 0) hit.add(new RollPart("HIT", mental ? "Desgaste Mental" : "Desgaste Físico", -pen, null, false));
+        if (mental && hasCondition(p, STIMULATED)) hit.add(new RollPart("HIT", "Estimulante", 2, null, false));
         if (mental && "PQ 0".equals(label) && equipment.wears(s, "MOUTHGUARD")) {
             hit.add(new RollPart("HIT", "Protetor Bucal", 2, null, false));
         }
@@ -448,6 +455,18 @@ public class VitalService {
         if (before != 0) record(ts, c, "COMBAT_STANCH", "openWounds", before, 0);
         log(e, executor.getId(), CombatEventType.ACTION, executor.getName() + " estancou o sangramento"
                 + (executor.getId().equals(target.getId()) ? "" : " de " + target.getName()));
+    }
+
+    /** Fim do Estimulante de Combate: +2 Desgaste Físico e +1 Mental; o SP máximo −25% fica com o Mestre. */
+    public void stimulantCrash(Encounter e, EncounterParticipant p, CharacterSheet s, Ctx c) {
+        int phys = s.getPhysicalFatigue();
+        int ment = s.getMentalFatigue();
+        s.setPhysicalFatigue(phys + 2);
+        s.setMentalFatigue(ment + 1);
+        record(s, c, "COMBAT_STIMULANT", "physicalFatigue", phys, phys + 2);
+        record(s, c, "COMBAT_STIMULANT", "mentalFatigue", ment, ment + 1);
+        log(e, p.getId(), CombatEventType.GM, p.getName() + ": o estimulante passa (+2 Desgaste Físico, +1 Mental); "
+                + "SP máximo −25% até o próximo Repouso (aplicar pela ficha)");
     }
 
     // ---------- ciclo do combate ----------

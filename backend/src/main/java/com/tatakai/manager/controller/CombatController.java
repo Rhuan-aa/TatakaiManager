@@ -29,10 +29,13 @@ public class CombatController {
     private final ConditionCatalog conditionCatalog;
     private final com.tatakai.manager.service.WeaponCatalog weaponCatalog;
     private final com.tatakai.manager.service.EquipmentCatalog equipmentCatalog;
+    private final com.tatakai.manager.service.ConsumableCatalog consumableCatalog;
 
     public CombatController(CombatService combat, ConditionCatalog conditionCatalog,
                             com.tatakai.manager.service.WeaponCatalog weaponCatalog,
-                            com.tatakai.manager.service.EquipmentCatalog equipmentCatalog) {
+                            com.tatakai.manager.service.EquipmentCatalog equipmentCatalog,
+                            com.tatakai.manager.service.ConsumableCatalog consumableCatalog) {
+        this.consumableCatalog = consumableCatalog;
         this.weaponCatalog = weaponCatalog;
         this.equipmentCatalog = equipmentCatalog;
         this.combat = combat;
@@ -47,6 +50,11 @@ public class CombatController {
     @GetMapping("/catalog/equipment")
     public ResponseEntity<List<com.tatakai.manager.service.EquipmentCatalog.Def>> equipment() {
         return ResponseEntity.ok(equipmentCatalog.all());
+    }
+
+    @GetMapping("/catalog/consumables")
+    public ResponseEntity<List<com.tatakai.manager.service.ConsumableCatalog.Def>> consumables() {
+        return ResponseEntity.ok(consumableCatalog.all());
     }
 
     @GetMapping("/catalog/conditions")

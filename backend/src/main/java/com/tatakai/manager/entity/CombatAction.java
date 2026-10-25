@@ -7,7 +7,7 @@ public enum CombatAction {
     STAND_UP("Levantar-se"), SHOVE("Atravessar"), FREE("Ação Livre"), STANCH("Estancar"),
     CHANGE_GUARD("Trocar guarda"), CHANGE_BASE("Trocar base"), EXTINGUISH("Apagar chamas"),
     STABILIZE("Estabilizar"), DRAW("Sacar/guardar"), RELOAD("Recarregar"), COCK("Engatilhar"),
-    UNJAM("Destravar a arma"), TOGGLE_MODE("Trocar o modo da arma");
+    UNJAM("Destravar a arma"), TOGGLE_MODE("Trocar o modo da arma"), USE_ITEM("Usar consumível");
 
     private final String label;
 

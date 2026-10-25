@@ -1903,11 +1903,11 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
 15. ~~**Golpes básicos restantes**~~ — feito (§40). Mordida, Empurrão, Encontrão, Pisão; efeitos especiais da Cabeçada (−2 PA na face,
     1×/rodada; falha crítica −1 PQ próprio), do Chute (falha crítica: perna presa) e +1 PQ (Chute, Cotovelada, Joelhada no
     Clinch).
-16. **Chão do encontro** (macio/padrão/duro) — dano de Arremesso/Cravar (+0/+1d4/+2d4 e 1 PQ no duro) e Montinho.
-17. **Armas** — aguardando o subcapítulo "Armas" (tabela). Regras já disponíveis: Criações Armadas (classe, Abrangência,
+16. ~~**Chão do encontro**~~ — feito (§41). (macio/padrão/duro) — dano de Arremesso/Cravar (+0/+1d4/+2d4 e 1 PQ no duro) e Montinho.
+17. ~~**Armas**~~ — feito (§42–§44, com proteções e consumíveis). Regras já disponíveis: Criações Armadas (classe, Abrangência,
     Dado Adicional, Golpe Pesado, Carga no Gasto de Uso, módulos armados e de base armada), mãos ocupadas, locais de item,
     preço/acesso e condição dos itens.
-18. **Módulos de técnica sem efeito automático** — Dano Persistente, Golpe no Fôlego, Massa, Sequência, Varredura/Círculo,
+18. ~~**Módulos de técnica sem efeito automático**~~ — feito (§41); seguem só como texto Investida, Acompanhar, Gatilho, Exige Posição e Duas Etapas. — Dano Persistente, Golpe no Fôlego, Massa, Sequência, Varredura/Círculo,
     Encadear, Contragolpe, Investida/Ímpeto; Interromper e Esmagar como Efeito de golpe; Gatilho/Exige Base/Exige Posição
     seguem só como texto.
 
@@ -2290,3 +2290,8 @@ Regras puras novas em `service/rules/ModuleRules`; aplicação em `AttackService
   acorda com 1 PQ + Desorientado; 1× por combate por lutador), Bebida Isotônica (+1d6 SP), Giz de Magnésio (+1 nas
   competições de FOR do agarre por 3 rodadas), Estimulante de Combate (3 rodadas: imune a Desorientado/Atordoado e +2 em
   Vontade; depois +2 Desgaste Físico, +1 Mental). Os demais (treino, Repouso, Bombas) ficam como texto para o Mestre.
+- **Implementado (25/10/2026):** `catalog/consumables.json` (22 itens; `use` SELF/ALLY/OFFENSIVE/NONE), `ConsumableCatalog`,
+  `GET /catalog/consumables`, ação `USE_ITEM {itemId, targetParticipantId?}` em `CombatService` (item em mãos ou no Acesso
+  Rápido, +1 PA no Acesso Rápido; mochila não). Spray de Pimenta = competição DES × CON → Olho Irritado 1d4 rodadas.
+  Condições novas `GIZ_MAGNESIO`, `ESTIMULADO` (imune a Desorientado/Atordoado, +2 Vontade; ao expirar
+  `VitalService.stimulantCrash`) e `AMONIA_USADA`. O SP máximo −25% do Estimulante fica com o Mestre (aviso).

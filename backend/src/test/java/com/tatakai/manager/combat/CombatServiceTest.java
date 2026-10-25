@@ -1157,4 +1157,35 @@ class CombatServiceTest {
         gear.accept(CombatAction.TOGGLE_MODE, tufa);
         assertThat(tufa.getWeaponKey()).isEqualTo("TUFA_BRANCA");
     }
+
+    // ---------- §44: consumíveis ----------
+
+    @Test
+    @DisplayName("§44: atadura estanca (1 PA; +1 no Acesso Rápido), isotônica dá SP, sais acordam 1× por combate")
+    void consumables() {
+        org.mockito.Mockito.lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
+                .thenAnswer(x -> com.tatakai.manager.entity.Roll.builder().total(4).build());
+        EncounterParticipant[] p = started();
+        InventoryItem atadura = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Atadura").quantity(1)
+                .consumableKey("ATADURA").location(ItemLocation.QUICK).build();
+        InventoryItem iso = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Isotônica").quantity(2)
+                .consumableKey("ISOTONICA").location(ItemLocation.HAND).build();
+        InventoryItem sais = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Sais").quantity(2)
+                .consumableKey("SAIS_AMONIA").location(ItemLocation.HAND).build();
+        sheetA.getInventory().addAll(List.of(atadura, iso, sais));
+        sheetA.setOpenWounds(2);
+        sheetA.setCurrentSp(1);
+        p[0].setPaCurrent(10);
+        java.util.function.BiConsumer<InventoryItem, UUID> use = (i, t) -> service.act(enc.getId(),
+                new CombatActionRequest(p[0].getId(), CombatAction.USE_ITEM, null, null, null, t, null, null, null, null, null,
+                        i.getId(), null), player.getId());
+        use.accept(atadura, null);
+        assertThat(sheetA.getOpenWounds()).isZero();
+        assertThat(p[0].getPaCurrent()).isEqualTo(8); // 1 + 1 (Acesso Rápido)
+        assertThat(sheetA.getInventory()).doesNotContain(atadura);
+        use.accept(iso, null);
+        assertThat(sheetA.getCurrentSp()).isEqualTo(5);
+        assertThat(iso.getQuantity()).isEqualTo(1);
+        assertThatThrownBy(() -> use.accept(sais, p[1].getId())).hasMessageContaining("aliado");
+    }
 }

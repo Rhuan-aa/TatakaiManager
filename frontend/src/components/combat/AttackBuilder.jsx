@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getRollProfiles } from '../../api/rolls';
-import { useWeapons } from '../ui/useWeapons';
+import { useWeapons } from '../ui/useCatalog';
 import { BASIC_HINT, GRIP_LABEL, SIDED_BASICS, STRIKE_SIDE_LABEL } from './combatLabels';
 
 const DAMAGE_TYPE = { BLUNT: 'contundente', SLASH: 'cortante', PIERCE: 'perfurante', FIRE: 'flamejante' };

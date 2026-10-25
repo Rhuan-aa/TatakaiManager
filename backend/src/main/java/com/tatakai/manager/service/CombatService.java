@@ -108,8 +108,9 @@ public class CombatService {
     private final RollProfileService profiles;
     private final Random random = new SecureRandom();
 
-    /** Catálogos estáticos de armas e equipamentos (só leitura do classpath). */
+    /** Catálogos estáticos de armas, equipamentos e consumíveis (só leitura do classpath). */
     private final WeaponCatalog weapons = new WeaponCatalog();
+    private final ConsumableCatalog consumables = new ConsumableCatalog();
     private final EquipmentCatalog equipment = new EquipmentCatalog();
 
     public CombatService(EncounterRepository encounters, EncounterParticipantRepository participants,
@@ -493,6 +494,11 @@ public class CombatService {
         com.tatakai.manager.entity.InventoryItem item = gearItem(s, action, req.itemId());
         WeaponCatalog.Def weapon = item == null ? null : weapons.find(item.getWeaponKey()).orElse(null);
         if (action == CombatAction.RELOAD) pa = reloadCost(item, weapon);
+        ConsumableCatalog.Def consumable = action == CombatAction.USE_ITEM ? consumables.find(item.getConsumableKey())
+                .orElseThrow(() -> new InvalidCombatException(item.getName() + " não é um consumível do catálogo")) : null;
+        EncounterParticipant useTarget = consumable == null ? null
+                : req.targetParticipantId() == null ? p : participantOf(e, req.targetParticipantId());
+        if (consumable != null) pa = useCost(item, consumable, p, useTarget);
         if (item != null) gearCheck(s, action, item, weapon, req);
         if (action == CombatAction.CHANGE_BASE) {
             pa = CombatRules.baseChangeCost(p.getActiveBaseId() != null, req.baseId() != null);
@@ -610,10 +616,91 @@ public class CombatService {
                 text.append(newBase == null ? " — sem base ativa" : " — base " + newBase.getName());
             }
             case DRAW, RELOAD, COCK, UNJAM, TOGGLE_MODE -> text.append(" — ").append(gear(action, item, weapon, req));
+            case USE_ITEM -> text.append(" — ").append(useItem(e, p, s, item, consumable, useTarget, ctx, userId, actor));
             default -> { }
         }
         log(e, p.getId(), CombatEventType.ACTION, text.toString());
         return done(e, "ACTION", userId, master);
+    }
+
+    // ---------- consumíveis (§44) ----------
+
+    /** Em si: Ação Menor (1 PA); em aliado: Ação Maior (3 PA); ofensivo: 2 PA; +1 PA se estiver no Acesso Rápido. */
+    private static int useCost(com.tatakai.manager.entity.InventoryItem item, ConsumableCatalog.Def c, EncounterParticipant p,
+                               EncounterParticipant target) {
+        if ("NONE".equals(c.use())) throw new InvalidCombatException(c.name() + " não é usado em combate");
+        if (item.getLocation() != ItemLocation.HAND && item.getLocation() != ItemLocation.QUICK) {
+            throw new InvalidCombatException(item.getName() + " precisa estar em mãos ou no Acesso Rápido");
+        }
+        if (item.getQuantity() <= 0) throw new InvalidCombatException(item.getName() + " acabou");
+        boolean other = !target.getId().equals(p.getId());
+        if ("ALLY".equals(c.use()) && !other) throw new InvalidCombatException(c.name() + " é aplicado em outro lutador");
+        if ("OFFENSIVE".equals(c.use()) && !other) throw new InvalidCombatException("Escolha o alvo");
+        if (other && !"OFFENSIVE".equals(c.use()) && target.getTeam() != p.getTeam()) {
+            throw new InvalidCombatException("Só é possível aplicar em um aliado");
+        }
+        int pa = "OFFENSIVE".equals(c.use()) ? 2 : other ? 3 : 1;
+        return pa + (item.getLocation() == ItemLocation.QUICK ? 1 : 0); // pegar do Acesso Rápido: outra Ação Menor
+    }
+
+    private String useItem(Encounter e, EncounterParticipant p, CharacterSheet s, com.tatakai.manager.entity.InventoryItem item,
+                           ConsumableCatalog.Def c, EncounterParticipant t, VitalService.Ctx ctx, UUID userId, ActorRole role) {
+        CharacterSheet ts = t.getId().equals(p.getId()) ? s : sheetOf(t);
+        String on = t.getId().equals(p.getId()) ? "" : " em " + t.getName();
+        String out;
+        switch (c.effect() == null ? "" : c.effect()) {
+            case "STANCH" -> {
+                vital.stanch(e, p, t, ts, ctx);
+                out = c.name() + on + ": sangramento estancado";
+            }
+            case "STANCH_HEAL" -> {
+                vital.stanch(e, p, t, ts, ctx);
+                int hp = rolls.rollInternal(s, "1d4", c.name() + ": " + t.getName(), userId, role).getTotal();
+                vital.applyHp(e, t, ts, hp, ctx);
+                out = c.name() + on + ": estancado e +" + hp + " HP";
+            }
+            case "SP_1D6" -> {
+                int sp = rolls.rollInternal(s, "1d6", c.name() + ": " + t.getName(), userId, role).getTotal();
+                vital.applySp(e, t, ts, sp, ctx);
+                out = c.name() + on + ": +" + sp + " SP";
+            }
+            case "WAKE_KP" -> {
+                List<CombatCondition> tc = conditions.findByParticipantIdIn(List.of(t.getId()));
+                CombatCondition ko = tc.stream().filter(x -> VitalService.UNCONSCIOUS.equals(x.getConditionKey())
+                        && "PQ".equals(x.getNote())).findFirst()
+                        .orElseThrow(() -> new InvalidCombatException(t.getName() + " não está Inconsciente por PQ"));
+                if (tc.stream().anyMatch(x -> "AMONIA_USADA".equals(x.getConditionKey()))) {
+                    throw new InvalidCombatException("Os Sais de Amônia já foram usados em " + t.getName() + " neste combate");
+                }
+                conditions.delete(ko);
+                vital.onWake(e, t, ts, ko, ctx);
+                vital.addCondition(e, t, "AMONIA_USADA", ConditionExpiry.END_OF_COMBAT, null, null);
+                out = c.name() + on + ": acorda com 1 PQ, Desorientado";
+            }
+            case "GRIP_CHALK" -> {
+                vital.addCondition(e, t, "GIZ_MAGNESIO", ConditionExpiry.COUNTER, 3, null);
+                out = c.name() + on + ": +1 nas competições de Força do agarre por 3 rodadas";
+            }
+            case "STIMULANT" -> {
+                conditions.findByParticipantIdIn(List.of(t.getId())).stream()
+                        .filter(x -> VitalService.DISORIENTED.equals(x.getConditionKey()) || STUNNED.equals(x.getConditionKey()))
+                        .toList().forEach(conditions::delete);
+                vital.addCondition(e, t, VitalService.STIMULATED, ConditionExpiry.COUNTER, 3, null);
+                out = c.name() + on + ": imune a Desorientado/Atordoado e +2 em Vontade por 3 rodadas";
+            }
+            case "PEPPER" -> {
+                boolean hit = contest(e, p, s, Attribute.DEX, 0, t, ts, Attribute.CON, 0, c.name(), userId, role);
+                if (hit) {
+                    int rounds = rolls.rollInternal(s, "1d4", c.name() + ": duração", userId, role).getTotal();
+                    vital.addCondition(e, t, "OLHO_IRRITADO", ConditionExpiry.COUNTER, rounds, "só sai com água");
+                }
+                out = c.name() + on + (hit ? ": Olho Irritado" : ": errou");
+            }
+            default -> out = c.name() + on + ": aplicar o efeito manualmente";
+        }
+        item.setQuantity(item.getQuantity() - 1);
+        if (item.getQuantity() <= 0) s.getInventory().remove(item);
+        return out;
     }
 
     /** Categoria de peso mais pesada vestida (null sem proteção, §43). */
@@ -627,7 +714,7 @@ public class CombatService {
     /** Item exigido pelas ações de equipamento (null para as demais ações). */
     private static com.tatakai.manager.entity.InventoryItem gearItem(CharacterSheet s, CombatAction a, UUID itemId) {
         if (a != CombatAction.DRAW && a != CombatAction.RELOAD && a != CombatAction.COCK && a != CombatAction.UNJAM
-                && a != CombatAction.TOGGLE_MODE) {
+                && a != CombatAction.TOGGLE_MODE && a != CombatAction.USE_ITEM) {
             return null;
         }
         if (itemId == null) throw new InvalidCombatException("Escolha o item");
@@ -882,7 +969,9 @@ public class CombatService {
                 - (mine.stream().anyMatch(c -> GrappleRules.PANIC.equals(c.getConditionKey())) ? 1 : 0);
         Attribute gAttr = GrappleRules.RESTRAINED.equals(hold.getConditionKey()) ? attr : Attribute.STR;
         int gi = equipment.wears(s, "KIMONO") ? 2 : 0; // Kimono: as pegadas estão prontas para quem agarra
-        if (contest(e, p, s, attr, adv, 0, g, sheetOf(g), gAttr, 0, gi, "Escapar", userId, role)) {
+        int mine0 = attr == Attribute.STR && vital.hasCondition(p, "GIZ_MAGNESIO") ? 1 : 0;   // Giz de Magnésio
+        int theirs = gAttr == Attribute.STR && vital.hasCondition(g, "GIZ_MAGNESIO") ? 1 : 0;
+        if (contest(e, p, s, attr, adv, mine0, g, sheetOf(g), gAttr, 0, gi + theirs, "Escapar", userId, role)) {
             releaseBetween(e, g, p);
             log(e, p.getId(), CombatEventType.ACTION, p.getName() + " escapa de " + g.getName());
         }
@@ -1030,6 +1119,7 @@ public class CombatService {
         if (ctx != null && VitalService.UNCONSCIOUS.equals(c.getConditionKey())) {
             vital.onWake(e, p, sheetOf(p), c, ctx);
         }
+        if (ctx != null && VitalService.STIMULATED.equals(c.getConditionKey())) vital.stimulantCrash(e, p, sheetOf(p), ctx);
     }
 
     private void endTurn(Encounter e, EncounterParticipant p, VitalService.Ctx ctx) {

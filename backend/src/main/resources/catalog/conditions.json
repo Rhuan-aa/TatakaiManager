@@ -280,5 +280,29 @@
     "exit": "Início do próximo turno",
     "defaultExpiresAt": "START_OF_TARGET_TURN",
     "stack": "RENEW"
+  },
+  {
+    "key": "GIZ_MAGNESIO",
+    "name": "Giz de Magnésio",
+    "effect": "+1 nas competições de Força para manter ou escapar de Agarrado/Imobilizado",
+    "exit": "3 rodadas",
+    "defaultExpiresAt": "COUNTER",
+    "stack": "RENEW"
+  },
+  {
+    "key": "ESTIMULADO",
+    "name": "Estimulante de Combate",
+    "effect": "Imune a Desorientado e Atordoado; +2 em Testes de Vontade",
+    "exit": "3 rodadas; depois +2 Desgaste Físico, +1 Mental e SP máximo −25% até o Repouso",
+    "defaultExpiresAt": "COUNTER",
+    "stack": "RENEW"
+  },
+  {
+    "key": "AMONIA_USADA",
+    "name": "Sais de Amônia usados",
+    "effect": "Os Sais de Amônia não funcionam de novo neste combate",
+    "exit": "Fim do combate",
+    "defaultExpiresAt": "END_OF_COMBAT",
+    "stack": "RENEW"
   }
 ]

@@ -57,6 +57,7 @@ public final class CombatRules {
             case BREATHE -> 4;
             case MINOR, SHOVE, CHANGE_GUARD, CHANGE_BASE, DRAW, COCK, TOGGLE_MODE -> 1;
             case RELOAD -> 1;  // Recarga Lenta: 3 (CombatService)
+            case USE_ITEM -> 1; // em aliado 3, ofensivo 2, +1 se estiver no Acesso Rápido (CombatService)
             case UNJAM -> 3;
             case STANCH -> 3;
             case MOVE -> 1;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useWeapons } from '../ui/useWeapons';
+import { useConsumables, useWeapons } from '../ui/useCatalog';
 import { ITEM_LOCATION, gearStatus } from '../ui/gear';
 import { ACTIONS, ACTION_CATEGORIES, ACTION_STANCH, GUARD_LABEL, GRIP_LABEL, HOLD_KEYS, STRANGLE_LABEL, hasCondition } from './combatLabels';
 
@@ -162,6 +162,43 @@ function GearGroup({ p, paReason, onAct }) {
   );
 }
 
+/** Consumíveis em mãos ou no Acesso Rápido (§44): em si 1 PA, em aliado 3 PA, ofensivo 2 PA, +1 PA no Acesso Rápido. */
+function ConsumableGroup({ p, participants, paReason, onAct }) {
+  const catalog = useConsumables();
+  const [targets, setTargets] = useState({});
+  const items = (p.gear ?? []).filter((i) => i.consumableKey && (i.location === 'HAND' || i.location === 'QUICK')
+    && catalog[i.consumableKey] && catalog[i.consumableKey].use !== 'NONE');
+  if (items.length === 0) return null;
+  return (
+    <section className="act-group space-y-1.5" style={{ '--act': 'var(--act-free)' }}>
+      <h4 className="act-group-title text-sm">Consumíveis</h4>
+      {items.map((i) => {
+        const c = catalog[i.consumableKey];
+        const options = c.use === 'OFFENSIVE' ? participants.filter((x) => x.team !== p.team)
+          : c.use === 'ALLY' ? participants.filter((x) => x.id !== p.id && x.team === p.team)
+            : [p, ...participants.filter((x) => x.id !== p.id && x.team === p.team)];
+        const target = targets[i.id] ?? options[0]?.id;
+        const self = target === p.id;
+        const pa = (c.use === 'OFFENSIVE' ? 2 : self ? 1 : 3) + (i.location === 'QUICK' ? 1 : 0);
+        return (
+          <div key={i.id} className="space-y-1 border-t border-[var(--line)] pt-1.5">
+            <ActButton label={`${c.name} (${i.quantity})`} cost={`${pa} PA`} title={c.text ?? undefined}
+              reason={paReason(pa) ?? (!target ? 'Sem alvo' : null)}
+              onClick={() => onAct({ participantId: p.id, action: 'USE_ITEM', itemId: i.id,
+                ...(target && !self ? { targetParticipantId: target } : {}) })} />
+            {options.length > 1 && (
+              <select className="field !mt-0 !py-0.5 text-xs" aria-label={`Alvo de ${c.name}`} value={target}
+                onChange={(e) => setTargets({ ...targets, [i.id]: e.target.value })}>
+                {options.map((x) => <option key={x.id} value={x.id}>{x.id === p.id ? 'Em si' : x.name}</option>)}
+              </select>
+            )}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 export default function ActionBar({ participant: p, participants = [], canAct, onAct, onAttack, onGrapple }) {
   const [spCost, setSpCost] = useState(1);
   const [label, setLabel] = useState('');
@@ -305,6 +342,7 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
       </div>
       {onGrapple && <GrappleGroup p={p} participants={participants} paReason={paReason} onGrapple={onGrapple} />}
       <GearGroup p={p} paReason={paReason} onAct={onAct} />
+      <ConsumableGroup p={p} participants={participants} paReason={paReason} onAct={onAct} />
       {ACTION_CATEGORIES.map((c) => (
         <section key={c.key} className="act-group space-y-1.5" style={{ '--act': c.color }}>
           <h4 className="act-group-title text-sm">{c.label}</h4>

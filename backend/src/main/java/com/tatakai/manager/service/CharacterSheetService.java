@@ -103,6 +103,7 @@ public class CharacterSheetService {
     /** Catálogo estático (só leitura do classpath): instanciado aqui para não mexer no construtor. */
     private final WeaponCatalog weaponCatalog = new WeaponCatalog();
     private final EquipmentCatalog equipmentCatalog = new EquipmentCatalog();
+    private final ConsumableCatalog consumableCatalog = new ConsumableCatalog();
 
     public CharacterSheetService(CharacterSheetRepository sheetRepository,
                                  CampaignMemberRepository memberRepository,
@@ -528,6 +529,9 @@ public class CharacterSheetService {
         }
         if (p.equipmentKey() != null && !p.equipmentKey().isBlank() && equipmentCatalog.find(p.equipmentKey()).isEmpty()) {
             throw new InvalidCharacterSheetException("Equipamento fora do catálogo: " + p.equipmentKey());
+        }
+        if (p.consumableKey() != null && !p.consumableKey().isBlank() && consumableCatalog.find(p.consumableKey()).isEmpty()) {
+            throw new InvalidCharacterSheetException("Consumível fora do catálogo: " + p.consumableKey());
         }
         item.setWeaponKey(p.weaponKey() == null || p.weaponKey().isBlank() ? null : p.weaponKey());
         item.setEquipmentKey(p.equipmentKey() == null || p.equipmentKey().isBlank() ? null : p.equipmentKey());

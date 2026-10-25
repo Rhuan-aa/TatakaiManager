@@ -3,7 +3,7 @@ import { checkAssembly, createArt, listModules, submitArt, updateArt } from '../
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 import { ART_CATEGORIES, BASE_FUNCTIONS, CORES, GRADS, emptyBase, emptyTechnique } from './artLabels';
-import { useWeapons } from '../ui/useWeapons';
+import { useWeapons } from '../ui/useCatalog';
 
 const emptyItem = () => ({ module: null, label: '', qty: 1, cost: 1, kind: 'UNIQUE', nonAffine: false, onDie: false, note: null });
 const splitList = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
