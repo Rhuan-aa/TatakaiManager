@@ -903,7 +903,7 @@ depois da Defesa, peso da armadura, luvas, capacetes, protetor bucal, kimono e r
 **Consumíveis** (§44): `catalog/consumables.json` (`ConsumableCatalog`, `GET /catalog/consumables`), item `consumable_key`,
 ação `USE_ITEM` (atadura, gaze, sais de amônia, isotônica, giz, spray de pimenta, estimulante).
 
-**Pendentes** (detalhes no plano §26.5):
+**Pendentes** (lista completa no plano §45; antigos em §26.5):
 1. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição, Duas Etapas e os efeitos únicos das
    Artes Clássicas (Foco, Ritmo, Pop, Embalo…).
 2. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).

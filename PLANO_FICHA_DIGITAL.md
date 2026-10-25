@@ -2295,3 +2295,59 @@ Regras puras novas em `service/rules/ModuleRules`; aplicação em `AttackService
   Rápido, +1 PA no Acesso Rápido; mochila não). Spray de Pimenta = competição DES × CON → Olho Irritado 1d4 rodadas.
   Condições novas `GIZ_MAGNESIO`, `ESTIMULADO` (imune a Desorientado/Atordoado, +2 Vontade; ao expirar
   `VitalService.stimulantCrash`) e `AMONIA_USADA`. O SP máximo −25% do Estimulante fica com o Mestre (aviso).
+
+## 45. Pendências depois das armas, equipamentos e consumíveis (lembrete, 25/10/2026)
+
+Tudo abaixo ainda **não** está no sistema (ou está só como texto para o Mestre). Ao implementar, escreva o contrato numa
+seção nova e risque o item aqui.
+
+**Verificação**
+1. Testar no navegador as telas novas: grupo "Agarre", "Armas" e "Consumíveis" no `ActionBar`; distância, corrida e
+   superfície no `AttackBuilder`; "Encadear"; seletor de chão; campos de catálogo no ajuste de item; "Arma (técnica
+   armada)" no `ArtEditor`. Só o backend foi testado (unitários + smoke da API).
+
+**Criação Marcial**
+2. Efeitos únicos das Artes Clássicas (Foco, Ritmo/PR, Pop, Embalo, Força Centrífuga, Terreno Perdido…): hoje só texto.
+   Precisariam de recursos por participante e regras por arte (Tabelas das Artes Clássicas).
+3. Sem grade/posição: Investida, Acompanhar, Reposicionar, Controle de Distância, Ataque de Oportunidade, adjacência e
+   alcance Curto/Médio/Longo dos golpes (só a distância informada no ataque com arma é usada).
+4. Limitações só em texto: Gatilho, Exige Posição, Duas Etapas.
+5. Contragolpe aplica só dano e gasto: os Efeitos da técnica usada como Contra-ataque não são aplicados.
+6. Sequência: o 2º acerto não aplica Golpe no Fôlego, Dano Persistente, Montinho nem Ferida por tipo de dano.
+7. Encadear: "outra técnica do mesmo tipo" foi lida como mesmo núcleo (Golpe/Controle), não mesmo tipo marcial.
+8. Atributo Alternativo/Massa/Exige Base dependem do rótulo ou da nota do item ("INT", "teste", "acerto", nome da base):
+   o editor não tem campo próprio para isso.
+
+**Armas**
+9. Dominância com arma de uma mão (−1 no lado não dominante): o sistema não sabe em que mão está a arma.
+10. Tipos marciais armados (Lâmina, Contundente, Perfurante, Pólvora, Artesanais) não existem em `MartialType`: interação
+    marcial, especialização, Precisão/Força do Golpe de base "em Lâmina" e artes armadas do catálogo não funcionam.
+11. Abrangência "Arma Única" não é conferida (a técnica aceita qualquer arma da classe).
+12. Módulos de base armada sem efeito: Controle de Distância, Empunhadura Firme (+2 contra Desarmar), Prontidão (saque
+    livre), Recarga Treinada (recarga livre), Mira Estável (+2 sem se mover).
+13. Módulos armados manuais: Transpassar, Supressão, Puxar (só registra), Arremessar (técnica arremessada sem desvantagem).
+14. Explosivos: o resto do raio (metade do dano), o desvio de 1d3 quadrados no erro e a área em chamas da Incendiária por
+    3 rodadas não são calculados; Fumaça não aplica cobertura nem desvantagem.
+15. Munição: não há estoque (recarregar sempre enche); flechas/virotes e cartuchos não são gastos do inventário.
+16. Arma de fogo: "luta vencida com arma de fogo não rende EL" e "disparo ouvido" ficam com o Mestre no Fechar luta.
+17. Retorno (Chakram/Bumerangue) usa o "Pegar do chão" (1 PA), sem checar obstáculo.
+18. Reparo: Kit de Manutenção não conserta (`broken`/`damaged` só pelo ajuste do Mestre); Condição dos Itens completa não
+    existe.
+19. Preço e Acesso das armas/equipamentos/consumíveis só aparecem no catálogo: não há loja nem desconto de Diárias.
+
+**Equipamentos**
+20. Sem efeito: Coquilha, Bandagem de Mãos, "socos não miram os Olhos" das Luvas de Boxe, capacete fechado no Queixo,
+    desvantagem em percepção, Roupa Escura (+2 Furtividade), Furtividade em geral.
+21. Ferramentas: Kit de Primeiros Socorros não dá vantagem sozinho no Estabilizar (continua o checkbox "Kit médico"), nem
+    eleva o Repouso a Tratado; Corda/Algemas/Abraçadeiras (condição "Preso") não existem.
+22. Academia: Kit de Treino Portátil, Corda de Pular e Rolo de Liberação não entram no TimeSkip; Cinto de Levantamento
+    (+6 kg de Carga) não entra em `SheetRules.carryKg`.
+23. Vestir/tirar proteção leva minutos (Leve 1, Média 5, Pesada 10): hoje é só mudar o local do item.
+
+**Consumíveis**
+24. Fora de combate/TimeSkip, sem efeito automático: Analgésico, Calmante, Kit de Cutman (5 usos), Creatina, Pomada,
+    Termogênico, Energético, Ração, Suplemento Proteico, Hipercalórico, Tala, Saquinho de Pó.
+25. Regra de Dose (2ª dose no dia dobra o Colateral) e Colaterais adiados (no próximo Repouso) não são controlados.
+26. Estimulante de Combate: o SP máximo −25% até o Repouso é só um aviso.
+27. Bombas (Ciclo Leve/Pesado/Veterinário): ciclo Carga → Queda → Rastro, Treinos Plenos extras, Marcas de Abuso,
+    Abstinência, Sequelas e antidoping — nada implementado.
