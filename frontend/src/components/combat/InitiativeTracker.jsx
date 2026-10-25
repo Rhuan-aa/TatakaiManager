@@ -86,7 +86,7 @@ export default function InitiativeTracker({ enc, isMaster, canControl = () => fa
         const current = p.id === enc.currentParticipantId && enc.status === 'ACTIVE';
         const r = p.resources;
         return (
-          <li key={p.id} className="panel p-3"
+          <li key={p.id} data-participant-id={p.id} className="panel p-3"
             style={current ? { outline: '4px solid var(--accent)', outlineOffset: 2 } : undefined}
             aria-current={current ? 'step' : undefined}>
             <div className="flex items-center justify-between gap-2">

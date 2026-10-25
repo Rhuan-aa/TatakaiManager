@@ -1881,12 +1881,12 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
    **Movimento** (azul), **Livre** (rosa). A linha do tempo desce para baixo do HUD. Cores como tokens no `index.css`.
 7. ✅ **HUD mais amigável** — revisão geral de hierarquia: turno atual e PA em destaque, ação disponível óbvia, menos
    campos soltos; ações indisponíveis desabilitadas com o motivo.
-8. **Animações de ataque** durante o combate (golpe saindo do atacante para o alvo, impacto no acerto, esquiva/defesa).
+8. ✅ **Animações de ataque** durante o combate (golpe saindo do atacante para o alvo, impacto no acerto, esquiva/defesa).
 9. ✅ **Tela de reação estilizada** — quando o usuário recebe um ataque, abre por cima da área de combate uma seleção de
    reação em destaque (estilo quadrinho), com as opções e o custo de cada uma; hoje é um item dentro do `AttackPanel`.
 
 ### 26.3 Rolagens
-10. **Animação de rolagem em duas etapas** — o dado gira, o número sai **no centro da tela**, depois se move/encolhe
+10. ✅ **Animação de rolagem em duas etapas** — o dado gira, o número sai **no centro da tela**, depois se move/encolhe
     até montar o card grande do feed (`RollCard` em destaque). Respeitar `prefers-reduced-motion` (pula direto ao card).
 
 ### 26.4 Fichas e campanha
@@ -1913,4 +1913,19 @@ Ainda **sem contrato**. Cada item vira uma seção própria (modelo/regras/rotas
   `AWAITING_REACTIONS`; cartões Defender/Esquiva/Contra-ataque/Sem reação com atributo + bônus previsto
   (`predictedBonus`), resumo da regra (`REACTION_HINT`, espelha `AttackRules.resolve`) e custo (Contra = 1 SP).
   "Decidir depois" / Esc adia aquele alvo (os botões inline do `AttackPanel` continuam). Sem mudança de backend.
+
+## 28. Animações de rolagem e de ataque (itens 8 e 10 do §26 — só front, 25/10/2026)
+
+- **`RollReveal`** (rolagem nova com a página aberta): `waiting → rolling → result → fly → done`. O d20 gira no centro da
+  tela (900 ms), o total aparece grande no centro com quem rolou e a fonte (550 ms) e voa/encolhe até o
+  `[data-roll-total]` do `RollCard` (450 ms, FLIP com Web Animations). O card fica invisível no lugar durante a animação
+  (mantém a altura e dá o alvo). Card sem caixa (ex.: `<details>` fechado) → o número só some. Crítico em amarelo com
+  brilho, falha em vermelho. Camada em portal no `body` (`.roll-stage`, `pointer-events: none`).
+- **Fila** (`rolls/revealQueue.js`, `queueSlot(ms)`): animações de centro de tela entram em sequência (ataque → reações →
+  golpe), nunca sobrepostas.
+- **Golpe** (`combat/attackFx.js`, `playAttack`): ataque que acabou de resolver (não os da 1ª carga do encontro) anima
+  nos cartões do rastreador (`[data-participant-id]`) depois das rolagens: atacante avança na direção do alvo; alvo
+  treme (HIT), desliza (DODGED) ou encolhe (DEFENDED); COUNTERED treme o atacante; onomatopeia sobre o alvo
+  (`POW! −dano`, `ESQUIVOU!`, `BLOQUEIO!`, `CONTRA!`, `ERROU!`).
+- `prefers-reduced-motion`: pula tudo direto para o card, sem golpe.
 

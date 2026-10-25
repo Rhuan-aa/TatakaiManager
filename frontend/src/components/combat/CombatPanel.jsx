@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCampaignTopic } from '../../hooks/useWebSocket';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -13,6 +13,7 @@ import AttackBuilder from './AttackBuilder';
 import AttackPanel from './AttackPanel';
 import Timeline from './Timeline';
 import ReactionOverlay from './ReactionOverlay';
+import { playAttack } from './attackFx';
 import { STATUS_LABEL, CLASS_LABEL } from './combatLabels';
 
 export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }) {
@@ -28,6 +29,8 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
   const [pickFor, setPickFor] = useState(null);
   const [addSheet, setAddSheet] = useState('');
   const [attacks, setAttacks] = useState([]);
+  const [fx, setFx] = useState([]); // ataques recém-resolvidos a animar
+  const seenAttacks = useRef({ eid: null, ids: new Set() });
   const [attacking, setAttacking] = useState(null); // null | 'MAJOR' | 'MINOR_OFFENSIVE'
   const [minimized, setMinimized] = useState(() => new Set()); // alvos cuja tela de reação foi adiada
 
@@ -47,11 +50,19 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
       const [e, ev] = await Promise.all([api.getEncounter(id), api.getEncounterEvents(id)]);
       setEnc(e);
       setEvents(ev);
-      setAttacks(await api.listAttacks(id));
+      const list = await api.listAttacks(id);
+      // ataques que acabaram de resolver: animam (na 1ª carga do encontro, nada anima)
+      const known = seenAttacks.current;
+      const resolved = list.filter((a) => a.status === 'RESOLVED');
+      setFx(known.eid === id ? resolved.filter((a) => !known.ids.has(a.id)) : []);
+      seenAttacks.current = { eid: id, ids: new Set(resolved.map((a) => a.id)) };
+      setAttacks(list);
     } catch (err) { fail(err); }
   }, [fail]);
 
   useEffect(() => { reloadList(); }, [reloadList]);
+  // efeito do pai roda depois dos filhos: as rolagens (RollReveal) já entraram na fila antes do golpe
+  useEffect(() => { fx.forEach(playAttack); }, [fx]);
   useEffect(() => { setEnc(null); reload(eid); }, [eid, reload]);
   useEffect(() => {
     if (!isMaster) return;

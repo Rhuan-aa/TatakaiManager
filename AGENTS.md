@@ -874,6 +874,7 @@ reducao)` depois da % e antes do mínimo 1.
 Backlog em `PLANO_FICHA_DIGITAL.md` §26. **Feitos:** base ativa (bônus no básico e na técnica; entrar/sair 1 PA, trocar
 2 PA — `CombatRules.baseChangeCost`), última luta visível (`EncounterResponse.endedAt`), listagem de membros
 (`GET /campaigns/{cid}/members`), impressão dos `<details>` (`beforeprint` em `main.jsx`), HUD de combate por tipo de
-ação/cor e tela de reação (`ActionBar` lateral + `ReactionOverlay`, contrato no plano §27). **Pendentes:** efeitos de
-módulo automáticos, técnicas de Reação, armas, animações de ataque, rolagem em duas etapas, fichas instantâneas do Mestre. Ao implementar um item, escreva o contrato numa seção
+ação/cor e tela de reação (`ActionBar` lateral + `ReactionOverlay`, plano §27), rolagem em duas etapas e animação de
+golpe (`RollReveal` + `revealQueue` + `combat/attackFx.js`, plano §28). **Pendentes:** efeitos de módulo automáticos,
+técnicas de Reação, armas, fichas instantâneas do Mestre. Ao implementar um item, escreva o contrato numa seção
 nova do plano e marque-o aqui.

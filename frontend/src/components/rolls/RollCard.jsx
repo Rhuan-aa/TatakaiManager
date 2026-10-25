@@ -13,7 +13,7 @@ export default function RollCard({ roll, onReveal }) {
         <span className="onomatopoeia roll-onomatopoeia" aria-hidden="true">{roll.critical ? 'CRÍTICO!' : 'FALHA CRÍTICA!'}</span>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="panel-title text-3xl" aria-label={`Total ${roll.total}`}>{roll.total}</span>
+        <span data-roll-total className="panel-title text-3xl" aria-label={`Total ${roll.total}`}>{roll.total}</span>
         {roll.damageTotal != null && (
           <span className="tag-accent tag" title="Dano">Dano {roll.damageTotal}</span>
         )}
