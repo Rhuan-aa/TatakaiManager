@@ -2182,3 +2182,97 @@ Ação Menor Ofensiva sem Técnica Rápida: Soco, Mordida e Empurrão (`BasicAtt
 - Bancos existentes: dropar `pending_attacks_basic_attack_check` (valores novos no enum, §11.11 do AGENTS).
 - Front: `BASIC_HINT` (combatLabels) mostra a regra de cada básico no `AttackBuilder`.
 
+
+## 41. Criação Marcial completa — módulos de técnica automáticos (capítulo Criação Marcial, 25/10/2026)
+
+Regras puras novas em `service/rules/ModuleRules`; aplicação em `AttackService`/`RollProfileService`/`VitalService`.
+- **Degraus de Dado** pelo livro: 1d4, 1d6, 1d8, 1d10, 1d12, 1d12+1d4, 1d12+1d6, 1d12+1d8, 2d12. `RollRules.Dice` ganha termos
+  extras (`plus`), todos dobram no crítico; a Escala de Dano multiplica só o termo principal.
+- **Controle** sem Dado Maior não causa dano; com Dado Maior, o 1º degrau é 1d4 (degrau n → tabela[n−1]).
+- **Atributo Alternativo** (técnica): nota/rótulo com "INT" → Inteligência, senão Destreza; com "teste"/"acerto" troca o
+  atributo do teste, senão troca a Força do dano.
+- **Golpe no Fôlego** (catálogo: "Fôlego (só no SP)" custo 0 e "Fôlego" custo 2): 0 → o dano vai para o SP em vez do HP;
+  2 → dano normal no HP e o total dos dados também no SP.
+- **Dano Persistente**: condição `DANO_PERSISTENTE` no alvo (intensidade = metade do dano causado, COUNTER = 1 + custo − 3
+  turnos); no início do turno do alvo, sofre a intensidade no HP.
+- **Massa**: rótulo/nota com "acerto" → +metade do Mod. de Peso no acerto (máx. +3); senão +Mod. de Peso no dano (mín. 0).
+- **Montinho**: no acerto, +(1d4 + Mod. de Peso, mín. 0) de dano e o atacante fica Derrubado (por cima).
+- **Chão do encontro** (`Encounter.floor` SOFT|STANDARD|HARD, padrão STANDARD, `PATCH /encounters/{eid}`): quando o
+  Derrubar de uma técnica com **Arremesso** se aplica, +0 / +1d4 / +2d4 e 1 PQ (duro); **Cravar** usa sempre o duro.
+- **Ímpeto**: `CreateAttackRequest.runMeters` → +2 de dano a cada 1,5 m (máx. +6). Investida/Acompanhar/Reposicionar seguem
+  narrativos (sem grade).
+- **Sequência**: um 2º teste de acerto contra o resultado da mesma reação (o alvo não rola de novo); metade do dano, sem
+  Efeitos nem contra-ataque. **Empurrão Contínuo**: se o 1º Empurrar valeu, o 2º acerto aumenta a distância pela metade.
+- **Alvos**: técnica sem Varredura/Círculo e ataque básico → 1 alvo; Varredura → até 2; Círculo → quantos quiser (400).
+- **Contragolpe**: um Golpe com Contragolpe pode ser a reação Contra-ataque (`respond` com `techniqueId`): o teste é o acerto
+  da técnica, o dano do revide é o dela e o gasto é o SP dela.
+- **Encadear**: `POST /attacks/{aid}/chain {techniqueId, variation}` com o ataque aguardando reações e a técnica com
+  Encadear: o golpe é abortado (sem reembolso) e a outra técnica ATIVA do mesmo núcleo é declarada contra os mesmos alvos,
+  sem PA, pagando o gasto dela +25% (arredondado para cima); as reações recomeçam.
+- **Esmagar** (Efeito, FOR): `CreateAttackRequest.surface = true` (há superfície sólida adjacente) → dano de Impacto 1d4+3
+  e +1 PQ; sem superfície, não acontece.
+- **Limitações**: Risco (errar = todos os alvos MISS/DODGED/COUNTERED; −1 Derrubado, "Risco alto" sofre o dano rolado da
+  própria técnica), Desguarnecida (errar → Vulnerável até o início do próximo turno), Exposta (sempre Vulnerável até o
+  início do próximo turno), Uso Restrito (1× por combate, 400), Tardia (rodada mínima 3/5/7, 400), Previsível (−2
+  cumulativo por uso anterior contra o mesmo alvo no combate), Exige Base (rótulo/nota com o nome da base; sem nome,
+  qualquer base ativa; 400). Exige Posição, Gatilho e Duas Etapas seguem como texto.
+- **Efeitos únicos** das Artes Clássicas (Foco, Ritmo, Pop, Embalo etc.) seguem como texto do catálogo: o Mestre aplica.
+
+## 42. Armas (capítulo Armas, 25/10/2026) — contrato
+
+- **Catálogo estático** `catalog/weapons.json` (`WeaponCatalog`, `GET /catalog/weapons`): chave, nome, grupo
+  (IMPROVISED, ACADEMY, MELEE, AUGMENT, THROWN, RANGED, FIREARM), classe, dano (`dice`, `diceTwoHands` na Empunhadura
+  Variável), tipo (BLUNT, SLASH, PIERCE, FIRE), alcance, distância, capacidade e propriedades (light, heavyStr, large,
+  compact, small, defensive, impact, flexible, fragile/breaksInto, entangle, returning, dispersion, explosive, incendiary,
+  smoke, reload FAST/NORMAL/SLOW, slowCock, burst, unstable, bonus de aumento, modos), preço e acesso.
+- **Inventário**: `inventory_items.weapon_key` (catálogo), `location` (HAND|QUICK|PACK|WORN|DROPPED, padrão PACK),
+  `loaded`, `jammed`, `cocked`, `broken`. Arma em mãos = `location = HAND` (no máximo 2 mãos ocupadas; Pesada/Grande/
+  disparo e fogo não Compactas ocupam as duas).
+- **Ações** (`CombatAction`): `DRAW` (Ação Menor, 1 PA: item ↔ mão), `RELOAD` (sem propriedade: 1 PA; Recarga Lenta: 3 PA;
+  Rápida: automática), `COCK` (Engatilhamento Lento, 1 PA), `UNJAM` (3 PA), `TOGGLE_MODE` (Modos, 1 PA).
+- **Ataque com arma**: `BasicAttack.ARMA` + `CreateAttackRequest.weaponItemId`; perfis por arma em mãos no
+  `GET /character-sheets/{sid}/roll-profiles`. Dano pela categoria: branca = dado + FOR (Leve: melhor de FOR/DES), aumento
+  = básico desarmado + bônus, arremesso = dado + DES com Escala pela DES, disparo = dado + DES, fogo = só o dado.
+- **Técnica armada**: `ArtTechnique.weaponClass` (+ Abrangência Versátil/Arma Única pelos módulos); exige arma da classe em
+  mãos (400); dano = dado da arma + Dado Adicional (Dado Maior: +1d2…+1d12) com Golpe Pesado (dados da arma +1 degrau
+  por compra, máx. 2); gasto + Carga (Leve 3, Pesada/Grande 8, demais 5).
+- **Propriedades em combate**: Leve (Golpe Rápido 2 PA só com o dado), Pesada (abaixo da Força X: desvantagem; após atacar,
+  Esquiva com desvantagem até o próximo turno — condição `PESO_DO_ARCO`), Defensiva (+2 Defender), Impactante (+N PQ em
+  Ponto de Nocaute com golpe contundente), Flexível (não Defende com ela), Quebradiça (quebra no 1º acerto; garrafa → caco),
+  Enredar (alvo Agarrado pela arma; fuga: 3 PA sem teste ou 1 PA + FOR/DES ND 14), Pequena/arremesso improvisado.
+- **Tipos de dano**: cortante/perfurante abre 1 Ferida no acerto (Defender desarmado só evita com 100%; Defender com arma
+  evita reduzindo qualquer dano); contundente é o único que tira PQ em Ponto de Nocaute.
+- **Distância** (`CreateAttackRequest.distanceM`, opcional): Disparo/Arremesso acima de X → desvantagem, acima de 2X → 400;
+  alcance Curto (≤ 1,5 m) com disparo → desvantagem, exceto Dispersão (−1 dado a cada 10 m além do Curto).
+- **Armas de fogo**: reações com desvantagem; crítico garante o acerto, abre 2 Feridas e não dobra os dados; 1 natural (ou
+  ≤ N na Instável) trava (UNJAM); Instável com 1 natural explode (dano no atirador); Rajada (N): 1 + 1 a cada 2 pontos acima
+  da reação, até N projéteis; consome Capacidade. Explosiva/Incendiária: acerto contra ND 14, alvos declarados; Esquiva bem
+  sucedida = metade; Incendiária deixa Queimando (Intenso).
+- **Módulos armados**: Desarmar (FOR/DES: arma do alvo cai — `location = DROPPED`), Puxar (narrativo), Quebrar Arma (FOR:
+  leve quebra, outra −1 dado), Mutilar (CON; crítico → ferimento permanente sem Dado Máximo), Aparar (Defender com arma:
+  +1 grau e atacante desarmado sofre metade do dano da arma), Arremessar (sem desvantagem), Disparo Rápido (recarga livre),
+  Disparo Estendido (+50% de distância), Transpassar/Supressão (narrativos, aviso ao Mestre).
+- **Base armada**: Controle de Distância e Prontidão (narrativos/1 saque livre por turno), Empunhadura Firme (+2 contra
+  Desarmar), Recarga Treinada (1 recarga livre por turno), Mira Estável (+2 em disparo se não se moveu — informado).
+
+## 43. Proteções, equipamento de competição e roupas (capítulo Equipamentos) — contrato
+
+- `catalog/equipment.json` (`EquipmentCatalog`, `GET /catalog/equipment`): proteções (valores por tipo, cobertura CABECA/
+  TRONCO/BRACOS/PERNAS, categoria de peso), equipamento de competição e roupas, com `effects`.
+- Item vestido = `inventory_items.equipment_key` + `location = WORN`. **Proteção (N)**: reduz o dano do tipo depois da
+  reação e da Defesa; região do Ataque Localizado não coberta ignora; sem região, vale o Tronco; mesma região não soma
+  (vale a maior); dano zerado em cortante/perfurante não abre Ferida. Média: Movimentação −2 m; Pesada: Esquiva com
+  desvantagem e Ação Maior +3 SP. Capacete: −1 PQ em Têmpora e Nuca.
+- **Competição**: Luvas de Boxe (+2 Defender; Agarrão com desvantagem), Luvas de MMA (−3 no dano do Soco, +1 PQ), Protetor
+  Bucal (+2 no Teste de Vontade de nocaute), Caneleiras (+1 Defender contra Chute), Capacete de Treino (−1 PQ na Têmpora),
+  Coquilha e Bandagem (texto). **Roupas**: Kimono (+2 de quem agarra para manter), Roupa de Frio (vantagem em Congelando),
+  Antichamas (Queimando um grau abaixo).
+
+## 44. Consumíveis (capítulo Consumíveis) — contrato
+
+- `catalog/consumables.json` (`GET /catalog/consumables`); item com `consumable_key`. Ação `USE_ITEM {itemId,
+  targetParticipantId?}`: em si mesmo Ação Menor (1 PA), em aliado Ação Maior (3 PA); gasta 1 da quantidade.
+- Automáticos em combate: Atadura (estanca), Gaze Hemostática (estanca + 1d4 HP), Sais de Amônia (Inconsciente por PQ
+  acorda com 1 PQ + Desorientado; 1× por combate por lutador), Bebida Isotônica (+1d6 SP), Giz de Magnésio (+1 nas
+  competições de FOR do agarre por 3 rodadas), Estimulante de Combate (3 rodadas: imune a Desorientado/Atordoado e +2 em
+  Vontade; depois +2 Desgaste Físico, +1 Mental). Os demais (treino, Repouso, Bombas) ficam como texto para o Mestre.
