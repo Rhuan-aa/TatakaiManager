@@ -10,7 +10,7 @@
   {
     "key": "IMOBILIZADO",
     "name": "Imobilizado",
-    "effect": "Agarrado + deslocamento 0, ataques com desvantagem, sem Esquiva",
+    "effect": "Como Agarrado; deslocamento zero, ataques com desvantagem e não pode Esquivar",
     "exit": "Ação Maior + FOR/DES com desvantagem",
     "defaultExpiresAt": "MANUAL",
     "stack": "RENEW"
@@ -247,6 +247,22 @@
     "effect": "Técnica de Preparação ativa: Reforço nas reações, Leitura e Carga",
     "exit": "Início do próximo turno (Sustentação: fim dele)",
     "defaultExpiresAt": "START_OF_TARGET_TURN",
+    "stack": "RENEW"
+  },
+  {
+    "key": "ESTRANGULADO",
+    "name": "Estrangulado",
+    "effect": "Sanguíneo: −1 PQ por turno (zerou: desmaia sem teste). Respiratório: −1d6 SP e Mental ND 12 (+2/turno) ou pânico",
+    "exit": "Escapar (como Agarrado, com desvantagem) ou ser solto",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
+  },
+  {
+    "key": "PANICO",
+    "name": "Pânico",
+    "effect": "Desvantagem para escapar do estrangulamento neste turno",
+    "exit": "Fim do turno",
+    "defaultExpiresAt": "END_OF_TARGET_TURN",
     "stack": "RENEW"
   }
 ]

@@ -3,6 +3,7 @@ package com.tatakai.manager.controller;
 import com.tatakai.manager.dto.request.AddConditionRequest;
 import com.tatakai.manager.dto.request.AddParticipantRequest;
 import com.tatakai.manager.dto.request.CombatActionRequest;
+import com.tatakai.manager.dto.request.GrappleRequest;
 import com.tatakai.manager.dto.request.CreateEncounterRequest;
 import com.tatakai.manager.dto.request.SetHysteriaRequest;
 import com.tatakai.manager.dto.request.UpdateEncounterRequest;
@@ -86,6 +87,11 @@ public class CombatController {
     @PostMapping("/encounters/{eid}/actions")
     public ResponseEntity<EncounterResponse> act(@PathVariable UUID eid, @Valid @RequestBody CombatActionRequest r) {
         return ResponseEntity.ok(combat.act(eid, r, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/encounters/{eid}/grapple")
+    public ResponseEntity<EncounterResponse> grapple(@PathVariable UUID eid, @Valid @RequestBody GrappleRequest r) {
+        return ResponseEntity.ok(combat.grapple(eid, r, AuthenticatedUser.id()));
     }
 
     @PostMapping("/encounters/{eid}/next-turn")

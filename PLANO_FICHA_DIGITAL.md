@@ -2135,3 +2135,20 @@ com itens e Gasto de Uso). A lista de **ataques** (`list`) passa a ignorar varia
 - Front: tela de reação com "Técnicas de Reação" (bônus previsto, SP, gatilhos), botões no painel de ataques, resumo
   "Esquiva com Aú"; menu Ação Maior com "Nome (Preparação)".
 
+## 39. Agarre (Ataques Básicos, 25/10/2026) — backend feito, tela pendente
+
+Regras puras em `service/rules/GrappleRules`. Vínculo = condição no alvo com `sourceParticipantId` (quem agarra) e nota.
+- **Agarrão** (`CreateAttackRequest.grip` ARM|LEG|TORSO|NECK, `squeeze`): no acerto, tronco/nuca → `CLINCH` mútuo (nota
+  `INICIOU` em quem sofreu); demais → `AGARRADO` (nota = ponto). Sem `squeeze` não causa dano (1d2 + FOR ao apertar).
+- `POST /encounters/{eid}/grapple {participantId, action, targetParticipantId, attribute, strangleType, twist}`:
+  ESCAPE (Agarrado/Clinch/Estrangulado 1 PA, Imobilizado 3 PA; competição contra quem agarra; desvantagem conforme a
+  condição e o Pânico; DES para artes de Derrubada/Raspagem e no Imobilizado), PROJECT (tronco ou Clinch iniciado; 3 PA +
+  1 SP; FOR × melhor de FOR/DES → Derrubado + dano e solta), LEG_TAKEDOWN (perna; FOR × FOR), CONSTRICT (braço, ou
+  Derrubado agarrado; → `IMOBILIZADO` nota `CONSTRICAO`, fuga sem desvantagem), STRANGLE (pescoço ou Clinch iniciado;
+  `ESTRANGULADO` BLOOD|AIR), MAINTAIN (2 PA + 1 SP; Constrição pode torcer 1d2 + FOR), RELEASE (livre).
+  Estrangulamento/Constrição não mantidos no turno de quem agarra se desfazem no fim dele. **Tração** soma nas competições.
+- Estrangulado (início do turno da vítima): sanguíneo −1 PQ (zerou: desmaia sem teste, dura enquanto mantido + 1 rodada);
+  respiratório −1d6 SP e Mental ND 12 (+2/turno) ou `PANICO`; desmaiado e mantido > 3 rodadas: −1/4 do HP máx./rodada.
+- Clinch bloqueia o Chute; Imobilizado não Esquiva. **Pendente:** tela (menu de agarre e opções do Agarrão no construtor
+  de ataque), Mordida, Empurrão, Encontrão, Pisão e efeitos especiais da Cabeçada/Chute.
+

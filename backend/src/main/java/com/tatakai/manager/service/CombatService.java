@@ -53,6 +53,11 @@ import com.tatakai.manager.repository.EncounterParticipantRepository;
 import com.tatakai.manager.repository.EncounterRepository;
 import com.tatakai.manager.service.rules.BaseRules;
 import com.tatakai.manager.service.rules.CombatRules;
+import com.tatakai.manager.entity.RollPart;
+import com.tatakai.manager.entity.Attribute;
+import com.tatakai.manager.dto.request.GrappleRequest;
+import com.tatakai.manager.service.rules.EffectRules;
+import com.tatakai.manager.service.rules.GrappleRules;
 import com.tatakai.manager.service.rules.RollRules;
 import com.tatakai.manager.entity.TechniqueCore;
 import com.tatakai.manager.service.rules.TechniqueRules;
@@ -613,6 +618,238 @@ public class CombatService {
         if (pr.breath()) vital.applySp(e, p, s, Math.max(0, RollRules.modOrZero(s.getCon())), ctx);
     }
 
+    // ---------- §39: agarre (Ataques Básicos) ----------
+
+    /**
+     * Ações de agarre no turno do participante. Fuga: Agarrado/Clinch/Estrangulado com Ação Menor (1 PA), Imobilizado
+     * com Ação Maior (3 PA), competição contra quem agarra. Projeção e Derrubar pela perna (Ação Maior + 1 SP, FOR contra
+     * FOR ou DES), Constrição (Ação Maior + 1 SP, FOR × FOR → Imobilizado), Estrangular (Ação Maior), Manter (Ação Menor
+     * ofensiva, 2 PA + 1 SP; Constrição pode torcer 1d2 + FOR), Soltar (livre). Tração da base soma nas competições.
+     */
+    public EncounterResponse grapple(UUID encounterId, GrappleRequest req, UUID userId) {
+        Encounter e = load(encounterId);
+        boolean master = requireMembership(e.getCampaignId(), userId) == Role.MASTER;
+        requireActive(e);
+        EncounterParticipant p = participantOf(e, req.participantId());
+        CharacterSheet s = sheetOf(p);
+        if (!master && !userId.equals(ownerUserId(s))) {
+            throw new AccessDeniedException("Você só pode agir pelo seu próprio personagem");
+        }
+        List<EncounterParticipant> ps = participants.findByEncounterIdOrderByOrderIndex(e.getId());
+        if (!ps.get(e.getCurrentIndex()).getId().equals(p.getId())) {
+            throw new InvalidCombatException("Não é o turno de " + p.getName());
+        }
+        java.util.Set<String> keys = conditions.findByParticipantIdIn(List.of(p.getId())).stream()
+                .map(CombatCondition::getConditionKey).collect(Collectors.toSet());
+        if (keys.contains(VitalService.UNCONSCIOUS) || keys.contains(VitalService.DEAD) || keys.contains("PARALISADO")) {
+            throw new InvalidCombatException(p.getName() + " não pode agir");
+        }
+        ActorRole role = master ? ActorRole.MASTER : ActorRole.PLAYER;
+        VitalService.Ctx ctx = VitalService.Ctx.of(userId, role, "Agarre");
+        if (req.action() == GrappleRequest.Action.ESCAPE) {
+            escape(e, p, s, req.attribute() == null ? Attribute.STR : req.attribute(), ctx, userId, role);
+            return done(e, "GRAPPLE", userId, master);
+        }
+        if (req.targetParticipantId() == null) throw new InvalidCombatException("Escolha o alvo do agarre");
+        EncounterParticipant t = participantOf(e, req.targetParticipantId());
+        CharacterSheet ts = sheetOf(t);
+        CombatCondition grab = hold(t, GrappleRules.GRABBED, p);
+        CombatCondition clinchInit = hold(t, GrappleRules.CLINCH, p);
+        boolean initiated = clinchInit != null && GrappleRules.CLINCH_INIT.equals(clinchInit.getNote());
+        switch (req.action()) {
+            case PROJECT -> {
+                if (!initiated && !(grab != null && GrappleRules.Grip.TORSO.name().equals(grab.getNote()))) {
+                    throw new InvalidCombatException("Projeção exige agarre no tronco ou um Clinch que você iniciou");
+                }
+                spend(e, p, s, 3, 1, "Projeção", ctx);
+                Attribute def = RollRules.modOrZero(ts.getDex()) > RollRules.modOrZero(ts.getStr()) ? Attribute.DEX : Attribute.STR;
+                if (contest(e, p, s, Attribute.STR, 0, t, ts, def, 0, "Projeção", userId, role)) {
+                    releaseBetween(e, p, t);
+                    takedown(e, p, t, ts, "Projeção", ctx);
+                }
+            }
+            case LEG_TAKEDOWN -> {
+                if (grab == null || !GrappleRules.Grip.LEG.name().equals(grab.getNote())) {
+                    throw new InvalidCombatException("Derrubar pela perna exige agarre na perna");
+                }
+                spend(e, p, s, 3, 1, "Derrubar pela perna", ctx);
+                if (contest(e, p, s, Attribute.STR, 0, t, ts, Attribute.STR, 0, "Derrubar pela perna", userId, role)) {
+                    takedown(e, p, t, ts, "Derrubar pela perna", ctx);
+                }
+            }
+            case CONSTRICT -> {
+                boolean downed = conditions.findByParticipantIdIn(List.of(t.getId())).stream()
+                        .anyMatch(c -> KNOCKED_DOWN.equals(c.getConditionKey()));
+                if (grab == null || !(GrappleRules.Grip.ARM.name().equals(grab.getNote()) || downed)) {
+                    throw new InvalidCombatException("Constrição exige agarre no braço, ou alvo Derrubado já agarrado");
+                }
+                spend(e, p, s, 3, 1, "Constrição", ctx);
+                if (contest(e, p, s, Attribute.STR, 0, t, ts, Attribute.STR, 0, "Constrição", userId, role)) {
+                    conditions.delete(grab);
+                    holdOn(e, t, GrappleRules.RESTRAINED, p, GrappleRules.CONSTRICTION);
+                }
+            }
+            case STRANGLE -> {
+                if (!initiated && !(grab != null && GrappleRules.Grip.NECK.name().equals(grab.getNote()))) {
+                    throw new InvalidCombatException("Estrangular exige agarre no pescoço ou um Clinch que você iniciou");
+                }
+                if (req.strangleType() == null) throw new InvalidCombatException("Escolha sanguíneo ou respiratório");
+                spend(e, p, s, 3, 0, "Estrangulamento", ctx);
+                holdOn(e, t, GrappleRules.STRANGLED, p, req.strangleType().name());
+            }
+            case MAINTAIN -> {
+                List<CombatCondition> kept = conditions.findByParticipantIdIn(List.of(t.getId())).stream()
+                        .filter(c -> p.getId().equals(c.getSourceParticipantId()) && (GrappleRules.STRANGLED.equals(c.getConditionKey())
+                                || (GrappleRules.RESTRAINED.equals(c.getConditionKey()) && GrappleRules.CONSTRICTION.equals(c.getNote()))))
+                        .toList();
+                if (kept.isEmpty()) throw new InvalidCombatException("Nada a manter: sem estrangulamento ou constrição");
+                spend(e, p, s, 2, 1, "Manter o agarre", ctx);
+                kept.forEach(c -> { c.setAppliedTurn(e.getTurnCounter()); conditions.save(c); });
+                log(e, p.getId(), CombatEventType.ACTION, p.getName() + " mantém o agarre em " + t.getName());
+                if (Boolean.TRUE.equals(req.twist()) && kept.stream().anyMatch(c -> GrappleRules.RESTRAINED.equals(c.getConditionKey()))) {
+                    int d = Math.max(0, rolls.rollInternal(s, "1d2", "Torcer: " + p.getName() + " → " + t.getName(), userId, role)
+                            .getTotal() + RollRules.modOrZero(s.getStr()));
+                    log(e, t.getId(), CombatEventType.ACTION, p.getName() + " torce: " + d + " de dano em " + t.getName());
+                    vital.applyHp(e, t, ts, -d, ctx);
+                }
+            }
+            case RELEASE -> {
+                releaseBetween(e, p, t);
+                log(e, p.getId(), CombatEventType.ACTION, p.getName() + " solta " + t.getName());
+            }
+            default -> { }
+        }
+        return done(e, "GRAPPLE", userId, master);
+    }
+
+    /** Fuga: a condição mais forte que prende o participante decide custo e desvantagem; vencer solta tudo daquele par. */
+    private void escape(Encounter e, EncounterParticipant p, CharacterSheet s, Attribute attr, VitalService.Ctx ctx,
+                        UUID userId, ActorRole role) {
+        List<CombatCondition> mine = conditions.findByParticipantIdIn(List.of(p.getId()));
+        CombatCondition hold = null;
+        for (String key : List.of(GrappleRules.RESTRAINED, GrappleRules.STRANGLED, GrappleRules.GRABBED, GrappleRules.CLINCH)) {
+            hold = mine.stream().filter(c -> key.equals(c.getConditionKey()) && c.getSourceParticipantId() != null)
+                    .findFirst().orElse(null);
+            if (hold != null) break;
+        }
+        if (hold == null) throw new InvalidCombatException(p.getName() + " não está preso");
+        if (!GrappleRules.escapeAllows(hold.getConditionKey(), attr, martial.fighter(p, s).type())) {
+            throw new InvalidCombatException("Não é possível escapar com esse atributo");
+        }
+        EncounterParticipant g = participantOf(e, hold.getSourceParticipantId());
+        spend(e, p, s, GrappleRules.escapeCost(hold.getConditionKey()), 0, "Escapar", ctx);
+        int adv = (GrappleRules.escapeDisadvantage(hold.getConditionKey(), hold.getNote()) ? -1 : 0)
+                - (mine.stream().anyMatch(c -> GrappleRules.PANIC.equals(c.getConditionKey())) ? 1 : 0);
+        Attribute gAttr = GrappleRules.RESTRAINED.equals(hold.getConditionKey()) ? attr : Attribute.STR;
+        if (contest(e, p, s, attr, adv, g, sheetOf(g), gAttr, 0, "Escapar", userId, role)) {
+            releaseBetween(e, g, p);
+            log(e, p.getId(), CombatEventType.ACTION, p.getName() + " escapa de " + g.getName());
+        }
+    }
+
+    /** Competição de atributos (com Tração da base de cada um); true = o primeiro vence (empate fica com quem resiste). */
+    private boolean contest(Encounter e, EncounterParticipant a, CharacterSheet as, Attribute aAttr, int aAdv,
+                            EncounterParticipant b, CharacterSheet bs, Attribute bAttr, int bAdv, String label,
+                            UUID userId, ActorRole role) {
+        int ta = contestRoll(e, a, as, aAttr, aAdv, label, userId, role);
+        int tb = contestRoll(e, b, bs, bAttr, bAdv, label, userId, role);
+        boolean won = GrappleRules.wins(ta, tb);
+        log(e, a.getId(), CombatEventType.ACTION, label + ": " + a.getName() + " " + ta + " × " + tb + " " + b.getName()
+                + " — " + (won ? "sucesso" : "falha"));
+        return won;
+    }
+
+    private int contestRoll(Encounter e, EncounterParticipant p, CharacterSheet s, Attribute attr, int adv, String label,
+                            UUID userId, ActorRole role) {
+        RollProfileService.Calc c = profiles.attribute(s, attr);
+        List<RollPart> hit = new ArrayList<>(c.hit());
+        BaseRules.Profile base = profiles.baseProfile(s, p.getActiveBaseId());
+        if (base != null && base.traction() != 0) {
+            hit.add(new RollPart("HIT", "Tração (base: " + base.name() + ")", base.traction(), null, false));
+        }
+        c = new RollProfileService.Calc(c.type(), c.sourceId(), c.name(), c.variation(), c.basic(), c.spCost(),
+                c.critMargin(), c.advantage(), hit, c.dice(), c.damage());
+        return rolls.rollCalc(s, e.getCampaignId(), c, adv + vital.conditionAdvantage(p, s, attr),
+                label + ": " + p.getName(), userId, role).total();
+    }
+
+    private void spend(Encounter e, EncounterParticipant p, CharacterSheet s, int pa, int sp, String label, VitalService.Ctx ctx) {
+        if (p.getPaCurrent() < pa) throw new InvalidCombatException("PA insuficiente: " + label + " custa " + pa);
+        if (sp > 0 && conditions.findByParticipantIdIn(List.of(p.getId())).stream()
+                .anyMatch(c -> VitalService.EXHAUSTED.equals(c.getConditionKey()))) {
+            throw new InvalidCombatException("Exausto: sem ações com custo de SP");
+        }
+        if (s.getCurrentSp() < sp) throw new InvalidCombatException("SP insuficiente: " + label + " custa " + sp);
+        p.setPaCurrent(p.getPaCurrent() - pa);
+        if (sp > 0) vital.applySp(e, p, s, -sp, ctx);
+        log(e, p.getId(), CombatEventType.ACTION, p.getName() + ": " + label + " (" + pa + " PA" + (sp > 0 ? ", " + sp + " SP" : "") + ")");
+    }
+
+    /** Condição de agarre que `source` mantém sobre `t` (null = nenhuma). */
+    private CombatCondition hold(EncounterParticipant t, String key, EncounterParticipant source) {
+        return conditions.findByParticipantIdIn(List.of(t.getId())).stream()
+                .filter(c -> key.equals(c.getConditionKey()) && source.getId().equals(c.getSourceParticipantId()))
+                .findFirst().orElse(null);
+    }
+
+    /** Aplica (ou renova) uma condição de agarre com origem e nota, marcada como mantida neste turno. */
+    public void holdOn(Encounter e, EncounterParticipant t, String key, EncounterParticipant source, String note) {
+        CombatCondition c = hold(t, key, source);
+        if (c == null) c = CombatCondition.builder().participantId(t.getId()).conditionKey(key).build();
+        c.setSourceParticipantId(source.getId());
+        c.setNote(note);
+        c.setExpiresAt(ConditionExpiry.MANUAL);
+        c.setAppliedTurn(e.getTurnCounter());
+        conditions.save(c);
+        log(e, t.getId(), CombatEventType.CONDITION_ADDED, t.getName() + ": "
+                + catalog.find(key).map(ConditionCatalog.Def::name).orElse(key) + " por " + source.getName()
+                + (note == null ? "" : " (" + note + ")"));
+        onConditionApplied(e, t, key);
+    }
+
+    /** Desfaz todo agarre entre os dois (nos dois sentidos); desmaio por estrangulamento passa a durar mais 1 rodada. */
+    private void releaseBetween(Encounter e, EncounterParticipant a, EncounterParticipant b) {
+        for (EncounterParticipant[] pair : List.of(new EncounterParticipant[]{a, b}, new EncounterParticipant[]{b, a})) {
+            for (CombatCondition c : conditions.findByParticipantIdIn(List.of(pair[1].getId()))) {
+                if (GrappleRules.HOLDS.contains(c.getConditionKey()) && pair[0].getId().equals(c.getSourceParticipantId())) {
+                    conditions.delete(c);
+                }
+                if (VitalService.UNCONSCIOUS.equals(c.getConditionKey()) && "ESTRANGULAMENTO".equals(c.getNote())
+                        && c.getExpiresAt() == ConditionExpiry.MANUAL) {
+                    c.setExpiresAt(ConditionExpiry.COUNTER);
+                    c.setTurnsRemaining(1);
+                    conditions.save(c);
+                }
+            }
+        }
+    }
+
+    private void takedown(Encounter e, EncounterParticipant by, EncounterParticipant t, CharacterSheet ts, String label,
+                          VitalService.Ctx ctx) {
+        vital.addEffectCondition(e, t, KNOCKED_DOWN, null, label, by.getId());
+        onConditionApplied(e, t, KNOCKED_DOWN);
+        int dmg = EffectRules.takedownDamage(ts.getWeightKg());
+        log(e, t.getId(), CombatEventType.ACTION, t.getName() + " sofre " + dmg + " de dano de Derrubada");
+        vital.applyHp(e, t, ts, -dmg, ctx);
+    }
+
+    /** Fim do turno de quem agarra: estrangulamento e constrição não mantidos neste turno se desfazem. */
+    private void dropUnmaintained(Encounter e, EncounterParticipant p) {
+        int started = p.getTurnStartedAt() == null ? e.getTurnCounter() : p.getTurnStartedAt();
+        List<UUID> ids = participants.findByEncounterIdOrderByOrderIndex(e.getId()).stream().map(EncounterParticipant::getId).toList();
+        for (CombatCondition c : conditions.findByParticipantIdIn(ids)) {
+            boolean kept = GrappleRules.STRANGLED.equals(c.getConditionKey())
+                    || (GrappleRules.RESTRAINED.equals(c.getConditionKey()) && GrappleRules.CONSTRICTION.equals(c.getNote()));
+            if (kept && p.getId().equals(c.getSourceParticipantId()) && c.getAppliedTurn() < started) {
+                EncounterParticipant victim = participantOf(e, c.getParticipantId());
+                conditions.delete(c);
+                log(e, victim.getId(), CombatEventType.CONDITION_REMOVED, p.getName() + " não manteve o agarre: "
+                        + victim.getName() + " está livre de " + catalog.find(c.getConditionKey()).map(ConditionCatalog.Def::name).orElse(c.getConditionKey()));
+                if (GrappleRules.STRANGLED.equals(c.getConditionKey())) releaseBetween(e, p, victim);
+            }
+        }
+    }
+
     public EncounterResponse nextTurn(UUID encounterId, UUID userId) {
         Encounter e = load(encounterId);
         Role role = requireMembership(e.getCampaignId(), userId);
@@ -659,6 +896,7 @@ public class CombatService {
             }
         }
         vital.onTurnEnd(e, p, sheetOf(p), ctx);
+        dropUnmaintained(e, p);
         p.setPaCurrent(0);
         log(e, p.getId(), CombatEventType.TURN_END, "Fim do turno de " + p.getName());
     }

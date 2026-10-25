@@ -74,6 +74,11 @@ public final class BaseRules {
             return sum("Resiliência", Scope.ALL);
         }
 
+        /** Tração: bônus nas competições de Força ou Destreza em agarres. */
+        public int traction() {
+            return sum("Tração", Scope.ALL);
+        }
+
         /** Calma: bônus nos Testes de Vontade. */
         public int calm() {
             return sum("Calma", Scope.ALL);

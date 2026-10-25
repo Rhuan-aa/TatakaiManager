@@ -7,7 +7,7 @@ public enum BasicAttack {
     COTOVELADA("Cotovelada", 1, 3, 0, 0),
     JOELHADA("Joelhada", 1, 4, 1, -2), // −2 no acerto, exceto contra alvo Agarrado ou em Clinch
     CABECADA("Cabeçada", 1, 4, 0, 0),
-    AGARRAO("Agarrão", 1, 2, 1, 0);
+    AGARRAO("Agarrão", 1, 2, 0, 0); // dano só se apertar/torcer: 1d2 + mod. de Força
 
     public final String label;
     public final int count;

@@ -23,6 +23,7 @@ import com.tatakai.manager.service.RollProfileService.Calc;
 import com.tatakai.manager.service.rules.CombatRules;
 import com.tatakai.manager.service.rules.RollRules;
 import com.tatakai.manager.service.rules.BaseRules;
+import com.tatakai.manager.service.rules.GrappleRules;
 import com.tatakai.manager.service.rules.EnvironmentRules;
 import com.tatakai.manager.entity.Attribute;
 import com.tatakai.manager.service.rules.SheetRules;
@@ -531,6 +532,7 @@ public class VitalService {
                     if (l.sp()) applySp(e, p, s, -d, c);
                     else applyHp(e, p, s, -d, new Ctx(c.userId(), c.role(), "Veneno", false));
                 }
+                case GrappleRules.STRANGLED -> strangled(e, p, s, k, c);
                 case SUFFOCATING -> {
                     int d = rollDamage(s, EnvironmentRules.SUFFOCATE_SP, "Sufocando: " + p.getName(), c);
                     log(e, p.getId(), CombatEventType.ACTION, p.getName() + " sufoca: −" + d + " SP");
@@ -539,6 +541,48 @@ public class VitalService {
                 default -> { }
             }
             if (hasCondition(p, DEAD)) return;
+        }
+    }
+
+    /**
+     * Estrangulamento (Ataques Básicos), no início do turno da vítima. Sanguíneo: −1 PQ; ao zerar, desmaia na hora sem
+     * teste (o desmaio dura enquanto mantido e mais 1 rodada depois de solto). Respiratório: −1d6 SP (zerar segue a
+     * Estamina) e Mental ND 12, +2 por turno seguido (`progress`), ou Pânico. Desmaiada e ainda estrangulada por mais de
+     * 3 rodadas (`intensity`), perde 1/4 do HP máximo por rodada.
+     */
+    private void strangled(Encounter e, EncounterParticipant p, CharacterSheet s, CombatCondition k, Ctx c) {
+        if (hasCondition(p, UNCONSCIOUS)) {
+            int rounds = (k.getIntensity() == null ? 0 : k.getIntensity()) + 1;
+            k.setIntensity(rounds);
+            conditions.save(k);
+            if (rounds > GrappleRules.BRAIN_DAMAGE_AFTER) {
+                int d = GrappleRules.brainDamage(s.getHpMax());
+                log(e, p.getId(), CombatEventType.GM, p.getName() + " segue estrangulado desmaiado: −" + d + " HP (lesão cerebral)");
+                applyHp(e, p, s, -d, new Ctx(c.userId(), c.role(), "Estrangulamento", false));
+            }
+            return;
+        }
+        if (GrappleRules.StrangleType.BLOOD.name().equals(k.getNote())) {
+            int before = s.getCurrentKp();
+            if (before <= 1) {
+                s.setCurrentKp(0);
+                record(s, c, "STRANGLE", "currentKp", before, 0);
+                log(e, p.getId(), CombatEventType.ACTION, p.getName() + " apaga no estrangulamento sanguíneo");
+                addCondition(e, p, UNCONSCIOUS, ConditionExpiry.MANUAL, null, "ESTRANGULAMENTO");
+            } else {
+                log(e, p.getId(), CombatEventType.ACTION, p.getName() + " perde 1 PQ (estrangulamento sanguíneo)");
+                applyKp(e, p, s, -1, c);
+            }
+        } else {
+            int d = rollDamage(s, "1d6", "Estrangulamento respiratório: " + p.getName(), c);
+            log(e, p.getId(), CombatEventType.ACTION, p.getName() + " perde " + d + " SP (estrangulamento respiratório)");
+            int turns = k.getProgress() == null ? 0 : k.getProgress();
+            k.setProgress(turns + 1);
+            conditions.save(k);
+            applySp(e, p, s, -d, c);
+            if (!hasCondition(p, UNCONSCIOUS) && !test(e, p, s, true, GrappleRules.panicNd(turns), "Pânico", c)) {
+                addCondition(e, p, GrappleRules.PANIC, ConditionExpiry.END_OF_TARGET_TURN, null, null);
+            }
         }
     }
 

@@ -23,11 +23,22 @@ public record CreateAttackRequest(
         @NotEmpty @Size(max = 20) List<@NotNull UUID> targetIds,
         @Size(max = 40) @Pattern(regexp = "^[^<>]*$") String region,
         @Max(0) Integer regionPenalty,
-        StrikeSide strikeSide) {
+        StrikeSide strikeSide,
+        /** Agarrão: ponto do agarre (padrão braço) e se aperta/torce no acerto (1d2 + FOR) (§39) */
+        com.tatakai.manager.service.rules.GrappleRules.Grip grip,
+        Boolean squeeze) {
+
+    public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
+                               BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
+                               String region, Integer regionPenalty, StrikeSide strikeSide) {
+        this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
+                strikeSide, null, null);
+    }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
                                BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
                                String region, Integer regionPenalty) {
-        this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty, null);
+        this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
+                null, null, null);
     }
 }

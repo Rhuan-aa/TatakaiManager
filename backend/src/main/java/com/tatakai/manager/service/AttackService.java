@@ -55,6 +55,7 @@ import com.tatakai.manager.service.RollProfileService.Calc;
 import com.tatakai.manager.service.rules.AttackRules;
 import com.tatakai.manager.service.rules.CombatRules;
 import com.tatakai.manager.service.rules.EffectRules;
+import com.tatakai.manager.service.rules.GrappleRules;
 import com.tatakai.manager.entity.ConditionExpiry;
 import com.tatakai.manager.entity.AssemblyItemKind;
 import com.tatakai.manager.service.rules.TechniqueRules;
@@ -219,11 +220,16 @@ public class AttackService {
                 .sourceType(req.sourceType()).sourceId(req.sourceId()).variation(req.variation())
                 .basicAttack(req.basicAttack()).actionKind(req.actionKind()).region(req.region())
                 .regionPenalty(req.regionPenalty() == null ? 0 : req.regionPenalty()).strikeSide(req.strikeSide())
+                .grip(req.basicAttack() == BasicAttack.AGARRAO ? (req.grip() == null ? GrappleRules.Grip.ARM : req.grip()) : null)
+                .squeeze(Boolean.TRUE.equals(req.squeeze()))
                 .status(AttackStatus.AWAITING_REACTIONS).round(e.getRound()).sourceName("").build();
         if (ctx.hasAny(att.getId(), Set.of("INCONSCIENTE", "MORTO"))) {
             throw new InvalidCombatException(att.getName() + " está fora de combate e não pode agir");
         }
         if (ctx.has(att.getId(), PARALYZED)) throw new InvalidCombatException(att.getName() + " está Paralisado e não pode agir");
+        if (req.basicAttack() == BasicAttack.CHUTE && ctx.has(att.getId(), GrappleRules.CLINCH)) {
+            throw new InvalidCombatException("No Clinch não cabem golpes de alcance Médio (Chute)");
+        }
         Calc calc = calcFor(s, a, ctx.has(att.getId(), KNOCKED_DOWN), att, s);
         a.setVariation(calc.variation());
         String name = calc.variation() == null ? calc.name() : calc.name() + " (" + calc.variation() + ")";
@@ -348,6 +354,9 @@ public class AttackService {
             t.setReactionTechniqueId(techniqueId);
             t.setReactionVariation(variation);
         }
+        if (reaction == ReactionType.DODGE && ctx.has(t.getTargetId(), RESTRAINED)) {
+            throw new InvalidCombatException("Imobilizado não pode Esquivar");
+        }
         if (reaction == ReactionType.COUNTER && ctx.has(t.getTargetId(), STUNNED)) {
             throw new InvalidCombatException("Atordoado não pode Contra-atacar");
         }
@@ -464,11 +473,13 @@ public class AttackService {
                 + (incomum(att, ctx.sheetOf.get(att.getId()), tp, tsh, ctx) ? 1 : 0);
         boolean sp = tsh.getCurrentSp() >= 1;
         boolean stunned = ctx.has(tp.getId(), STUNNED);
+        boolean restrained = ctx.has(tp.getId(), RESTRAINED);
         BaseRules.Profile db = profiles.baseProfile(tsh, tp.getActiveBaseId());
         java.util.function.ToIntFunction<ReactionType> base = r -> db == null ? 0 : db.reaction(r);
         return List.of(
                 new Option(ReactionType.DEFEND, true, null, RollRules.modOrZero(tsh.getCon()) + common + base.applyAsInt(ReactionType.DEFEND)),
-                new Option(ReactionType.DODGE, true, null, RollRules.modOrZero(tsh.getDex()) + common + base.applyAsInt(ReactionType.DODGE)),
+                new Option(ReactionType.DODGE, !restrained, restrained ? "Imobilizado: não pode Esquivar" : null,
+                        RollRules.modOrZero(tsh.getDex()) + common + base.applyAsInt(ReactionType.DODGE)),
                 new Option(ReactionType.COUNTER, sp && !stunned, stunned ? "Atordoado: sem Contra-ataque" : sp ? null : "SP insuficiente",
                         RollRules.modOrZero(tsh.getDex()) + common + base.applyAsInt(ReactionType.COUNTER)),
                 new Option(ReactionType.NONE, true, null, 0));
@@ -609,7 +620,9 @@ public class AttackService {
                     log(e, tp.getId(), "Avanço Pesado (base de " + att.getName() + "): +" + heavy + " de dano");
                 }
             }
-            int dmg = connects ? AttackRules.damage(hitDamage, r.mitigationPct(), calejo) : 0;
+            boolean grab = a.getBasicAttack() == BasicAttack.AGARRAO && a.getSourceType() == RollSourceType.BASIC_ATTACK;
+            int dmg = connects && !(grab && !a.isSqueeze()) ? AttackRules.damage(hitDamage, r.mitigationPct(), calejo) : 0;
+            if (grab && r.outcome() == AttackOutcome.HIT) grabOn(e, att, attSheet, tp, tsh, a.getGrip());
             int counter = 0;
             if (r.counterHits()) {
                 RollMessage c = rolls.rollCalc(rsh, e.getCampaignId(), profiles.basic(rsh, BasicAttack.SOCO,
@@ -720,6 +733,35 @@ public class AttackService {
             }
             case WOUND, DEEPEN_WOUND -> vital.openWounds(e, tp, tsh, 1, vctx);
         }
+    }
+
+    /**
+     * Agarrão que acertou (§39): ponto tronco/nuca entra em Clinch mútuo (nota INICIOU em quem sofreu, para saber quem
+     * iniciou); braço, perna e pescoço deixam o alvo Agarrado com o ponto na nota.
+     */
+    private void grabOn(Encounter e, EncounterParticipant att, CharacterSheet attSheet, EncounterParticipant tp,
+                        CharacterSheet tsh, GrappleRules.Grip grip) {
+        GrappleRules.Grip g = grip == null ? GrappleRules.Grip.ARM : grip;
+        if (GrappleRules.clinch(g)) {
+            grappleHold(e, tp, GrappleRules.CLINCH, att, GrappleRules.CLINCH_INIT);
+            grappleHold(e, att, GrappleRules.CLINCH, tp, null);
+        } else {
+            grappleHold(e, tp, GrappleRules.GRABBED, att, g.name());
+        }
+        martial.fire(e, tp, tsh, "GRAPPLED", null, null);
+        log(e, tp.getId(), att.getName() + " agarra " + tp.getName() + " (" + g.label + ")"
+                + (GrappleRules.clinch(g) ? ": Clinch" : ""));
+    }
+
+    private void grappleHold(Encounter e, EncounterParticipant t, String key, EncounterParticipant source, String note) {
+        CombatCondition c = conditions.findByParticipantIdIn(List.of(t.getId())).stream()
+                .filter(x -> key.equals(x.getConditionKey()) && source.getId().equals(x.getSourceParticipantId()))
+                .findFirst().orElseGet(() -> CombatCondition.builder().participantId(t.getId()).conditionKey(key).build());
+        c.setSourceParticipantId(source.getId());
+        c.setNote(note);
+        c.setExpiresAt(ConditionExpiry.MANUAL);
+        c.setAppliedTurn(e.getTurnCounter());
+        conditions.save(c);
     }
 
     /** Teste de resistência a um Efeito; true = resistiu (já registra na linha do tempo). */

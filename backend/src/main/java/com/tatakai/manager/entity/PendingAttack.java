@@ -74,6 +74,14 @@ public class PendingAttack {
     @Column(name = "strike_side", length = 10)
     private StrikeSide strikeSide;
 
+    /** Agarrão (§39): ponto do agarre e se aperta/torce no acerto. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private com.tatakai.manager.service.rules.GrappleRules.Grip grip;
+
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean squeeze;
+
     /** turn_counter do encontro quando resolveu: a janela do Contra-Ataque Tardio fecha no próximo next-turn. */
     @Column(name = "resolved_turn")
     private Integer resolvedTurn;
