@@ -98,7 +98,7 @@ Arquivos locais **ignorados pelo git** que podem existir na máquina do dono:
 | **Atividade solo fixa** | `TREINO`, `ESTUDO`, `ACAO_GERAL` — sem NPC, custo fixo **1**, descrição livre obrigatória. | `SoloActivityType` |
 | **Atividade solo customizada** | Criada pelo Mestre e válida só dentro de um TimeSkip, com custo próprio. | `TimeSkipActivity` |
 | **Log** | Texto narrativo. Jogador: vinculado a um booking próprio. Mestre: livre ou vinculado a qualquer booking; só o Mestre edita/exclui. | `InteractionLog` |
-| **Visibilidade de ficha** | Ocultar seções (`LOGS`, `ATTRIBUTES`, `KNOWLEDGE`, `TRAITS`) da ficha de um jogador. **Só backend** — não há UI. | `CharacterSheetVisibility` |
+| **Visibilidade de ficha** | Ocultar seções (`LOGS`, `ATTRIBUTES`, `KNOWLEDGE`, `TRAITS`) da ficha de um jogador para os outros jogadores. UI: `SheetVisibilityPanel` (Mestre = `hiddenByMaster`, dono = `hiddenBySelf`). | `CharacterSheetVisibility` |
 
 Atributos do NPC (todos opcionais, 0..999): `forca, destreza, constituicao,
 mental, inteligencia, talento`.
@@ -342,7 +342,7 @@ derivada do TimeSkip.
 `LogResponse = {id, authorId, authorName, narrative, createdAt, updatedAt, bookingId, npcId, npcName, dayNumber, slotNumber, interactionName, idlePointCost}` (campos de booking nulos em log livre).
 `narrative` é sanitizada (todas as tags HTML removidas) em create e update.
 
-**Visibilidade de ficha** — `SheetVisibilityController` / `SheetVisibilityService` (sem UI)
+**Visibilidade de ficha** — `SheetVisibilityController` / `SheetVisibilityService` (UI: `SheetVisibilityPanel`)
 | Método | Rota | Body | Resposta | Regras |
 |---|---|---|---|---|
 | GET | `/campaigns/{cid}/members/{uid}/sheet/visibility` | — | `SectionVisibilityResponse[]` (todas as 4 seções) | Membro; `visibleToMe = privilegiado ∨ (¬hiddenByMaster ∧ ¬hiddenBySelf)`, privilegiado = MASTER ou o próprio |
@@ -614,9 +614,8 @@ no `*ServiceTest` correspondente primeiro.
 6. **Mongo fora da transação** — criação/edição de NPC e o cascade de remoção não
    são atômicos entre Mongo e Postgres; NPC órfão no Mongo é filtrado em
    `listForCampaign` (`npcById.containsKey`).
-7. **Visibilidade de ficha sem UI de toggle** — a ficha (F1) já respeita
-   `SheetSection` (ATTRIBUTES, RESOURCES, INJURIES, INVENTORY), mas ainda não há
-   tela para ocultar/exibir seções.
+7. ~~Visibilidade de ficha sem UI de toggle~~ — **corrigido**: bloco "Visível para os outros jogadores" na ficha
+   (`SheetVisibilityPanel`, dono e Mestre) para ATTRIBUTES, RESOURCES, INJURIES e INVENTORY.
 8. ~~Sem eventos WS para mudança de dia / exclusão / remoção de NPC~~ — **corrigido**: canal `campaign`
    (`TIMESKIP`/`NPCS`); `TimeSkipPanel` e `CampaignDetail` recarregam (plano §37).
 9. **Caddyfile** tem domínios DuckDNS fixos — ajuste por ambiente.

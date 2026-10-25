@@ -109,3 +109,14 @@ export async function importSheet(campaignId, file) {
   const { data } = await client.post(`/campaigns/${campaignId}/character-sheets/import`, form);
   return data;
 }
+
+// Visibilidade das seções da ficha de um jogador para os outros jogadores (Mestre e dono sempre veem).
+export async function getSheetVisibility(campaignId, userId) {
+  const { data } = await client.get(`/campaigns/${campaignId}/members/${userId}/sheet/visibility`);
+  return data;
+}
+
+export async function setSheetVisibility(campaignId, userId, section, hidden) {
+  const { data } = await client.patch(`/campaigns/${campaignId}/members/${userId}/sheet/visibility`, { section, hidden });
+  return data;
+}

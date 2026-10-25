@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SheetVisibilityPanel from './SheetVisibilityPanel';
 import { exportSheet } from '../../api/characterSheets';
 import { listTraits } from '../../api/catalog';
 import { Effects, Variations } from '../catalog/CatalogManager';
@@ -467,6 +468,12 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             <ActivityLogPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
           </Block>
         </>
+      )}
+
+      {!isNpc && (isOwner || isMaster) && sheet.campaignId && sheet.ownerUserId && (
+        <Block title="Visível para os outros jogadores" collapsible>
+          <SheetVisibilityPanel campaignId={sheet.campaignId} ownerUserId={sheet.ownerUserId} isMaster={isMaster} />
+        </Block>
       )}
 
       {!isNpc && isMaster && ['COMPLETED', 'PENDING_APPROVAL'].includes(sheet.buildStatus) && (
