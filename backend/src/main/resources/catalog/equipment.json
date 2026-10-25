@@ -1,0 +1,404 @@
+[
+  {
+    "key": "JAQUETA_COURO",
+    "name": "Jaqueta de Couro",
+    "kind": "PROTECTION",
+    "price": "2",
+    "access": "Livre",
+    "protection": {
+      "SLASH": 1
+    },
+    "cover": [
+      "TRONCO",
+      "BRACOS"
+    ],
+    "weightKg": 2,
+    "category": "LIGHT"
+  },
+  {
+    "key": "ACOLCHOADO",
+    "name": "Acolchoado (Gambeson)",
+    "kind": "PROTECTION",
+    "price": "3",
+    "access": "Livre",
+    "protection": {
+      "BLUNT": 2,
+      "SLASH": 1
+    },
+    "cover": [
+      "TRONCO",
+      "BRACOS"
+    ],
+    "weightKg": 4,
+    "category": "LIGHT"
+  },
+  {
+    "key": "COLETE_ANTIFACA",
+    "name": "Colete Anti-Faca",
+    "kind": "PROTECTION",
+    "price": "6",
+    "access": "Restrito",
+    "protection": {
+      "SLASH": 4,
+      "PIERCE": 3,
+      "FIREARM": 0
+    },
+    "cover": [
+      "TRONCO"
+    ],
+    "weightKg": 3,
+    "category": "LIGHT"
+  },
+  {
+    "key": "COLETE_BALISTICO",
+    "name": "Colete Balístico",
+    "kind": "PROTECTION",
+    "price": "12",
+    "access": "Restrito",
+    "protection": {
+      "FIREARM": 6,
+      "DEFAULT": 1
+    },
+    "cover": [
+      "TRONCO"
+    ],
+    "weightKg": 4,
+    "category": "LIGHT"
+  },
+  {
+    "key": "COLETE_PLACAS",
+    "name": "Colete com Placas",
+    "kind": "PROTECTION",
+    "price": "30",
+    "access": "Ilegal",
+    "protection": {
+      "FIREARM": 10,
+      "SLASH": 4,
+      "PIERCE": 4,
+      "BLUNT": 2
+    },
+    "cover": [
+      "TRONCO"
+    ],
+    "weightKg": 12,
+    "category": "HEAVY"
+  },
+  {
+    "key": "COTA_MALHA",
+    "name": "Cota de Malha",
+    "kind": "PROTECTION",
+    "price": "15",
+    "access": "Restrito",
+    "protection": {
+      "SLASH": 4,
+      "PIERCE": 2
+    },
+    "cover": [
+      "TRONCO",
+      "BRACOS"
+    ],
+    "weightKg": 12,
+    "category": "MEDIUM"
+  },
+  {
+    "key": "ARMADURA_PLACAS",
+    "name": "Armadura de Placas",
+    "kind": "PROTECTION",
+    "price": "60",
+    "access": "Restrito",
+    "protection": {
+      "SLASH": 6,
+      "PIERCE": 4,
+      "BLUNT": 2
+    },
+    "cover": [
+      "CABECA",
+      "TRONCO",
+      "BRACOS",
+      "PERNAS"
+    ],
+    "weightKg": 25,
+    "category": "HEAVY"
+  },
+  {
+    "key": "BOGU",
+    "name": "Bogu (Kendo)",
+    "kind": "PROTECTION",
+    "price": "10",
+    "access": "Livre",
+    "protection": {
+      "BLUNT": 3,
+      "SLASH": 2
+    },
+    "cover": [
+      "CABECA",
+      "TRONCO",
+      "BRACOS"
+    ],
+    "weightKg": 7,
+    "category": "MEDIUM"
+  },
+  {
+    "key": "CAPACETE",
+    "name": "Capacete",
+    "kind": "PROTECTION",
+    "price": "3",
+    "access": "Livre",
+    "protection": {
+      "BLUNT": 3,
+      "PIERCE": 2
+    },
+    "cover": [
+      "CABECA"
+    ],
+    "weightKg": 1.5,
+    "category": "LIGHT",
+    "effects": [
+      "HELMET"
+    ],
+    "text": "−1 PQ em golpes na Têmpora e na Nuca"
+  },
+  {
+    "key": "BANDAGEM",
+    "name": "Bandagem de Mãos",
+    "kind": "COMPETITION",
+    "price": "¼",
+    "access": "Livre",
+    "text": "Falha crítica num Soco nunca fere o próprio lutador"
+  },
+  {
+    "key": "LUVAS_BOXE",
+    "name": "Luvas de Boxe",
+    "kind": "COMPETITION",
+    "price": "1",
+    "access": "Livre",
+    "effects": [
+      "BOXING_GLOVES"
+    ],
+    "text": "+2 em Defender; socos não miram os Olhos; Agarrão com desvantagem"
+  },
+  {
+    "key": "LUVAS_MMA",
+    "name": "Luvas de MMA",
+    "kind": "COMPETITION",
+    "price": "1",
+    "access": "Livre",
+    "effects": [
+      "MMA_GLOVES"
+    ],
+    "text": "−3 de dano no Soco, +1 PQ"
+  },
+  {
+    "key": "PROTETOR_BUCAL",
+    "name": "Protetor Bucal",
+    "kind": "COMPETITION",
+    "price": "¼",
+    "access": "Livre",
+    "effects": [
+      "MOUTHGUARD"
+    ],
+    "text": "+2 no Teste de Vontade de nocaute"
+  },
+  {
+    "key": "COQUILHA",
+    "name": "Coquilha",
+    "kind": "COMPETITION",
+    "price": "½",
+    "access": "Livre",
+    "text": "Golpes nos Genitais só tiram SP, sem Teste de Vontade"
+  },
+  {
+    "key": "CANELEIRAS",
+    "name": "Caneleiras",
+    "kind": "COMPETITION",
+    "price": "1",
+    "access": "Livre",
+    "effects": [
+      "SHIN_GUARDS"
+    ],
+    "text": "+1 em Defender contra chutes"
+  },
+  {
+    "key": "CAPACETE_TREINO",
+    "name": "Capacete de Treino",
+    "kind": "COMPETITION",
+    "price": "2",
+    "access": "Livre",
+    "effects": [
+      "TRAINING_HELMET"
+    ],
+    "text": "−1 PQ na Têmpora; desvantagem em percepção visual"
+  },
+  {
+    "key": "KIT_TREINO",
+    "name": "Kit de Treino Portátil",
+    "kind": "ACADEMY",
+    "price": "3",
+    "access": "Livre",
+    "weightKg": 6,
+    "text": "Em local Campo: +1 Treino Pleno por semana em FOR, CON ou DES"
+  },
+  {
+    "key": "CINTO_LEVANTAMENTO",
+    "name": "Cinto de Levantamento",
+    "kind": "ACADEMY",
+    "price": "1",
+    "access": "Livre",
+    "weightKg": 1,
+    "text": "+6 kg de Carga para Carga e para erguer/projetar"
+  },
+  {
+    "key": "CORDA_PULAR_KIT",
+    "name": "Corda de Pular",
+    "kind": "ACADEMY",
+    "price": "¼",
+    "access": "Livre",
+    "weightKg": 0.3,
+    "text": "Em local Campo: Estação de Condicionamento (SP) e de Destreza (movimentação)"
+  },
+  {
+    "key": "ROLO",
+    "name": "Rolo de Liberação",
+    "kind": "ACADEMY",
+    "price": "½",
+    "access": "Livre",
+    "weightKg": 1,
+    "text": "1×/semana, num Repouso Simples ou melhor, remove +1 Desgaste Físico"
+  },
+  {
+    "key": "KIT_SOCORROS",
+    "name": "Kit de Primeiros Socorros",
+    "kind": "TOOL",
+    "price": "2",
+    "access": "Livre",
+    "weightKg": 1,
+    "text": "Estabilizar com vantagem; eleva o Repouso a Tratado; INT ND 12 trata Ataques Localizados"
+  },
+  {
+    "key": "KIT_MANUTENCAO",
+    "name": "Kit de Manutenção",
+    "kind": "TOOL",
+    "price": "2",
+    "access": "Livre",
+    "weightKg": 2,
+    "text": "Conserta armas ou proteções"
+  },
+  {
+    "key": "CORDA",
+    "name": "Corda (15 m)",
+    "kind": "TOOL",
+    "price": "½",
+    "access": "Livre",
+    "weightKg": 2,
+    "text": "Amarrar alvo Imobilizado (Ação Maior): Preso, ND 14 para se soltar"
+  },
+  {
+    "key": "ALGEMAS",
+    "name": "Algemas",
+    "kind": "TOOL",
+    "price": "1",
+    "access": "Restrito",
+    "weightKg": 0.5,
+    "text": "Alvo Imobilizado/Inconsciente fica Preso; romper: FOR ND 22"
+  },
+  {
+    "key": "ABRACADEIRAS",
+    "name": "Abraçadeiras",
+    "kind": "TOOL",
+    "price": "¼",
+    "access": "Livre",
+    "text": "Como Algemas; romper FOR ND 16; faca corta com Ação Menor"
+  },
+  {
+    "key": "PE_DE_CABRA",
+    "name": "Pé de Cabra",
+    "kind": "TOOL",
+    "price": "½",
+    "access": "Livre",
+    "weightKg": 2,
+    "text": "Vantagem em FOR para forçar portas; arma improvisada (Cano)"
+  },
+  {
+    "key": "LANTERNA",
+    "name": "Lanterna",
+    "kind": "TOOL",
+    "price": "½",
+    "access": "Livre",
+    "weightKg": 0.5,
+    "text": "Cone de 9 m; nos olhos (Ação Menor ofensiva, DES × CON): Olho Irritado"
+  },
+  {
+    "key": "BINOCULO",
+    "name": "Binóculo",
+    "kind": "TOOL",
+    "price": "2",
+    "access": "Livre",
+    "weightKg": 0.5,
+    "text": "Vantagem em percepção visual a longa distância"
+  },
+  {
+    "key": "MOCHILA",
+    "name": "Mochila",
+    "kind": "TOOL",
+    "price": "1",
+    "access": "Livre",
+    "weightKg": 1,
+    "text": "Carrega o que não cabe no Acesso Rápido"
+  },
+  {
+    "key": "BAINHA",
+    "name": "Bainha, Coldre ou Bandoleira",
+    "kind": "TOOL",
+    "price": "½",
+    "access": "Livre",
+    "text": "Põe uma arma ou item no Acesso Rápido"
+  },
+  {
+    "key": "ROUPA_COMUM",
+    "name": "Roupa Comum",
+    "kind": "CLOTHING",
+    "price": "½",
+    "access": "Livre"
+  },
+  {
+    "key": "KIMONO",
+    "name": "Kimono (Gi)",
+    "kind": "CLOTHING",
+    "price": "2",
+    "access": "Livre",
+    "effects": [
+      "KIMONO"
+    ],
+    "text": "Quem agarra o usuário recebe +2 para mantê-lo Agarrado"
+  },
+  {
+    "key": "ROUPA_FRIO",
+    "name": "Roupa de Frio",
+    "kind": "CLOTHING",
+    "price": "2",
+    "access": "Livre",
+    "effects": [
+      "COLD_GEAR"
+    ],
+    "text": "Vantagem nos testes de CON de Congelando"
+  },
+  {
+    "key": "ANTICHAMAS",
+    "name": "Roupa Antichamas",
+    "kind": "CLOTHING",
+    "price": "8",
+    "access": "Restrito",
+    "effects": [
+      "FIREPROOF"
+    ],
+    "text": "Queimando um grau abaixo (Intenso vira Comum; Comum não acontece)"
+  },
+  {
+    "key": "ROUPA_ESCURA",
+    "name": "Roupa Escura (camuflagem)",
+    "kind": "CLOTHING",
+    "price": "1",
+    "access": "Livre",
+    "text": "+2 em Furtividade à noite ou em pouca luz"
+  }
+]

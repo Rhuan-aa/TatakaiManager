@@ -47,6 +47,8 @@ import java.util.UUID;
 public class VitalService {
 
     public static final String UNCONSCIOUS = "INCONSCIENTE";
+    /** Catálogo estático de equipamentos (só leitura do classpath, §43). */
+    private final EquipmentCatalog equipment = new EquipmentCatalog();
     /** Dano Persistente (§41): intensidade = dano no início do turno. */
     public static final String PERSISTENT = "DANO_PERSISTENTE";
     public static final String DYING = "BEIRA_DA_MORTE";
@@ -172,6 +174,9 @@ public class VitalService {
                 RollRules.modOrZero(mental ? s.getMen() : s.getCon()), null, false));
         int pen = CombatRules.fatiguePenalty(mental ? s.getMentalFatigue() : s.getPhysicalFatigue());
         if (pen > 0) hit.add(new RollPart("HIT", mental ? "Desgaste Mental" : "Desgaste Físico", -pen, null, false));
+        if (mental && "PQ 0".equals(label) && equipment.wears(s, "MOUTHGUARD")) {
+            hit.add(new RollPart("HIT", "Protetor Bucal", 2, null, false));
+        }
         BaseRules.Profile base = mental ? baseOf(p, s) : null;
         if (base != null && base.calm() != 0) {
             hit.add(new RollPart("HIT", "Calma (base: " + base.name() + ")", base.calm(), null, false));
@@ -509,7 +514,12 @@ public class VitalService {
         for (CombatCondition k : conds(p)) {
             switch (k.getConditionKey()) {
                 case BURNING -> {
-                    EnvironmentRules.Level l = EnvironmentRules.level(EnvironmentRules.BURN, k.getIntensity());
+                    int level = (k.getIntensity() == null ? 1 : k.getIntensity()) - (equipment.wears(s, "FIREPROOF") ? 1 : 0);
+                    if (level <= 0) { // Roupa Antichamas: o Comum não pega
+                        log(e, p.getId(), CombatEventType.ACTION, p.getName() + ": a roupa antichamas segura o fogo");
+                        continue;
+                    }
+                    EnvironmentRules.Level l = EnvironmentRules.level(EnvironmentRules.BURN, level);
                     int d = rollDamage(s, l.dice(), "Queimando (" + l.label() + "): " + p.getName(), c);
                     log(e, p.getId(), CombatEventType.ACTION, p.getName() + " queima: " + d + " de dano");
                     applyHp(e, p, s, -d, new Ctx(c.userId(), c.role(), "Queimando", false));
@@ -518,7 +528,8 @@ public class VitalService {
                     int tests = k.getProgress() == null ? 0 : k.getProgress();
                     k.setProgress(tests + 1);
                     conditions.save(k);
-                    if (!attributeTest(e, p, s, Attribute.CON, EnvironmentRules.freezeNd(tests), "Congelando", 0, c)) {
+                    if (!attributeTest(e, p, s, Attribute.CON, EnvironmentRules.freezeNd(tests), "Congelando",
+                            equipment.wears(s, "COLD_GEAR") ? 1 : 0, c)) {
                         int d = rollDamage(s, EnvironmentRules.FREEZE_DAMAGE, "Congelando: " + p.getName(), c);
                         int before = s.getPhysicalFatigue();
                         s.setPhysicalFatigue(before + 1);

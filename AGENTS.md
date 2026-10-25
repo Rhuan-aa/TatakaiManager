@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 778 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 780 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -531,7 +531,7 @@ no canal `campaign` e recarregam.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 778 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 780 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -897,10 +897,12 @@ Exposta, Uso Restrito, Tardia, Previsível e Exige Base (regras puras em `Module
 `catalog/weapons.json` (`WeaponCatalog`, `GET /catalog/weapons`), item ligado por `inventory_items.weapon_key` e
 `location` (HAND/QUICK/PACK/WORN/DROPPED), ataque `BasicAttack.ARMA` (`sourceId` = item), técnica armada
 (`ArtTechnique.weaponClass`), munição/trava/Rajada/Dispersão/distância (`distanceM`), Ferida por tipo de dano, propriedades
-e módulos armados (regras puras em `WeaponRules`).
+e módulos armados (regras puras em `WeaponRules`). **Proteções e equipamento** (§43): `catalog/equipment.json`
+(`EquipmentCatalog`, `GET /catalog/equipment`), item `equipment_key` vestido (`location = WORN`); redução por região/tipo
+depois da Defesa, peso da armadura, luvas, capacetes, protetor bucal, kimono e roupas (`EquipmentRules`).
 
 **Pendentes** (detalhes no plano §26.5):
-1. **Proteções e consumíveis** — contrato no plano §43–§44 (capítulos Equipamentos e Consumíveis).
+1. **Consumíveis** — contrato no plano §44 (capítulo Consumíveis).
 2. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição, Duas Etapas e os efeitos únicos das
    Artes Clássicas (Foco, Ritmo, Pop, Embalo…).
 3. Fora do escopo por ora: Malícia/Pânico não existem no capítulo; adjacência e alcance não são verificados (sem grade).

@@ -102,6 +102,7 @@ public class CharacterSheetService {
 
     /** Catálogo estático (só leitura do classpath): instanciado aqui para não mexer no construtor. */
     private final WeaponCatalog weaponCatalog = new WeaponCatalog();
+    private final EquipmentCatalog equipmentCatalog = new EquipmentCatalog();
 
     public CharacterSheetService(CharacterSheetRepository sheetRepository,
                                  CampaignMemberRepository memberRepository,
@@ -524,6 +525,9 @@ public class CharacterSheetService {
     private void applyKeys(InventoryItem item, ItemPayload p) {
         if (p.weaponKey() != null && !p.weaponKey().isBlank() && weaponCatalog.find(p.weaponKey()).isEmpty()) {
             throw new InvalidCharacterSheetException("Arma fora do catálogo: " + p.weaponKey());
+        }
+        if (p.equipmentKey() != null && !p.equipmentKey().isBlank() && equipmentCatalog.find(p.equipmentKey()).isEmpty()) {
+            throw new InvalidCharacterSheetException("Equipamento fora do catálogo: " + p.equipmentKey());
         }
         item.setWeaponKey(p.weaponKey() == null || p.weaponKey().isBlank() ? null : p.weaponKey());
         item.setEquipmentKey(p.equipmentKey() == null || p.equipmentKey().isBlank() ? null : p.equipmentKey());

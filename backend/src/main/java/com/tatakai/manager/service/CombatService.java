@@ -108,8 +108,9 @@ public class CombatService {
     private final RollProfileService profiles;
     private final Random random = new SecureRandom();
 
-    /** Catálogo estático de armas (só leitura do classpath). */
+    /** Catálogos estáticos de armas e equipamentos (só leitura do classpath). */
     private final WeaponCatalog weapons = new WeaponCatalog();
+    private final EquipmentCatalog equipment = new EquipmentCatalog();
 
     public CombatService(EncounterRepository encounters, EncounterParticipantRepository participants,
                          CombatConditionRepository conditions, CombatEventRepository timeline,
@@ -510,7 +511,8 @@ public class CombatService {
                     .findFirst().orElseThrow(() -> new InvalidCombatException("Técnica de Preparação não encontrada ou inativa"));
         }
         int sp = VitalRules.adjustSp(prep != null ? prep.spCost() : CombatRules.spCost(action, req.spCost()),
-                VitalRules.tier(p.getAdrenaline()), dissociated);
+                VitalRules.tier(p.getAdrenaline()), dissociated)
+                + (pa >= 3 ? com.tatakai.manager.service.rules.EquipmentRules.majorSp(armorWeight(s)) : 0); // Proteção Pesada
         if (sp > 0 && keys.contains(VitalService.EXHAUSTED)) {
             throw new InvalidCombatException("Exausto: sem técnicas nem ações com custo de SP");
         }
@@ -584,6 +586,7 @@ public class CombatService {
                 if (keys.contains(VitalService.FREEZING)) d = d / 2; // Congelando: Movimentação pela metade
                 if (SheetRules.overloaded(s)) d = d / 2;             // Sobrecarregado: idem
                 if (keys.contains("ALEIJADO")) d = d / 2;            // Aleijar: Movimentação pela metade
+                if (p.getMovesThisTurn() == 1) d = com.tatakai.manager.service.rules.EquipmentRules.firstMove(d, armorWeight(s));
                 text.append(" — Moveu ").append(d == Math.floor(d) ? String.valueOf((int) d) : String.valueOf(d).replace('.', ',')).append(" m");
             }
             case STAND_UP -> {
@@ -611,6 +614,12 @@ public class CombatService {
         }
         log(e, p.getId(), CombatEventType.ACTION, text.toString());
         return done(e, "ACTION", userId, master);
+    }
+
+    /** Categoria de peso mais pesada vestida (null sem proteção, §43). */
+    private String armorWeight(CharacterSheet s) {
+        return com.tatakai.manager.service.rules.EquipmentRules.heaviest(equipment.worn(s).stream()
+                .map(EquipmentCatalog.Def::category).filter(java.util.Objects::nonNull).toList());
     }
 
     // ---------- armas em mãos (§42) ----------
@@ -872,7 +881,8 @@ public class CombatService {
         int adv = (GrappleRules.escapeDisadvantage(hold.getConditionKey(), hold.getNote()) ? -1 : 0)
                 - (mine.stream().anyMatch(c -> GrappleRules.PANIC.equals(c.getConditionKey())) ? 1 : 0);
         Attribute gAttr = GrappleRules.RESTRAINED.equals(hold.getConditionKey()) ? attr : Attribute.STR;
-        if (contest(e, p, s, attr, adv, g, sheetOf(g), gAttr, 0, "Escapar", userId, role)) {
+        int gi = equipment.wears(s, "KIMONO") ? 2 : 0; // Kimono: as pegadas estão prontas para quem agarra
+        if (contest(e, p, s, attr, adv, 0, g, sheetOf(g), gAttr, 0, gi, "Escapar", userId, role)) {
             releaseBetween(e, g, p);
             log(e, p.getId(), CombatEventType.ACTION, p.getName() + " escapa de " + g.getName());
         }
@@ -882,18 +892,26 @@ public class CombatService {
     private boolean contest(Encounter e, EncounterParticipant a, CharacterSheet as, Attribute aAttr, int aAdv,
                             EncounterParticipant b, CharacterSheet bs, Attribute bAttr, int bAdv, String label,
                             UUID userId, ActorRole role) {
-        int ta = contestRoll(e, a, as, aAttr, aAdv, label, userId, role);
-        int tb = contestRoll(e, b, bs, bAttr, bAdv, label, userId, role);
+        return contest(e, a, as, aAttr, aAdv, 0, b, bs, bAttr, bAdv, 0, label, userId, role);
+    }
+
+    /** Competição com bônus fixos de equipamento (Kimono, Giz de Magnésio). */
+    private boolean contest(Encounter e, EncounterParticipant a, CharacterSheet as, Attribute aAttr, int aAdv, int aBonus,
+                            EncounterParticipant b, CharacterSheet bs, Attribute bAttr, int bAdv, int bBonus,
+                            String label, UUID userId, ActorRole role) {
+        int ta = contestRoll(e, a, as, aAttr, aAdv, aBonus, label, userId, role);
+        int tb = contestRoll(e, b, bs, bAttr, bAdv, bBonus, label, userId, role);
         boolean won = GrappleRules.wins(ta, tb);
         log(e, a.getId(), CombatEventType.ACTION, label + ": " + a.getName() + " " + ta + " × " + tb + " " + b.getName()
                 + " — " + (won ? "sucesso" : "falha"));
         return won;
     }
 
-    private int contestRoll(Encounter e, EncounterParticipant p, CharacterSheet s, Attribute attr, int adv, String label,
-                            UUID userId, ActorRole role) {
+    private int contestRoll(Encounter e, EncounterParticipant p, CharacterSheet s, Attribute attr, int adv, int bonus,
+                            String label, UUID userId, ActorRole role) {
         RollProfileService.Calc c = profiles.attribute(s, attr);
         List<RollPart> hit = new ArrayList<>(c.hit());
+        if (bonus != 0) hit.add(new RollPart("HIT", "Equipamento", bonus, null, false));
         BaseRules.Profile base = profiles.baseProfile(s, p.getActiveBaseId());
         if (base != null && base.traction() != 0) {
             hit.add(new RollPart("HIT", "Tração (base: " + base.name() + ")", base.traction(), null, false));

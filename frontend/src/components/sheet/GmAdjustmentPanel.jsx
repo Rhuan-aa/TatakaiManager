@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listTraits, listWeapons } from '../../api/catalog';
+import { listEquipment, listTraits, listWeapons } from '../../api/catalog';
 import { ITEM_LOCATION } from '../ui/gear';
 import { gmAdjust } from '../../api/characterSheets';
 import { parseApiError } from '../../api/parseApiError';
@@ -40,8 +40,9 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
   const [targetId, setTargetId] = useState('');
   const [reason, setReason] = useState('');
   const [injury, setInjury] = useState({ type: 'CUTTING', region: '', severity: 'MINOR', damage: '', affectedAttribute: '' });
-  const [item, setItem] = useState({ name: '', quantity: 1, description: '', weightKg: '', weaponKey: '', location: '' });
+  const [item, setItem] = useState({ name: '', quantity: 1, description: '', weightKg: '', weaponKey: '', equipmentKey: '', location: '' });
   const [weapons, setWeapons] = useState([]);
+  const [equipment, setEquipment] = useState([]);
   const [busy, setBusy] = useState(false);
 
   const [catalog, setCatalog] = useState([]);
@@ -58,6 +59,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
     if (!ACTIONS[action].item || weapons.length) return undefined;
     let active = true;
     listWeapons().then((w) => active && setWeapons(w.filter((x) => !x.hidden))).catch(() => {});
+    listEquipment().then((q) => active && setEquipment(q)).catch(() => {});
     return () => { active = false; };
   }, [action, weapons.length]);
 
@@ -82,6 +84,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
     }
     if (cfg.item) body.item = { ...item, quantity: Number(item.quantity), description: item.description || null,
       weightKg: item.weightKg === '' ? null : Number(item.weightKg), weaponKey: item.weaponKey || null,
+      equipmentKey: item.equipmentKey || null,
       location: item.location || null };
     setBusy(true);
     try {
@@ -145,7 +148,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
               const it = sheet.inventory.find((x) => x.id === e.target.value);
               if (it && cfg.item) {
                 setItem({ name: it.name, quantity: it.quantity, description: it.description ?? '', weightKg: it.weightKg || '',
-                  weaponKey: it.weaponKey ?? '', location: it.location ?? '' });
+                  weaponKey: it.weaponKey ?? '', equipmentKey: it.equipmentKey ?? '', location: it.location ?? '' });
               }
             }}>
               <option value="">Escolha…</option>
@@ -210,6 +213,18 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
               {weapons.map((w) => (
                 <option key={w.key} value={w.key}>{w.name}{w.dice ? ` · ${w.dice}` : w.bonus ? ` · +${w.bonus}` : ''}</option>
               ))}
+            </select>
+          </label>
+          <label className="text-xs uppercase">
+            Equipamento do catálogo
+            <select className="field mt-1 w-full" value={item.equipmentKey}
+              onChange={(e) => {
+                const q = equipment.find((x) => x.key === e.target.value);
+                setItem({ ...item, equipmentKey: e.target.value, name: item.name || (q?.name ?? ''),
+                  weightKg: item.weightKg || (q?.weightKg ?? ''), location: item.location || (q?.protection || q?.effects ? 'WORN' : '') });
+              }}>
+              <option value="">— nenhum —</option>
+              {equipment.map((q) => <option key={q.key} value={q.key} title={q.text ?? undefined}>{q.name}</option>)}
             </select>
           </label>
           <label className="text-xs uppercase">

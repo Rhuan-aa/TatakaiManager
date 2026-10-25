@@ -34,6 +34,7 @@ import com.tatakai.manager.dto.request.LateCounterRequest;
 import com.tatakai.manager.service.rules.MartialRules;
 import com.tatakai.manager.service.rules.ModuleRules;
 import com.tatakai.manager.service.rules.WeaponRules;
+import com.tatakai.manager.service.rules.EquipmentRules;
 import com.tatakai.manager.entity.InventoryItem;
 import com.tatakai.manager.entity.ItemLocation;
 import com.tatakai.manager.service.rules.SheetRules;
@@ -95,8 +96,9 @@ public class AttackService {
     private static final String ARC_WEIGHT = "PESO_DO_ARCO";
     /** Nota do Agarrado por arma de Enredar (sem ninguém segurando). */
     public static final String ENTANGLED = "ENREDAR";
-    /** Catálogo estático de armas (só leitura do classpath). */
+    /** Catálogos estáticos de armas e equipamentos (só leitura do classpath). */
     private final WeaponCatalog weapons = new WeaponCatalog();
+    private final EquipmentCatalog equipment = new EquipmentCatalog();
     /** Mordida: quem agarra o mordedor faz Mental contra este ND ou solta (§40). */
     private static final int BITE_ND = 12;
     /** Regiões da face para a Cabeçada (−2 PA no próximo turno do alvo, §40). */
@@ -276,6 +278,7 @@ public class AttackService {
         int sp = a.getSourceType() == RollSourceType.BASIC_ATTACK
                 ? VitalRules.adjustSp(1, VitalRules.tier(att.getAdrenaline()), ctx.has(att.getId(), "DISSOCIADO"))
                 : calc.spCost();
+        if (a.getActionKind() == AttackActionKind.MAJOR) sp += EquipmentRules.majorSp(armorWeight(s)); // Proteção Pesada
         BaseRules.Profile ownBase = profiles.baseProfile(s, att.getActiveBaseId());
         if (a.getSourceType() == RollSourceType.TECHNIQUE && ownBase != null && ownBase.economy(attackTypeOf(a, att, s))) {
             sp = Math.max(0, sp - 1); // Economia da base: fixo, depois dos multiplicadores
@@ -727,7 +730,7 @@ public class AttackService {
                 t.setReaction(ReactionType.NONE);
             }
             if (t.getReaction() != ReactionType.NONE && !atk.fumble()) {
-                rmsg = reactionRoll(e, a, att, attSheet, reactionBoost(e, rp, rsh, rt, t.getReaction(), weapon), rp, rsh,
+                rmsg = reactionRoll(e, a, att, attSheet, reactionBoost(e, rp, rsh, rt, t.getReaction(), weapon, basicOf(a)), rp, rsh,
                         t.getReaction(), group.size(), ctx, mu, counterCalc, userId, role);
                 t.setReactionRollId(rmsg.id());
                 if (rt != null) {
@@ -802,6 +805,7 @@ public class AttackService {
             boolean grab = a.getBasicAttack() == BasicAttack.AGARRAO && a.getSourceType() == RollSourceType.BASIC_ATTACK;
             int dmg = connects && calc.dice() != null && !(grab && !a.isSqueeze())
                     ? AttackRules.damage(hitDamage, r.mitigationPct(), calejo) : 0;
+            dmg = afterProtection(e, dmg, a, weapon, tp, tsh);
             if (grab && r.outcome() == AttackOutcome.HIT) grabOn(e, att, attSheet, tp, tsh, a.getGrip());
             if (weapon != null && connects) weaponHit(e, a, weapon, gun, att, attSheet, tp, tsh, atk, vctx);
             if (r.outcome() == AttackOutcome.HIT) basicHit(e, a, att, attSheet, tp, tsh, tpBase, atk, vctx, userId, role);
@@ -839,6 +843,7 @@ public class AttackService {
                                 + (weapon == null ? 0 : weapon.impact()), 0, atk.critical(),
                         VitalRules.activeHysteria(tp.getAdrenaline(), tp.getHysteria()) == Hysteria.WALL)
                         - (rr != null && rr.absorb() ? 1 : 0) - (tpBase != null && tpBase.continuousAbsorb() ? 1 : 0);
+                kp -= helmet(tsh, a.getRegion());
                 woundsByType(e, weapon, t, r, rsh, tp, tsh, atk, vctx);
                 if (kp > 0) vital.applyKp(e, tp, tsh, -kp, vctx);
                 if (breath != ModuleRules.Breath.SP_ONLY && (permanentInjury(atk, calc)
@@ -983,6 +988,37 @@ public class AttackService {
         }
         ts.forEach(t -> { t.setOutcome(AttackOutcome.MISS); t.setMitigationPct(0); t.setDamage(0); t.setCounterDamage(0); targets.save(t); });
         finish(e, a);
+    }
+
+    // ---------- proteções e equipamento (§43) ----------
+
+    /** Proteção vestida na região atingida (vale a maior), depois da reação e da Defesa; pode zerar o dano. */
+    private int afterProtection(Encounter e, int dmg, PendingAttack a, WeaponCatalog.Def w, EncounterParticipant tp,
+                                CharacterSheet tsh) {
+        if (dmg <= 0) return dmg;
+        String cover = EquipmentRules.coverage(a.getRegion());
+        String type = w == null ? "BLUNT" : w.damageType();
+        boolean firearm = w != null && w.firearm();
+        List<EquipmentCatalog.Def> worn = equipment.worn(tsh);
+        int red = EquipmentRules.best(worn.stream()
+                .map(d -> EquipmentRules.reduction(d.protection(), d.cover(), cover, type, firearm)).toList());
+        if (red <= 0) return dmg;
+        int left = Math.max(0, dmg - red);
+        log(e, tp.getId(), "Proteção de " + tp.getName() + " absorve " + (dmg - left) + " de dano");
+        return left;
+    }
+
+    /** Capacete: −1 PQ na Têmpora e na Nuca; Capacete de Treino: −1 PQ na Têmpora. */
+    private int helmet(CharacterSheet tsh, String region) {
+        String r = VitalRules.normalizeRegion(region);
+        if (r.contains("tempora") && (equipment.wears(tsh, "HELMET") || equipment.wears(tsh, "TRAINING_HELMET"))) return 1;
+        return r.contains("nuca") && equipment.wears(tsh, "HELMET") ? 1 : 0;
+    }
+
+    /** Categoria de peso mais pesada vestida (null sem proteção). */
+    private String armorWeight(CharacterSheet s) {
+        return EquipmentRules.heaviest(equipment.worn(s).stream().map(EquipmentCatalog.Def::category)
+                .filter(java.util.Objects::nonNull).toList());
     }
 
     /** Arma em mãos do defensor (para Defensiva, Flexível e Aparar); null = desarmado. */
@@ -1141,9 +1177,10 @@ public class AttackService {
     }
 
     /** +1 PQ por golpe na cabeça: Chute, Cotovelada, Pisão e Joelhada no Clinch (§40). */
-    private static int basicKp(PendingAttack a, EncounterParticipant tp, Ctx ctx) {
+    private int basicKp(PendingAttack a, EncounterParticipant tp, Ctx ctx) {
         BasicAttack b = basicOf(a);
         if (b == BasicAttack.CHUTE || b == BasicAttack.COTOVELADA || b == BasicAttack.PISAO) return 1;
+        if (b == BasicAttack.SOCO && equipment.wears(ctx.sheetOf.get(a.getAttackerId()), "MMA_GLOVES")) return 1;
         return b == BasicAttack.JOELHADA && ctx.has(tp.getId(), GrappleRules.CLINCH) ? 1 : 0;
     }
 
@@ -1424,6 +1461,9 @@ public class AttackService {
         if (b == BasicAttack.SOCO && a.getActionKind() == AttackActionKind.MINOR_OFFENSIVE) {
             damage.removeIf(p -> "FOR".equals(p.source()));
         }
+        CharacterSheet as = ctx.sheetOf.get(att.getId());
+        if (b == BasicAttack.SOCO && equipment.wears(as, "MMA_GLOVES")) damage.add(new RollPart("DAMAGE", "Luvas de MMA", -3, null, false));
+        int glovesAdv = b == BasicAttack.AGARRAO && equipment.wears(as, "BOXING_GLOVES") ? -1 : 0;
         if (b == BasicAttack.JOELHADA && ctx.hasAny(first.getId(), Set.of("AGARRADO", "CLINCH"))) {
             hit.removeIf(p -> BasicAttack.JOELHADA.label.equals(p.source()));
         }
@@ -1434,7 +1474,8 @@ public class AttackService {
                 .map(k -> ctx.ps.get(k.getSourceParticipantId()))
                 .anyMatch(src -> src != null && src.getTeam() == att.getTeam());
         if (marked) hit.add(new RollPart("HIT", "Alvo Marcado", 1, null, false));
-        int adv = c.advantage();
+        int adv = c.advantage() + glovesAdv;
+        if (glovesAdv != 0) hit.add(new RollPart("HIT", "Luvas de Boxe: Agarrão com desvantagem", 0, null, false));
         // Abertura: o próximo ataque contra quem foi defendido/esquivado tem vantagem (consumida aqui)
         CombatCondition opening = conditions.findByParticipantIdIn(List.of(att.getId())).stream()
                 .filter(k -> "ABERTURA".equals(k.getConditionKey()) && first.getId().equals(k.getSourceParticipantId()))
@@ -1728,9 +1769,20 @@ public class AttackService {
 
     /** Reforço da técnica (Esboço: desvantagem), Reforço e Leitura da Preparação ativa (Leitura é consumida). */
     private Boost reactionBoost(Encounter e, EncounterParticipant rp, CharacterSheet rsh,
-                                RollProfileService.CoreTechnique rt, ReactionType reaction, WeaponCatalog.Def attackerWeapon) {
+                                RollProfileService.CoreTechnique rt, ReactionType reaction, WeaponCatalog.Def attackerWeapon,
+                                BasicAttack basic) {
         List<RollPart> parts = new ArrayList<>();
         int adv = 0;
+        if (reaction == ReactionType.DEFEND && equipment.wears(rsh, "BOXING_GLOVES")) {
+            parts.add(new RollPart("HIT", "Luvas de Boxe", 2, null, false));
+        }
+        if (reaction == ReactionType.DEFEND && basic == BasicAttack.CHUTE && equipment.wears(rsh, "SHIN_GUARDS")) {
+            parts.add(new RollPart("HIT", "Caneleiras", 1, null, false));
+        }
+        if (reaction == ReactionType.DODGE && "HEAVY".equals(armorWeight(rsh))) {
+            adv--;
+            parts.add(new RollPart("HIT", "Proteção Pesada (desvantagem)", 0, null, false));
+        }
         WeaponCatalog.Def dw = defenderWeapon(rsh);
         if (reaction == ReactionType.DEFEND && dw != null && dw.defensive()) {
             parts.add(new RollPart("HIT", "Arma Defensiva (" + dw.name() + ")", 2, null, false));

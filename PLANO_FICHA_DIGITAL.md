@@ -2274,6 +2274,13 @@ Regras puras novas em `service/rules/ModuleRules`; aplicação em `AttackService
   Bucal (+2 no Teste de Vontade de nocaute), Caneleiras (+1 Defender contra Chute), Capacete de Treino (−1 PQ na Têmpora),
   Coquilha e Bandagem (texto). **Roupas**: Kimono (+2 de quem agarra para manter), Roupa de Frio (vantagem em Congelando),
   Antichamas (Queimando um grau abaixo).
+- **Implementado (25/10/2026):** `catalog/equipment.json` (35 itens: proteções, competição, academia, ferramentas, roupas),
+  `EquipmentCatalog.worn/wears`, `EquipmentRules` (cobertura pela região, redução por tipo, a maior vale, peso),
+  `AttackService.afterProtection/helmet` (depois da Defesa e do Calejamento; zerou cortante/perfurante = sem Ferida),
+  Pesada (Esquiva com desvantagem, Ação Maior/ataque maior +3 SP) e Média/Pesada na 1ª Movimentação em `CombatService`.
+  Luvas (Boxe/MMA), Caneleiras (só no Chute básico), Protetor Bucal (teste "PQ 0"), Kimono (+2 de quem agarra na fuga),
+  Roupa de Frio e Antichamas em `VitalService`. Academia, ferramentas, Coquilha, Bandagem e Roupa Escura: texto.
+  Furtividade não existe no combate (sem efeito).
 
 ## 44. Consumíveis (capítulo Consumíveis) — contrato
 

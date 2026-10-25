@@ -1758,4 +1758,35 @@ class AttackServiceTest {
         fight(shoot(grande, null, null), ReactionType.NONE, msg(15, 10, 5), null);
         assertThat(holds(pA, "PESO_DO_ARCO")).isTrue();
     }
+
+    // ---------- §43: proteções e equipamento ----------
+
+    private void wear(CharacterSheet s, String key) {
+        s.getInventory().add(InventoryItem.builder().id(UUID.randomUUID()).sheet(s).name(key).quantity(1)
+                .equipmentKey(key).location(ItemLocation.WORN).build());
+    }
+
+    @Test
+    @DisplayName("§43: colete anti-faca reduz a lâmina (zerou: sem Ferida); capacete tira 1 PQ na têmpora; luvas")
+    void protections() {
+        wear(npcSheet, "COLETE_ANTIFACA");
+        InventoryItem faca = wield("FACA", 0);
+        AttackResponse r = fight(shoot(faca, null, null), ReactionType.NONE, msg(15, 10, 6), null);
+        assertThat(r.targets().get(0).damage()).isEqualTo(2);
+        assertThat(npcSheet.getOpenWounds()).isEqualTo(1);
+        r = fight(shoot(faca, null, null), ReactionType.NONE, msg(15, 10, 3), null);
+        assertThat(r.targets().get(0).damage()).isZero();
+        assertThat(npcSheet.getOpenWounds()).isEqualTo(1);
+        // nas pernas o colete não cobre
+        r = fight(shoot(faca, "joelho", null), ReactionType.NONE, msg(15, 10, 3), null);
+        assertThat(r.targets().get(0).damage()).isEqualTo(3);
+
+        sheetA.getInventory().clear();
+        wear(sheetA, "LUVAS_MMA");
+        wear(npcSheet, "LUVAS_BOXE");
+        rollCalcs.clear();
+        fight(basic(AttackActionKind.MAJOR, pN), ReactionType.DEFEND, msg(15, 10, 6), msg(5, 5, null));
+        assertThat(rollCalcs.get(0).damage()).anyMatch(x -> x.source().equals("Luvas de MMA") && x.value() == -3);
+        assertThat(rollCalcs.get(1).hit()).anyMatch(x -> x.source().equals("Luvas de Boxe") && x.value() == 2);
+    }
 }
