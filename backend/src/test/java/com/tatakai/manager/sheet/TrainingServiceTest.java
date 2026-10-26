@@ -210,4 +210,18 @@ class TrainingServiceTest {
         assertThat(pomada.getQuantity()).isZero();
         assertThat(calmante.getQuantity()).isZero();
     }
+
+    @Test
+    @DisplayName("Jogador ocioso não é penalizado em IDLE_PERIOD e recupera em TIMESKIP")
+    void idlePlayerIsNotPenalizedAndRecoversInTimeSkip() {
+        sheet.setPhysicalFatigue(2);
+        ts.setMode(com.tatakai.manager.timeskip.entity.TimeSkipMode.IDLE_PERIOD);
+
+        service.processUpTo(ts, (short) 2);
+        assertThat(sheet.getPhysicalFatigue()).isEqualTo(2);
+
+        ts.setMode(com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP);
+        service.processUpTo(ts, (short) 3);
+        assertThat(sheet.getPhysicalFatigue()).isEqualTo(1);
+    }
 }

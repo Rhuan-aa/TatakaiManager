@@ -1,6 +1,6 @@
 package com.tatakai.manager.timeskip.dto.request;
 
-import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.TimeSkipMode;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -19,6 +19,13 @@ public record CreateTimeSkipRequest(
         @NotNull(message = "número de dias é obrigatório")
         @Min(value = 1, message = "o TimeSkip deve ter ao menos 1 dia")
         @Max(value = 365, message = "o TimeSkip não pode exceder 365 dias")
-        Short totalDays
+        Short totalDays,
 
-) {}
+        TimeSkipMode mode
+
+) {
+    public CreateTimeSkipRequest(String name, Short totalDays) {
+        this(name, totalDays, null);
+    }
+}
+

@@ -74,6 +74,7 @@ public class TimeSkipService {
                 .name(req.name())
                 .totalDays(req.totalDays())
                 .status(TimeSkipStatus.ACTIVE)
+                .mode(req.mode() != null ? req.mode() : com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP)
                 .build();
         timeSkip.generateDays();
 
@@ -179,6 +180,7 @@ public class TimeSkipService {
                 ts.getStatus(),
                 ts.getCreatedAt(),
                 ts.getClosedAt(),
-                ts.getVenue());
+                ts.getVenue(),
+                ts.getMode() != null ? ts.getMode() : com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP);
     }
 }

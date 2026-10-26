@@ -2302,9 +2302,9 @@ Tudo abaixo ainda **não** está no sistema (ou está só como texto para o Mest
 seção nova e risque o item aqui.
 
 **Verificação**
-1. Testar no navegador as telas novas: grupo "Agarre", "Armas" e "Consumíveis" no `ActionBar`; distância, corrida e
+1. ~~Testar no navegador as telas novas: grupo "Agarre", "Armas" e "Consumíveis" no `ActionBar`; distância, corrida e
    superfície no `AttackBuilder`; "Encadear"; seletor de chão; campos de catálogo no ajuste de item; "Arma (técnica
-   armada)" no `ArtEditor`. Só o backend foi testado (unitários + smoke da API).
+   armada)" no `ArtEditor`. Só o backend foi testado (unitários + smoke da API).~~ (verificado E2E em `:8080` + `:3001`, §49)
 
 **Criação Marcial**
 2. ~~Efeitos únicos das Artes Clássicas (Foco, Ritmo/PR, Pop, Embalo, Força Centrífuga, Terreno Perdido…): hoje só texto.
@@ -2457,3 +2457,29 @@ seção nova e risque o item aqui.
   - `CREATINA` (`CREATINE`, `use = SELF`): quando `currentSp < spMax / 4` (abaixo de 25%), recupera `1d4` SP (1× por combate, marcada por `CREATINA_USADA`).
   - `POMADA` e `CALMANTE` no Repouso (`TrainingService.rest`): se restar desgaste após a recuperação base do Repouso, consome 1 unidade de `POMADA` para `−1` `physicalFatigue` e/ou 1 unidade de `CALMANTE` para `−1` `mentalFatigue`.
   - `ESTIMULANTE` (`VitalService.stimulantCrash`): ao expirar `ESTIMULADO`, além de `+2` Desgaste Físico e `+1` Mental, reduz `currentSp` ao teto de `75%` de `spMax`.
+
+## 49. Período Ocioso (`IDLE_PERIOD`) vs TimeSkip (`TIMESKIP`) e Verificação E2E (Bloco G, 26/10/2026)
+
+- **Distinção de modo na Agenda (`TimeSkipMode`)**:
+  - `IDLE_PERIOD` (*Período Ocioso / Dia a Dia*): representa os **4 pontos de ócio diários** de um dia comum de campanha (com atalho `+ Período Ocioso (Dia)` no `TimeSkipPanel` preenchendo 1 dia).
+  - `TIMESKIP` (*TimeSkip / Salto Temporal*): representa um salto temporal off-screen de múltiplos dias entre arcos (atalho `+ Novo TimeSkip` com 7 dias).
+  - Persistido em `time_skips.mode` (`TimeSkip.mode`, padrão `TIMESKIP` para compatibilidade retroativa), exposto em `CreateTimeSkipRequest.mode` e `TimeSkipResponse.mode`, com badges visuais (`Ócio` âmbar / `TimeSkip` índigo) no `TimeSkipPanel.jsx`.
+- **Regras de Desgaste e Repouso Implícito (`TrainingService.processUpTo` / `processDay`)**:
+  - **Lutador off-screen / sem agendamentos no dia (`bookings.isEmpty() && totalSlotsUsedInDay == 0`)**: **não** recebe a penalidade de `+1` Desgaste Físico por falta de Repouso. Além disso, quando `ts.getMode() == TimeSkipMode.TIMESKIP` e a ficha possui desgaste acumulado (`physicalFatigue > 0 || mentalFatigue > 0`), recebe automaticamente um Repouso implícito `RestQuality.SIMPLE` no dia.
+  - **Lutador que usou apenas 1..3 pontos de ócio em interações com NPC/atividades sociais (`bookings.isEmpty() && totalSlotsUsedInDay < 4`)**: também não sofre `+1` Desgaste Físico ao virar o dia (considera-se que descansou no tempo restante do dia).
+  - **Lutador que treinou/forjou sem agendar Repouso (`!bookings.isEmpty()`) ou consumiu todos os 4 slots do dia (`totalSlotsUsedInDay >= 4`) sem Repouso**: continua recebendo `+1` Desgaste Físico (`"Dia X sem Repouso"`).
+- **Verificação E2E (Bloco G)**: validados ponta a ponta na stack Docker (`:8080` + `:3001`) os catálogos (`/catalog/weapons`, `/catalog/equipment`, `/catalog/consumables`), validador de técnica armada (`/catalog/assembly/check` com `weaponClass`), fluxo `IDLE_PERIOD` vs `TIMESKIP`, ajustes de inventário com itens de catálogo (`FACA`, `SAQUINHO_PO`, `COQUILHA`, `BANDAGEM`) e encontro de combate completo (`PATCH /encounters/{id}` com `floor`, `DRAW`, `USE_ITEM`, ataque com `distanceM`/`runMeters`/`surface` e reação).
+
+---
+## Anotações de acompanhamento
+- **Gasto de PA — já coberto (conferido 26/10/2026):** `CombatService` (`act`, `useItem`, linhas ~582/1091/1184) e
+  `AttackService` (~321) já lançam `InvalidCombatException("PA insuficiente: …")` antes de executar, e "Mãos ocupadas"
+  vem do `gearCheck`. Há teste em `CombatServiceTest`. Os erros do script E2E eram do script (ação cara, item em `HAND`),
+  não falta de validação. Nada a implementar aqui.
+- **Pendente do Bloco G:** rodar `./mvnw test` e commitar (`TimeSkipMode`, `TrainingService`, `TimeSkipPanel`, docs).
+- **Próximas frentes (de §45):**
+  - **Bloco D** — consumíveis de TimeSkip (Analgésico, Termogênico, Energético, Ração, Suplemento Proteico,
+    Hipercalórico, Corda de Pular), Kit de Cutman (5 usos), Regra de Dose + Colaterais adiados (itens 22, 24, 25).
+  - **Bloco E** — Explosivos em área, estoque de Munição, Capacete fechado no Queixo (itens 14, 15, 20).
+  - Depois: Bombas (27), grade/posição (3), limitações em texto (4), loja/Diárias (19), vestir proteção (23).
+---

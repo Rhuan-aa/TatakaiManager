@@ -51,6 +51,11 @@ public class TimeSkip {
     @Builder.Default
     private TimeSkipStatus status = TimeSkipStatus.ACTIVE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    @Builder.Default
+    private TimeSkipMode mode = TimeSkipMode.TIMESKIP;
+
     /** Local de treino (RN-PROG-03); null = Academia Comum. */
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

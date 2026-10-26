@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 792 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 793 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -935,7 +935,10 @@ repara item `damaged`/`broken` em `USE_ITEM`; `CORDA`/`ALGEMAS`/`ABRACADEIRAS` a
 ND 14/22/16); `CINTO_LEVANTAMENTO` soma `+6 kg` em `SheetRules.carryKg(CharacterSheet)`; `KIT_TREINO` dá `+1` Treino Pleno semanal
 em Campo (FOR/CON/DES); `ROLO`, `POMADA` e `CALMANTE` reduzem desgaste extra no Repouso; `TALA` (`SPLINT`), `SAQUINHO_PO`
 (`CHALK_BAG`) e `CREATINA` (`CREATINE`, `+1d4 SP` com SP < 25%, 1×/combate) em `USE_ITEM`; `VitalService.stimulantCrash` limita
-`currentSp` a 75% do `spMax`.
+`currentSp` a 75% do `spMax`. **Período Ocioso vs TimeSkip** (§49): `TimeSkip.mode` (`TimeSkipMode`: `IDLE_PERIOD` para os 4 pontos
+diários de ócio em campanha ativa vs `TIMESKIP` para salto temporal de múltiplos dias); `TrainingService.processDay` não penaliza com
+`+1` Desgaste Físico quem não agendou nada no dia ou usou `< 4` slots só em interações sociais/NPC, e em `TIMESKIP` aplica Repouso
+implícito `SIMPLE` aos personagens off-screen (0 slots usados no dia) que estejam com desgaste acumulado.
 
 **Pendentes** (lista completa no plano §45; antigos em §26.5):
 1. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição e Duas Etapas.
@@ -945,4 +948,4 @@ em Campo (FOR/CON/DES); `ROLO`, `POMADA` e `CALMANTE` reduzem desgaste extra no 
 `inventory_items.weight_kg`, `encounter_participants.stabilize_failures`/`fluid_switch_used`/`readiness_used`/`trained_reload_used`,
 `character_sheets.knockout_sequel`, `attack_targets.defender_id`/`reaction_technique_id`/`reaction_variation`,
 `pending_attacks.grip`/`squeeze`/`run_meters`/`surface`/`distance_m`, `encounters.floor`, `inventory_items.weapon_key`/
-`equipment_key`/`consumable_key`/`location`/`loaded`/`jammed`/`cocked`/`broken`/`damaged`/`two_handed`. Dropar `pending_attacks_basic_attack_check` (Mordida/Empurrão/Encontrão/Pisão/Arma, §11.11). Ao implementar um item, escreva o contrato numa seção nova do plano e marque-o aqui.
+`equipment_key`/`consumable_key`/`location`/`loaded`/`jammed`/`cocked`/`broken`/`damaged`/`two_handed`, `time_skips.mode`. Dropar `pending_attacks_basic_attack_check` (Mordida/Empurrão/Encontrão/Pisão/Arma, §11.11). Ao implementar um item, escreva o contrato numa seção nova do plano e marque-o aqui.

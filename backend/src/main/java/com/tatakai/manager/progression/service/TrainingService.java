@@ -34,6 +34,7 @@ import com.tatakai.manager.sheet.service.rules.SheetRules;
 import com.tatakai.manager.timeskip.entity.Booking;
 import com.tatakai.manager.timeskip.entity.SoloActivityType;
 import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.TimeSkipMode;
 import com.tatakai.manager.timeskip.repository.BookingRepository;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -110,25 +111,33 @@ public class TrainingService {
         if (newCurrentDay - 1 <= processed) return;
         List<CharacterSheet> sheets = sheetRepository.findByCampaignMemberCampaignId(ts.getCampaign().getId()).stream()
                 .filter(s -> s.getBuildStatus() == BuildStatus.COMPLETED).toList();
-        List<Booking> bookings = bookingRepository.findByTimeSkipDay_TimeSkipId(ts.getId()).stream()
-                .filter(b -> b.getNpcId() == null && (b.getSoloActivityType() == SoloActivityType.TREINO
-                        || b.getSoloActivityType() == SoloActivityType.REPOUSO
-                        || b.getSoloActivityType() == SoloActivityType.FORJA))
-                .sorted(Comparator.comparingInt(Booking::getSlotNumber)).toList();
+        List<Booking> allBookings = bookingRepository.findByTimeSkipDay_TimeSkipId(ts.getId());
         for (short day = (short) (processed + 1); day < newCurrentDay; day++) {
             for (CharacterSheet sheet : sheets) {
                 UUID userId = sheet.getCampaignMember().getUser().getId();
                 short d = day;
-                List<Booking> mine = bookings.stream()
-                        .filter(b -> b.getUser().getId().equals(userId) && b.getTimeSkipDay().getDayNumber() == d)
+                List<Booking> mineSolo = allBookings.stream()
+                        .filter(b -> b.getUser().getId().equals(userId)
+                                && b.getTimeSkipDay().getDayNumber() == d
+                                && b.getNpcId() == null
+                                && (b.getSoloActivityType() == SoloActivityType.TREINO
+                                || b.getSoloActivityType() == SoloActivityType.REPOUSO
+                                || b.getSoloActivityType() == SoloActivityType.FORJA))
+                        .sorted(Comparator.comparingInt(Booking::getSlotNumber))
                         .toList();
-                processDay(ts, sheet, day, mine);
+                int totalSlotsUsedInDay = allBookings.stream()
+                        .filter(b -> b.getUser().getId().equals(userId)
+                                && b.getTimeSkipDay().getDayNumber() == d
+                                && b.getSlotNumber() <= 4)
+                        .mapToInt(b -> Math.max(1, (int) b.getIdlePointCost()))
+                        .sum();
+                processDay(ts, sheet, day, mineSolo, totalSlotsUsedInDay);
             }
         }
         ts.setProcessedDay((short) (newCurrentDay - 1));
     }
 
-    private void processDay(TimeSkip ts, CharacterSheet sheet, short day, List<Booking> bookings) {
+    private void processDay(TimeSkip ts, CharacterSheet sheet, short day, List<Booking> bookings, int totalSlotsUsedInDay) {
         boolean rested = false;
         for (Booking b : bookings) {
             if (b.getSoloActivityType() == SoloActivityType.TREINO && b.getTrainingTarget() != null) {
@@ -141,10 +150,18 @@ public class TrainingService {
             }
         }
         if (!rested) {
-            int before = sheet.getPhysicalFatigue();
-            sheet.setPhysicalFatigue(before + 1);
-            log(sheet, ActivityCategory.RESOURCE, "NO_REST", "physicalFatigue", before, before + 1,
-                    "Dia " + day + " sem Repouso");
+            if (bookings.isEmpty() && totalSlotsUsedInDay == 0) {
+                if (ts.getMode() == TimeSkipMode.TIMESKIP && (sheet.getPhysicalFatigue() > 0 || sheet.getMentalFatigue() > 0)) {
+                    rest(sheet, RestQuality.SIMPLE);
+                }
+            } else {
+                if (!bookings.isEmpty() || totalSlotsUsedInDay >= 4) {
+                    int before = sheet.getPhysicalFatigue();
+                    sheet.setPhysicalFatigue(before + 1);
+                    log(sheet, ActivityCategory.RESOURCE, "NO_REST", "physicalFatigue", before, before + 1,
+                            "Dia " + day + " sem Repouso");
+                }
+            }
         }
         sheetRepository.save(sheet);
         events.publishEvent(new SheetUpdateMessage(SheetUpdateMessage.SheetEvent.SHEET_UPDATED,

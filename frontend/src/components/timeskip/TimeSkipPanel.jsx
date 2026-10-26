@@ -23,7 +23,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', totalDays: 7 });
+  const [form, setForm] = useState({ name: '', totalDays: 1, mode: 'IDLE_PERIOD' });
   const [createError, setCreateError] = useState('');
   const [createFields, setCreateFields] = useState({});
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -67,12 +67,17 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
       const created = await createTimeSkip(campaignId, {
         name: form.name,
         totalDays: Number(form.totalDays),
+        mode: form.mode,
       });
       setTimeSkips((prev) => [...prev, created]);
       setSelectedId(created.id);
       setCreating(false);
-      setForm({ name: '', totalDays: 7 });
-      toast(`TimeSkip "${created.name}" criado.`);
+      setForm({ name: '', totalDays: 1, mode: 'IDLE_PERIOD' });
+      toast(
+        form.mode === 'IDLE_PERIOD'
+          ? `Período Ocioso "${created.name}" criado.`
+          : `TimeSkip "${created.name}" criado.`
+      );
     } catch (err) {
       const parsed = parseApiError(err);
       setCreateError(parsed.message);
@@ -145,31 +150,56 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {timeSkips.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                setSelectedId(t.id);
-                setConfirmingDelete(false);
-              }}
-              className={`${t.id === selectedId ? 'btn-primary' : 'btn-secondary'} px-3 py-1.5 text-sm`}
-            >
-              {t.name}
-              {t.status === 'CLOSED' && (
-                <span className="ml-1 text-xs opacity-70">(encerrado)</span>
-              )}
-            </button>
-          ))}
+          {timeSkips.map((t) => {
+            const isIdle = t.mode === 'IDLE_PERIOD';
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setSelectedId(t.id);
+                  setConfirmingDelete(false);
+                }}
+                className={`${t.id === selectedId ? 'btn-primary' : 'btn-secondary'} px-3 py-1.5 text-sm inline-flex items-center gap-2`}
+              >
+                <span
+                  className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded border border-black/30 ${
+                    isIdle ? 'bg-amber-400 text-black' : 'bg-blue-600 text-white'
+                  }`}
+                >
+                  {isIdle ? 'Ócio' : 'TimeSkip'}
+                </span>
+                <span>{t.name}</span>
+                {t.status === 'CLOSED' && (
+                  <span className="text-xs opacity-70">(encerrado)</span>
+                )}
+              </button>
+            );
+          })}
         </div>
         {isMaster && !creating && (
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="btn-primary px-3 py-1.5 text-sm"
-          >
-            + Novo TimeSkip
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setForm({ name: 'Dia Ocioso', totalDays: 1, mode: 'IDLE_PERIOD' });
+                setCreating(true);
+              }}
+              className="btn-primary px-3 py-1.5 text-sm"
+            >
+              + Período Ocioso (Dia)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setForm({ name: '', totalDays: 7, mode: 'TIMESKIP' });
+                setCreating(true);
+              }}
+              className="btn-secondary px-3 py-1.5 text-sm"
+            >
+              + Novo TimeSkip
+            </button>
+          </div>
         )}
       </div>
 
@@ -182,6 +212,31 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
           noValidate
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="w-full sm:w-64">
+              <label htmlFor="ts-mode" className="block text-sm font-bold uppercase text-[var(--text)]">
+                Tipo de período
+              </label>
+              <select
+                id="ts-mode"
+                value={form.mode}
+                onChange={(e) => {
+                  const newMode = e.target.value;
+                  setForm((p) => ({
+                    ...p,
+                    mode: newMode,
+                    totalDays: newMode === 'IDLE_PERIOD' ? (p.totalDays === 7 ? 1 : p.totalDays) : (p.totalDays === 1 ? 7 : p.totalDays),
+                    name:
+                      newMode === 'IDLE_PERIOD' && (!p.name || p.name === '')
+                        ? 'Dia Ocioso'
+                        : p.name,
+                  }));
+                }}
+                className={inputClass}
+              >
+                <option value="IDLE_PERIOD">Período Ocioso — Dia a dia (4 pontos de ócio/dia)</option>
+                <option value="TIMESKIP">TimeSkip — Salto temporal (fora de cena / semanas)</option>
+              </select>
+            </div>
             <div className="flex-1">
               <label htmlFor="ts-name" className="block text-sm font-bold uppercase text-[var(--text)]">
                 Nome
@@ -198,7 +253,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 <p className="mt-1 text-xs text-[var(--accent)]">{createFields.name}</p>
               )}
             </div>
-            <div className="w-full sm:w-32">
+            <div className="w-full sm:w-28">
               <label htmlFor="ts-days" className="block text-sm font-bold uppercase text-[var(--text)]">
                 Dias
               </label>
@@ -240,26 +295,67 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
         <EmptyState
           className="mt-4"
           icon="🗓️"
-          title="Nenhum TimeSkip ainda"
+          title="Nenhum TimeSkip ou Período Ocioso ainda"
           description={
             isMaster
-              ? 'Crie o primeiro TimeSkip para começar a agendar as interações.'
-              : 'Aguarde o Mestre criar um TimeSkip para começar a agendar.'
+              ? 'Crie o primeiro Período Ocioso ou TimeSkip para começar a agendar as ações.'
+              : 'Aguarde o Mestre criar um Período Ocioso ou TimeSkip para começar a agendar.'
           }
           action={
             isMaster && !creating ? (
-              <button
-                type="button"
-                onClick={() => setCreating(true)}
-                className="btn-primary px-3 py-1.5 text-sm"
-              >
-                + Novo TimeSkip
-              </button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({ name: 'Dia Ocioso', totalDays: 1, mode: 'IDLE_PERIOD' });
+                    setCreating(true);
+                  }}
+                  className="btn-primary px-3 py-1.5 text-sm"
+                >
+                  + Período Ocioso (Dia)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({ name: '', totalDays: 7, mode: 'TIMESKIP' });
+                    setCreating(true);
+                  }}
+                  className="btn-secondary px-3 py-1.5 text-sm"
+                >
+                  + Novo TimeSkip
+                </button>
+              </div>
             ) : null
           }
         />
       ) : (
         <div className="panel mt-4 p-4">
+          <div className="mb-4 pb-3 border-b-2 border-black/15 flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`text-xs font-black uppercase px-2 py-0.5 rounded border border-black/30 shadow-sm ${
+                  selected.mode === 'IDLE_PERIOD'
+                    ? 'bg-amber-400 text-black'
+                    : 'bg-blue-600 text-white'
+                }`}
+              >
+                {selected.mode === 'IDLE_PERIOD' ? 'Período Ocioso' : 'TimeSkip'}
+              </span>
+              <h2 className="text-base font-black uppercase tracking-wide text-[var(--text)]">
+                {selected.name}
+              </h2>
+              {selected.status === 'CLOSED' && (
+                <span className="text-xs font-bold uppercase text-[var(--muted)] border border-current px-1.5 py-0.5 rounded">
+                  (encerrado)
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-[var(--muted)] font-medium">
+              {selected.mode === 'IDLE_PERIOD'
+                ? 'Período Ocioso (Dia a Dia): 4 pontos de ócio por dia + 1 slot extra (custo 0). Quem não atua no dia não sofre desgaste.'
+                : 'TimeSkip (Salto Temporal): período de treino/recuperação. Personagens fora de cena descansam automaticamente nos dias sem agendamento.'}
+            </p>
+          </div>
           {isMaster && (
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {selected.status === 'ACTIVE' && (
@@ -277,7 +373,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                     onClick={handleClose}
                     className="btn-secondary px-3 py-1.5 text-sm text-[var(--accent)]"
                   >
-                    Encerrar TimeSkip
+                    {selected.mode === 'IDLE_PERIOD' ? 'Encerrar Período' : 'Encerrar TimeSkip'}
                   </button>
                   <label className="flex items-center gap-2 text-xs uppercase">
                     Local de treino
@@ -317,7 +413,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                   onClick={() => setConfirmingDelete(true)}
                   className="ml-auto btn-secondary px-3 py-1.5 text-sm text-[var(--accent)]"
                 >
-                  Excluir TimeSkip
+                  {selected.mode === 'IDLE_PERIOD' ? 'Excluir Período' : 'Excluir TimeSkip'}
                 </button>
               )}
             </div>
