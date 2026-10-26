@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 788 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 792 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -928,6 +928,14 @@ Derrubada/Montinho e `Kuzushi` aplicando `DESEQUILIBRADO` no erro inimigo com M�
 (`Fôlego de Altitude` `+2/−2` com SP < 50%, `Opressão da Cordilheira` drena SP no fim do turno e `LUTA_EM_CADEIA`),
 Entertainment Wrestling (1º levantar 0 PA, redução de queda/arremesso e `POP` / `Finisher` com 3 Pop), MMA (1ª troca de base
 0 PA restaurada na esquiva/acerto) e Jiu-Jitsu Brasileiro (1ª troca de base no chão 0 PA e `−3` em Soco/Chute em pé).
+**Equipamentos de Competição, Academia, Ferramentas e Consumíveis** (§48): `LUVAS_BOXE` bloqueia mirar nos Olhos com soco,
+`COQUILHA` (`GROIN_GUARD`) converte acerto nos Genitais em dano só no SP, `BANDAGEM` (`HAND_WRAPS`) protege na falha crítica de
+soco; `KIT_SOCORROS` dá vantagem automática em `STABILIZE` e eleva Repouso Simples/Confortável a `TREATED`; `KIT_MANUTENCAO`
+repara item `damaged`/`broken` em `USE_ITEM`; `CORDA`/`ALGEMAS`/`ABRACADEIRAS` aplicam a condição `PRESO` (fuga via `ESCAPE` contra
+ND 14/22/16); `CINTO_LEVANTAMENTO` soma `+6 kg` em `SheetRules.carryKg(CharacterSheet)`; `KIT_TREINO` dá `+1` Treino Pleno semanal
+em Campo (FOR/CON/DES); `ROLO`, `POMADA` e `CALMANTE` reduzem desgaste extra no Repouso; `TALA` (`SPLINT`), `SAQUINHO_PO`
+(`CHALK_BAG`) e `CREATINA` (`CREATINE`, `+1d4 SP` com SP < 25%, 1×/combate) em `USE_ITEM`; `VitalService.stimulantCrash` limita
+`currentSp` a 75% do `spMax`.
 
 **Pendentes** (lista completa no plano §45; antigos em §26.5):
 1. Só como texto: Investida, Acompanhar, Reposicionar (sem grade), Gatilho, Exige Posição e Duas Etapas.

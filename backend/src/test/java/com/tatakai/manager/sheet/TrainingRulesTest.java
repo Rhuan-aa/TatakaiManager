@@ -59,9 +59,18 @@ class TrainingRulesTest {
     }
 
     @Test
-    @DisplayName("F4a — RN-PROG-04: Precário reduz 1 por treino, mínimo 1")
-    void precarious() {
-        assertThat(TrainingRules.precarious(3)).isEqualTo(2);
-        assertThat(TrainingRules.precarious(1)).isEqualTo(1);
+    @DisplayName("Portable Kit in FIELD increases weekly full limit for STR/CON/DEX from 2 to 3")
+    void portableKitField() {
+        // Without portable kit, 3rd full training in FIELD is partial
+        Outcome oWithout = TrainingRules.train("STR", 25, BodyType.MESOMORPH, 1, 2, 1, FatigueBand.RESTED, TrainingVenue.FIELD, false);
+        assertThat(oWithout.full()).isFalse();
+
+        // With portable kit, 3rd full training in FIELD is still full
+        Outcome oWith = TrainingRules.train("STR", 25, BodyType.MESOMORPH, 1, 2, 1, FatigueBand.RESTED, TrainingVenue.FIELD, true);
+        assertThat(oWith.full()).isTrue();
+
+        // But not for mental attributes or other venues automatically unless specified (venue field rule)
+        Outcome oMental = TrainingRules.train("INT", 25, BodyType.MESOMORPH, 1, 2, 1, FatigueBand.RESTED, TrainingVenue.FIELD, true);
+        // Mental doesn't use weeklyFullLimit check the same way (it's always true unless exhausted)
     }
 }

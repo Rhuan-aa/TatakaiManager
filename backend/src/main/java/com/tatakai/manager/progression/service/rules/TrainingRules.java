@@ -64,6 +64,15 @@ public final class TrainingRules {
      */
     public static Outcome train(String target, int tal, BodyType bt, int nthToday, int fullsThisWeek, int kpIndex,
                                 FatigueBand band, TrainingVenue venue) {
+        return train(target, tal, bt, nthToday, fullsThisWeek, kpIndex, band, venue, false);
+    }
+
+    /**
+     * Um treino de atributo/recurso. `nthToday`: 1-based no dia e alvo (Sobrecarga); `fullsThisWeek`: Plenos já
+     * feitos na semana neste alvo; `band`: faixa de Desgaste do tipo antes do treino; `portableKit`: se usa Kit de Treino Portátil.
+     */
+    public static Outcome train(String target, int tal, BodyType bt, int nthToday, int fullsThisWeek, int kpIndex,
+                                FatigueBand band, TrainingVenue venue, boolean portableKit) {
         if (band == FatigueBand.COLLAPSE) return new Outcome(0, false, 0, true, "Colapso: treino bloqueado");
         boolean mental = isMental(target);
         int fatigue = nthToday == 2 ? 2 : 1;
@@ -72,7 +81,11 @@ public final class TrainingRules {
         int gain = baseGain(target, tal, bt, kpIndex);
         boolean full = true;
         if (!mental) {
-            int limit = weeklyFullLimit(venue) - (band == FatigueBand.DRAINED ? 1 : 0);
+            int baseLimit = weeklyFullLimit(venue);
+            if (venue == TrainingVenue.FIELD && portableKit && ("STR".equals(target) || "CON".equals(target) || "DEX".equals(target))) {
+                baseLimit += 1;
+            }
+            int limit = baseLimit - (band == FatigueBand.DRAINED ? 1 : 0);
             full = fullsThisWeek < Math.max(1, limit);
         } else if (band == FatigueBand.DRAINED) {
             gain = Math.max(0, gain - 1);

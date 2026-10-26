@@ -2331,24 +2331,23 @@ seção nova e risque o item aqui.
 15. Munição: não há estoque (recarregar sempre enche); flechas/virotes e cartuchos não são gastos do inventário.
 16. Arma de fogo: "luta vencida com arma de fogo não rende EL" e "disparo ouvido" ficam com o Mestre no Fechar luta.
 17. Retorno (Chakram/Bumerangue) usa o "Pegar do chão" (1 PA), sem checar obstáculo.
-18. Reparo: Kit de Manutenção não conserta (`broken`/`damaged` só pelo ajuste do Mestre); Condição dos Itens completa não
+18. ~~Reparo: Kit de Manutenção não conserta (`broken`/`damaged` só pelo ajuste do Mestre);~~ (feito, §48) Condição dos Itens completa não
     existe.
 19. Preço e Acesso das armas/equipamentos/consumíveis só aparecem no catálogo: não há loja nem desconto de Diárias.
 
 **Equipamentos**
-20. Sem efeito: Coquilha, Bandagem de Mãos, "socos não miram os Olhos" das Luvas de Boxe, capacete fechado no Queixo,
+20. ~~Coquilha, Bandagem de Mãos, "socos não miram os Olhos" das Luvas de Boxe~~ (feito, §48). Sem efeito: capacete fechado no Queixo,
     desvantagem em percepção, Roupa Escura (+2 Furtividade), Furtividade em geral.
-21. Ferramentas: Kit de Primeiros Socorros não dá vantagem sozinho no Estabilizar (continua o checkbox "Kit médico"), nem
-    eleva o Repouso a Tratado; Corda/Algemas/Abraçadeiras (condição "Preso") não existem.
-22. Academia: Kit de Treino Portátil, Corda de Pular e Rolo de Liberação não entram no TimeSkip; Cinto de Levantamento
-    (+6 kg de Carga) não entra em `SheetRules.carryKg`.
+21. ~~Ferramentas: Kit de Primeiros Socorros não dá vantagem sozinho no Estabilizar (continua o checkbox "Kit médico"), nem
+    eleva o Repouso a Tratado; Corda/Algemas/Abraçadeiras (condição "Preso") não existem.~~ (feito, §48)
+22. ~~Academia: Kit de Treino Portátil, Rolo de Liberação e Cinto de Levantamento (+6 kg de Carga)~~ (feito, §48); Corda de Pular não entra no TimeSkip.
 23. Vestir/tirar proteção leva minutos (Leve 1, Média 5, Pesada 10): hoje é só mudar o local do item.
 
 **Consumíveis**
-24. Fora de combate/TimeSkip, sem efeito automático: Analgésico, Calmante, Kit de Cutman (5 usos), Creatina, Pomada,
-    Termogênico, Energético, Ração, Suplemento Proteico, Hipercalórico, Tala, Saquinho de Pó.
+24. ~~Calmante, Creatina, Pomada, Tala, Saquinho de Pó~~ (feito, §48). Fora de combate/TimeSkip, sem efeito automático: Analgésico, Kit de Cutman (5 usos),
+    Termogênico, Energético, Ração, Suplemento Proteico, Hipercalórico.
 25. Regra de Dose (2ª dose no dia dobra o Colateral) e Colaterais adiados (no próximo Repouso) não são controlados.
-26. Estimulante de Combate: o SP máximo −25% até o Repouso é só um aviso.
+26. ~~Estimulante de Combate: o SP máximo −25% até o Repouso é só um aviso.~~ (feito, §48)
 27. Bombas (Ciclo Leve/Pesado/Veterinário): ciclo Carga → Queda → Rastro, Treinos Plenos extras, Marcas de Abuso,
     Abstinência, Sequelas e antidoping — nada implementado.
 
@@ -2437,3 +2436,24 @@ seção nova e risque o item aqui.
   acertar uma técnica de MMA restaura a troca gratuita (`fluidSwitchUsed = false`).
 - **Jiu-Jitsu Brasileiro (`Arte Suave`)**: 1ª troca/entrada de base (`CHANGE_BASE`) por turno enquanto `DERRUBADO` custa 0 PA;
   `SOCO` e `CHUTE` em pé sofrem `−3` no acerto (`"Arte Suave: trocação em pé −3"`).
+
+## 48. Equipamentos de Competição, Academia, Ferramentas e Consumíveis — complementos (25/10/2026)
+
+- **Competição em Combate (`AttackService`, `equipment.json`)**:
+  - `LUVAS_BOXE` (`BOXING_GLOVES`): bloqueia declarar `BasicAttack.SOCO` ou técnica de Boxe mirando em `"Olho"`/`"Olhos"` (`InvalidCombatException`).
+  - `COQUILHA` (`GROIN_GUARD`): acertos em `"Genitais"`/`"Virilha"` causam apenas dano no SP (`vital.applySp`), sem perda de HP nem ferimento permanente.
+  - `BANDAGEM` (`HAND_WRAPS`): protege a mão na falha crítica de `BasicAttack.SOCO` (`basicFumble`).
+- **Ferramentas em Combate e Repouso (`CombatService`, `TrainingService`, `conditions.json`)**:
+  - `KIT_SOCORROS`: concede vantagem automática na ação `STABILIZE` quando presente em `HAND` ou `QUICK`, e eleva `RestQuality.SIMPLE`/`COMFORTABLE` para `RestQuality.TREATED` no Repouso do TimeSkip (`TrainingService.rest`).
+  - `KIT_MANUTENCAO`: usado via `USE_ITEM` (3 PA, +1 no Acesso Rápido), repara o primeiro item `damaged` ou `broken` da ficha alvo e consome 1 uso.
+  - `CORDA`, `ALGEMAS` e `ABRACADEIRAS` + condição `"PRESO"`: usadas via `USE_ITEM` (3 PA) contra outro participante (`CORDA`/`ALGEMAS` exigem alvo `IMOBILIZADO` ou `INCONSCIENTE`; `ABRACADEIRAS` aceita também `AGARRADO` e consome 1 unidade), aplicando `"PRESO"` (`ConditionExpiry.MANUAL`, notas `"Corda ND 14"`, `"Algemas ND 22"`, `"Abraçadeiras ND 16"`). Quem está `PRESO` não age e escapa via `ESCAPE` (3 PA, teste de `STR` ou `DEX` contra o ND da amarra).
+- **Academia — Carga e TimeSkip (`SheetRules`, `TrainingRules`, `TrainingService`)**:
+  - `CINTO_LEVANTAMENTO`: `SheetRules.carryKg(CharacterSheet)` soma `+6 kg` à capacidade de carga (`3 * FOR + 6`) quando o cinto está ativo no inventário, refletindo em `SheetRules.overloaded`.
+  - `KIT_TREINO` (*Kit de Treino Portátil*): aumenta de 2 para 3 o limite semanal de Treinos Plenos em `TrainingVenue.FIELD` para `STR`, `CON` e `DEX` (`TrainingRules.train(..., boolean portableKit)`).
+  - `ROLO` (*Rolo de Liberação*): recupera `+1` adicional de `physicalFatigue` em Repouso `SIMPLE` ou superior (`TrainingService.rest`).
+- **Consumíveis em Combate e Repouso (`CombatService`, `TrainingService`, `VitalService`, `consumables.json`)**:
+  - `TALA` (`SPLINT`): via `USE_ITEM`, remove condições de membro/perna (`ALEIJADO`, `MANCANDO`, `BRACO_INUTILIZADO`) na cena.
+  - `SAQUINHO_PO` (`CHALK_BAG`, `use = SELF`): aplica `GIZ_MAGNESIO` (`+1` nas competições de Força do agarre por 3 rodadas).
+  - `CREATINA` (`CREATINE`, `use = SELF`): quando `currentSp < spMax / 4` (abaixo de 25%), recupera `1d4` SP (1× por combate, marcada por `CREATINA_USADA`).
+  - `POMADA` e `CALMANTE` no Repouso (`TrainingService.rest`): se restar desgaste após a recuperação base do Repouso, consome 1 unidade de `POMADA` para `−1` `physicalFatigue` e/ou 1 unidade de `CALMANTE` para `−1` `mentalFatigue`.
+  - `ESTIMULANTE` (`VitalService.stimulantCrash`): ao expirar `ESTIMULADO`, além de `+2` Desgaste Físico e `+1` Mental, reduz `currentSp` ao teto de `75%` de `spMax`.

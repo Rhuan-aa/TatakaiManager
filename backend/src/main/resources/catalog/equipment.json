@@ -164,6 +164,9 @@
     "kind": "COMPETITION",
     "price": "¼",
     "access": "Livre",
+    "effects": [
+      "HAND_WRAPS"
+    ],
     "text": "Falha crítica num Soco nunca fere o próprio lutador"
   },
   {
@@ -205,6 +208,9 @@
     "kind": "COMPETITION",
     "price": "½",
     "access": "Livre",
+    "effects": [
+      "GROIN_GUARD"
+    ],
     "text": "Golpes nos Genitais só tiram SP, sem Teste de Vontade"
   },
   {

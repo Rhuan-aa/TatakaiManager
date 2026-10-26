@@ -24,7 +24,7 @@
     "name": "Tala",
     "group": "MEDICAL",
     "use": "ALLY",
-    "effect": null,
+    "effect": "SPLINT",
     "text": "Ação Maior: suspende até o fim da cena os efeitos de Ataques Localizados no Joelho ou num membro",
     "price": "½",
     "access": "Livre"
@@ -75,8 +75,8 @@
     "key": "CREATINA",
     "name": "Creatina (pote de 1 semana)",
     "group": "SUPPLEMENT",
-    "use": "NONE",
-    "effect": null,
+    "use": "SELF",
+    "effect": "CREATINE",
     "text": "1×/combate, SP abaixo de 25%: +1d4 SP; +0,2 kg na 1ª semana",
     "price": "½",
     "access": "Livre"
@@ -127,8 +127,8 @@
     "key": "SAQUINHO_PO",
     "name": "Saquinho de Pó",
     "group": "TACTICAL",
-    "use": "NONE",
-    "effect": null,
+    "use": "SELF",
+    "effect": "CHALK_BAG",
     "text": "Lançamento Rápido com vantagem",
     "price": "¼",
     "access": "Livre"

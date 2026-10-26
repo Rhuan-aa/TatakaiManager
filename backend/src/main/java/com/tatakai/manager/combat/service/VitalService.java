@@ -472,6 +472,12 @@ public class VitalService {
         s.setMentalFatigue(ment + 1);
         record(s, c, "COMBAT_STIMULANT", "physicalFatigue", phys, phys + 2);
         record(s, c, "COMBAT_STIMULANT", "mentalFatigue", ment, ment + 1);
+        int cap = s.getSpMax() * 3 / 4;
+        if (s.getCurrentSp() > cap) {
+            int before = s.getCurrentSp();
+            s.setCurrentSp(cap);
+            record(s, c, "COMBAT_STIMULANT", "currentSp", before, cap);
+        }
         log(e, p.getId(), CombatEventType.GM, p.getName() + ": o estimulante passa (+2 Desgaste Físico, +1 Mental); "
                 + "SP máximo −25% até o próximo Repouso (aplicar pela ficha)");
     }

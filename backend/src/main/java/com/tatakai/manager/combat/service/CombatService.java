@@ -88,6 +88,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -102,6 +103,7 @@ public class CombatService {
     private static final String GRABBED = "AGARRADO";
     private static final String RESTRAINED = "IMOBILIZADO";
     private static final String BASE_BROKEN = "QUEBRA_DE_BASE";
+    private static final Set<String> COMBAT_TOOLS = Set.of("KIT_MANUTENCAO", "CORDA", "ALGEMAS", "ABRACADEIRAS");
 
     private final EncounterRepository encounters;
     private final EncounterParticipantRepository participants;
@@ -496,6 +498,7 @@ public class CombatService {
             throw new InvalidCombatException(p.getName() + " está fora de combate e não pode agir");
         }
         if (keys.contains("PARALISADO")) throw new InvalidCombatException(p.getName() + " está Paralisado e não pode agir");
+        if (keys.contains("PRESO")) throw new InvalidCombatException(p.getName() + " está Preso e não pode agir (use Escapar no agarre)");
         boolean dissociated = keys.contains(VitalService.DISSOCIATED);
         if (dissociated && (action == CombatAction.MINOR || action == CombatAction.MINOR_OFFENSIVE)) {
             throw new InvalidCombatException("Dissociado: Ações Menores estão bloqueadas");
@@ -525,11 +528,24 @@ public class CombatService {
                 p.setTrainedReloadUsed(true);
             }
         }
-        ConsumableCatalog.Def consumable = action == CombatAction.USE_ITEM ? consumables.find(item.getConsumableKey())
-                .orElseThrow(() -> new InvalidCombatException(item.getName() + " não é um consumível do catálogo")) : null;
-        EncounterParticipant useTarget = consumable == null ? null
-                : req.targetParticipantId() == null ? p : participantOf(e, req.targetParticipantId());
-        if (consumable != null) pa = useCost(item, consumable, p, useTarget);
+        ConsumableCatalog.Def consumable = null;
+        EncounterParticipant useTarget = null;
+        if (action == CombatAction.USE_ITEM) {
+            useTarget = req.targetParticipantId() == null ? p : participantOf(e, req.targetParticipantId());
+            if (item.getConsumableKey() != null) {
+                consumable = consumables.find(item.getConsumableKey())
+                        .orElseThrow(() -> new InvalidCombatException(item.getName() + " não é um consumível do catálogo"));
+                pa = useCost(item, consumable, p, useTarget);
+            } else if (item.getEquipmentKey() != null && COMBAT_TOOLS.contains(item.getEquipmentKey())) {
+                if (item.getLocation() != ItemLocation.HAND && item.getLocation() != ItemLocation.QUICK) {
+                    throw new InvalidCombatException(item.getName() + " precisa estar em mãos ou no Acesso Rápido");
+                }
+                if (item.getQuantity() <= 0) throw new InvalidCombatException(item.getName() + " acabou");
+                pa = 3 + (item.getLocation() == ItemLocation.QUICK ? 1 : 0);
+            } else {
+                throw new InvalidCombatException(item.getName() + " não é um consumível do catálogo");
+            }
+        }
         if (item != null) gearCheck(s, action, item, weapon, req);
         if (action == CombatAction.CHANGE_BASE) {
             pa = CombatRules.baseChangeCost(p.getActiveBaseId() != null, req.baseId() != null);
@@ -642,7 +658,13 @@ public class CombatService {
             case PREPARED -> {
                 if (prep != null) prepare(e, p, s, prep, ctx);
             }
-            case STABILIZE -> vital.stabilize(e, p, s, stabilizeTarget, Boolean.TRUE.equals(req.medical()), ctx);
+            case STABILIZE -> {
+                boolean hasKit = Boolean.TRUE.equals(req.medical()) || s.getInventory().stream()
+                        .anyMatch(i -> !i.isBroken() && i.getQuantity() > 0
+                                && (i.getLocation() == ItemLocation.HAND || i.getLocation() == ItemLocation.QUICK)
+                                && "KIT_SOCORROS".equals(i.getEquipmentKey()));
+                vital.stabilize(e, p, s, stabilizeTarget, hasKit, ctx);
+            }
             case CHANGE_GUARD -> {
                 p.setGuard(req.guard());
                 p.setGuardChangedAt(java.time.Instant.now()); // reinicia o Timing
@@ -661,7 +683,13 @@ public class CombatService {
                         + (entered != null && entered.distanceControl() ? " (Controle de Distância)" : ""));
             }
             case DRAW, RELOAD, COCK, UNJAM, TOGGLE_MODE -> text.append(" — ").append(gear(action, item, weapon, req));
-            case USE_ITEM -> text.append(" — ").append(useItem(e, p, s, item, consumable, useTarget, ctx, userId, actor));
+            case USE_ITEM -> {
+                if (consumable != null) {
+                    text.append(" — ").append(useItem(e, p, s, item, consumable, useTarget, ctx, userId, actor));
+                } else {
+                    text.append(" — ").append(useTool(e, p, s, item, useTarget, ctx));
+                }
+            }
             default -> { }
         }
         log(e, p.getId(), CombatEventType.ACTION, text.toString());
@@ -722,9 +750,29 @@ public class CombatService {
                 vital.addCondition(e, t, "AMONIA_USADA", ConditionExpiry.END_OF_COMBAT, null, null);
                 out = c.name() + on + ": acorda com 1 PQ, Desorientado";
             }
-            case "GRIP_CHALK" -> {
+            case "GRIP_CHALK", "CHALK_BAG" -> {
                 vital.addCondition(e, t, "GIZ_MAGNESIO", ConditionExpiry.COUNTER, 3, null);
                 out = c.name() + on + ": +1 nas competições de Força do agarre por 3 rodadas";
+            }
+            case "SPLINT" -> {
+                Set<String> limbKeys = Set.of("ALEIJADO", "MANCANDO", "BRACO_INUTILIZADO");
+                List<CombatCondition> toRemove = conditions.findByParticipantIdIn(List.of(t.getId())).stream()
+                        .filter(x -> limbKeys.contains(x.getConditionKey()))
+                        .toList();
+                conditions.deleteAll(toRemove);
+                out = c.name() + on + ": membro imobilizado (penalidade suspensa na cena)";
+            }
+            case "CREATINE" -> {
+                if (ts.getCurrentSp() * 4 >= ts.getSpMax()) {
+                    throw new InvalidCombatException("Creatina só faz efeito com SP abaixo de 25%");
+                }
+                if (vital.hasCondition(t, "CREATINA_USADA")) {
+                    throw new InvalidCombatException("Creatina já foi usada neste combate");
+                }
+                int sp = rolls.rollInternal(s, "1d4", c.name() + ": " + t.getName(), userId, role).getTotal();
+                vital.applySp(e, t, ts, sp, ctx);
+                vital.addCondition(e, t, "CREATINA_USADA", ConditionExpiry.END_OF_COMBAT, null, null);
+                out = c.name() + on + ": +" + sp + " SP";
             }
             case "STIMULANT" -> {
                 conditions.findByParticipantIdIn(List.of(t.getId())).stream()
@@ -746,6 +794,61 @@ public class CombatService {
         item.setQuantity(item.getQuantity() - 1);
         if (item.getQuantity() <= 0) s.getInventory().remove(item);
         return out;
+    }
+
+    private String useTool(Encounter e, EncounterParticipant p, CharacterSheet s,
+                           com.tatakai.manager.sheet.entity.InventoryItem item, EncounterParticipant target,
+                           VitalService.Ctx ctx) {
+        String key = item.getEquipmentKey();
+        CharacterSheet ts = target.getId().equals(p.getId()) ? s : sheetOf(target);
+        if ("KIT_MANUTENCAO".equals(key)) {
+            com.tatakai.manager.sheet.entity.InventoryItem rep = ts.getInventory().stream()
+                    .filter(i -> i.isDamaged() || i.isBroken())
+                    .findFirst()
+                    .orElseThrow(() -> new InvalidCombatException("Nenhum item danificado ou quebrado para reparar"));
+            rep.setDamaged(false);
+            rep.setBroken(false);
+            item.setQuantity(item.getQuantity() - 1);
+            if (item.getQuantity() <= 0) s.getInventory().remove(item);
+            String on = target.getId().equals(p.getId()) ? "" : " de " + target.getName();
+            return item.getName() + on + ": reparou " + rep.getName();
+        }
+
+        if (target.getId().equals(p.getId())) {
+            throw new InvalidCombatException("Escolha o alvo para prender");
+        }
+        List<CombatCondition> targetConds = conditions.findByParticipantIdIn(List.of(target.getId()));
+        Set<String> tKeys = targetConds.stream().map(CombatCondition::getConditionKey).collect(Collectors.toSet());
+        boolean unconscious = tKeys.contains(VitalService.UNCONSCIOUS);
+        boolean immobilized = tKeys.contains(RESTRAINED);
+        boolean grappled = tKeys.contains(GRABBED) || tKeys.contains(GrappleRules.CLINCH);
+
+        switch (key) {
+            case "CORDA" -> {
+                if (!immobilized && !unconscious) {
+                    throw new InvalidCombatException("Corda exige alvo Imobilizado ou Inconsciente");
+                }
+                vital.addCondition(e, target, "PRESO", ConditionExpiry.MANUAL, null, "Corda ND 14");
+                return item.getName() + " em " + target.getName() + ": Preso (Corda ND 14)";
+            }
+            case "ALGEMAS" -> {
+                if (!immobilized && !unconscious) {
+                    throw new InvalidCombatException("Algemas exigem alvo Imobilizado ou Inconsciente");
+                }
+                vital.addCondition(e, target, "PRESO", ConditionExpiry.MANUAL, null, "Algemas ND 22");
+                return item.getName() + " em " + target.getName() + ": Preso (Algemas ND 22)";
+            }
+            case "ABRACADEIRAS" -> {
+                if (!immobilized && !grappled && !unconscious) {
+                    throw new InvalidCombatException("Abraçadeiras exigem alvo Agarrado, Imobilizado ou Inconsciente");
+                }
+                vital.addCondition(e, target, "PRESO", ConditionExpiry.MANUAL, null, "Abraçadeiras ND 16");
+                item.setQuantity(item.getQuantity() - 1);
+                if (item.getQuantity() <= 0) s.getInventory().remove(item);
+                return item.getName() + " em " + target.getName() + ": Preso (Abraçadeiras ND 16)";
+            }
+            default -> throw new InvalidCombatException("Ferramenta não suportada");
+        }
     }
 
     /** Categoria de peso mais pesada vestida (null sem proteção, §43). */
@@ -998,6 +1101,28 @@ public class CombatService {
     private void escape(Encounter e, EncounterParticipant p, CharacterSheet s, Attribute attr, VitalService.Ctx ctx,
                         UUID userId, ActorRole role) {
         List<CombatCondition> mine = conditions.findByParticipantIdIn(List.of(p.getId()));
+        CombatCondition preso = mine.stream().filter(c -> "PRESO".equals(c.getConditionKey())).findFirst().orElse(null);
+        if (preso != null) {
+            if (attr != Attribute.STR && attr != Attribute.DEX) {
+                throw new InvalidCombatException("Use Força ou Destreza para escapar");
+            }
+            spend(e, p, s, 3, 0, "Escapar", ctx);
+            int nd = 14;
+            if (preso.getNote() != null) {
+                String digits = preso.getNote().replaceAll("\\D+", "");
+                if (!digits.isBlank()) {
+                    try {
+                        nd = Integer.parseInt(digits);
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            String note = preso.getNote() != null && !preso.getNote().isBlank() ? preso.getNote() : "Preso";
+            if (vital.attributeTest(e, p, s, attr, nd, "Escapar (" + note + ")", vital.conditionAdvantage(p, s, attr), ctx)) {
+                conditions.delete(preso);
+                log(e, p.getId(), CombatEventType.ACTION, p.getName() + " escapou de " + note);
+            }
+            return;
+        }
         CombatCondition hold = null;
         for (String key : List.of(GrappleRules.RESTRAINED, GrappleRules.STRANGLED, GrappleRules.GRABBED, GrappleRules.CLINCH)) {
             hold = mine.stream().filter(c -> key.equals(c.getConditionKey()) && c.getSourceParticipantId() != null)

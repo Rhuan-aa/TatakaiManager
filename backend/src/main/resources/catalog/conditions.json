@@ -312,5 +312,13 @@
     "exit": "Fim do próximo turno ou ao atacar",
     "defaultExpiresAt": "END_OF_TARGET_TURN",
     "stack": "RENEW"
+  },
+  {
+    "key": "PRESO",
+    "name": "Preso",
+    "effect": "Amarrado ou algemado: deslocamento zero, não pode usar as mãos nem Esquivar; ataques contra têm vantagem",
+    "exit": "Ação Maior + FOR/DES contra o ND da amarra (Corda 14, Abraçadeira 16, Algemas 22)",
+    "defaultExpiresAt": "MANUAL",
+    "stack": "RENEW"
   }
 ]

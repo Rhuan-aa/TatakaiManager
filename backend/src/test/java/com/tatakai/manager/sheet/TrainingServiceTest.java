@@ -186,4 +186,28 @@ class TrainingServiceTest {
                 .containsExactly(TrainingEntryStatus.APPLIED, TrainingEntryStatus.LOST);
         assertThat(sheet.getMentalFatigue()).isEqualTo(4);
     }
+
+    @Test
+    @DisplayName("Repouso com kit de socorro, rolo, pomada e calmante")
+    void restWithMedicalKitRollerOintmentAndSedative() {
+        sheet.setPhysicalFatigue(5);
+        sheet.setMentalFatigue(4);
+        var kit = com.tatakai.manager.sheet.entity.InventoryItem.builder().equipmentKey("KIT_SOCORROS").quantity(1).build();
+        var rolo = com.tatakai.manager.sheet.entity.InventoryItem.builder().equipmentKey("ROLO").quantity(1).build();
+        var pomada = com.tatakai.manager.sheet.entity.InventoryItem.builder().consumableKey("POMADA").quantity(1).build();
+        var calmante = com.tatakai.manager.sheet.entity.InventoryItem.builder().consumableKey("CALMANTE").quantity(1).build();
+        sheet.setInventory(new ArrayList<>(List.of(kit, rolo, pomada, calmante)));
+
+        book((short) 1, (short) 1, SoloActivityType.REPOUSO, null, RestQuality.SIMPLE);
+
+        service.processUpTo(ts, (short) 2);
+
+        // Kit de socorros eleva qualidade simples para treinado (recupera 2)
+        // Rolo e pomada recuperam +1 de fadiga física cada (5 - 2 - 1 - 1 = 1)
+        assertThat(sheet.getPhysicalFatigue()).isEqualTo(1);
+        // Calmante recupera +1 de fadiga mental (4 - 2 - 1 = 1)
+        assertThat(sheet.getMentalFatigue()).isEqualTo(1);
+        assertThat(pomada.getQuantity()).isZero();
+        assertThat(calmante.getQuantity()).isZero();
+    }
 }

@@ -130,7 +130,15 @@ public final class SheetRules {
 
     /** Sobrecarregado ou pior: Movimentação pela metade e desvantagem em DES e Esquiva. */
     public static boolean overloaded(CharacterSheet s) {
-        return loadState(carriedKg(s.getInventory()), carryKg(s.getStr())) != LoadState.FREE;
+        return loadState(carriedKg(s.getInventory()), carryKg(s)) != LoadState.FREE;
+    }
+
+    public static int carryKg(CharacterSheet s) {
+        if (s == null) return 0;
+        int base = carryKg(s.getStr());
+        boolean hasBelt = s.getInventory() != null && s.getInventory().stream()
+                .anyMatch(i -> i != null && !i.isBroken() && i.getQuantity() > 0 && "CINTO_LEVANTAMENTO".equals(i.getEquipmentKey()));
+        return hasBelt ? base + 6 : base;
     }
 
     public static int carryKg(int str) {

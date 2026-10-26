@@ -1,5 +1,6 @@
 package com.tatakai.manager.sheet;
 
+import com.tatakai.manager.sheet.entity.CharacterSheet;
 import com.tatakai.manager.sheet.entity.Attribute;
 import com.tatakai.manager.sheet.entity.AttributeBand;
 import com.tatakai.manager.sheet.entity.BodyType;
@@ -227,5 +228,17 @@ class SheetRulesTest {
         assertThat(SheetRules.loadState(31, carry)).isEqualTo(SheetRules.LoadState.OVERLOADED);
         assertThat(SheetRules.loadState(90, carry)).isEqualTo(SheetRules.LoadState.LIMIT);
         assertThat(SheetRules.loadState(91, carry)).isEqualTo(SheetRules.LoadState.IMPOSSIBLE);
+    }
+
+    @Test
+    @DisplayName("CINTO_LEVANTAMENTO aumenta a capacidade de carga base em 6 kg")
+    void carryKgWithLiftingBelt() {
+        var belt = InventoryItem.builder().equipmentKey("CINTO_LEVANTAMENTO").quantity(1).broken(false).build();
+        var sheet = CharacterSheet.builder().str(4).inventory(List.of(belt)).build();
+        // base for str=4 is 4 * 3 = 12, with belt (+6) = 18
+        assertThat(SheetRules.carryKg(sheet)).isEqualTo(18);
+        int carry = SheetRules.carryKg(sheet);
+        // 17.5 kg with carry limit 18: 17.5 <= 18 is FREE, not overloaded
+        assertThat(SheetRules.loadState(17.5, carry)).isEqualTo(SheetRules.LoadState.FREE);
     }
 }

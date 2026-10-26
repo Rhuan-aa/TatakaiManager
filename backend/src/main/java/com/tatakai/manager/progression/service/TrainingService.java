@@ -25,6 +25,7 @@ import com.tatakai.manager.sheet.entity.ActorRole;
 import com.tatakai.manager.sheet.entity.Attribute;
 import com.tatakai.manager.sheet.entity.CharacterSheet;
 import com.tatakai.manager.sheet.entity.FatigueBand;
+import com.tatakai.manager.sheet.entity.InventoryItem;
 import com.tatakai.manager.sheet.entity.ResourceType;
 import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
@@ -194,8 +195,11 @@ public class TrainingService {
         boolean mental = TrainingRules.isMental(target);
         FatigueBand band = SheetRules.fatigueBand(mental ? sheet.getMentalFatigue() : sheet.getPhysicalFatigue());
 
+        boolean portableKit = sheet.getInventory() != null && sheet.getInventory().stream()
+                .anyMatch(i -> !i.isBroken() && i.getQuantity() > 0 && "KIT_TREINO".equals(i.getEquipmentKey()));
+
         TrainingRules.Outcome o = TrainingRules.train(target, sheet.getTal(), sheet.getBodyType(), nthToday,
-                fullsThisWeek, kpIndex, band, ts.getVenue());
+                fullsThisWeek, kpIndex, band, ts.getVenue(), portableKit);
         addFatigue(sheet, mental, o.fatigue());
         entryRepository.save(entry.gain(o.gain()).full(o.full())
                 .status(o.lost() ? TrainingEntryStatus.LOST : TrainingEntryStatus.PENDING).note(o.note()).build());
@@ -220,7 +224,14 @@ public class TrainingService {
 
     /** RN-PROG-06 + consolidação RN-PROG-04. */
     private void rest(CharacterSheet s, RestQuality q) {
-        int die = TrainingRules.restDie(q);
+        // Kit de Primeiros Socorros (KIT_SOCORROS): se SIMPLE ou COMFORTABLE, eleva a TREATED
+        boolean hasFirstAid = s.getInventory() != null && s.getInventory().stream()
+                .anyMatch(i -> !i.isBroken() && i.getQuantity() > 0 && "KIT_SOCORROS".equals(i.getEquipmentKey()));
+        RestQuality effectiveQuality = (hasFirstAid && (q == RestQuality.SIMPLE || q == RestQuality.COMFORTABLE))
+                ? RestQuality.TREATED
+                : q;
+
+        int die = TrainingRules.restDie(effectiveQuality);
         int conQ = SheetRules.modQ(s.getCon());
         int hp = rollService.rollInternal(s, "2d" + die, "Repouso: HP", null, ActorRole.SYSTEM).getTotal() + conQ;
         int sp = rollService.rollInternal(s, "4d" + die, "Repouso: SP", null, ActorRole.SYSTEM).getTotal() + conQ;
@@ -228,20 +239,63 @@ public class TrainingService {
         s.setCurrentHp(Math.min(effMax, s.getCurrentHp() + hp));
         s.setCurrentSp(Math.min(s.getSpMax(), s.getCurrentSp() + sp));
         s.setCurrentKp(s.getKpMax());
-        if (q == RestQuality.TREATED) s.setKnockoutSequel(false); // Repouso Tratado apaga a Sequela de Nocaute
-        int rec = TrainingRules.restFatigueRecovery(q);
+        if (effectiveQuality == RestQuality.TREATED) s.setKnockoutSequel(false); // Repouso Tratado apaga a Sequela de Nocaute
+        int rec = TrainingRules.restFatigueRecovery(effectiveQuality);
         s.setPhysicalFatigue(Math.max(0, s.getPhysicalFatigue() - rec));
         s.setMentalFatigue(Math.max(0, s.getMentalFatigue() - rec));
-        log(s, ActivityCategory.RESOURCE, "REST", "rest", null, q.name(), "+" + hp + " HP, +" + sp + " SP");
+
+        // Rolo de Liberação (ROLO): se effectiveQuality != PRECARIOUS e ROLO ativo, -1 Desgaste Físico
+        if (effectiveQuality != RestQuality.PRECARIOUS && s.getInventory() != null) {
+            boolean hasRolo = s.getInventory().stream()
+                    .anyMatch(i -> !i.isBroken() && i.getQuantity() > 0 && "ROLO".equals(i.getEquipmentKey()));
+            if (hasRolo) {
+                s.setPhysicalFatigue(Math.max(0, s.getPhysicalFatigue() - 1));
+            }
+        }
+
+        // Pomada Anti-inflamatória (POMADA): se após repouso e rolo ainda tiver physicalFatigue > 0, consome 1 e -1 Desgaste Físico
+        if (s.getPhysicalFatigue() > 0 && s.getInventory() != null) {
+            InventoryItem pomada = s.getInventory().stream()
+                    .filter(i -> i.getQuantity() > 0 && ("POMADA".equals(i.getConsumableKey()) || "POMADA".equals(i.getEquipmentKey())))
+                    .findFirst().orElse(null);
+            if (pomada != null) {
+                consumeInventoryItem(s, pomada);
+                s.setPhysicalFatigue(Math.max(0, s.getPhysicalFatigue() - 1));
+            }
+        }
+
+        // Calmante (CALMANTE): se tiver mentalFatigue > 0 após a recuperação base, consome 1 e -1 Desgaste Mental
+        if (s.getMentalFatigue() > 0 && s.getInventory() != null) {
+            InventoryItem calmante = s.getInventory().stream()
+                    .filter(i -> i.getQuantity() > 0 && ("CALMANTE".equals(i.getConsumableKey()) || "CALMANTE".equals(i.getEquipmentKey())))
+                    .findFirst().orElse(null);
+            if (calmante != null) {
+                consumeInventoryItem(s, calmante);
+                s.setMentalFatigue(Math.max(0, s.getMentalFatigue() - 1));
+            }
+        }
+
+        log(s, ActivityCategory.RESOURCE, "REST", "rest", null, effectiveQuality.name(), "+" + hp + " HP, +" + sp + " SP");
 
         for (TrainingEntry e : entryRepository.findBySheetIdOrderByCreatedAt(s.getId())) {
             if (e.getStatus() != TrainingEntryStatus.PENDING) continue;
-            int gain = q == RestQuality.PRECARIOUS ? TrainingRules.precarious(e.getGain()) : e.getGain();
+            int gain = effectiveQuality == RestQuality.PRECARIOUS ? TrainingRules.precarious(e.getGain()) : e.getGain();
             e.setStatus(TrainingEntryStatus.CONSOLIDATED);
             if (gain <= 0) continue;
             int applied = RESOURCES.contains(e.getTarget()) ? consolidateResource(s, e.getTarget(), gain)
                     : consolidateAttribute(s, Attribute.valueOf(e.getTarget()), gain);
             e.setNote((e.getNote() == null ? "" : e.getNote() + " · ") + "consolidado +" + applied);
+        }
+    }
+
+    private void consumeInventoryItem(CharacterSheet s, InventoryItem item) {
+        item.setQuantity(item.getQuantity() - 1);
+        if (item.getQuantity() <= 0) {
+            try {
+                s.getInventory().remove(item);
+            } catch (UnsupportedOperationException ignored) {
+                // lista imutável em mocks/testes
+            }
         }
     }
 

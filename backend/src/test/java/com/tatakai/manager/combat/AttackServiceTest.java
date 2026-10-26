@@ -2001,4 +2001,31 @@ class AttackServiceTest {
         assertThat(counterRows).anyMatch(c -> "LUTA_EM_CADEIA".equals(c.getCounterKey())
                 && pN.getId().equals(c.getTargetParticipantId()) && c.getValue() == 1);
     }
+
+    @Test
+    @DisplayName("§43: Luvas de boxe bloqueiam mirar nos Olhos e Coquilha converte dano em Genitais para SP")
+    void boxingGlovesBlockEyeAimAndGroinGuardConvertsToSp() {
+        // 1) Soco mirando em Olhos vestindo Luvas de Boxe lança InvalidCombatException
+        wear(sheetA, "LUVAS_BOXE");
+        CreateAttackRequest socoOlhos = new CreateAttackRequest(pA.getId(), RollSourceType.BASIC_ATTACK, null, null,
+                BasicAttack.SOCO, AttackActionKind.MAJOR, List.of(pN.getId()), "Olhos", -4);
+        assertThatThrownBy(() -> service.declare(enc.getId(), socoOlhos, player.getId()))
+                .isInstanceOf(InvalidCombatException.class)
+                .hasMessageContaining("Luvas de Boxe: socos não podem mirar nos Olhos");
+
+        // 2) Golpe acertando Genitais num alvo de Coquilha desconta apenas SP e preserva HP
+        sheetA.getInventory().clear();
+        wear(npcSheet, "COQUILHA");
+        npcSheet.setCurrentHp(30);
+        npcSheet.setCurrentSp(10);
+        npcSheet.setSpMax(10);
+
+        CreateAttackRequest socoGenitais = new CreateAttackRequest(pA.getId(), RollSourceType.BASIC_ATTACK, null, null,
+                BasicAttack.SOCO, AttackActionKind.MAJOR, List.of(pN.getId()), "Genitais", null);
+        AttackResponse r = fight(socoGenitais, ReactionType.NONE, msg(15, 10, 5), null);
+
+        assertThat(r.targets().get(0).outcome()).isEqualTo(AttackOutcome.HIT);
+        assertThat(npcSheet.getCurrentHp()).isEqualTo(30);
+        assertThat(npcSheet.getCurrentSp()).isEqualTo(5);
+    }
 }

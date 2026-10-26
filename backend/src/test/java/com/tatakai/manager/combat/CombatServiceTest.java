@@ -1325,4 +1325,60 @@ class CombatServiceTest {
         service.nextTurn(enc.getId(), player.getId());
         assertThat(sheetA.getCurrentSp()).isEqualTo(4);
     }
+
+    @Test
+    @DisplayName("§43/§44: Kit de Manutenção repara arma danificada, Creatina recupera SP com < 25%, Tala remove Aleijado")
+    void toolsAndConsumablesSplintCreatineAndMaintenanceKit() {
+        EncounterParticipant[] p = started();
+        p[0].setPaCurrent(10);
+
+        // 1) KIT_MANUTENCAO repara arma danificada (damaged = true -> false)
+        InventoryItem faca = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Faca")
+                .quantity(1).weaponKey("FACA").location(ItemLocation.HAND).damaged(true).build();
+        InventoryItem kit = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Kit de Manutenção")
+                .quantity(1).equipmentKey("KIT_MANUTENCAO").location(ItemLocation.HAND).build();
+        sheetA.getInventory().addAll(List.of(faca, kit));
+
+        service.act(enc.getId(),
+                new CombatActionRequest(p[0].getId(), CombatAction.USE_ITEM, null, null, null, null, null, null, null, null, null,
+                        kit.getId(), null), player.getId());
+
+        assertThat(faca.isDamaged()).isFalse();
+        assertThat(sheetA.getInventory()).doesNotContain(kit);
+
+        // 2) CREATINA recupera SP quando currentSp está abaixo de 25% do spMax e adiciona CREATINA_USADA
+        InventoryItem creatina = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Creatina")
+                .quantity(1).consumableKey("CREATINA").location(ItemLocation.HAND).build();
+        sheetA.getInventory().add(creatina);
+        sheetA.setSpMax(20);
+        sheetA.setCurrentSp(4); // 4 * 4 = 16 < 20 (< 25%)
+        p[0].setPaCurrent(10);
+        org.mockito.Mockito.lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any()))
+                .thenAnswer(x -> com.tatakai.manager.roll.entity.Roll.builder().total(3).build());
+
+        service.act(enc.getId(),
+                new CombatActionRequest(p[0].getId(), CombatAction.USE_ITEM, null, null, null, null, null, null, null, null, null,
+                        creatina.getId(), null), player.getId());
+
+        assertThat(sheetA.getCurrentSp()).isEqualTo(7); // 4 + 3
+        assertThat(cList).anyMatch(c -> c.getParticipantId().equals(p[0].getId()) && "CREATINA_USADA".equals(c.getConditionKey()));
+        assertThat(sheetA.getInventory()).doesNotContain(creatina);
+
+        // 3) TALA remove a condição "ALEIJADO" do participante aliado
+        p[1].setTeam(p[0].getTeam());
+        cond(p[1], "ALEIJADO", ConditionExpiry.MANUAL, null, null);
+        assertThat(cList).anyMatch(c -> c.getParticipantId().equals(p[1].getId()) && "ALEIJADO".equals(c.getConditionKey()));
+
+        InventoryItem tala = InventoryItem.builder().id(UUID.randomUUID()).sheet(sheetA).name("Tala")
+                .quantity(1).consumableKey("TALA").location(ItemLocation.HAND).build();
+        sheetA.getInventory().add(tala);
+        p[0].setPaCurrent(10);
+
+        service.act(enc.getId(),
+                new CombatActionRequest(p[0].getId(), CombatAction.USE_ITEM, null, null, null, p[1].getId(), null, null, null, null, null,
+                        tala.getId(), null), player.getId());
+
+        assertThat(cList).noneMatch(c -> c.getParticipantId().equals(p[1].getId()) && "ALEIJADO".equals(c.getConditionKey()));
+        assertThat(sheetA.getInventory()).doesNotContain(tala);
+    }
 }

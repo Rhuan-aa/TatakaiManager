@@ -248,6 +248,18 @@ public class AttackService {
             throw new InvalidCombatException(att.getName() + " está fora de combate e não pode agir");
         }
         if (ctx.has(att.getId(), PARALYZED)) throw new InvalidCombatException(att.getName() + " está Paralisado e não pode agir");
+        if (a.getRegion() != null && VitalRules.normalizeRegion(a.getRegion()).contains("olho")
+                && equipment.wears(s, "BOXING_GLOVES")) {
+            boolean isPunch = a.getBasicAttack() == BasicAttack.SOCO;
+            if (!isPunch && a.getSourceType() == RollSourceType.TECHNIQUE) {
+                CharacterTechnique t = technique(s, a);
+                String art = techArtName(t);
+                if ("Boxe".equalsIgnoreCase(art)) isPunch = true;
+            }
+            if (isPunch) {
+                throw new InvalidCombatException("Luvas de Boxe: socos não podem mirar nos Olhos");
+            }
+        }
         if (req.basicAttack() == BasicAttack.CHUTE && ctx.has(att.getId(), GrappleRules.CLINCH)) {
             throw new InvalidCombatException("No Clinch não cabem golpes de alcance Médio (Chute)");
         }
@@ -891,13 +903,19 @@ public class AttackService {
             }
             ModuleRules.Breath breath = ModuleRules.breath(items);
             if (dmg > 0) {
-                if (breath == ModuleRules.Breath.SP_ONLY) {
+                String normReg = VitalRules.normalizeRegion(a.getRegion());
+                boolean groin = normReg.contains("genita") || normReg.contains("virilha");
+                boolean groinGuarded = groin && equipment.wears(tsh, "GROIN_GUARD");
+                if (groinGuarded) {
+                    log(e, tp.getId(), "Coquilha de " + tp.getName() + ": golpe nos Genitais causa apenas " + dmg + " de dano no SP");
+                    vital.applySp(e, tp, tsh, -dmg, vctx);
+                } else if (breath == ModuleRules.Breath.SP_ONLY) {
                     log(e, tp.getId(), "Golpe no Fôlego: " + dmg + " de dano no SP de " + tp.getName());
                     vital.applySp(e, tp, tsh, -dmg, vctx);
                 } else {
                     vital.applyHp(e, tp, tsh, -dmg, vctx.withCritical(atk.critical()));
                 }
-                if (breath == ModuleRules.Breath.BOTH) {
+                if (!groinGuarded && breath == ModuleRules.Breath.BOTH) {
                     int dice = diceTotal(atk);
                     log(e, tp.getId(), "Golpe no Fôlego: −" + dice + " SP em " + tp.getName());
                     vital.applySp(e, tp, tsh, -dice, vctx);
@@ -913,7 +931,7 @@ public class AttackService {
                 kp -= helmet(tsh, a.getRegion());
                 woundsByType(e, weapon, t, r, rsh, tp, tsh, atk, vctx);
                 if (kp > 0) vital.applyKp(e, tp, tsh, -kp, vctx);
-                if (breath != ModuleRules.Breath.SP_ONLY && (permanentInjury(atk, calc)
+                if (!groinGuarded && breath != ModuleRules.Breath.SP_ONLY && (permanentInjury(atk, calc)
                         || mutilates(e, items, atk, tp, tsh, userId, role))) {
                     vital.permanentInjury(e, tp, tsh, dmg, a.getRegion(), vctx);
                 }
@@ -1277,6 +1295,8 @@ public class AttackService {
             vital.addEffectCondition(e, att, KNOCKED_DOWN, null, b.label, null);
             att.setActiveBaseId(null);
             log(e, att.getId(), att.getName() + " cai no Encontrão");
+        } else if (b == BasicAttack.SOCO && equipment.wears(attSheet, "HAND_WRAPS")) {
+            log(e, att.getId(), att.getName() + ": Bandagem de Mão protege a mão na falha crítica");
         }
     }
 
