@@ -821,3 +821,12 @@ h3,
     display: none;
   }
 }
+
+/* Valor selecionado (select fechado) no mesmo tom das opções: negrito, caixa-alta, espaçado. */
+select,
+select.field {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
