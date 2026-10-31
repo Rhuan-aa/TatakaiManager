@@ -5,8 +5,8 @@ export async function listTimeSkips(campaignId) {
   return data;
 }
 
-export async function createTimeSkip(campaignId, { name, totalDays }) {
-  const { data } = await client.post(`/campaigns/${campaignId}/timeskips`, { name, totalDays });
+export async function createTimeSkip(campaignId, payload) {
+  const { data } = await client.post(`/campaigns/${campaignId}/timeskips`, payload);
   return data;
 }
 
@@ -27,4 +27,9 @@ export async function setCurrentDay(timeSkipId, currentDay) {
 
 export async function deleteTimeSkip(timeSkipId) {
   await client.delete(`/timeskips/${timeSkipId}`);
+}
+
+export async function getFatiguePreview(timeSkipId) {
+  const { data } = await client.get(`/timeskips/${timeSkipId}/fatigue-preview`);
+  return data;
 }

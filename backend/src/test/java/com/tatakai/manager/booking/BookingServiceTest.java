@@ -708,6 +708,22 @@ class BookingServiceTest {
     }
 
     @Test
+    @DisplayName("§51.2: ação que passa dos slotsPerDay do período é rejeitada (400)")
+    void book_beyondSlotsPerDay_rejected() {
+        activeSkip.setSlotsPerDay((short) 2);
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        mockVisibleAssociation();
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+
+        // custo 2 a partir do slot 2 ocupa 2..3, mas o período só tem 2 slots
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 2)))
+                .isInstanceOf(InvalidBookingException.class);
+    }
+
+    @Test
     @DisplayName("US-14: jogador não pode cancelar agendamento de outro (403)")
     void cancel_byNonOwner_throwsAccessDenied() {
         Booking booking = Booking.builder().id(UUID.randomUUID())

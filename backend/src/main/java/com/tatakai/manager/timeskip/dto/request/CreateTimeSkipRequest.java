@@ -21,11 +21,19 @@ public record CreateTimeSkipRequest(
         @Max(value = 365, message = "o TimeSkip não pode exceder 365 dias")
         Short totalDays,
 
-        TimeSkipMode mode
+        TimeSkipMode mode,
+
+        @Min(value = 1, message = "mínimo de 1 ponto de ócio por dia")
+        @Max(value = 4, message = "máximo de 4 pontos de ócio por dia")
+        Short slotsPerDay
 
 ) {
     public CreateTimeSkipRequest(String name, Short totalDays) {
-        this(name, totalDays, null);
+        this(name, totalDays, null, null);
+    }
+
+    public CreateTimeSkipRequest(String name, Short totalDays, TimeSkipMode mode) {
+        this(name, totalDays, mode, null);
     }
 }
 

@@ -252,7 +252,7 @@ public class BookingService {
             if (cost == 0) {
                 throw new InvalidBookingException("ações de custo zero devem usar o slot extra do dia");
             }
-            if (slot + cost - 1 > TimeSkipDay.SLOTS_PER_DAY) {
+            if (slot + cost - 1 > day.getTimeSkip().getSlotsPerDay()) {
                 throw new InvalidBookingException(
                         "a ação custa " + cost + " pontos de ócio e não cabe a partir do slot " + slot);
             }

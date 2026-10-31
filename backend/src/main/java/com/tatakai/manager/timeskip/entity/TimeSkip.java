@@ -56,6 +56,11 @@ public class TimeSkip {
     @Builder.Default
     private TimeSkipMode mode = TimeSkipMode.TIMESKIP;
 
+    /** Pontos de ócio (slots) por dia, 1..4; o slot extra (5) é à parte. */
+    @Column(name = "slots_per_day", nullable = false, columnDefinition = "smallint not null default 4")
+    @Builder.Default
+    private short slotsPerDay = TimeSkipDay.SLOTS_PER_DAY;
+
     /** Local de treino (RN-PROG-03); null = Academia Comum. */
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

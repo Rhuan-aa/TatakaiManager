@@ -22,8 +22,8 @@ const bookingEnd = (b) =>
   b.slotNumber === EXTRA_SLOT ? EXTRA_SLOT : b.slotNumber + Math.max(b.idlePointCost ?? 1, 1) - 1;
 const covers = (b, slot) => b.slotNumber <= slot && slot <= bookingEnd(b);
 // Uma ação cabe no slot? Custo zero só no extra; as demais precisam caber até o slot 4
-const fits = (slot, cost) =>
-  slot === EXTRA_SLOT ? cost === 0 : cost > 0 && slot + cost - 1 <= SLOTS_PER_DAY;
+const fitsIn = (slot, cost, perDay = SLOTS_PER_DAY) =>
+  slot === EXTRA_SLOT ? cost === 0 : cost > 0 && slot + cost - 1 <= perDay;
 
 const SOLO_TYPES = [
   { value: 'TREINO', label: 'Treino' },
@@ -81,6 +81,10 @@ const fillOther = 'var(--panel-bg)';
 const slotKey = (day, npcId, slot) => `${day}:${npcId}:${slot}`;
 
 export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion }) {
+  // Pontos de ócio por dia variam por período (§51.2): sombreia as constantes do módulo
+  const perDay = timeSkip.slotsPerDay ?? SLOTS_PER_DAY;
+  const COLUMNS = [...SLOTS.slice(0, perDay), EXTRA_SLOT];
+  const fits = (slot, cost) => fitsIn(slot, cost, perDay);
   const { user } = useAuth();
   const toast = useToast();
   const [bookings, setBookings] = useState({});

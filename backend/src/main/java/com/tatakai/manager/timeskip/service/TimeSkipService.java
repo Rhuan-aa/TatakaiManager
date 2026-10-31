@@ -14,6 +14,7 @@ import com.tatakai.manager.timeskip.dto.request.CreateTimeSkipRequest;
 import com.tatakai.manager.timeskip.dto.response.TimeSkipResponse;
 import com.tatakai.manager.timeskip.entity.Booking;
 import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.TimeSkipDay;
 import com.tatakai.manager.timeskip.entity.TimeSkipStatus;
 import com.tatakai.manager.timeskip.exception.ActiveTimeSkipExistsException;
 import com.tatakai.manager.timeskip.exception.InvalidTimeSkipException;
@@ -40,6 +41,7 @@ public class TimeSkipService {
     private final InteractionLogRepository logRepository;
 
     private final TrainingService trainingService;
+    private final com.tatakai.manager.sheet.repository.CharacterSheetRepository sheetRepository;
 
     private final ApplicationEventPublisher events;
 
@@ -48,8 +50,11 @@ public class TimeSkipService {
                            CampaignMemberRepository memberRepository,
                            BookingRepository bookingRepository,
                            InteractionLogRepository logRepository,
-                           TrainingService trainingService, ApplicationEventPublisher events) {
+                           TrainingService trainingService,
+                           com.tatakai.manager.sheet.repository.CharacterSheetRepository sheetRepository,
+                           ApplicationEventPublisher events) {
         this.events = events;
+        this.sheetRepository = sheetRepository;
         this.trainingService = trainingService;
         this.timeSkipRepository = timeSkipRepository;
         this.campaignRepository = campaignRepository;
@@ -74,6 +79,7 @@ public class TimeSkipService {
                 .name(req.name())
                 .totalDays(req.totalDays())
                 .status(TimeSkipStatus.ACTIVE)
+                .slotsPerDay(req.slotsPerDay() != null ? req.slotsPerDay() : TimeSkipDay.SLOTS_PER_DAY)
                 .mode(req.mode() != null ? req.mode() : com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP)
                 .build();
         timeSkip.generateDays();
@@ -150,6 +156,34 @@ public class TimeSkipService {
         return changed(timeSkipRepository.save(timeSkip));
     }
 
+    /**
+     * Projeção de Desgaste Físico por jogador com ficha concluída. Mestre vê todos; jogador, só a própria.
+     * Considera o que ainda será processado (dias após processedDay); Repouso de qualidade não é estimado.
+     */
+    @Transactional(readOnly = true)
+    public List<com.tatakai.manager.timeskip.dto.response.FatiguePreviewResponse> fatiguePreview(
+            UUID timeSkipId, UUID requesterId) {
+        TimeSkip ts = timeSkipRepository.findById(timeSkipId).orElseThrow(TimeSkipNotFoundException::new);
+        UUID campaignId = ts.getCampaign().getId();
+        boolean master = memberRepository.existsByCampaignIdAndUserIdAndRole(campaignId, requesterId, Role.MASTER);
+        if (!master && !memberRepository.existsByCampaignIdAndUserId(campaignId, requesterId)) {
+            throw new AccessDeniedException("Você não pertence a esta campanha");
+        }
+        List<Booking> all = bookingRepository.findByTimeSkipDay_TimeSkipId(timeSkipId);
+        return sheetRepository.findByCampaignMemberCampaignId(campaignId).stream()
+                .filter(sh -> sh.getBuildStatus() == com.tatakai.manager.build.entity.BuildStatus.COMPLETED)
+                .filter(sh -> master || sh.getCampaignMember().getUser().getId().equals(requesterId))
+                .map(sh -> {
+                    var user = sh.getCampaignMember().getUser();
+                    List<Booking> mine = all.stream().filter(b -> b.getUser().getId().equals(user.getId())).toList();
+                    int unrested = com.tatakai.manager.progression.service.rules.TrainingRules
+                            .unrestedDays(mine, ts.getTotalDays(), ts.getSlotsPerDay());
+                    return new com.tatakai.manager.timeskip.dto.response.FatiguePreviewResponse(user.getId(),
+                            user.getName(), sh.getPhysicalFatigue(), sh.getMentalFatigue(), unrested,
+                            sh.getPhysicalFatigue() + unrested);
+                }).toList();
+    }
+
     /** Local de treino do TimeSkip (RN-PROG-03). Só o Mestre. */
     @Transactional
     public TimeSkipResponse setVenue(UUID timeSkipId, UUID requesterId, TrainingVenue venue) {
@@ -186,6 +220,7 @@ public class TimeSkipService {
                 ts.getCreatedAt(),
                 ts.getClosedAt(),
                 ts.getVenue(),
-                ts.getMode() != null ? ts.getMode() : com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP);
+                ts.getMode() != null ? ts.getMode() : com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP,
+                ts.getSlotsPerDay());
     }
 }

@@ -41,6 +41,12 @@ public class TimeSkipController {
         return ResponseEntity.ok(timeSkipService.close(timeSkipId, AuthenticatedUser.id()));
     }
 
+    @GetMapping("/timeskips/{timeSkipId}/fatigue-preview")
+    public ResponseEntity<List<com.tatakai.manager.timeskip.dto.response.FatiguePreviewResponse>> fatiguePreview(
+            @PathVariable UUID timeSkipId) {
+        return ResponseEntity.ok(timeSkipService.fatiguePreview(timeSkipId, AuthenticatedUser.id()));
+    }
+
     @DeleteMapping("/timeskips/{timeSkipId}")
     public ResponseEntity<Void> delete(@PathVariable UUID timeSkipId) {
         timeSkipService.delete(timeSkipId, AuthenticatedUser.id());

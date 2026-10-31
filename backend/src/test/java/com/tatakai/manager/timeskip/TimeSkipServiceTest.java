@@ -63,7 +63,8 @@ class TimeSkipServiceTest {
     @BeforeEach
     void setUp() {
         service = new TimeSkipService(timeSkipRepository, campaignRepository, memberRepository,
-                bookingRepository, logRepository, trainingService, events);
+                bookingRepository, logRepository, trainingService,
+                org.mockito.Mockito.mock(com.tatakai.manager.sheet.repository.CharacterSheetRepository.class), events);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Player").build();
         campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();

@@ -155,7 +155,7 @@ public class TrainingService {
                     rest(sheet, RestQuality.SIMPLE);
                 }
             } else {
-                if (!bookings.isEmpty() || totalSlotsUsedInDay >= 4) {
+                if (!bookings.isEmpty() || totalSlotsUsedInDay >= ts.getSlotsPerDay()) {
                     int before = sheet.getPhysicalFatigue();
                     sheet.setPhysicalFatigue(before + 1);
                     log(sheet, ActivityCategory.RESOURCE, "NO_REST", "physicalFatigue", before, before + 1,

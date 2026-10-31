@@ -2547,12 +2547,12 @@ remove a condição).
 
 Ordem: **51.1 → 51.2 → 51.3 (bloco TimeSkip, máxima prioridade)**, depois 51.4–51.7 (rolagens), depois 51.8–51.9 (NPC).
 
-### 51.1 Formulário de criação (bug visual)
+### 51.1 Formulário de criação (bug visual) — **feito**
 - Criar Período Ocioso/TimeSkip **sem nome**: um input fica no lugar com texto cru e o outro desce com a mensagem de erro
   tratada (layout quebra). Corrigir em `TimeSkipPanel.jsx`: erro de validação (`parseApiError().fields`) exibido no mesmo
   padrão em todos os campos (mensagem sob o input, sem deslocar o outro), e nome vazio barrado no cliente antes do POST.
 
-### 51.2 Semântica real dos modos (hoje §49 trata os dois quase iguais)
+### 51.2 Semântica real dos modos — **feito** (pontos de ócio limitados a 1..4; Repouso de qualidade não entra na projeção)
 - **Período Ocioso (`IDLE_PERIOD`)**: **um único dia** com X pontos de ócio (hoje fixo em 4 slots; X configurável na criação).
   Sem seletor de nº de dias.
 - **TimeSkip (`TIMESKIP`)**: período longo **não vivido dia a dia**. Tem dias (para organizar), mas **avançar o dia não
@@ -2566,7 +2566,7 @@ Ordem: **51.1 → 51.2 → 51.3 (bloco TimeSkip, máxima prioridade)**, depois 5
   `GET /timeskips/{tid}/fatigue-preview`. Atualizar `SlotGrid.jsx` (`canBook`) e §4.6/§16 do AGENTS.md. Testes primeiro
   (TDD) em `BookingServiceTest`/`TimeSkipServiceTest`/`TrainingServiceTest`.
 
-### 51.3 Tag de modo fora do estilo
+### 51.3 Tag de modo fora do estilo — **feito**
 - Badges `Ócio` (âmbar) e `TimeSkip` (índigo) não combinam com o design quadrinhos/brutalismo. Trocar por classe do
   sistema (`--ink/--paper/--accent/--highlight`, estilo `.caption`/`.bubble`) em `TimeSkipPanel.jsx`.
 

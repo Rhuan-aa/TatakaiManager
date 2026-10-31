@@ -126,4 +126,26 @@ public final class TrainingRules {
     public static int precarious(int gain) {
         return gain <= 0 ? gain : Math.max(1, gain - 1);
     }
+
+    /**
+     * Dias de 1..totalDays que dariam +1 Desgaste Físico por falta de Repouso (§51.2): sem REPOUSO e com treino/forja
+     * ou o dia cheio (slots 1..slotsPerDay ocupados). Espelha {@code TrainingService.processDay}.
+     */
+    public static int unrestedDays(List<com.tatakai.manager.timeskip.entity.Booking> mine, int totalDays, int slotsPerDay) {
+        int count = 0;
+        for (int day = 1; day <= totalDays; day++) {
+            boolean rested = false, works = false;
+            int used = 0;
+            for (var b : mine) {
+                if (b.getTimeSkipDay().getDayNumber() != day) continue;
+                var solo = b.getNpcId() == null ? b.getSoloActivityType() : null;
+                if (solo == com.tatakai.manager.timeskip.entity.SoloActivityType.REPOUSO && b.getRestQuality() != null) rested = true;
+                if (solo == com.tatakai.manager.timeskip.entity.SoloActivityType.TREINO && b.getTrainingTarget() != null
+                        || solo == com.tatakai.manager.timeskip.entity.SoloActivityType.FORJA) works = true;
+                if (b.getSlotNumber() <= 4) used += Math.max(1, (int) b.getIdlePointCost());
+            }
+            if (!rested && (works || used >= slotsPerDay)) count++;
+        }
+        return count;
+    }
 }

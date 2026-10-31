@@ -379,7 +379,8 @@ Ordem exata das verificações:
 1. Requester é membro da campanha → senão 403. Guarda o `Role`.
 2. TimeSkip existe e é da campanha → senão 404. Status `ACTIVE` → senão 409.
 3. `TimeSkipDay(tid, dayNumber)` existe (lido com `SELECT … FOR UPDATE`) → senão 400 "Dia inválido".
-4. `dayNumber >= timeSkip.currentDay` → senão 400 (dia passado).
+4. `dayNumber >= timeSkip.currentDay` → senão 400 (dia passado). **Só em `IDLE_PERIOD`**: em `TIMESKIP` (§51.2) não há bloqueio
+   de dia passado (nem no cancelar). O limite de slots é `timeSkip.slotsPerDay` (1..4, padrão 4); o extra continua sendo o 5.
 5. Monta o booking:
    - **`npcId != null` → com NPC**: `interactionName` obrigatório (400); NPC
      associado à campanha (404); se oculto e requester não é MASTER → 404; busca
@@ -740,6 +741,9 @@ HP/SP no servidor, recupera Desgaste e consolida os pendentes contra Barreiras e
 dia sem Repouso dá +1 Desgaste Físico. `TimeSkip.processedDay` impede reprocessar. Regras puras em `TrainingRules`.
 `TimeSkip.venue` (local de treino) via `PATCH /timeskips/{id}/venue`; livro em `GET /character-sheets/{sid}/training`.
 Bancos existentes: dropar `bookings_solo_activity_type_check` (valor novo `REPOUSO`, ver §11.11).
+**§51.2:** em `TIMESKIP`, `setCurrentDay` não processa nada; `TimeSkipService.close` consolida tudo (`processUpTo(totalDays+1)`, em ambos os
+modos). `GET /timeskips/{tid}/fatigue-preview` projeta o Desgaste Físico por dias sem Repouso (`TrainingRules.unrestedDays`; Mestre vê todos,
+jogador só o seu). Coluna nova `time_skips.slots_per_day` (default 4).
 `/error` é público no `SecurityConfig` (antes um 500 virava 401 e o front deslogava).
 
 ## 17. Lutas, Keiken e graduação (F4b)
