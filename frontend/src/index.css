@@ -229,6 +229,36 @@ h3,
     outline: 3px solid var(--accent);
     outline-offset: 1px;
   }
+  /* Caixa de seleção e opção: quadrada, borda grossa, marca em acento */
+  input[type='checkbox'],
+  input[type='radio'] {
+    appearance: none;
+    flex-shrink: 0;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: 0;
+    display: inline-grid;
+    place-content: center;
+    background: var(--bg);
+    border: 2px solid var(--line);
+    border-radius: 0;
+    cursor: pointer;
+  }
+  input[type='radio'] { border-radius: 50%; }
+  input[type='checkbox']::after,
+  input[type='radio']::after {
+    content: '';
+    width: 0.55rem;
+    height: 0.55rem;
+    background: var(--accent);
+    transform: scale(0);
+    transition: transform 80ms;
+  }
+  input[type='radio']::after { border-radius: 50%; }
+  input[type='checkbox']:checked::after,
+  input[type='radio']:checked::after { transform: scale(1); }
+  input[type='checkbox']:focus-visible,
+  input[type='radio']:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
 }
 
 @layer components {
@@ -314,6 +344,44 @@ h3,
     outline: 3px solid var(--highlight);
     outline-offset: 2px;
   }
+
+  /* Rótulo de campo: pequeno, forte, caixa-alta (subtítulos de formulário) */
+  .label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .label.flex { display: flex; }
+  /* Bloco claro sem moldura (ficha aleatória): papel, tinta e campos brancos */
+  .well {
+    background: #fff;
+    color: var(--ink);
+    padding: 0.9rem 1rem;
+    border: 0;
+    border-radius: 2px;
+  }
+  .well .label,
+  .well .caption { color: var(--ink); }
+  .well .field,
+  .well select {
+    background-color: #fff;
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+  .well select {
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--ink) 50%),
+      linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+  }
+  .well option { background-color: #fff; color: var(--ink); }
+  .well .btn-secondary { color: var(--ink); background: #fff; border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+  .well .btn-ghost { color: var(--ink); }
+  .well input[type='checkbox'] { background: #fff; border-color: var(--ink); }
+  /* Texto de apoio de formulário: pequeno e discreto (o .caption é só para etiquetas curtas) */
+  .hint { font-size: 0.75rem; line-height: 1.35; opacity: 0.75; }
 
   .field {
     margin-top: 0.25rem;

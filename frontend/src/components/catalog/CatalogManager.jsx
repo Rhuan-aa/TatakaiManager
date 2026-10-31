@@ -153,7 +153,7 @@ export function Effects({ effects }) {
     <ul className="flex flex-col gap-2">
       {effects.map((e, i) => (
         <li key={i} className="flex flex-col gap-1">
-          {e.name && <strong className="text-xs uppercase">{e.name}</strong>}
+          {e.name && <strong className="label">{e.name}</strong>}
           <RichText text={e.text} className="text-sm" />
         </li>
       ))}
@@ -171,7 +171,7 @@ function Requirements({ it }) {
         {it.requirements && <RichText text={it.requirements} />}
         {dev && (
           <div>
-            <strong className="text-xs uppercase">Para desenvolver</strong>
+            <strong className="label">Para desenvolver</strong>
             <RichText text={it.developmentRequirements} />
           </div>
         )}
@@ -190,7 +190,7 @@ export function Variations({ variations }) {
           <li key={i} className="border-t-2 border-[var(--line)] pt-2 flex flex-col gap-2 first:border-t-0 first:pt-0">
             <strong>{v.name}</strong>
             {v.requirements && (
-              <div className="text-sm"><strong className="text-xs uppercase">Requisitos</strong><RichText text={v.requirements} /></div>
+              <div className="text-sm"><strong className="label">Requisitos</strong><RichText text={v.requirements} /></div>
             )}
             <RichText text={v.description} className="text-sm" />
             <Effects effects={v.effects} />

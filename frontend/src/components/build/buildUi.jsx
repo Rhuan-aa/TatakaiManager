@@ -7,7 +7,7 @@ export const crossesBarrier = (before, after) => [3, 6, 9].some((t) => before <=
 export function DiceResult({ label, dice, burst }) {
   return (
     <div className="relative flex flex-wrap items-center gap-3" aria-live="polite">
-      <span className="text-xs uppercase">{label}</span>
+      <span className="label">{label}</span>
       {dice.map((d, i) => (
         <span key={i} className="panel panel-title px-3 py-1 text-2xl" aria-label={`Dado ${i + 1}: ${d}`}>{d}</span>
       ))}

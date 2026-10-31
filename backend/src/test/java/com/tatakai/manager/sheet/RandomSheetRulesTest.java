@@ -44,15 +44,21 @@ class RandomSheetRulesTest {
     }
 
     @Test
-    @DisplayName("traços: quantidade, raridade e distintos")
-    void picksTraits() {
-        var cat = List.of(
-                new TraitRef(UUID.randomUUID(), TraitRarity.COMMON, ANY, false),
-                new TraitRef(UUID.randomUUID(), TraitRarity.COMMON, ANY, true),
-                new TraitRef(UUID.randomUUID(), TraitRarity.RARE, ANY, true));
-        assertThat(RandomSheetRules.pickTraits(cat, 5, null, null, null, new Random(3))).hasSize(3).doesNotHaveDuplicates();
-        assertThat(RandomSheetRules.pickTraits(cat, 5, TraitRarity.COMMON, null, null, new Random(3))).hasSize(2);
-        assertThat(RandomSheetRules.pickTraits(cat, 5, null, null, true, new Random(3))).allMatch(TraitRef::developable);
-        assertThat(RandomSheetRules.pickTraits(cat, 0, null, null, null, new Random(3))).isEmpty();
+    @DisplayName("traços: cada linha com seus filtros, tudo rolado no fim e sem repetir entre linhas")
+    void picksTraitsByLines() {
+        var common = new TraitRef(UUID.randomUUID(), TraitRarity.COMMON, ANY, false);
+        var commonDev = new TraitRef(UUID.randomUUID(), TraitRarity.COMMON, ANY, true);
+        var rare = new TraitRef(UUID.randomUUID(), TraitRarity.RARE, ANY, true);
+        var cat = List.of(common, commonDev, rare);
+
+        var lines = List.of(new RandomSheetRules.TraitLine(1, TraitRarity.RARE, null, null),
+                new RandomSheetRules.TraitLine(2, TraitRarity.COMMON, null, null),
+                new RandomSheetRules.TraitLine(3, null, null, null));
+        var out = RandomSheetRules.pickTraits(cat, lines, new Random(3));
+        assertThat(out).containsExactlyInAnyOrder(rare, common, commonDev); // 3ª linha já não tem o que sortear
+        assertThat(out.get(0)).isEqualTo(rare);
+
+        assertThat(RandomSheetRules.pickTraits(cat, List.of(new RandomSheetRules.TraitLine(5, null, null, true)),
+                new Random(3))).containsExactlyInAnyOrder(commonDev, rare);
     }
 }

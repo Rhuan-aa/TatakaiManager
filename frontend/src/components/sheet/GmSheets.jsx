@@ -7,6 +7,7 @@ import { useToast } from '../../contexts/ToastContext';
 import CharacterSheetForm from './CharacterSheetForm';
 import NpcSheetPanel from './NpcSheetPanel';
 import RandomSheetForm from './RandomSheetForm';
+import Icon from '../ui/Icon';
 
 /**
  * Fichas do Mestre (§26.11): NPCs da campanha que têm ficha. O Mestre cria uma na hora (vira NPC só com ficha,
@@ -36,7 +37,7 @@ export default function GmSheets({ campaignId, isMaster, npcs, setNpcs }) {
   if (open) {
     return (
       <section className="panel flex flex-col gap-3 p-4">
-        <button type="button" className="btn-ghost self-start" onClick={() => setOpenId(null)}>← Fichas do Mestre</button>
+        <button type="button" className="btn-ghost self-start" onClick={() => setOpenId(null)}><Icon name="back" size={18} /> Fichas do Mestre</button>
         {/* só o dono associa NPC à campanha, então NPC listado ao Mestre é dele */}
         <NpcSheetPanel campaignId={campaignId} isMaster={isMaster}
           npc={{ ...open, ownerId: isMaster ? user?.userId : null }} onChanged={() => refresh()} />
@@ -53,7 +54,9 @@ export default function GmSheets({ campaignId, isMaster, npcs, setNpcs }) {
           <button type="button" className="btn-primary" onClick={() => setCreating(true)}>Ficha rápida</button>
         )}
         {isMaster && !randomizing && (
-          <button type="button" className="btn-secondary" onClick={() => setRandomizing(true)}>🎲 Ficha aleatória</button>
+          <button type="button" className="btn-secondary" onClick={() => setRandomizing(true)}>
+            <Icon name="dice" size={18} /> Ficha aleatória
+          </button>
         )}
       </div>
       {randomizing && (

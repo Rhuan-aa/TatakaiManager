@@ -64,22 +64,22 @@ export default function TraitPicker({ campaignId, catalog, onCatalogChange, sele
         <button type="button" className="btn-ghost self-start text-sm" onClick={() => setDraft(EMPTY)}>+ Novo traço de campanha</button>
       ) : (
         <div className="panel flex flex-col gap-2 p-3">
-          <label className="text-xs uppercase">Nome
+          <label className="label">Nome
             <input className="field" maxLength={100} value={draft.name} onChange={up('name')} />
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs uppercase">Raridade
+            <label className="label">Raridade
               <select className="field" value={draft.rarity} onChange={up('rarity')}>
                 {Object.entries(RARITY).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
               </select>
             </label>
-            <label className="text-xs uppercase">Categoria
+            <label className="label">Categoria
               <select className="field" value={draft.category} onChange={up('category')}>
                 {TRAIT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </label>
           </div>
-          <label className="text-xs uppercase">Descrição
+          <label className="label">Descrição
             <textarea className="field" rows={2} maxLength={4000} value={draft.description} onChange={up('description')} />
           </label>
           <div className="flex gap-2">

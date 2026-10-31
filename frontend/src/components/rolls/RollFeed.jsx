@@ -38,10 +38,10 @@ function GmRollForm({ campaignId, tab }) {
 
   return (
     <form onSubmit={submit} className="panel grid gap-2 p-3 sm:grid-cols-[7rem_1fr_auto] sm:items-end">
-      <label className="text-xs uppercase">Expressão
+      <label className="label">Expressão
         <input className="field mt-1 w-full" value={expression} onChange={(e) => setExpression(e.target.value)} />
       </label>
-      <label className="text-xs uppercase">Propósito
+      <label className="label">Propósito
         <input className="field mt-1 w-full" value={purpose} maxLength={200} onChange={(e) => setPurpose(e.target.value)} />
       </label>
       <button type="submit" className="btn-primary" disabled={!ok}>{busy ? 'Rolando…' : 'Rolar'}</button>
@@ -81,11 +81,11 @@ function ChannelForm({ campaignId, channel, onDone, onCancel }) {
 
   return (
     <form onSubmit={submit} className="panel flex flex-col gap-2 p-3">
-      <label className="text-xs uppercase">Nome do canal
+      <label className="label">Nome do canal
         <input className="field mt-1 w-full max-w-sm" value={name} maxLength={50} pattern="[^<>]*" onChange={(e) => setName(e.target.value)} />
       </label>
       <fieldset className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        <legend className="text-xs uppercase">Jogadores</legend>
+        <legend className="label">Jogadores</legend>
         {players.length === 0 && <span className="caption">Nenhum jogador na campanha.</span>}
         {players.map((p) => (
           <label key={p.id}><input type="checkbox" checked={ids.has(p.id)} onChange={() => toggle(p.id)} /> {p.name}</label>

@@ -35,10 +35,10 @@ function SlotCard({ slot, traits, isMaster, busy, gmRerolls, onResolve }) {
       {slot.note && <p className="text-sm opacity-80">{slot.note}</p>}
       {isMaster && pending && (
         <div className="flex flex-col gap-2">
-          <label className="text-xs uppercase">Motivo
+          <label className="label">Motivo
             <input className="field mt-1 w-full" value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} />
           </label>
-          <label className="text-xs uppercase">Traço de reposição ({RARITY[slot.rarity]?.label})
+          <label className="label">Traço de reposição ({RARITY[slot.rarity]?.label})
             <select className="field mt-1 w-full" value={pick} onChange={(e) => setPick(e.target.value)}>
               <option value="">Escolher…</option>
               {options.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -88,7 +88,7 @@ export default function TraitsStep({ build, campaignId, canAct, isMaster, busy, 
         canAct && (
           <div className="grid gap-3 sm:grid-cols-3">
             {['COMMON', 'RARE', 'EPIC'].map((r) => (
-              <label key={r} className="text-xs uppercase" style={rarityTagStyle(r)}>{RARITY[r].label}
+              <label key={r} className="label" style={rarityTagStyle(r)}>{RARITY[r].label}
                 <select className="field mt-1 w-full" value={chosen[r]} onChange={(e) => setChosen((p) => ({ ...p, [r]: e.target.value }))}>
                   <option value="">Escolher…</option>
                   {catalog.filter((t) => t.rarity === r).sort(compareTraits).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}

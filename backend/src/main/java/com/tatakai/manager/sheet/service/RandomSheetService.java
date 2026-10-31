@@ -76,11 +76,13 @@ public class RandomSheetService {
                     REASON, null, null, null), requesterId);
         }
 
-        int count = req.traitCount() != null ? req.traitCount() : req.profile().traits;
+        List<RandomSheetRules.TraitLine> lines = req.traits() == null || req.traits().isEmpty()
+                ? List.of(new RandomSheetRules.TraitLine(req.profile().traits, null, null, null))
+                : req.traits().stream().map(r -> new RandomSheetRules.TraitLine(r.count(), r.rarity(), r.category(),
+                        r.developable())).toList();
         List<TraitRef> pool = catalog.traitsForCampaign(campaignId).stream()
                 .map(t -> new TraitRef(t.getId(), t.getRarity(), t.getCategory(), t.isDevelopable())).toList();
-        for (TraitRef t : RandomSheetRules.pickTraits(pool, count, req.traitRarity(), req.traitCategory(),
-                req.developableOnly(), rnd)) {
+        for (TraitRef t : RandomSheetRules.pickTraits(pool, lines, rnd)) {
             sheets.applyGmAdjustment(sheet.id(), new GmAdjustmentRequest(GmAction.ADD_TRAIT, null, null, REASON,
                     null, null, t.id()), requesterId);
         }

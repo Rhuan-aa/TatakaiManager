@@ -65,7 +65,7 @@ function ItemsEditor({ items, modules, base, baseNames = [], onChange }) {
         const mod = byName[it.module];
         return (
           <div key={i} className="grid grid-cols-2 items-end gap-2 border-t-2 border-[var(--line)] pt-2 sm:grid-cols-[2fr_2fr_4rem_4rem_auto]">
-            <label className="text-xs uppercase">Módulo
+            <label className="label">Módulo
               <select className="field" value={it.module ?? ''} onChange={(e) => {
                 const m = e.target.value || null;
                 const defaultLabel = m === 'Atributo Alternativo' ? ALT_ATTR_OPTIONS[0].value
@@ -83,19 +83,19 @@ function ItemsEditor({ items, modules, base, baseNames = [], onChange }) {
               </select>
             </label>
             {it.module === 'Atributo Alternativo' ? (
-              <label className="text-xs uppercase">Atributo e aplicação
+              <label className="label">Atributo e aplicação
                 <select className="field" value={parseAltAttr(it)} onChange={(e) => set(i, { label: e.target.value, note: null })}>
                   {ALT_ATTR_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </label>
             ) : it.module === 'Massa' ? (
-              <label className="text-xs uppercase">Aplicação da Massa
+              <label className="label">Aplicação da Massa
                 <select className="field" value={parseMass(it)} onChange={(e) => set(i, { label: e.target.value, note: null })}>
                   {MASS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </label>
             ) : it.module === 'Exige Base' ? (
-              <label className="text-xs uppercase">Base exigida
+              <label className="label">Base exigida
                 <input className="field" list={`bases-list-${i}`} maxLength={100} value={parseSuffix(it, 'Exige Base')}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -109,7 +109,7 @@ function ItemsEditor({ items, modules, base, baseNames = [], onChange }) {
                 )}
               </label>
             ) : it.module === 'Arma Única' ? (
-              <label className="text-xs uppercase">Arma específica
+              <label className="label">Arma específica
                 <input className="field" list={`weapons-list-${i}`} maxLength={100} value={parseSuffix(it, 'Arma [UÚ]nica')}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -121,16 +121,16 @@ function ItemsEditor({ items, modules, base, baseNames = [], onChange }) {
                 </datalist>
               </label>
             ) : (
-              <label className="text-xs uppercase">Rótulo
+              <label className="label">Rótulo
                 <input className="field" maxLength={200} value={it.label} onChange={(e) => set(i, { label: e.target.value })}
                   placeholder={mod ? 'Ex.: Ponto Vital na Têmpora' : 'Nome do item único'} />
               </label>
             )}
-            <label className="text-xs uppercase">Qtd
+            <label className="label">Qtd
               <input type="number" min={1} className="field" disabled={!mod?.perUnit} value={it.qty}
                 onChange={(e) => set(i, { qty: Number(e.target.value) || 1 })} />
             </label>
-            <label className="text-xs uppercase">Custo
+            <label className="label">Custo
               <input type="number" className="field" value={it.cost} onChange={(e) => set(i, { cost: Number(e.target.value) })} />
             </label>
             <div className="col-span-2 flex flex-wrap items-center gap-3 text-xs sm:col-span-1">
@@ -195,17 +195,17 @@ function MoveFields({ m, onChange, technique }) {
       <label className="text-xs uppercase sm:col-span-2">Nome
         <input className="field" required maxLength={100} value={m.name} onChange={up('name')} />
       </label>
-      <label className="text-xs uppercase">Graduação
+      <label className="label">Graduação
         <select className="field" value={m.graduation} onChange={up('graduation')}>
           {GRADS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
         </select>
       </label>
       {technique ? (
-        <label className="text-xs uppercase">Alcance
+        <label className="label">Alcance
           <input className="field" maxLength={50} value={m.range ?? ''} onChange={up('range')} />
         </label>
       ) : (
-        <label className="text-xs uppercase">Função
+        <label className="label">Função
           <select className="field" value={m.function ?? ''} onChange={up('function')}>
             {BASE_FUNCTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
@@ -226,7 +226,7 @@ function WeaponClassField({ t, onChange }) {
   const weapons = useWeapons();
   const classes = [...new Set(Object.values(weapons).map((w) => w.weaponClass).filter(Boolean))].sort();
   return (
-    <label className="text-xs uppercase">Arma (técnica armada)
+    <label className="label">Arma (técnica armada)
       <select className="field" value={t.weaponClass ?? ''} onChange={(e) => onChange({ ...t, weaponClass: e.target.value || null })}>
         <option value="">Desarmada</option>
         {classes.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -249,11 +249,11 @@ export function TechniqueEditor({ t, category, modules, baseNames = [], onChange
             <legend className="text-xs font-bold uppercase">{two ? `Variação ${i + 1}` : 'Montagem'}</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {two && (
-                <label className="text-xs uppercase">Nome da variação
+                <label className="label">Nome da variação
                   <input className="field" maxLength={100} value={v.name ?? ''} onChange={(e) => setVar(i, { name: e.target.value })} />
                 </label>
               )}
-              <label className="text-xs uppercase">Núcleo
+              <label className="label">Núcleo
                 <select className="field" value={v.core ?? ''} onChange={(e) => setVar(i, { core: e.target.value || null })}>
                   {CORES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
@@ -362,18 +362,18 @@ export default function ArtEditor({ campaignId, art, canChooseCategory, onSaved,
           <label className="text-xs uppercase sm:col-span-2">Nome da arte
             <input className="field" required maxLength={100} value={f.name} onChange={up('name')} />
           </label>
-          <label className="text-xs uppercase">Categoria
+          <label className="label">Categoria
             <select className="field" value={f.category} disabled={!canChooseCategory} onChange={up('category')}>
               {ART_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </label>
-          <label className="text-xs uppercase">Tipo marcial
+          <label className="label">Tipo marcial
             <input className="field" maxLength={200} value={f.martialType} onChange={up('martialType')} placeholder="Ex.: Trocação" />
           </label>
-          <label className="text-xs uppercase">Especializações de ataque
+          <label className="label">Especializações de ataque
             <input className="field" value={f.attack} onChange={up('attack')} placeholder="Separadas por vírgula" />
           </label>
-          <label className="text-xs uppercase">Especializações de reação
+          <label className="label">Especializações de reação
             <input className="field" value={f.reaction} onChange={up('reaction')} placeholder="Separadas por vírgula" />
           </label>
           <label className="text-xs uppercase sm:col-span-3">Descrição

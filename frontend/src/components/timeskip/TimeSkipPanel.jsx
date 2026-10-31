@@ -14,6 +14,7 @@ import { useToast } from '../../contexts/ToastContext';
 import SlotGrid from '../booking/SlotGrid';
 import { useCampaignTopic } from '../../hooks/useWebSocket';
 import TimeSkipActivityManager from './TimeSkipActivityManager';
+import Icon from '../ui/Icon';
 
 const inputClass = 'field';
 
@@ -331,7 +332,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
       {!selected ? (
         <EmptyState
           className="mt-4"
-          icon="🗓️"
+          icon="calendar"
           title="Nenhum TimeSkip ou Período Ocioso ainda"
           description={
             isMaster
@@ -396,7 +397,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 <ul className="space-y-1">
                   {preview.map((p) => (
                     <li key={p.userId}>
-                      <b>{p.userName}</b>: Físico {p.physicalFatigue} → {p.projectedPhysical}
+                      <b>{p.userName}</b>: Físico {p.physicalFatigue} <Icon name="forward" size={14} className="align-[-2px]" /> {p.projectedPhysical}
                       {p.unrestedDays > 0 && ` (${p.unrestedDays} dia(s) sem Repouso)`} · Mental {p.mentalFatigue}
                     </li>
                   ))}
@@ -415,7 +416,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                     disabled={selected.currentDay >= selected.totalDays}
                     className="btn-secondary px-3 py-1.5 text-sm disabled:opacity-40"
                   >
-                    Avançar dia ({selected.currentDay} → {selected.currentDay + 1})
+                    Avançar dia ({selected.currentDay} <Icon name="forward" size={14} className="align-[-2px]" /> {selected.currentDay + 1})
                   </button>}
                   <button
                     type="button"
@@ -430,7 +431,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                       Cancelar
                     </button>
                   )}
-                  <label className="flex items-center gap-2 text-xs uppercase">
+                  <label className="label flex items-center gap-2">
                     Local de treino
                     <select className="field m-0 w-auto py-1 text-sm" value={selected.venue ?? 'COMMON_GYM'}
                       onChange={(e) => handleVenue(e.target.value)}>

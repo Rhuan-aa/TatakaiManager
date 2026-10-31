@@ -121,7 +121,7 @@ function ReviewBox({ art, onDone }) {
   return (
     <div className="panel flex flex-col gap-2 p-3">
       <h4 className="panel-title">Aprovação</h4>
-      <label className="text-xs uppercase">Motivo (opcional)
+      <label className="label">Motivo (opcional)
         <input className="field" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
       </label>
       <div className="flex gap-2">

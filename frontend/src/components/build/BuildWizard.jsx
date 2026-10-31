@@ -8,6 +8,7 @@ import BloodTestStep from './BloodTestStep';
 import AttributesStep from './AttributesStep';
 import FreePointsStep from './FreePointsStep';
 import ReviewStep from './ReviewStep';
+import Icon from '../ui/Icon';
 
 const STEPS = [
   { key: 'IDENTITY', label: 'Identidade', C: IdentityStep },
@@ -66,7 +67,7 @@ export default function BuildWizard({ campaignId, sheetId, isMaster, isOwner = !
         {STEPS.map((s, i) => (
           <li key={s.key} className={i === idx ? 'tag-accent tag' : 'tag'} aria-current={i === idx ? 'step' : undefined}
             style={i > idx ? { opacity: 0.5 } : undefined}>
-            {i < idx ? '✓ ' : ''}{i + 1}. {s.label}
+            {i < idx && <Icon name="check" size={14} className="mr-1 align-[-2px]" />}{i + 1}. {s.label}
           </li>
         ))}
       </ol>

@@ -36,15 +36,15 @@ function Builder({ profile, busy, onRoll, onClose }) {
         {parts.length === 0 && null}
       </ul>
       <div className="grid gap-2 sm:grid-cols-3">
-        <label className="text-xs uppercase">Vantagem (−3…+3)
+        <label className="label">Vantagem (−3…+3)
           <input type="number" min={-3} max={3} className="field mt-1 w-full" value={f.advantage}
             onChange={(e) => set('advantage', Math.max(-3, Math.min(3, Number(e.target.value) || 0)))} />
         </label>
-        <label className="text-xs uppercase">Região (localizado)
+        <label className="label">Região (localizado)
           <input className="field mt-1 w-full" maxLength={40} value={f.localizedRegion}
             onChange={(e) => set('localizedRegion', e.target.value)} />
         </label>
-        <label className="text-xs uppercase">Penalidade (≤ 0)
+        <label className="label">Penalidade (≤ 0)
           <input type="number" max={0} className="field mt-1 w-full" value={f.localizedPenalty}
             onChange={(e) => set('localizedPenalty', Math.min(0, Number(e.target.value) || 0))} />
         </label>
@@ -54,7 +54,7 @@ function Builder({ profile, busy, onRoll, onClose }) {
         <label><input type="checkbox" checked={f.attackerDowned} onChange={(e) => set('attackerDowned', e.target.checked)} /> Atacante derrubado</label>
       </div>
       {overrides.length > 0 && (
-        <label className="text-xs uppercase">Motivo da edição (obrigatório)
+        <label className="label">Motivo da edição (obrigatório)
           <input className="field mt-1 w-full" maxLength={200} value={f.editReason}
             onChange={(e) => set('editReason', e.target.value)} />
         </label>
@@ -130,7 +130,7 @@ export default function RollsPanel({ sheetId, campaignId, isMaster, isNpc, refre
     <div className="flex flex-col gap-4">
       {(isMaster || channels.length > 0) && (
         <label className="flex items-center gap-3 text-sm">
-          <span className="text-xs uppercase">Canal</span>
+          <span className="label">Canal</span>
           <select className="field m-0 w-auto" value={channelSel} onChange={(e) => setChannelSel(e.target.value)}>
             <option value="PUBLIC">Público</option>
             {isMaster && <option value="GM_PRIVATE">Privado do Mestre</option>}

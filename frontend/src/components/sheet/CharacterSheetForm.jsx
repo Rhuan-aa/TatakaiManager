@@ -46,25 +46,25 @@ export function SheetFields({ f, set, errors = {} }) {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs uppercase">
+        <label className="label">
           Tipo corporal
           <select className="field mt-1 w-full" value={f.bodyType} onChange={set('bodyType')}>
             {BODY_TYPES.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
         </label>
-        <label className="text-xs uppercase">
+        <label className="label">
           Dominância
           <select className="field mt-1 w-full" value={f.dominance} onChange={set('dominance')}>
             {DOMINANCES.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
         </label>
-        <label className="text-xs uppercase">
+        <label className="label">
           Altura (m)
           <input type="number" step="0.01" min="1" max="2.5" required className="field mt-1 w-full"
             value={f.heightM} onChange={set('heightM')} />
           {err('heightM')}
         </label>
-        <label className="text-xs uppercase">
+        <label className="label">
           Peso (kg) — opcional
           <input type="number" step="0.1" min="0" className="field mt-1 w-full" value={f.weightKg}
             onChange={set('weightKg')} placeholder="Calculado se vazio" />

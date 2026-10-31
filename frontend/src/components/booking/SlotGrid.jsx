@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { EmptyState } from '../../components/layout/AppShell';
 import { useToast } from '../../contexts/ToastContext';
+import Icon from '../ui/Icon';
 
 const SLOTS = [1, 2, 3, 4];
 const SLOTS_PER_DAY = 4;
@@ -604,7 +605,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
             disabled={day <= 1}
             className="btn-secondary px-2 py-1 text-sm disabled:opacity-30"
           >
-            ←
+            <Icon name="back" size={18} />
           </button>
           <span className="text-sm font-bold text-[var(--text)]">
             Dia {day} de {timeSkip.totalDays}
@@ -620,7 +621,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
             disabled={day >= timeSkip.totalDays}
             className="btn-secondary px-2 py-1 text-sm disabled:opacity-30"
           >
-            →
+            <Icon name="forward" size={18} />
           </button>
         </div>
       </div>
@@ -657,7 +658,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
               <td className="p-2">
                 <div className="flex items-center gap-2">
                   <span className="panel grid h-7 w-7 shrink-0 place-items-center text-xs font-bold">
-                    🧘
+                    <Icon name="rest" size={16} />
                   </span>
                   <span className="text-sm font-bold text-[var(--text)]">Ação solo</span>
                 </div>
@@ -707,7 +708,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
         <div className="panel p-3">
           <div className="mb-2.5 flex items-center gap-2">
             <span className="panel grid h-7 w-7 shrink-0 place-items-center text-xs font-bold">
-              🧘
+              <Icon name="rest" size={16} />
             </span>
             <span className="text-sm font-bold text-[var(--text)]">Ação solo</span>
           </div>
@@ -725,7 +726,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
 
         {npcs.length === 0 ? (
           <EmptyState
-            icon="🧑‍🤝‍🧑"
+            icon="users"
             title="Nenhum NPC para agendar"
             description="Adicione NPCs à campanha para agendar interações — a ação solo acima já está disponível."
           />

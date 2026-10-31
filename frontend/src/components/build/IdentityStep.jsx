@@ -21,21 +21,21 @@ export default function IdentityStep({ build, canAct, busy, act, confirm }) {
   return (
     <div className="flex flex-col gap-4">
       <fieldset disabled={!canAct} className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs uppercase">Tipo corporal
+        <label className="label">Tipo corporal
           <select className="field mt-1 w-full" value={f.bodyType} onChange={set('bodyType')}>
             {BODY_TYPES.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
         </label>
-        <label className="text-xs uppercase">Dominância
+        <label className="label">Dominância
           <select className="field mt-1 w-full" value={f.dominance} onChange={set('dominance')}>
             {DOMINANCES.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
         </label>
-        <label className="text-xs uppercase">Altura (m)
+        <label className="label">Altura (m)
           <input className="field mt-1 w-full" type="number" step="0.01" min="1" max="2.5"
             value={f.heightM} onChange={set('heightM')} aria-invalid={!valid} />
         </label>
-        <label className="text-xs uppercase">Peso (kg, opcional)
+        <label className="label">Peso (kg, opcional)
           <input className="field mt-1 w-full" type="number" step="0.1" min="0" value={f.weightKg} onChange={set('weightKg')} />
         </label>
       </fieldset>

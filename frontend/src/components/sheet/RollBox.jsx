@@ -36,7 +36,7 @@ export default function RollBox({ sheetId, channel, customChannelId, campaignId,
   return (
     <form onSubmit={handleRoll} className="flex flex-col gap-3">
       <div className="grid gap-2 sm:grid-cols-[8rem_1fr_auto] sm:items-end">
-        <label className="text-xs uppercase">
+        <label className="label">
           Expressão
           <input
             className="field mt-1 w-full"
@@ -46,7 +46,7 @@ export default function RollBox({ sheetId, channel, customChannelId, campaignId,
             placeholder="2d6+3"
           />
         </label>
-        <label className="text-xs uppercase">
+        <label className="label">
           Propósito
           <input
             className="field mt-1 w-full"

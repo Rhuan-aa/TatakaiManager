@@ -6,6 +6,7 @@ import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
 import { EmptyState } from '../../components/layout/AppShell';
 import { useToast } from '../../contexts/ToastContext';
+import Icon from '../ui/Icon';
 
 function LogSkeleton() {
   return (
@@ -374,7 +375,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
         {!loading && error && <p className="text-sm font-bold text-[color:var(--accent)]">{error}</p>}
         {!loading && !error && logs.length === 0 && (
           <EmptyState
-            icon="📜"
+            icon="scroll"
             title="Nenhum log narrativo ainda"
             description="Os registros da campanha aparecerão aqui conforme forem publicados."
           />

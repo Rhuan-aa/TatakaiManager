@@ -1,94 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-
-const svg = (children) => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="shrink-0"
-  >
-    {children}
-  </svg>
-);
-
-const ICONS = {
-  grid: svg(
-    <>
-      <rect x="3" y="3" width="7" height="7" rx="0" />
-      <rect x="14" y="3" width="7" height="7" rx="0" />
-      <rect x="3" y="14" width="7" height="7" rx="0" />
-      <rect x="14" y="14" width="7" height="7" rx="0" />
-    </>
-  ),
-  sheet: svg(
-    <>
-      <path d="M6 3h9l4 4v14H6Z" />
-      <path d="M14 3v5h5M9 12h7M9 16h7" />
-      <circle cx="10" cy="9" r="1" fill="currentColor" />
-    </>
-  ),
-  plus: svg(<path d="M12 5v14M5 12h14" />),
-  back: svg(<path d="M19 12H5M12 19l-7-7 7-7" />),
-  users: svg(
-    <>
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21c0-4 3.5-6 8-6s8 2 8 6" />
-    </>
-  ),
-  calendar: svg(
-    <>
-      <rect x="3" y="4" width="18" height="17" rx="2" />
-      <path d="M3 9h18M8 2v4M16 2v4" />
-    </>
-  ),
-  swords: svg(
-    <>
-      <path d="M4 4l9 9M4 4v4l1 1M4 4h4l1 1" />
-      <path d="M20 4l-9 9M20 4v4l-1 1M20 4h-4l-1 1" />
-      <path d="M9 15l-4 4M15 15l4 4M7 17l-2-2M17 17l2-2" />
-    </>
-  ),
-  scroll: svg(
-    <>
-      <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-      <path d="M9 8h6M9 12h6M9 16h4" />
-    </>
-  ),
-  book: svg(
-    <>
-      <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z" />
-      <path d="M4 19a2 2 0 0 1 2-2h13M9 7h6" />
-    </>
-  ),
-  settings: svg(
-    <>
-      <path d="M4 6h16M4 12h16M4 18h16" />
-      <circle cx="9" cy="6" r="2" fill="currentColor" />
-      <circle cx="16" cy="12" r="2" fill="currentColor" />
-      <circle cx="11" cy="18" r="2" fill="currentColor" />
-    </>
-  ),
-  logout: svg(
-    <>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="M16 17l5-5-5-5M21 12H9" />
-    </>
-  ),
-  sun: svg(
-    <>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-    </>
-  ),
-  moon: svg(<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />),
-};
+import Icon from '../ui/Icon';
 
 // Rótulo que só aparece quando a sidebar está expandida (hover)
 const label =
@@ -104,7 +17,7 @@ function NavItem({ item }) {
   }`;
   const inner = (
     <>
-      {ICONS[item.icon] ?? ICONS.grid}
+      <Icon name={item.icon} />
       <span className={label}>{item.label}</span>
     </>
   );
@@ -171,7 +84,7 @@ export default function Sidebar({ items = [] }) {
           className={`${itemBase} text-[var(--text)] hover:border-[var(--line)] hover:bg-[var(--bg)]`}
           title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
         >
-          {theme === 'dark' ? ICONS.sun : ICONS.moon}
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
           <span className={label}>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
         </button>
         <div className="flex items-center gap-3 px-1 py-1">
@@ -185,7 +98,7 @@ export default function Sidebar({ items = [] }) {
           onClick={handleLogout}
           className={`${itemBase} text-[var(--text)] hover:border-[var(--line)] hover:bg-[var(--accent)] hover:text-white`}
         >
-          {ICONS.logout}
+          <Icon name="logout" />
           <span className={label}>Sair</span>
         </button>
       </div>

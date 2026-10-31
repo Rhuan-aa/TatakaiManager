@@ -20,6 +20,7 @@ import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, KEIKEN, lab
 import { RARITY, rarityTagStyle } from '../ui/rarity';
 import RichText from '../ui/RichText';
 import { ITEM_LOCATION } from '../ui/gear';
+import Icon from '../ui/Icon';
 
 const kg = (v) => (Math.round((v ?? 0) * 10) / 10).toString().replace('.', ',');
 // Carga (capítulo de Condições): efeitos de cada estado acima da Carga
@@ -291,7 +292,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   return (
     <div className="page-gutter flex flex-col">
       <div className="flex flex-wrap items-center gap-3">
-        {onBack && <button type="button" className="btn-ghost" onClick={onBack}>← Fichas</button>}
+        {onBack && <button type="button" className="btn-ghost" onClick={onBack}><Icon name="back" size={18} /> Fichas</button>}
         <h2 className="panel-title flex-1 text-2xl">{sheet.name}</h2>
         {!isNpc && <span className="tag-accent tag">{STATUS[sheet.buildStatus]}</span>}
         {d?.criticalState && <span className="tag">Estado crítico</span>}
@@ -320,7 +321,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
 
       {!isNpc && isMaster && sheet.buildStatus === 'PENDING_APPROVAL' && (
         <Block title="Aprovação">
-          <label className="text-xs uppercase">
+          <label className="label">
             Motivo (opcional)
             <input className="field mt-1 w-full" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
           </label>

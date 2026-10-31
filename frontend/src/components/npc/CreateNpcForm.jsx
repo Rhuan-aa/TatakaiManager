@@ -11,6 +11,7 @@ import DetailListEditor from './DetailListEditor';
 import InteractionListEditor from './InteractionListEditor';
 import NpcImagePicker from './NpcImagePicker';
 import NpcMartialArt from './NpcMartialArt';
+import Icon from '../ui/Icon';
 
 const inputClass =
   'field';
@@ -129,7 +130,9 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
     >
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="panel-title flex-1 text-xl">Novo NPC</h3>
-        <button type="button" className="btn-ghost text-sm" onClick={randomize}>🎲 NPC aleatório</button>
+        <button type="button" className="btn-ghost text-sm" onClick={randomize}>
+          <Icon name="dice" size={18} /> NPC aleatório
+        </button>
       </div>
 
       <div className="mt-4 space-y-4">
@@ -177,7 +180,7 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
             <input type="checkbox" checked={withStats} onChange={(e) => setWithStats(e.target.checked)} />
             Preencher atributos e recursos agora
           </label>
-          <p className="caption mt-1">Opcional, mas obrigatório para usar o NPC em combate e nas rolagens.</p>
+          <p className="hint mt-1">Opcional, mas obrigatório para usar o NPC em combate e nas rolagens.</p>
           {withStats && <div className="mt-3"><SheetFields f={sheetF} set={setSheet} errors={fieldErrors} /></div>}
         </div>
 

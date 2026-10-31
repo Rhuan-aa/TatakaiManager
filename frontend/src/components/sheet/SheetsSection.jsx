@@ -125,7 +125,7 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npc
     return (
       <form onSubmit={begin} className="panel flex flex-col gap-3 p-4">
         <h2 className="panel-title">Criar minha ficha</h2>
-        <label className="text-xs uppercase">
+        <label className="label">
           Nome do personagem
           <input required maxLength={100} className="field mt-1 w-full" value={newName} onChange={(e) => setNewName(e.target.value)} />
         </label>

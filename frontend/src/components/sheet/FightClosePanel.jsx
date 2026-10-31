@@ -90,7 +90,7 @@ function Participant({ sheet, row, milestones, update, npcListId }) {
                   if (list.length === 0) return null;
                   return (
                     <fieldset key={cat} className="flex flex-col gap-1">
-                      <legend className="text-xs uppercase">{title}</legend>
+                      <legend className="label">{title}</legend>
                       {list.map((m) => {
                         const blocked = m.seriousOnly && !['REAL', 'LETHAL'].includes(row.classification);
                         return (
@@ -177,7 +177,7 @@ export default function FightClosePanel({ campaignId, sheets, onDone, preselecte
       <p className="text-fine">
         Fácil = luta entre amigos ou que ambos querem evitar (EL 1×/dia); sparring dá EL até o teto da patente e não dá PS.
       </p>
-      <label className="text-xs uppercase">
+      <label className="label">
         Nota (opcional)
         <input className="field mt-1 w-full" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
       </label>

@@ -4,6 +4,7 @@ import { listCampaigns } from '../../api/campaigns';
 import { parseApiError } from '../../api/parseApiError';
 import AppShell, { PageHeader, Surface, EmptyState } from '../../components/layout/AppShell';
 import CreateCampaignForm from '../../components/campaign/CreateCampaignForm';
+import Icon from '../../components/ui/Icon';
 
 /** Placeholder de card de campanha durante o carregamento. */
 function CampaignSkeleton() {
@@ -33,7 +34,7 @@ function CampaignCard({ campaign }) {
     >
       <div className="flex items-start justify-between gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center border-2 border-[var(--line)] text-lg">
-          ⚔️
+          <Icon name="swords" size={22} />
         </span>
         <RoleBadge role={campaign.currentUserRole} />
       </div>
@@ -113,7 +114,7 @@ export default function Dashboard() {
 
       {!loading && !error && campaigns.length === 0 && !creating && (
         <EmptyState
-          icon="⚔️"
+          icon="swords"
           title="Nenhuma campanha ainda"
           description="Crie a primeira campanha para começar a gerenciar seus NPCs."
           action={

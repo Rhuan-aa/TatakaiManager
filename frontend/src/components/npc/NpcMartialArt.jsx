@@ -41,7 +41,7 @@ export default function NpcMartialArt({ campaignId, value, onChange }) {
     <fieldset className="panel p-3">
       <legend className="caption">Arte marcial <span className="opacity-70">(opcional)</span></legend>
       <div className="mt-2 flex flex-wrap items-end gap-3">
-        <label className="min-w-48 flex-1 text-xs uppercase">Arte do catálogo
+        <label className="label min-w-48 flex-1">Arte do catálogo
           <select className="field mt-1 w-full" value={value.artId ?? ''} disabled={!arts}
             onChange={(e) => onChange({ artId: e.target.value || null, graduation: value.graduation || 'BEGINNER' })}>
             <option value="">— nenhuma —</option>
@@ -51,7 +51,7 @@ export default function NpcMartialArt({ campaignId, value, onChange }) {
           </select>
         </label>
         {value.artId && (
-          <label className="text-xs uppercase">Graduação
+          <label className="label">Graduação
             <select className="field mt-1 w-full" value={value.graduation || 'BEGINNER'}
               onChange={(e) => onChange({ ...value, graduation: e.target.value })}>
               {GRADS.filter((g) => g.value !== 'GENERIC').map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
@@ -66,17 +66,17 @@ export default function NpcMartialArt({ campaignId, value, onChange }) {
 
       {quick && (
         <div className="mt-3 grid gap-2 border-t-2 border-[var(--line)] pt-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-          <label className="text-xs uppercase">Nome da arte
+          <label className="label">Nome da arte
             <input className="field mt-1 w-full" value={quick.name} maxLength={100}
               onChange={(e) => setQuick((q) => ({ ...q, name: e.target.value }))} />
           </label>
-          <label className="text-xs uppercase">Regras de
+          <label className="label">Regras de
             <select className="field mt-1 w-full" value={quick.category}
               onChange={(e) => setQuick((q) => ({ ...q, category: e.target.value }))}>
               {ART_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </label>
-          <label className="flex items-center gap-2 text-xs uppercase">
+          <label className="label flex items-center gap-2">
             <input type="checkbox" checked={quick.hidden} onChange={(e) => setQuick((q) => ({ ...q, hidden: e.target.checked }))} />
             Oculta no catálogo
           </label>
@@ -86,7 +86,7 @@ export default function NpcMartialArt({ campaignId, value, onChange }) {
             </button>
             <button type="button" className="btn-ghost text-sm" onClick={() => setQuick(null)}>Cancelar</button>
           </div>
-          <p className="caption sm:col-span-3">Nasce sem bases, técnicas ou passivas: adicione depois na aba Catálogo → Artes.</p>
+          <p className="hint sm:col-span-3">Nasce sem bases, técnicas ou passivas: adicione depois na aba Catálogo → Artes.</p>
         </div>
       )}
       {error && <p className="mt-2 text-sm text-[var(--accent)]">{error}</p>}

@@ -7,6 +7,7 @@ import {
 } from '../../api/timeSkipActivities';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
+import Icon from '../ui/Icon';
 
 const emptyForm = { name: '', description: '', idlePointCost: '1' };
 
@@ -122,7 +123,7 @@ export default function TimeSkipActivityManager({ campaignId, timeSkipId, isActi
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between px-3 py-2 text-sm font-bold uppercase text-[var(--text)] hover:underline"
       >
-        <span>🛠️ Atividades solo exclusivas deste TimeSkip</span>
+        <span className="inline-flex items-center gap-2"><Icon name="wrench" size={18} /> Atividades solo exclusivas deste TimeSkip</span>
         <span className="text-xs">{open ? '▲' : '▼'}</span>
       </button>
 

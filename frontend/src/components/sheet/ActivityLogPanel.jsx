@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSheetActivityLog, getCampaignActivityLog } from '../../api/characterSheets';
 import { parseApiError } from '../../api/parseApiError';
+import Icon from '../ui/Icon';
 
 const CATEGORIES = {
   BUILD: 'Construção',
@@ -11,7 +12,7 @@ const CATEGORIES = {
   GM_ADJUSTMENT: 'Ajuste do Mestre',
   PROGRESSION: 'Progressão',
 };
-const ICONS = { BUILD: '🛠', ROLL: '🎲', RESOURCE: '❤', CONDITION: '🩹', INVENTORY: '🎒', GM_ADJUSTMENT: '⚖', PROGRESSION: '⭐' };
+const ICONS = { BUILD: 'build', ROLL: 'dice', RESOURCE: 'heart', CONDITION: 'bandage', INVENTORY: 'pack', GM_ADJUSTMENT: 'scale', PROGRESSION: 'star' };
 const FIELDS = {
   HP: 'PV', SP: 'PE', KP: 'PQ', HP_MAX: 'PV máx.', SP_MAX: 'PE máx.', KP_MAX: 'PQ máx.',
   fightExperience: 'EL', pendingOvercomePoints: 'PS pendentes', openWounds: 'feridas abertas',
@@ -111,7 +112,7 @@ function Timeline({ entries }) {
           <ol className="flex flex-col gap-2">
             {d.items.map((e) => (
               <li key={e.id} className="bubble flex items-start gap-3 p-3 text-sm">
-                <span aria-hidden="true" className="text-lg leading-none">{ICONS[e.category] ?? '•'}</span>
+                <Icon name={ICONS[e.category] ?? 'circle'} size={20} />
                 <div className="min-w-0 flex-1">
                   <p>
                     <strong>{e.actorRole === 'MASTER' ? 'Mestre' : (e.actorName ?? 'Sistema')}</strong>{' '}
@@ -175,7 +176,7 @@ export default function ActivityLogPanel({ entries, sheetId, campaignId, sheets 
     <div className="flex flex-col gap-3">
       <div className={`grid gap-2 sm:grid-cols-2 ${campaignId ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         {campaignId && (
-          <label className="text-xs uppercase">
+          <label className="label">
             Ficha
             <select className="field mt-1 w-full" value={sheetFilter} onChange={(e) => setSheetFilter(e.target.value)}>
               <option value="">Todas</option>
@@ -185,7 +186,7 @@ export default function ActivityLogPanel({ entries, sheetId, campaignId, sheets 
             </select>
           </label>
         )}
-        <label className="text-xs uppercase">
+        <label className="label">
           Categoria
           <select className="field mt-1 w-full" value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value="">Todas</option>
@@ -194,11 +195,11 @@ export default function ActivityLogPanel({ entries, sheetId, campaignId, sheets 
             ))}
           </select>
         </label>
-        <label className="text-xs uppercase">
+        <label className="label">
           Ator
           <input className="field mt-1 w-full" value={actor} onChange={(e) => setActor(e.target.value)} placeholder="Nome" />
         </label>
-        <label className="text-xs uppercase">
+        <label className="label">
           Buscar
           <input type="search" className="field mt-1 w-full" value={text} onChange={(e) => setText(e.target.value)} placeholder="Texto" />
         </label>

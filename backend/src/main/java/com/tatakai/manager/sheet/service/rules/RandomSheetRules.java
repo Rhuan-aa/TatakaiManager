@@ -74,15 +74,25 @@ public final class RandomSheetRules {
         return new Generated(bodies[rnd.nextInt(bodies.length)], dom, height, attrs, profile.el);
     }
 
-    /** Sorteia até `count` traços distintos; filtros nulos = sem filtro. Menos que `count` se o catálogo não alcançar. */
-    public static List<TraitRef> pickTraits(List<TraitRef> catalog, int count, TraitRarity rarity,
-                                            TraitCategory category, Boolean developable, Random rnd) {
-        List<TraitRef> pool = new ArrayList<>(catalog.stream()
-                .filter(t -> rarity == null || t.rarity() == rarity)
-                .filter(t -> category == null || t.category() == category)
-                .filter(t -> developable == null || t.developable() == developable)
-                .toList());
-        Collections.shuffle(pool, rnd);
-        return pool.subList(0, Math.max(0, Math.min(count, pool.size())));
+    /** Uma linha de sorteio de traços (filtros nulos = qualquer). */
+    public record TraitLine(int count, TraitRarity rarity, TraitCategory category, Boolean developable) {}
+
+    /**
+     * Rola todas as linhas em sequência sobre o mesmo catálogo, sem repetir traço entre linhas. Linha que não alcança a
+     * quantidade pedida entrega o que houver.
+     */
+    public static List<TraitRef> pickTraits(List<TraitRef> catalog, List<TraitLine> lines, Random rnd) {
+        List<TraitRef> out = new ArrayList<>();
+        for (TraitLine l : lines) {
+            List<TraitRef> pool = new ArrayList<>(catalog.stream()
+                    .filter(t -> !out.contains(t))
+                    .filter(t -> l.rarity() == null || t.rarity() == l.rarity())
+                    .filter(t -> l.category() == null || t.category() == l.category())
+                    .filter(t -> l.developable() == null || t.developable() == l.developable())
+                    .toList());
+            Collections.shuffle(pool, rnd);
+            out.addAll(pool.subList(0, Math.max(0, Math.min(l.count(), pool.size()))));
+        }
+        return out;
     }
 }

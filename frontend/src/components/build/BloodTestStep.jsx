@@ -52,7 +52,7 @@ export default function BloodTestStep({ build, campaignId, canAct, busy, act, co
           onClick={() => act(() => rollClans(build.sheetId), 'CLÃ!')}>Rolar clãs</button></div>
       ) : (
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-xs uppercase">Escolha {clanSlots} clã{clanSlots > 1 ? 's' : ''} ({picked.length}/{clanSlots})</legend>
+          <legend className="label">Escolha {clanSlots} clã{clanSlots > 1 ? 's' : ''} ({picked.length}/{clanSlots})</legend>
           {catalog.map((c) => (
             <label key={c.id} className="flex items-center gap-2">
               <input type="checkbox" checked={picked.includes(c.id)} onChange={() => toggle(c.id)} />

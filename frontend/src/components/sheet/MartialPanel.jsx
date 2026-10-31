@@ -6,6 +6,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { ART_CATEGORIES, GRADS, lab } from '../catalog/artLabels';
 import { KEIKEN } from './sheetRules';
 import RichText from '../ui/RichText';
+import Icon from '../ui/Icon';
 
 const STATES = { REQUESTED: 'Pedida', IN_TRAINING: 'Em treino', ACTIVE: 'Ativa', STORED: 'Guardada' };
 const MASTERY = [
@@ -159,7 +160,7 @@ function GraduationInfo({ ca, isMaster, run }) {
       <ul className="flex flex-wrap gap-1" aria-label={`Requisitos para ${lab(GRADS, next)}`}>
         {ca.requirements.map((r) => (
           <li key={r.key} className={r.met ? 'tag-accent tag' : 'tag'} title={r.detail}>
-            {r.met ? '✓' : '○'} {REQUIREMENTS[r.key] ?? r.key}{r.key === 'KEIKEN' && `: ${KEIKEN[r.detail] ?? r.detail}`}
+            <Icon name={r.met ? 'check' : 'circle'} size={14} className="mr-1 align-[-2px]" /> {REQUIREMENTS[r.key] ?? r.key}{r.key === 'KEIKEN' && `: ${KEIKEN[r.detail] ?? r.detail}`}
           </li>
         ))}
       </ul>

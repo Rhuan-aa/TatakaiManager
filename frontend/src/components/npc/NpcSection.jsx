@@ -490,7 +490,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
       {npcs.length === 0 ? (
         <EmptyState
           className="mt-4"
-          icon="🎭"
+          icon="users"
           title="Nenhum NPC nesta campanha"
           description={
             isMaster

@@ -38,12 +38,14 @@ export function PageHeader({ title, subtitle, actions }) {
 }
 
 /** Estado vazio padrão: card tracejado com ícone, mensagem e ação opcional. */
+import Icon from '../ui/Icon';
+
 export function EmptyState({ icon, title, description, action, className = '' }) {
   return (
     <div
       className={`panel border-dashed p-10 text-center ${className}`}
     >
-      {icon && <div className="mb-3 text-3xl">{icon}</div>}
+      {icon && <div className="mb-3 flex justify-center"><Icon name={icon} size={40} /></div>}
       <p className="panel-title text-xl text-[var(--text)]">{title}</p>
       {description && (
         <p className="mx-auto mt-1 max-w-sm text-sm text-[var(--text)] opacity-75">{description}</p>

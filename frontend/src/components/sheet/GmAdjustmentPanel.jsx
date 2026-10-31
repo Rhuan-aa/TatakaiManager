@@ -103,7 +103,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
   }
 
   const Sel = ({ id, lbl, val, set, opts, blank }) => (
-    <label className="text-xs uppercase">
+    <label className="label">
       {lbl}
       <select id={id} className="field mt-1 w-full" value={val} onChange={(e) => set(e.target.value)}>
         {blank && <option value="">—</option>}
@@ -119,13 +119,13 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
           opts={Object.entries(ACTIONS).map(([k, a]) => [k, a.label])} />
         {cfg.field && <Sel lbl="Campo" val={field || cfg.field[0][0]} set={setField} opts={cfg.field} />}
         {cfg.value && (
-          <label className="text-xs uppercase">
+          <label className="label">
             {cfg.value}
             <input type="number" required className="field mt-1 w-full" value={value} onChange={(e) => setValue(e.target.value)} />
           </label>
         )}
         {cfg.trait && (
-          <label className="text-xs uppercase">
+          <label className="label">
             Traço
             <select required className="field mt-1 w-full" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
               <option value="">—</option>
@@ -143,7 +143,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
           </label>
         )}
         {cfg.target && (cfg.item || action === 'REMOVE_ITEM') && sheet.inventory?.length > 0 ? (
-          <label className="text-xs uppercase">
+          <label className="label">
             Item
             <select required className="field mt-1 w-full" value={targetId} onChange={(e) => {
               setTargetId(e.target.value);
@@ -159,7 +159,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
             </select>
           </label>
         ) : cfg.target && (
-          <label className="text-xs uppercase">
+          <label className="label">
             {cfg.target}
             <input required className="field mt-1 w-full" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
           </label>
@@ -169,12 +169,12 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
         <div className="grid gap-2 sm:grid-cols-2">
           <Sel lbl="Tipo" val={injury.type} set={(v) => setInjury({ ...injury, type: v })} opts={INJURY_TYPES} />
           <Sel lbl="Gravidade" val={injury.severity} set={(v) => setInjury({ ...injury, severity: v })} opts={SEVERITIES} />
-          <label className="text-xs uppercase">
+          <label className="label">
             Região
             <input required maxLength={100} className="field mt-1 w-full" value={injury.region}
               onChange={(e) => setInjury({ ...injury, region: e.target.value })} />
           </label>
-          <label className="text-xs uppercase">
+          <label className="label">
             Dano (só contusão)
             <input type="number" min={0} className="field mt-1 w-full" value={injury.damage}
               onChange={(e) => setInjury({ ...injury, damage: e.target.value })} />
@@ -185,27 +185,27 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
       )}
       {cfg.item && (
         <div className="grid gap-2 sm:grid-cols-2">
-          <label className="text-xs uppercase">
+          <label className="label">
             Item
             <input required maxLength={100} className="field mt-1 w-full" value={item.name}
               onChange={(e) => setItem({ ...item, name: e.target.value })} />
           </label>
-          <label className="text-xs uppercase">
+          <label className="label">
             Quantidade
             <input type="number" min={0} required className="field mt-1 w-full" value={item.quantity}
               onChange={(e) => setItem({ ...item, quantity: e.target.value })} />
           </label>
-          <label className="text-xs uppercase">
+          <label className="label">
             Peso unitário (kg)
             <input type="number" min={0} max={9999} step="0.1" className="field mt-1 w-full" value={item.weightKg}
               onChange={(e) => setItem({ ...item, weightKg: e.target.value })} />
           </label>
-          <label className="text-xs uppercase">
+          <label className="label">
             Descrição
             <input maxLength={2000} className="field mt-1 w-full" value={item.description}
               onChange={(e) => setItem({ ...item, description: e.target.value })} />
           </label>
-          <label className="text-xs uppercase">
+          <label className="label">
             Arma do catálogo
             <select className="field mt-1 w-full" value={item.weaponKey}
               onChange={(e) => {
@@ -218,7 +218,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
               ))}
             </select>
           </label>
-          <label className="text-xs uppercase">
+          <label className="label">
             Equipamento do catálogo
             <select className="field mt-1 w-full" value={item.equipmentKey}
               onChange={(e) => {
@@ -230,7 +230,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
               {equipment.map((q) => <option key={q.key} value={q.key} title={q.text ?? undefined}>{q.name}</option>)}
             </select>
           </label>
-          <label className="text-xs uppercase">
+          <label className="label">
             Consumível do catálogo
             <select className="field mt-1 w-full" value={item.consumableKey}
               onChange={(e) => {
@@ -241,7 +241,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
               {consumables.map((q) => <option key={q.key} value={q.key} title={q.text ?? undefined}>{q.name}</option>)}
             </select>
           </label>
-          <label className="text-xs uppercase">
+          <label className="label">
             Onde está
             <select className="field mt-1 w-full" value={item.location} onChange={(e) => setItem({ ...item, location: e.target.value })}>
               <option value="">{action === 'ADD_ITEM' ? 'Mochila (padrão)' : 'Manter'}</option>
@@ -250,7 +250,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
           </label>
         </div>
       )}
-      <label className="text-xs uppercase">
+      <label className="label">
         Motivo (obrigatório)
         <input required maxLength={500} className="field mt-1 w-full" value={reason} onChange={(e) => setReason(e.target.value)} />
       </label>
