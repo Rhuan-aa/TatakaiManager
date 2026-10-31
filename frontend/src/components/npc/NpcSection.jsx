@@ -87,6 +87,76 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
           {npc.combatReady && <span className="tag mt-1">Pronto p/ combate</span>}
           {npc.bookable === false && <span className="tag mt-1">Só combate</span>}
           {npc.interactions?.length > 0 && (
+            <p className="truncate text-[11px] text-white opacity-70">
+              {npc.interactions.length} interaç{npc.interactions.length === 1 ? 'ão' : 'ões'}
+            </p>
+          )}
+        </div>
+
+        {/* Selo de visibilidade (Mestre) */}
+        {isMaster && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleVisibility(npc, e);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleVisibility(npc, e);
+              }
+            }}
+            title="Alternar visibilidade para os jogadores"
+            className={`absolute right-2 top-2 cursor-pointer ${
+              npc.visible ? 'tag-accent' : 'tag'
+            }`}
+          >
+            {npc.visible ? 'Visível' : 'Oculto'}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function DetailList({ title, items, render }) {
+  if (!items?.length) return null;
+  return (
+    <section className="panel p-4">
+      <h3 className="panel-title mb-3">{title}</h3>
+      <ul className="flex flex-col gap-2">
+        {items.map((it, i) => (
+          <li key={i} className="bubble p-2 text-sm">{render(it)}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Conteúdo do detalhe do NPC exibido no modal. */
+function NpcDetailView({ npc, campaignId }) {
+  return (
+    <div className="flex flex-col gap-5 sm:flex-row">
+      {/* Retrato adaptado ao modal: mesma proporção 3:4 do card, porém maior,
+          alinhado ao topo e integrado (ring/sombra) — sem "flutuar". */}
+      <div className="w-40 shrink-0 self-start panel overflow-hidden sm:w-52">
+        <div className="aspect-[3/4]">
+          <NpcPortrait
+            campaignId={campaignId}
+            npcId={npc.id}
+            hasImage={npc.hasImage}
+            name={npc.name}
+          />
+        </div>
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-4">
+        {npc.description && <p className="text-sm text-[var(--text)]">{npc.description}</p>}
+
+        {npc.interactions?.length > 0 && (
           <section className="panel p-4">
             <h3 className="panel-title mb-3">Interações</h3>
             <ul className="flex flex-col gap-2">
