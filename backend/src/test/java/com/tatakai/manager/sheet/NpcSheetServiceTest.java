@@ -399,7 +399,7 @@ class NpcSheetServiceTest {
         List<NpcSectionVisibilityResponse> r = service.listNpcSheetVisibility(campaign.getId(), npc.getId(), owner.getId());
 
         assertThat(r).extracting(NpcSectionVisibilityResponse::section).containsExactlyInAnyOrder(
-                SheetSection.ATTRIBUTES, SheetSection.RESOURCES, SheetSection.INJURIES, SheetSection.INVENTORY);
+                SheetSection.ATTRIBUTES, SheetSection.RESOURCES, SheetSection.INJURIES, SheetSection.INVENTORY, SheetSection.TRAITS);
         assertThat(r).noneMatch(NpcSectionVisibilityResponse::visible);
     }
 
