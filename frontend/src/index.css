@@ -370,6 +370,11 @@ h3,
     padding: 0.2rem 0.75rem;
     border-radius: 0;
   }
+  /* Tema claro: o painel já é claro, então o subtítulo inverte (tinta com texto de papel) para continuar legível */
+  [data-theme='light'] .title-box {
+    background: var(--ink);
+    color: var(--paper);
+  }
   label:has(> input[type='checkbox']),
   label:has(> input[type='radio']) {
     display: inline-flex;
@@ -809,8 +814,8 @@ h3,
   select option:last-child { border-bottom: 0; }
   select option:hover,
   select option:focus-visible {
-    background: var(--highlight);
-    color: var(--ink);
+    background: var(--accent);
+    color: #fff;
     outline: none;
   }
   select option:checked {
