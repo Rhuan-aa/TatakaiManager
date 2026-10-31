@@ -323,6 +323,7 @@ public class CombatService {
         Encounter e = loadAsMaster(encounterId, userId);
         requireNotEnded(e);
         CharacterSheet s = sheets.findById(sheetId).orElseThrow(CharacterSheetNotFoundException::new);
+        com.tatakai.manager.sheet.service.rules.SheetRules.requireCombatReady(s);
         if (s.isNpcSheet()) {
             if (!campaignNpcs.existsByCampaignIdAndNpcId(e.getCampaignId(), s.getNpcId())) {
                 throw new InvalidCombatException("O NPC desta ficha não está associado à campanha");

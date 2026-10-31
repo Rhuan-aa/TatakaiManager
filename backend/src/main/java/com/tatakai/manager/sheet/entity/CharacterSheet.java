@@ -55,6 +55,11 @@ public class CharacterSheet {
     @Column(length = 20)
     private Dominance dominance;
 
+    /** false = ficha leve de NPC (sem atributos/recursos válidos): não entra em combate nem rola (§51.8). */
+    @Column(name = "combat_ready", nullable = false, columnDefinition = "boolean not null default true")
+    @Builder.Default
+    private boolean combatReady = true;
+
     @Column(name = "height_m")
     private double heightM;
 

@@ -122,6 +122,7 @@ public class SheetExportService {
     @Transactional
     public SheetExportFile export(UUID sheetId, UUID requesterId) {
         CharacterSheet s = sheetRepository.findById(sheetId).orElseThrow(CharacterSheetNotFoundException::new);
+        com.tatakai.manager.sheet.service.rules.SheetRules.requireCombatReady(s);
         Set<SheetSection> hidden = EnumSet.noneOf(SheetSection.class);
         ActorRole role = ActorRole.MASTER;
         String requesterName;

@@ -251,6 +251,7 @@ public class CharacterSheetService {
     @Transactional
     public CharacterSheetResponse updateResources(UUID sheetId, UpdateResourcesRequest req, UUID requesterId) {
         CharacterSheet sheet = loadSheet(sheetId);
+        SheetRules.requireCombatReady(sheet);
         Access a = access(sheet, requesterId);
         if (!a.master()) {
             requireOwner(a);
@@ -786,7 +787,8 @@ public class CharacterSheetService {
 
     private CharacterSheetResponse toResponse(CharacterSheet s, boolean privileged, Set<SheetSection> hidden) {
         boolean showAttr = !hidden.contains(SheetSection.ATTRIBUTES);
-        boolean showRes = !hidden.contains(SheetSection.RESOURCES);
+        // ficha leve (§51.8): só os atributos crus (pré-preenchimento); nada derivado nem recursos
+        boolean showRes = !hidden.contains(SheetSection.RESOURCES) && s.isCombatReady();
         boolean showInj = !hidden.contains(SheetSection.INJURIES);
         boolean showInv = !hidden.contains(SheetSection.INVENTORY);
         CampaignMember m = s.getCampaignMember(); // null em ficha de NPC
@@ -804,6 +806,7 @@ public class CharacterSheetService {
             for (Attribute a : Attribute.values()) {
                 int v = s.getAttribute(a);
                 attributes.put(a, v);
+                if (!s.isCombatReady()) continue;
                 mods.put(a, SheetRules.mod(v));
                 bands.put(a, SheetRules.band(v));
                 if (a != Attribute.TAL) {
@@ -812,7 +815,7 @@ public class CharacterSheetService {
                             adj.getOrDefault(a.name(), 0)));
                 }
             }
-            derived = new SheetDerived(mods, bands, limiters,
+            if (s.isCombatReady()) derived = new SheetDerived(mods, bands, limiters,
                     SheetRules.statusLimiter(ResourceType.HP, s.getTal(), s.getBodyType(),
                             adj.getOrDefault("HP", 0) - SheetRules.injuryHp(s.getInjuries())),
                     SheetRules.statusLimiter(ResourceType.SP, s.getTal(), s.getBodyType(),
@@ -864,7 +867,7 @@ public class CharacterSheetService {
                 npc ? null : m.getUser().getName(), s.getName(), s.getBuildStatus(), s.getBodyType(), s.getDominance(),
                 s.getHeightM(), s.getWeightKg(), attributes, derived, resources, fatigue, progress,
                 showInv ? s.getMoney() : null, injuries, inventory,
-                s.getVersion() == null ? 0L : s.getVersion(), s.getNpcId(), traits, clans);
+                s.getVersion() == null ? 0L : s.getVersion(), s.getNpcId(), traits, clans, s.isCombatReady());
     }
 
     private CharacterSheetSummaryResponse toSummary(CharacterSheet s, Set<SheetSection> hidden) {

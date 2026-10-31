@@ -272,6 +272,14 @@ class CombatServiceTest {
     }
 
     @Test
+    @DisplayName("§51.8: ficha leve (sem atributos/recursos) não entra em combate")
+    void addLightSheetRejected() {
+        npcSheet.setCombatReady(false);
+        assertThatThrownBy(() -> service.addParticipant(enc.getId(), npcSheet.getId(), master.getId()))
+                .isInstanceOf(com.tatakai.manager.sheet.exception.InvalidCharacterSheetException.class);
+    }
+
+    @Test
     @DisplayName("Participantes: ficha de NPC só se o NPC estiver associado; duplicata -> 409; jogador -> 403")
     void addNpcRules() {
         lenient().when(campaignNpcs.existsByCampaignIdAndNpcId(cid, npcSheet.getNpcId())).thenReturn(false);

@@ -241,4 +241,13 @@ class SheetRulesTest {
         // 17.5 kg with carry limit 18: 17.5 <= 18 is FREE, not overloaded
         assertThat(SheetRules.loadState(17.5, carry)).isEqualTo(SheetRules.LoadState.FREE);
     }
+
+    @Test
+    @DisplayName("§51.8: requireCombatReady barra ficha leve e aceita ficha pronta")
+    void requireCombatReady() {
+        CharacterSheet light = CharacterSheet.builder().combatReady(false).build();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> SheetRules.requireCombatReady(light))
+                .isInstanceOf(com.tatakai.manager.sheet.exception.InvalidCharacterSheetException.class);
+        SheetRules.requireCombatReady(CharacterSheet.builder().build());
+    }
 }

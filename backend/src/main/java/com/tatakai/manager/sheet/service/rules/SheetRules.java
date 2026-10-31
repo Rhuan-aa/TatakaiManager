@@ -241,4 +241,12 @@ public final class SheetRules {
             case LETHAL -> 0;
         };
     }
+
+    /** Ficha leve de NPC (sem atributos/recursos) não serve para combate, rolagem nem recursos (§51.8). */
+    public static void requireCombatReady(com.tatakai.manager.sheet.entity.CharacterSheet sheet) {
+        if (!sheet.isCombatReady()) {
+            throw new com.tatakai.manager.sheet.exception.InvalidCharacterSheetException(
+                    "Preencha atributos e recursos da ficha para usar em combate");
+        }
+    }
 }

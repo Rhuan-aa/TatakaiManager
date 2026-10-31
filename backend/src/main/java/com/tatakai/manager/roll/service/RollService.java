@@ -134,6 +134,7 @@ public class RollService {
     @Transactional
     public RollMessage roll(UUID sheetId, RollRequest req, UUID requesterId) {
         Access a = access(sheetId, requesterId, req.campaignId());
+        com.tatakai.manager.sheet.service.rules.SheetRules.requireCombatReady(a.sheet());
         RollChannel channel = channelOf(req.channel(), a.master());
 
         UUID customId = customChannelOf(channel, req.customChannelId(), a.campaignId(), a.master(), requesterId);
@@ -148,6 +149,7 @@ public class RollService {
     @Transactional
     public RollMessage testRoll(UUID sheetId, RollTestRequest req, UUID requesterId) {
         Access a = access(sheetId, requesterId, req.campaignId());
+        com.tatakai.manager.sheet.service.rules.SheetRules.requireCombatReady(a.sheet());
         RollChannel channel = channelOf(req.channel(), a.master());
         UUID customId = customChannelOf(channel, req.customChannelId(), a.campaignId(), a.master(), requesterId);
         boolean detailed = req.mode() == RollMode.DETAILED;
@@ -287,6 +289,7 @@ public class RollService {
     @Transactional(readOnly = true)
     public List<RollProfileResponse> profiles(UUID sheetId, UUID requesterId) {
         Access a = access(sheetId, requesterId, null);
+        if (!a.sheet().isCombatReady()) return List.of();
         return profiles.list(a.sheet()).stream().map(c -> RollProfileService.toResponse(c,
                 profiles.moduleNames(a.sheet(), c.sourceId(), c.variation()))).toList();
     }
