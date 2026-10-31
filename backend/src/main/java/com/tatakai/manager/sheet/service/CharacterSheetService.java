@@ -103,7 +103,8 @@ public class CharacterSheetService {
 
     /** Seções da ficha de NPC que o Mestre pode liberar aos jogadores. */
     private static final List<SheetSection> NPC_SHEET_SECTIONS = List.of(
-            SheetSection.ATTRIBUTES, SheetSection.RESOURCES, SheetSection.INJURIES, SheetSection.INVENTORY);
+            SheetSection.ATTRIBUTES, SheetSection.RESOURCES, SheetSection.INJURIES, SheetSection.INVENTORY,
+            SheetSection.TRAITS);
 
     /** Quem age sobre a ficha: papel efetivo, nome (para eventos) e flags de acesso. */
     private record Access(UUID actorId, String actorName, ActorRole role,
@@ -854,7 +855,7 @@ public class CharacterSheetService {
                 .toList() : null;
 
         // traços/clãs: ocultos quando a seção TRAITS está oculta; ficha de NPC só para o Mestre
-        boolean showTraits = !hidden.contains(SheetSection.TRAITS) && (!npc || privileged);
+        boolean showTraits = !hidden.contains(SheetSection.TRAITS); // NPC: o Mestre libera a seção (§51.8)
         List<CharacterTraitResponse> traits = showTraits ? s.getTraits().stream()
                 .map(t -> new CharacterTraitResponse(t.getId(), t.getTraitId(), t.getTraitVersion(), t.getName(),
                         t.getRarity(), t.getCategory(), t.getDescription(), t.getAcquiredIn(), t.isGainsApplied()))

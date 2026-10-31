@@ -163,7 +163,7 @@ class NpcSheetServiceTest {
         assertThat(link.getValue().isVisible()).isTrue();
         assertThat(link.getValue().isBookable()).isFalse();
         assertThat(link.getValue().getNpcId()).isEqualTo(r.npcId());
-        verify(npcVisibilityRepository, times(4)).save(any(NpcSheetVisibility.class));
+        verify(npcVisibilityRepository, times(5)).save(any(NpcSheetVisibility.class));
     }
 
     @Test
