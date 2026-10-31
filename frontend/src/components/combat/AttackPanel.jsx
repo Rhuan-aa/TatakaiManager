@@ -68,7 +68,7 @@ function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
   return (
     <div className="panel space-y-2 p-3">
       <div className="text-sm"><strong>{a.attackerName}</strong> atacou com {a.sourceName}{a.region ? ` (${a.region})` : ''} · rodada {a.round}</div>
-      {a.attackRoll && <RollReveal roll={a.attackRoll} fresh={fresh} />}
+      {a.attackRoll && <RollReveal roll={a.attackRoll} fresh={fresh} damage={a.targets.some((t) => t.damage > 0)} />}
       {a.targets.map((t) => (
         <div key={t.id} className="space-y-1">
           <div className="text-sm">

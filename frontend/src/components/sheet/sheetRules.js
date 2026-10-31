@@ -95,7 +95,7 @@ export function fatigueBand(points) {
   return 'COLLAPSE';
 }
 
-export const DICE_REGEX = /^\d{1,2}d(4|6|8|10|12|20|100)([+-]\d{1,3})?$/;
+export const DICE_REGEX = /^\d{1,2}d(2|3|4|6|8|10|12|20|100)([+-]\d{1,3})?$/;
 
 /** Patentes Keiken (RN-PROG-08). */
 export const KEIKEN = {
