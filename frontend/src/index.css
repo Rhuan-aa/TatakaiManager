@@ -201,10 +201,6 @@ h3,
     background-color: var(--bg);
     color: var(--text);
   }
-  option:checked {
-    background-color: var(--accent);
-    color: #fff;
-  }
   optgroup {
     font-weight: 700;
     text-transform: uppercase;
@@ -225,9 +221,20 @@ h3,
     border-radius: 2px;
     cursor: pointer;
   }
+  select:focus,
   select:focus-visible {
-    outline: 3px solid var(--accent);
-    outline-offset: 1px;
+    outline: none;
+    box-shadow: 3px 3px 0 var(--line);
+  }
+  /* Opções: fonte do site, caixa-alta forte; o realce é papel/tinta, nunca vermelho */
+  option {
+    font-family: inherit;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  option:checked {
+    background-color: var(--line);
+    color: var(--bg);
   }
   /* Caixa de seleção e opção: quadrada, borda grossa, marca em acento */
   input[type='checkbox'],
@@ -355,31 +362,25 @@ h3,
     color: var(--text);
   }
   .label.flex { display: flex; }
-  /* Bloco claro sem moldura (ficha aleatória): papel, tinta e campos brancos */
-  .well {
+  /* Caixa branca só do subtítulo (ficha aleatória): papel com tinta, sem moldura */
+  .title-box {
+    display: inline-block;
     background: #fff;
     color: var(--ink);
-    padding: 0.9rem 1rem;
-    border: 0;
-    border-radius: 2px;
+    padding: 0.2rem 0.75rem;
+    border-radius: 0;
   }
-  .well .label,
-  .well .caption { color: var(--ink); }
-  .well .field,
-  .well select {
-    background-color: #fff;
-    color: var(--ink);
-    border-color: var(--ink);
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
   }
-  .well select {
-    background-image:
-      linear-gradient(45deg, transparent 50%, var(--ink) 50%),
-      linear-gradient(135deg, var(--ink) 50%, transparent 50%);
-  }
-  .well option { background-color: #fff; color: var(--ink); }
-  .well .btn-secondary { color: var(--ink); background: #fff; border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
-  .well .btn-ghost { color: var(--ink); }
-  .well input[type='checkbox'] { background: #fff; border-color: var(--ink); }
   /* Texto de apoio de formulário: pequeno e discreto (o .caption é só para etiquetas curtas) */
   .hint { font-size: 0.75rem; line-height: 1.35; opacity: 0.75; }
 
@@ -399,8 +400,8 @@ h3,
   }
   .field:focus,
   .field:focus-visible {
-    outline: 3px solid var(--accent);
-    outline-offset: 1px;
+    outline: none;
+    box-shadow: 3px 3px 0 var(--line);
   }
 
   .tag,
@@ -773,4 +774,50 @@ h3,
   .panel { background: #fff !important; border: 2px solid #000 !important; break-inside: avoid; }
   main { max-width: none !important; padding: 0 !important; }
   .collapsible-body.is-collapsed { display: block !important; }
+}
+
+/* Lista aberta do select personalizável (Chrome/Edge recentes); os demais navegadores usam a lista nativa acima. */
+@supports (appearance: base-select) {
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+  select::picker-icon {
+    display: none;
+  }
+  ::picker(select) {
+    margin-top: 4px;
+    padding: 0;
+    background: var(--bg);
+    border: var(--border-w) solid var(--line);
+    border-radius: 0;
+    box-shadow: var(--shadow-hard);
+  }
+  select option {
+    display: flex;
+    align-items: center;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--bg);
+    color: var(--text);
+    border-bottom: 2px solid color-mix(in srgb, var(--line) 22%, transparent);
+    cursor: pointer;
+  }
+  select option:last-child { border-bottom: 0; }
+  select option:hover,
+  select option:focus-visible {
+    background: var(--highlight);
+    color: var(--ink);
+    outline: none;
+  }
+  select option:checked {
+    background: var(--line);
+    color: var(--bg);
+  }
+  select option::checkmark {
+    display: none;
+  }
 }

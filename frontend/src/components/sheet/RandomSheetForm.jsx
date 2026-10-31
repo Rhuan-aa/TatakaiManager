@@ -8,7 +8,7 @@ import Icon from '../ui/Icon';
 import { RARITY, TRAIT_CATEGORIES } from '../ui/rarity';
 
 const PROFILES = [
-  { value: 'NOVICE', label: 'Novato', hint: 'atributos baixos, EL 0, 1 traço' },
+  { value: 'NOVICE', label: 'Novato', hint: 'Atributos baixos, EL 0, 1 traço' },
   { value: 'EXPERIENCED', label: 'Experiente', hint: 'EL 8, 2 traços' },
   { value: 'MASTER', label: 'Mestre', hint: 'EL 20, 3 traços, arte Intermediária' },
   { value: 'RIVAL', label: 'Rival', hint: 'EL 32, 3 traços, arte Intermediária' },
@@ -76,8 +76,8 @@ export default function RandomSheetForm({ campaignId, onCreated, onCancel }) {
       </div>
       <p className="hint">{prof.hint}. Atributos = 1d12 por atributo + bônus do perfil; recursos pelas regras da ficha.</p>
 
-      <div className="well">
-        <h3 className="panel-title text-lg">Arte marcial</h3>
+      <div>
+        <h3 className="panel-title title-box text-lg">Arte marcial</h3>
         <div className="mt-2 flex flex-wrap items-end gap-3">
           <label className="label">Arte
             <select className="field mt-1 w-full" value={f.artMode} onChange={set('artMode')}>
@@ -106,8 +106,8 @@ export default function RandomSheetForm({ campaignId, onCreated, onCancel }) {
         {f.artMode !== 'NONE' && <p className="hint mt-2">Os atributos ganham +3 nos dois que a arte privilegia.</p>}
       </div>
 
-      <div className="well">
-        <h3 className="panel-title text-lg">Traços</h3>
+      <div>
+        <h3 className="panel-title title-box text-lg">Traços</h3>
         {f.traits.length === 0 && (
           <p className="hint mt-1">Sem linhas: {prof.label} recebe {TRAITS_BY_PROFILE[f.profile]} traço(s) sem filtro.</p>
         )}
@@ -144,7 +144,7 @@ export default function RandomSheetForm({ campaignId, onCreated, onCancel }) {
         <p className="hint mt-2">Cada linha sorteia sua quantidade com os próprios filtros; tudo é rolado ao gerar, sem repetir traço.</p>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
+      <label>
         <input type="checkbox" checked={f.visible} onChange={set('visible')} />
         Visível para os jogadores
       </label>
