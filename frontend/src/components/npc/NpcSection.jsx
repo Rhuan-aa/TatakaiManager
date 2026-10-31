@@ -15,8 +15,6 @@ import { useToast } from '../../contexts/ToastContext';
 import CreateNpcForm from './CreateNpcForm';
 import EditNpcForm from './EditNpcForm';
 import NpcSheetPanel from '../sheet/NpcSheetPanel';
-import { getArt } from '../../api/catalog';
-import { ART_CATEGORIES, GRADS, lab } from '../catalog/artLabels';
 
 /** Retrato (retângulo vertical) do NPC, com placeholder quando não há imagem. */
 function NpcPortrait({ campaignId, npcId, hasImage, name, className = '' }) {
@@ -86,7 +84,7 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t-[length:var(--border-w)] border-[var(--line)] bg-[var(--ink)] p-2">
           {/* Nome sobre overlay escuro da imagem — sempre branco (independe do tema) */}
           <p className="truncate text-sm font-semibold text-white">{npc.name}</p>
-          {npc.sheetId && <span className="tag mt-1">Ficha</span>}
+          {npc.combatReady && <span className="tag mt-1">Pronto p/ combate</span>}
           {npc.bookable === false && <span className="tag mt-1">Só combate</span>}
           {npc.interactions?.length > 0 && (
             <p className="truncate text-[11px] text-white opacity-70">
@@ -138,27 +136,6 @@ function DetailList({ title, items, render }) {
   );
 }
 
-/** Arte marcial da ficha simples: nome, regras (categoria) e graduação. */
-function NpcArtLine({ artId, graduation }) {
-  const [art, setArt] = useState(null);
-  useEffect(() => {
-    let active = true;
-    getArt(artId).then((a) => active && setArt(a)).catch(() => {});
-    return () => { active = false; };
-  }, [artId]);
-  return (
-    <section className="panel p-3">
-      <p className="caption">Arte marcial</p>
-      <p className="mt-2 text-sm">
-        <strong>{art?.name ?? '…'}</strong>
-        {art && <span className="tag ml-2">{lab(ART_CATEGORIES, art.category)}</span>}
-        <span className="tag ml-1">{lab(GRADS, graduation)}</span>
-        {art && art.bases?.length + art.techniques?.length === 0 && <span className="caption ml-2">sem técnicas ainda</span>}
-      </p>
-    </section>
-  );
-}
-
 /** Conteúdo do detalhe do NPC exibido no modal. */
 function NpcDetailView({ npc, campaignId }) {
   return (
@@ -201,7 +178,6 @@ function NpcDetailView({ npc, campaignId }) {
           </section>
         )}
 
-        {npc.martialArtId && !npc.sheetId && <NpcArtLine artId={npc.martialArtId} graduation={npc.martialGraduation} />}
 
         <DetailList
           title="Traços"
@@ -333,7 +309,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
     setNpcs((prev) =>
       prev.map((n) =>
         n.id === updated.id
-          ? { ...n, name: updated.name, interactions: updated.interactions, hasImage: updated.hasImage, sheetId: updated.sheetId }
+          ? { ...n, name: updated.name, interactions: updated.interactions, hasImage: updated.hasImage, sheetId: updated.sheetId, combatReady: updated.combatReady }
           : n
       )
     );
@@ -343,8 +319,9 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
 
   function handleSheetChanged(sheet) {
     const sheetId = sheet?.id ?? null;
-    setDetails((prev) => ({ ...prev, [selectedId]: { ...prev[selectedId], sheetId } }));
-    setNpcs((prev) => prev.map((n) => (n.id === selectedId ? { ...n, sheetId } : n)));
+    const combatReady = !!sheet?.combatReady;
+    setDetails((prev) => ({ ...prev, [selectedId]: { ...prev[selectedId], sheetId, combatReady } }));
+    setNpcs((prev) => prev.map((n) => (n.id === selectedId ? { ...n, sheetId, combatReady } : n)));
   }
 
   async function toggleVisibility(npc) {

@@ -17,7 +17,7 @@ export default function GmSheets({ campaignId, isMaster, npcs, setNpcs }) {
   const [creating, setCreating] = useState(false);
   const [visible, setVisible] = useState(false);
   const [openId, setOpenId] = useState(null);
-  const list = npcs.filter((n) => n.sheetId);
+  const list = npcs.filter((n) => n.sheetId && n.bookable === false);
 
   const refresh = async () => setNpcs?.(await listCampaignNpcs(campaignId));
 

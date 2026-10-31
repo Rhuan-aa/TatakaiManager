@@ -8,17 +8,20 @@ import { useToast } from '../../contexts/ToastContext';
 import { useCampaignTopic } from '../../hooks/useWebSocket';
 import CharacterSheetForm from './CharacterSheetForm';
 import CharacterSheetView from './CharacterSheetView';
+import MartialPanel from './MartialPanel';
 
 const SECTIONS = [
   { section: 'ATTRIBUTES', label: 'Atributos' },
   { section: 'RESOURCES', label: 'Recursos' },
   { section: 'INJURIES', label: 'Ferimentos' },
   { section: 'INVENTORY', label: 'Inventário' },
+  { section: 'TRAITS', label: 'Traços e clãs' },
 ];
 
-const LEGACY = (a) => (a ? {
-  str: a.forca ?? 10, dex: a.destreza ?? 10, con: a.constituicao ?? 10,
-  intl: a.inteligencia ?? 10, men: a.mental ?? 10, tal: a.talento ?? 10, cha: '',
+// Ficha leve: os atributos crus (se houver) pré-preenchem o formulário de ficha completa.
+const PREFILL = (a) => (a ? {
+  str: a.STR || 10, dex: a.DEX || 10, con: a.CON || 10, intl: a.INT || 10, men: a.MEN || 10, tal: a.TAL || 10,
+  cha: a.CHA || '',
 } : { cha: '' });
 
 function VisibilityToggles({ campaignId, npcId }) {
@@ -100,10 +103,34 @@ export default function NpcSheetPanel({ campaignId, npc, isMaster, onChanged }) 
         <h3 className="panel-title mb-3">Criar ficha</h3>
         <CharacterSheetForm
           npcId={npc.id}
-          initialValues={{ name: npc.name, ...LEGACY(npc.attributes) }}
+          initialValues={{ name: npc.name, ...PREFILL(sheet?.attributes) }}
           onSaved={(s) => { setCreating(false); changed(s); }}
           onCancel={() => setCreating(false)}
         />
+      </div>
+    );
+  }
+
+  if (sheet && !sheet.combatReady) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="panel p-4">
+          <p className="caption">Ficha sem atributos e recursos</p>
+          <p className="mt-2 text-sm">Este NPC ainda não pode entrar em combate nem rolar. Complete atributos e recursos para liberar.</p>
+          {isOwner && <button type="button" className="btn-primary mt-3" onClick={() => setCreating(true)}>Completar ficha</button>}
+        </div>
+        {sheet.traits?.length > 0 && (
+          <div className="panel p-3">
+            <p className="caption">Traços</p>
+            <ul className="mt-2 space-y-1.5 text-sm">
+              {sheet.traits.map((t) => (
+                <li key={t.id} className="border-l-4 border-[var(--accent)] pl-2"><strong>{t.name}</strong>{t.description ? ` — ${t.description}` : ''}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <MartialPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner} refreshKey={tick} />
+        {isOwner && isMaster && <VisibilityToggles campaignId={campaignId} npcId={npc.id} />}
       </div>
     );
   }

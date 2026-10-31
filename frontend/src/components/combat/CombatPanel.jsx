@@ -90,7 +90,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
   const inEnc = new Set(enc?.participants.map((p) => p.sheetId));
   const candidates = [
     ...sheets.filter((s) => s.buildStatus === 'COMPLETED').map((s) => ({ id: s.id, label: `${s.name} (${s.ownerName})` })),
-    ...npcs.filter((n) => n.sheetId).map((n) => ({ id: n.sheetId, label: `${n.name} (NPC)` })),
+    ...npcs.filter((n) => n.sheetId && n.combatReady).map((n) => ({ id: n.sheetId, label: `${n.name} (NPC)` })),
   ].filter((c) => !inEnc.has(c.id));
 
   const current = enc?.participants.find((p) => p.id === enc.currentParticipantId);

@@ -4,7 +4,6 @@ import { parseApiError } from '../../api/parseApiError';
 import DetailListEditor from './DetailListEditor';
 import InteractionListEditor from './InteractionListEditor';
 import NpcImagePicker from './NpcImagePicker';
-import NpcMartialArt from './NpcMartialArt';
 
 const inputClass =
   'field';
@@ -19,10 +18,6 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
       description: i.description ?? '',
       idlePointCost: i.idlePointCost != null ? String(i.idlePointCost) : '',
     })) ?? []
-  );
-  const [art, setArt] = useState({ artId: npc.martialArtId ?? null, graduation: npc.martialGraduation ?? 'BEGINNER' });
-  const [traits, setTraits] = useState(
-    npc.traits?.map((t) => ({ name: t.name, description: t.description ?? '' })) ?? []
   );
   const [knowledge, setKnowledge] = useState(
     npc.knowledge?.map((k) => ({ name: k.name, description: k.description ?? '' })) ?? []
@@ -50,10 +45,6 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
     return {
       name,
       description: description || null,
-      attributes: npc.attributes ?? null, // legado: não é mais editável
-      martialArtId: npc.sheetId ? null : art.artId,
-      martialGraduation: npc.sheetId || !art.artId ? null : art.graduation,
-      traits: traits.filter((t) => t.name.trim()),
       knowledge: knowledge.filter((k) => k.name.trim()),
       specs: specs.filter((s) => s.name.trim()),
       interactions: buildInteractions(),
@@ -134,10 +125,7 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
 
         <InteractionListEditor items={interactions} onChange={setInteractions} />
 
-        {!npc.sheetId && <NpcMartialArt campaignId={campaignId} value={art} onChange={setArt} />}
-
-        {/* Com ficha, os traços vêm do catálogo (Ajustes do Mestre na ficha). */}
-        {!npc.sheetId && <DetailListEditor label="Traços" items={traits} onChange={setTraits} />}
+        <p className="caption">Atributos, traços e arte marcial ficam na ficha do NPC.</p>
 
         <DetailListEditor label="Specs (habilidades)" items={specs} onChange={setSpecs} />
 

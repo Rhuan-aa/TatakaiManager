@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createNpc, associateNpc, uploadNpcImage } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
 import { createNpcSheet, gmAdjust } from '../../api/characterSheets';
 import { listTraits } from '../../api/catalog';
+import { requestArt, setArtGraduation } from '../../api/characterTechniques';
 import { SheetFields, initialSheetFields, sheetPayload } from '../sheet/CharacterSheetForm';
 import TraitPicker from './TraitPicker';
 import { randomNpc } from './randomNpc';
@@ -19,15 +20,14 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
   const [description, setDescription] = useState('');
   const [interactions, setInteractions] = useState([]);
   const [art, setArt] = useState({ artId: null, graduation: 'BEGINNER' });
-  const [traits, setTraits] = useState([]);
   const [knowledge, setKnowledge] = useState([]);
   const [specs, setSpecs] = useState([]);
   const [imageAction, setImageAction] = useState({ file: null, remove: false });
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  // 'simple' = só o NPC (como antes); 'full' = NPC + ficha + traços do catálogo.
-  const [mode, setMode] = useState('simple');
+  // Ficha única (§51.8): atributos/recursos são opcionais, mas necessários para usar o NPC em combate.
+  const [withStats, setWithStats] = useState(false);
   const [sheetF, setSheetF] = useState(() => initialSheetFields(null, {}));
   const [catalog, setCatalog] = useState(null);
   const [pickedTraits, setPickedTraits] = useState([]);
@@ -45,17 +45,14 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
     }
   }
 
-  function chooseMode(m) {
-    setMode(m);
-    if (m === 'full') loadCatalog();
-  }
+  useEffect(() => { loadCatalog(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function randomize() {
     const r = randomNpc(await loadCatalog());
     setName(r.name);
     setSheetF(r.sheet);
     setPickedTraits(r.traits);
-    setMode('full');
+    setWithStats(true);
   }
 
   function buildInteractions() {
@@ -70,14 +67,9 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
   }
 
   function buildBody() {
-    const full = mode === 'full';
     return {
       name,
       description: description || null,
-      attributes: null,
-      martialArtId: full ? null : art.artId,
-      martialGraduation: full || !art.artId ? null : art.graduation,
-      traits: full ? [] : traits.filter((t) => t.name.trim()),
       knowledge: knowledge.filter((k) => k.name.trim()),
       specs: specs.filter((s) => s.name.trim()),
       interactions: buildInteractions(),
@@ -99,17 +91,25 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
         await uploadNpcImage(npc.id, imageAction.file);
       }
       await associateNpc(campaignId, npc.id);
-      let sheetId = null;
-      if (mode === 'full') {
-        // Não atômico (como imagem/associação): se falhar aqui, o NPC fica sem ficha e dá para criar depois.
+      // A ficha (leve) já nasce com o NPC; aqui só a completa e liga traços e arte. Não atômico, como imagem/associação.
+      let sheetId = npc.sheetId;
+      let combatReady = false;
+      if (withStats) {
         const sheet = await createNpcSheet(npc.id, sheetPayload({ ...sheetF, name }));
         sheetId = sheet.id;
-        for (const t of pickedTraits) {
-          await gmAdjust(sheet.id, { action: 'ADD_TRAIT', reason: 'Criação do NPC', targetId: t.id });
-        }
+        combatReady = sheet.combatReady;
+      }
+      for (const t of pickedTraits) {
+        await gmAdjust(sheetId, { action: 'ADD_TRAIT', reason: 'Criação do NPC', targetId: t.id });
+      }
+      if (art.artId) {
+        const m = await requestArt(sheetId, art.artId);
+        const ca = m.arts.find((x) => x.artId === art.artId);
+        if (ca && art.graduation !== 'BEGINNER') await setArtGraduation(sheetId, ca.id, art.graduation);
       }
       onCreated({
         sheetId,
+        combatReady,
         id: npc.id,
         name: npc.name,
         visible: true,
@@ -133,14 +133,6 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
     >
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="panel-title flex-1 text-xl">Novo NPC</h3>
-        <div role="group" aria-label="Tipo de criação" className="flex">
-          {[['simple', 'Simples'], ['full', 'Completa']].map(([m, lbl]) => (
-            <button key={m} type="button" aria-pressed={mode === m}
-              className={`${mode === m ? 'btn-primary' : 'btn-secondary'} text-sm`} onClick={() => chooseMode(m)}>
-              {lbl}
-            </button>
-          ))}
-        </div>
         <button type="button" className="btn-ghost text-sm" onClick={randomize}>🎲 NPC aleatório</button>
       </div>
 
@@ -177,21 +169,21 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
 
         <InteractionListEditor items={interactions} onChange={setInteractions} />
 
-        {mode === 'full' ? (
-          <>
-            <SheetFields f={sheetF} set={setSheet} errors={fieldErrors} />
-            {catalog == null ? <div className="skeleton h-12 w-full" /> : (
-              <TraitPicker campaignId={campaignId} catalog={catalog} onCatalogChange={setCatalog}
-                selected={pickedTraits} onChange={setPickedTraits} />
-            )}
-          </>
-        ) : (
-          <>
-            <NpcMartialArt campaignId={campaignId} value={art} onChange={setArt} />
-
-            <DetailListEditor label="Traços" items={traits} onChange={setTraits} />
-          </>
+        {catalog == null ? <div className="skeleton h-12 w-full" /> : (
+          <TraitPicker campaignId={campaignId} catalog={catalog} onCatalogChange={setCatalog}
+            selected={pickedTraits} onChange={setPickedTraits} />
         )}
+
+        <NpcMartialArt campaignId={campaignId} value={art} onChange={setArt} />
+
+        <div className="panel p-3">
+          <label className="flex items-center gap-2 text-sm font-bold uppercase">
+            <input type="checkbox" checked={withStats} onChange={(e) => setWithStats(e.target.checked)} />
+            Preencher atributos e recursos agora
+          </label>
+          <p className="caption mt-1">Opcional, mas obrigatório para usar o NPC em combate e nas rolagens.</p>
+          {withStats && <div className="mt-3"><SheetFields f={sheetF} set={setSheet} errors={fieldErrors} /></div>}
+        </div>
 
         <DetailListEditor label="Specs (habilidades)" items={specs} onChange={setSpecs} />
 
