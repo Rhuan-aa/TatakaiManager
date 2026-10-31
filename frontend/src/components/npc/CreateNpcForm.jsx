@@ -9,17 +9,7 @@ import { randomNpc } from './randomNpc';
 import DetailListEditor from './DetailListEditor';
 import InteractionListEditor from './InteractionListEditor';
 import NpcImagePicker from './NpcImagePicker';
-
-const ATTRIBUTES = [
-  { key: 'forca', label: 'Força' },
-  { key: 'destreza', label: 'Destreza' },
-  { key: 'constituicao', label: 'Constituição' },
-  { key: 'mental', label: 'Mental' },
-  { key: 'inteligencia', label: 'Inteligência' },
-  { key: 'talento', label: 'Talento' },
-];
-
-const EMPTY_ATTRS = { forca: '', destreza: '', constituicao: '', mental: '', inteligencia: '', talento: '' };
+import NpcMartialArt from './NpcMartialArt';
 
 const inputClass =
   'field';
@@ -28,7 +18,7 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [interactions, setInteractions] = useState([]);
-  const [attrs, setAttrs] = useState(EMPTY_ATTRS);
+  const [art, setArt] = useState({ artId: null, graduation: 'BEGINNER' });
   const [traits, setTraits] = useState([]);
   const [knowledge, setKnowledge] = useState([]);
   const [specs, setSpecs] = useState([]);
@@ -80,15 +70,13 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
   }
 
   function buildBody() {
-    const attributes = {};
-    for (const { key } of ATTRIBUTES) {
-      attributes[key] = attrs[key] === '' ? null : Number(attrs[key]);
-    }
     const full = mode === 'full';
     return {
       name,
       description: description || null,
-      attributes: full ? null : attributes,
+      attributes: null,
+      martialArtId: full ? null : art.artId,
+      martialGraduation: full || !art.artId ? null : art.graduation,
       traits: full ? [] : traits.filter((t) => t.name.trim()),
       knowledge: knowledge.filter((k) => k.name.trim()),
       specs: specs.filter((s) => s.name.trim()),
@@ -199,29 +187,7 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
           </>
         ) : (
           <>
-            <fieldset>
-              <legend className="text-sm font-medium text-[var(--text)] opacity-70">
-                Atributos <span className="text-[var(--text)] opacity-70">(opcional, 0–999)</span>
-              </legend>
-              <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {ATTRIBUTES.map((a) => (
-                  <div key={a.key}>
-                    <label htmlFor={`attr-${a.key}`} className="block text-xs text-[var(--text)] opacity-70">
-                      {a.label}
-                    </label>
-                    <input
-                      id={`attr-${a.key}`}
-                      type="number"
-                      min={0}
-                      max={999}
-                      value={attrs[a.key]}
-                      onChange={(e) => setAttrs((p) => ({ ...p, [a.key]: e.target.value }))}
-                      className={inputClass}
-                    />
-                  </div>
-                ))}
-              </div>
-            </fieldset>
+            <NpcMartialArt campaignId={campaignId} value={art} onChange={setArt} />
 
             <DetailListEditor label="Traços" items={traits} onChange={setTraits} />
           </>

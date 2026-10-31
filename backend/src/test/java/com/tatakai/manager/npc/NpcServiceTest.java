@@ -157,6 +157,21 @@ class NpcServiceTest {
     }
 
     @Test
+    @DisplayName("§51.8: NPC guarda a arte marcial do catálogo (graduação padrão Iniciante)")
+    void create_withMartialArt_defaultsGraduation() {
+        UUID art = UUID.randomUUID();
+        var req = new CreateNpcRequest("Vael", null, null, null, null, null,
+                List.of(new NpcInteractionDto("Treino", "Esgrima", "x", (short) 1)), art, null);
+        when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
+        when(npcRepository.save(any(Npc.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        NpcResponse res = service.create(master.getId(), req);
+
+        assertThat(res.martialArtId()).isEqualTo(art);
+        assertThat(res.martialGraduation()).isEqualTo(com.tatakai.manager.catalog.entity.Graduation.BEGINNER);
+    }
+
+    @Test
     @DisplayName("US-07: dono edita o NPC")
     void update_byOwner_updatesNpc() {
         Npc npc = npcOwnedByMaster();

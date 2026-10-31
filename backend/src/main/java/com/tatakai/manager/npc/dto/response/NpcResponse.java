@@ -22,5 +22,8 @@ public record NpcResponse(
         /** Visibilidade na campanha consultada (nulo fora de contexto de campanha). */
         Boolean visible,
         /** Id da ficha digital do NPC (null se o NPC não tem ficha). */
-        UUID sheetId
+        UUID sheetId,
+        /** Arte marcial do catálogo (ficha simples) e graduação; null = sem arte. */
+        UUID martialArtId,
+        com.tatakai.manager.catalog.entity.Graduation martialGraduation
 ) {}

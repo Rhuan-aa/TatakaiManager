@@ -70,4 +70,6 @@ public class MartialArt {
     /** Autor de uma Arte Criada por jogador. */
     private UUID authorId;
     private String reviewNote;
+    /** Fora da lista do catálogo para jogadores (ex.: arte rápida de NPC); o Mestre continua vendo. */
+    private boolean hidden;
 }

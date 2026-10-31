@@ -33,6 +33,15 @@ public record CreateNpcRequest(
 
         @NotEmpty(message = "informe ao menos um tipo de interação")
         @Valid
-        List<NpcInteractionDto> interactions
+        List<NpcInteractionDto> interactions,
 
-) {}
+        java.util.UUID martialArtId,
+
+        com.tatakai.manager.catalog.entity.Graduation martialGraduation
+
+) {
+    public CreateNpcRequest(String name, String description, NpcAttributesDto attributes, List<NpcDetailDto> knowledge,
+            List<NpcDetailDto> traits, List<NpcDetailDto> specs, List<NpcInteractionDto> interactions) {
+        this(name, description, attributes, knowledge, traits, specs, interactions, null, null);
+    }
+}

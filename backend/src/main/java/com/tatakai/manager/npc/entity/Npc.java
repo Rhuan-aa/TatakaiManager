@@ -57,4 +57,9 @@ public class Npc {
     private List<NpcInteraction> interactions = new ArrayList<>();
 
     private Instant createdAt;
+
+    /** Arte marcial do catálogo (opcional, ficha simples) e a graduação em que o NPC a domina. */
+    private UUID martialArtId;
+
+    private com.tatakai.manager.catalog.entity.Graduation martialGraduation;
 }

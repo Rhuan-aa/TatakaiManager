@@ -15,15 +15,8 @@ import { useToast } from '../../contexts/ToastContext';
 import CreateNpcForm from './CreateNpcForm';
 import EditNpcForm from './EditNpcForm';
 import NpcSheetPanel from '../sheet/NpcSheetPanel';
-
-const ATTR_LABELS = {
-  forca: 'Força',
-  destreza: 'Destreza',
-  constituicao: 'Constituição',
-  mental: 'Mental',
-  inteligencia: 'Inteligência',
-  talento: 'Talento',
-};
+import { getArt } from '../../api/catalog';
+import { ART_CATEGORIES, GRADS, lab } from '../catalog/artLabels';
 
 /** Retrato (retângulo vertical) do NPC, com placeholder quando não há imagem. */
 function NpcPortrait({ campaignId, npcId, hasImage, name, className = '' }) {
@@ -134,23 +127,40 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
 function DetailList({ title, items, render }) {
   if (!items?.length) return null;
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text)] opacity-70">{title}</p>
-      <ul className="mt-1.5 space-y-1 text-sm text-[var(--text)]">
+    <section className="panel p-3">
+      <p className="caption">{title}</p>
+      <ul className="mt-2 space-y-1.5 text-sm text-[var(--text)]">
         {items.map((it, i) => (
-          <li key={i}>{render(it)}</li>
+          <li key={i} className="border-l-4 border-[var(--accent)] pl-2">{render(it)}</li>
         ))}
       </ul>
-    </div>
+    </section>
+  );
+}
+
+/** Arte marcial da ficha simples: nome, regras (categoria) e graduação. */
+function NpcArtLine({ artId, graduation }) {
+  const [art, setArt] = useState(null);
+  useEffect(() => {
+    let active = true;
+    getArt(artId).then((a) => active && setArt(a)).catch(() => {});
+    return () => { active = false; };
+  }, [artId]);
+  return (
+    <section className="panel p-3">
+      <p className="caption">Arte marcial</p>
+      <p className="mt-2 text-sm">
+        <strong>{art?.name ?? '…'}</strong>
+        {art && <span className="tag ml-2">{lab(ART_CATEGORIES, art.category)}</span>}
+        <span className="tag ml-1">{lab(GRADS, graduation)}</span>
+        {art && art.bases?.length + art.techniques?.length === 0 && <span className="caption ml-2">sem técnicas ainda</span>}
+      </p>
+    </section>
   );
 }
 
 /** Conteúdo do detalhe do NPC exibido no modal. */
 function NpcDetailView({ npc, campaignId }) {
-  const attrs = npc.attributes && !npc.sheetId
-    ? Object.entries(npc.attributes).filter(([, v]) => v != null)
-    : [];
-
   return (
     <div className="flex flex-col gap-5 sm:flex-row">
       {/* Retrato adaptado ao modal: mesma proporção 3:4 do card, porém maior,
@@ -170,11 +180,11 @@ function NpcDetailView({ npc, campaignId }) {
         {npc.description && <p className="text-sm text-[var(--text)]">{npc.description}</p>}
 
         {npc.interactions?.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text)] opacity-70">Interações</p>
-            <ul className="mt-1.5 space-y-1 text-sm text-[var(--text)]">
+          <section className="panel p-3">
+            <p className="caption">Interações</p>
+            <ul className="mt-2 space-y-1.5 text-sm text-[var(--text)]">
               {npc.interactions.map((it, i) => (
-                <li key={i} className="flex flex-wrap items-baseline gap-x-1.5">
+                <li key={i} className="flex flex-wrap items-baseline gap-x-1.5 border-l-4 border-[var(--accent)] pl-2">
                   {it.type && (
                     <span className="tag">
                       {it.type}
@@ -188,24 +198,10 @@ function NpcDetailView({ npc, campaignId }) {
                 </li>
               ))}
             </ul>
-          </div>
+          </section>
         )}
 
-        {attrs.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text)] opacity-70">Atributos</p>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {attrs.map(([k, v]) => (
-                <span
-                  key={k}
-                  className="tag"
-                >
-                  {ATTR_LABELS[k] ?? k}: <strong className="text-[var(--text)]">{v}</strong>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        {npc.martialArtId && !npc.sheetId && <NpcArtLine artId={npc.martialArtId} graduation={npc.martialGraduation} />}
 
         <DetailList
           title="Traços"

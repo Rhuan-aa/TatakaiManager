@@ -27,7 +27,7 @@ export default function InteractionListEditor({ items, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-[var(--text)] opacity-70">
+        <span className="caption">
           Interações <span className="text-[var(--text)] opacity-70">(ao menos uma)</span>
         </span>
         <button

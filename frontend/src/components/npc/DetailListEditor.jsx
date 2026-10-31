@@ -16,9 +16,9 @@ export default function DetailListEditor({ label, items, onChange }) {
   }
 
   return (
-    <div>
+    <div className="panel p-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-[var(--text)] opacity-70">
+        <span className="caption">
           {label} <span className="text-[var(--text)] opacity-70">(opcional)</span>
         </span>
         <button

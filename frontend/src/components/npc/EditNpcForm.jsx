@@ -4,15 +4,7 @@ import { parseApiError } from '../../api/parseApiError';
 import DetailListEditor from './DetailListEditor';
 import InteractionListEditor from './InteractionListEditor';
 import NpcImagePicker from './NpcImagePicker';
-
-const ATTRIBUTES = [
-  { key: 'forca', label: 'Força' },
-  { key: 'destreza', label: 'Destreza' },
-  { key: 'constituicao', label: 'Constituição' },
-  { key: 'mental', label: 'Mental' },
-  { key: 'inteligencia', label: 'Inteligência' },
-  { key: 'talento', label: 'Talento' },
-];
+import NpcMartialArt from './NpcMartialArt';
 
 const inputClass =
   'field';
@@ -28,16 +20,7 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
       idlePointCost: i.idlePointCost != null ? String(i.idlePointCost) : '',
     })) ?? []
   );
-  const [attrs, setAttrs] = useState(() => {
-    const base = { forca: '', destreza: '', constituicao: '', mental: '', inteligencia: '', talento: '' };
-    if (npc.attributes) {
-      for (const key of Object.keys(base)) {
-        const v = npc.attributes[key];
-        base[key] = v != null ? String(v) : '';
-      }
-    }
-    return base;
-  });
+  const [art, setArt] = useState({ artId: npc.martialArtId ?? null, graduation: npc.martialGraduation ?? 'BEGINNER' });
   const [traits, setTraits] = useState(
     npc.traits?.map((t) => ({ name: t.name, description: t.description ?? '' })) ?? []
   );
@@ -64,14 +47,12 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
   }
 
   function buildBody() {
-    const attributes = {};
-    for (const { key } of ATTRIBUTES) {
-      attributes[key] = attrs[key] === '' ? null : Number(attrs[key]);
-    }
     return {
       name,
       description: description || null,
-      attributes,
+      attributes: npc.attributes ?? null, // legado: não é mais editável
+      martialArtId: npc.sheetId ? null : art.artId,
+      martialGraduation: npc.sheetId || !art.artId ? null : art.graduation,
       traits: traits.filter((t) => t.name.trim()),
       knowledge: knowledge.filter((k) => k.name.trim()),
       specs: specs.filter((s) => s.name.trim()),
@@ -153,33 +134,7 @@ export default function EditNpcForm({ npc, campaignId, onUpdated, onCancel }) {
 
         <InteractionListEditor items={interactions} onChange={setInteractions} />
 
-        {npc.sheetId ? (
-          <p className="caption">Atributos agora ficam na ficha do NPC.</p>
-        ) : (
-        <fieldset>
-          <legend className="text-sm font-medium text-[var(--text)] opacity-70">
-            Atributos <span className="text-[var(--text)] opacity-70">(opcional, 0–999)</span>
-          </legend>
-          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {ATTRIBUTES.map((a) => (
-              <div key={a.key}>
-                <label htmlFor={`edit-attr-${a.key}`} className="block text-xs text-[var(--text)] opacity-70">
-                  {a.label}
-                </label>
-                <input
-                  id={`edit-attr-${a.key}`}
-                  type="number"
-                  min={0}
-                  max={999}
-                  value={attrs[a.key]}
-                  onChange={(e) => setAttrs((p) => ({ ...p, [a.key]: e.target.value }))}
-                  className={inputClass}
-                />
-              </div>
-            ))}
-          </div>
-        </fieldset>
-        )}
+        {!npc.sheetId && <NpcMartialArt campaignId={campaignId} value={art} onChange={setArt} />}
 
         {/* Com ficha, os traços vêm do catálogo (Ajustes do Mestre na ficha). */}
         {!npc.sheetId && <DetailListEditor label="Traços" items={traits} onChange={setTraits} />}

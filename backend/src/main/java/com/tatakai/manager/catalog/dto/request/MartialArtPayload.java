@@ -26,5 +26,14 @@ public record MartialArtPayload(
         List<ArtPassive> passives,
         List<ArtBase> bases,
         List<ArtTechnique> techniques,
-        List<BorrowedTechnique> borrowed
-) {}
+        List<BorrowedTechnique> borrowed,
+        Boolean hidden
+) {
+    public MartialArtPayload(String name, ArtCategory category, String rank, String martialType,
+                             List<String> attackSpecializations, List<String> reactionSpecializations,
+                             String requirement, String description, List<ArtRule> sections, List<ArtPassive> passives,
+                             List<ArtBase> bases, List<ArtTechnique> techniques, List<BorrowedTechnique> borrowed) {
+        this(name, category, rank, martialType, attackSpecializations, reactionSpecializations, requirement,
+                description, sections, passives, bases, techniques, borrowed, null);
+    }
+}

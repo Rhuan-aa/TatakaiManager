@@ -20,5 +20,6 @@ public record MartialArtResponse(
         List<ArtTechnique> techniques, int version, Instant updatedAt,
         ArtStatus status, UUID authorId, String reviewNote, List<AssemblyCheck> techniqueChecks,
         List<AssemblyCheck> baseChecks,
-        List<BorrowedTechnique> borrowed
+        List<BorrowedTechnique> borrowed,
+        boolean hidden
 ) {}

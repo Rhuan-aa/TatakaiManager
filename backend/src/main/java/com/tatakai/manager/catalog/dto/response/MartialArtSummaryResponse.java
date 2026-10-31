@@ -10,5 +10,6 @@ import java.util.UUID;
 public record MartialArtSummaryResponse(
         UUID id, UUID campaignId, String name, ArtCategory category, String martialType,
         List<String> attackSpecializations, List<String> reactionSpecializations,
-        int bases, int techniques, int version, ArtStatus status, UUID authorId
+        int bases, int techniques, int version, ArtStatus status, UUID authorId,
+        boolean hidden
 ) {}

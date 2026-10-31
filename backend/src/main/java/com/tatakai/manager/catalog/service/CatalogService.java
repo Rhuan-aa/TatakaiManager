@@ -182,8 +182,10 @@ public class CatalogService {
             list = artRepository.findByCampaignIdIsNull();
         } else {
             requireMember(campaignIdOrNull, requesterId);
+            boolean master = isMaster(campaignIdOrNull, requesterId);
             List<MartialArt> own = artRepository.findByCampaignId(campaignIdOrNull).stream()
-                    .filter(a -> visible(a, requesterId)).toList();
+                    .filter(a -> visible(a, requesterId))
+                    .filter(a -> master || !a.isHidden()).toList();
             Set<String> ownNames = own.stream().filter(CatalogService::approved).map(MartialArt::getName)
                     .collect(Collectors.toSet());
             list = new ArrayList<>(own);
@@ -578,6 +580,7 @@ public class CatalogService {
         a.setBases(p.bases() == null ? new ArrayList<>() : p.bases());
         a.setTechniques(p.techniques() == null ? new ArrayList<>() : p.techniques());
         a.setBorrowed(p.borrowed() == null ? new ArrayList<>() : p.borrowed());
+        a.setHidden(Boolean.TRUE.equals(p.hidden()));
         a.setVersion(a.getVersion() + 1);
         a.setUpdatedAt(Instant.now());
     }
@@ -586,7 +589,8 @@ public class CatalogService {
         return new MartialArtSummaryResponse(a.getId(), a.getCampaignId(), a.getName(), a.getCategory(),
                 a.getMartialType(), a.getAttackSpecializations(), a.getReactionSpecializations(),
                 a.getBases() == null ? 0 : a.getBases().size(),
-                a.getTechniques() == null ? 0 : a.getTechniques().size(), a.getVersion(), a.getStatus(), a.getAuthorId());
+                a.getTechniques() == null ? 0 : a.getTechniques().size(), a.getVersion(), a.getStatus(), a.getAuthorId(),
+                a.isHidden());
     }
 
     private static MartialArtResponse toResponse(MartialArt a) {
@@ -598,6 +602,6 @@ public class CatalogService {
                         : a.getTechniques().stream().map(t -> AssemblyRules.checkTechnique(a.getCategory(), t)).toList(),
                 a.getBases() == null ? List.of()
                         : a.getBases().stream().map(b -> AssemblyRules.checkBase(a.getCategory(), b)).toList(),
-                a.getBorrowed() == null ? List.of() : a.getBorrowed());
+                a.getBorrowed() == null ? List.of() : a.getBorrowed(), a.isHidden());
     }
 }

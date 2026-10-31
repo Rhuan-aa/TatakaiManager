@@ -105,6 +105,8 @@ public class NpcService {
                 .traits(toDetails(req.traits()))
                 .specs(toDetails(req.specs()))
                 .interactions(toInteractions(req.interactions()))
+                .martialArtId(req.martialArtId())
+                .martialGraduation(req.martialArtId() == null ? null : graduationOrDefault(req.martialGraduation()))
                 .createdAt(Instant.now())
                 .build();
 
@@ -129,6 +131,8 @@ public class NpcService {
         npc.getSpecs().addAll(toDetails(req.specs()));
         npc.getInteractions().clear();
         npc.getInteractions().addAll(toInteractions(req.interactions()));
+        npc.setMartialArtId(req.martialArtId());
+        npc.setMartialGraduation(req.martialArtId() == null ? null : graduationOrDefault(req.martialGraduation()));
 
         NpcResponse out = toResponse(npcRepository.save(npc), null);
         campaignNpcRepository.findByNpcId(npcId).forEach(a -> notifyNpcs(a.getCampaign().getId(), npcId));
@@ -400,6 +404,13 @@ public class NpcService {
                 npc.getOwnerId(),
                 npcImageRepository.existsById(npc.getId()),
                 visible,
-                sheetRepository.findByNpcId(npc.getId()).map(CharacterSheet::getId).orElse(null));
+                sheetRepository.findByNpcId(npc.getId()).map(CharacterSheet::getId).orElse(null),
+                npc.getMartialArtId(),
+                npc.getMartialGraduation());
+    }
+
+    private static com.tatakai.manager.catalog.entity.Graduation graduationOrDefault(
+            com.tatakai.manager.catalog.entity.Graduation g) {
+        return g != null ? g : com.tatakai.manager.catalog.entity.Graduation.BEGINNER;
     }
 }
