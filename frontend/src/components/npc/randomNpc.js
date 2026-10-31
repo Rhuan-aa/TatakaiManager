@@ -71,3 +71,5 @@ export function randomNpc(catalog = []) {
     traits: randomTraits(catalog),
   };
 }
+
+export const randomName = () => pick(NAMES);

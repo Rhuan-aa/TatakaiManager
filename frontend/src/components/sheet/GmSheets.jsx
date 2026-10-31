@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import CharacterSheetForm from './CharacterSheetForm';
 import NpcSheetPanel from './NpcSheetPanel';
+import RandomSheetForm from './RandomSheetForm';
 
 /**
  * Fichas do Mestre (§26.11): NPCs da campanha que têm ficha. O Mestre cria uma na hora (vira NPC só com ficha,
@@ -15,6 +16,7 @@ export default function GmSheets({ campaignId, isMaster, npcs, setNpcs }) {
   const { user } = useAuth();
   const toast = useToast();
   const [creating, setCreating] = useState(false);
+  const [randomizing, setRandomizing] = useState(false);
   const [visible, setVisible] = useState(false);
   const [openId, setOpenId] = useState(null);
   const list = npcs.filter((n) => n.sheetId && n.bookable === false);
@@ -50,7 +52,14 @@ export default function GmSheets({ campaignId, isMaster, npcs, setNpcs }) {
         {isMaster && !creating && (
           <button type="button" className="btn-primary" onClick={() => setCreating(true)}>Ficha rápida</button>
         )}
+        {isMaster && !randomizing && (
+          <button type="button" className="btn-secondary" onClick={() => setRandomizing(true)}>🎲 Ficha aleatória</button>
+        )}
       </div>
+      {randomizing && (
+        <RandomSheetForm campaignId={campaignId} onCancel={() => setRandomizing(false)}
+          onCreated={async (s) => { setRandomizing(false); await refresh(); setOpenId(s.npcId); }} />
+      )}
       {creating && (
         <div className="panel p-4">
           <h3 className="panel-title mb-1">Nova ficha rápida</h3>

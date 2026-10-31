@@ -2593,7 +2593,7 @@ Ordem: **51.1 → 51.2 → 51.3 (bloco TimeSkip, máxima prioridade)**, depois 5
 - Tudo que já tem catálogo (traços, clãs, artes, técnicas, itens…) deve ser **linkado** à ficha do NPC, permitindo também
   **traços de campanha** (extensão do catálogo por campanha já existente, §13).
 
-### 51.9 Ficha aleatória configurável
+### 51.9 Ficha aleatória configurável — **feito** (`RandomSheetRules`, `POST /campaigns/{cid}/gm-sheets/random`; clã fora: não há ação de Mestre para clã)
 - Menu de configuração do gerador: **perfil** (Novato, Experiente, Mestre, Rival, Chefe — escala atributos, recursos e EL);
   **arte marcial** (nenhuma / aleatória / específica; graduação aleatória ou fixa) com atributos focados na arte;
   **traços** (quantidade total, por raridade, por categoria — desenvolvível ou não); **clã** (sim/não).

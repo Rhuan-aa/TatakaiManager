@@ -31,8 +31,11 @@ public class CharacterSheetController {
 
     private final CharacterSheetService sheetService;
     private final RollService rollService;
+    private final com.tatakai.manager.sheet.service.RandomSheetService randomSheetService;
 
-    public CharacterSheetController(CharacterSheetService sheetService, RollService rollService) {
+    public CharacterSheetController(CharacterSheetService sheetService, RollService rollService,
+                                    com.tatakai.manager.sheet.service.RandomSheetService randomSheetService) {
+        this.randomSheetService = randomSheetService;
         this.sheetService = sheetService;
         this.rollService = rollService;
     }
@@ -100,6 +103,14 @@ public class CharacterSheetController {
                                                 @Valid @RequestBody RollTestRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(rollService.testRoll(sheetId, request, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/campaigns/{campaignId}/gm-sheets/random")
+    public ResponseEntity<CharacterSheetResponse> createRandomGmSheet(
+            @PathVariable UUID campaignId,
+            @Valid @RequestBody com.tatakai.manager.sheet.dto.request.RandomSheetRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(randomSheetService.create(campaignId, request, AuthenticatedUser.id()));
     }
 
     @PostMapping("/campaigns/{campaignId}/gm-sheets")
