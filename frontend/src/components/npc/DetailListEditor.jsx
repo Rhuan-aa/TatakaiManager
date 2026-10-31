@@ -16,11 +16,11 @@ export default function DetailListEditor({ label, items, onChange }) {
   }
 
   return (
-    <div className="panel p-3">
+    <div className="panel p-4">
       <div className="flex items-center justify-between">
-        <span className="caption">
-          {label} <span className="text-[var(--text)] opacity-70">(opcional)</span>
-        </span>
+        <h3 className="panel-title">
+          {label} <span className="text-xs font-normal opacity-70">(opcional)</span>
+        </h3>
         <button
           type="button"
           onClick={add}
@@ -30,7 +30,7 @@ export default function DetailListEditor({ label, items, onChange }) {
         </button>
       </div>
       {items.map((item, i) => (
-        <div key={i} className="mt-2 flex gap-2">
+        <div key={i} className="bubble mt-2 flex gap-2 p-2">
           <input
             type="text"
             value={item.name}

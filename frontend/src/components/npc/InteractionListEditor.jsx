@@ -27,9 +27,9 @@ export default function InteractionListEditor({ items, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <span className="caption">
-          Interações <span className="text-[var(--text)] opacity-70">(ao menos uma)</span>
-        </span>
+        <h3 className="panel-title">
+          Interações <span className="text-xs font-normal opacity-70">(opcional — para agendar na Agenda)</span>
+        </h3>
         <button
           type="button"
           onClick={add}
@@ -40,7 +40,7 @@ export default function InteractionListEditor({ items, onChange }) {
       </div>
       {items.length === 0 && (
         <p className="mt-1 text-xs text-[var(--text)] opacity-70">
-          Adicione ao menos uma interação (podem existir várias do mesmo tipo).
+          Sem interações o NPC não aparece para agendamento (serve só para ficha/combate).
         </p>
       )}
       {items.map((item, i) => {
@@ -48,7 +48,7 @@ export default function InteractionListEditor({ items, onChange }) {
         const isOther = !PREDEFINED_TYPES.includes(item.type);
         const selectValue = isOther ? 'Outro' : item.type;
         return (
-          <div key={i} className="mt-2 panel p-2">
+          <div key={i} className="bubble mt-2 p-2">
             <div className="flex gap-2">
               <select
                 value={selectValue}

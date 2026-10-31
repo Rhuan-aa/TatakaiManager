@@ -120,11 +120,11 @@ export default function NpcSheetPanel({ campaignId, npc, isMaster, onChanged }) 
           {isOwner && <button type="button" className="btn-primary mt-3" onClick={() => setCreating(true)}>Completar ficha</button>}
         </div>
         {sheet.traits?.length > 0 && (
-          <div className="panel p-3">
-            <p className="caption">Traços</p>
-            <ul className="mt-2 space-y-1.5 text-sm">
+          <div className="panel p-4">
+            <h3 className="panel-title mb-3">Traços</h3>
+            <ul className="flex flex-col gap-2">
               {sheet.traits.map((t) => (
-                <li key={t.id} className="border-l-4 border-[var(--accent)] pl-2"><strong>{t.name}</strong>{t.description ? ` — ${t.description}` : ''}</li>
+                <li key={t.id} className="bubble p-2 text-sm"><strong className="panel-title">{t.name}</strong>{t.description && <p className="mt-1 opacity-80">{t.description}</p>}</li>
               ))}
             </ul>
           </div>

@@ -80,10 +80,6 @@ export default function CreateNpcForm({ campaignId, onCreated, onCancel }) {
     event.preventDefault();
     setError('');
     setFieldErrors({});
-    if (buildInteractions().length === 0) {
-      setError('Adicione ao menos um tipo de interação (com nome).');
-      return;
-    }
     setSubmitting(true);
     try {
       const npc = await createNpc(buildBody());

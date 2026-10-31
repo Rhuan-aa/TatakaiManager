@@ -87,115 +87,30 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
           {npc.combatReady && <span className="tag mt-1">Pronto p/ combate</span>}
           {npc.bookable === false && <span className="tag mt-1">Só combate</span>}
           {npc.interactions?.length > 0 && (
-            <p className="truncate text-[11px] text-white opacity-70">
-              {npc.interactions.length} interaç{npc.interactions.length === 1 ? 'ão' : 'ões'}
-            </p>
-          )}
-        </div>
-
-        {/* Selo de visibilidade (Mestre) */}
-        {isMaster && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleVisibility(npc, e);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                onToggleVisibility(npc, e);
-              }
-            }}
-            title="Alternar visibilidade para os jogadores"
-            className={`absolute right-2 top-2 cursor-pointer ${
-              npc.visible ? 'tag-accent' : 'tag'
-            }`}
-          >
-            {npc.visible ? 'Visível' : 'Oculto'}
-          </span>
-        )}
-      </div>
-    </button>
-  );
-}
-
-function DetailList({ title, items, render }) {
-  if (!items?.length) return null;
-  return (
-    <section className="panel p-3">
-      <p className="caption">{title}</p>
-      <ul className="mt-2 space-y-1.5 text-sm text-[var(--text)]">
-        {items.map((it, i) => (
-          <li key={i} className="border-l-4 border-[var(--accent)] pl-2">{render(it)}</li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-/** Conteúdo do detalhe do NPC exibido no modal. */
-function NpcDetailView({ npc, campaignId }) {
-  return (
-    <div className="flex flex-col gap-5 sm:flex-row">
-      {/* Retrato adaptado ao modal: mesma proporção 3:4 do card, porém maior,
-          alinhado ao topo e integrado (ring/sombra) — sem "flutuar". */}
-      <div className="w-40 shrink-0 self-start panel overflow-hidden sm:w-52">
-        <div className="aspect-[3/4]">
-          <NpcPortrait
-            campaignId={campaignId}
-            npcId={npc.id}
-            hasImage={npc.hasImage}
-            name={npc.name}
-          />
-        </div>
-      </div>
-
-      <div className="min-w-0 flex-1 space-y-4">
-        {npc.description && <p className="text-sm text-[var(--text)]">{npc.description}</p>}
-
-        {npc.interactions?.length > 0 && (
-          <section className="panel p-3">
-            <p className="caption">Interações</p>
-            <ul className="mt-2 space-y-1.5 text-sm text-[var(--text)]">
+          <section className="panel p-4">
+            <h3 className="panel-title mb-3">Interações</h3>
+            <ul className="flex flex-col gap-2">
               {npc.interactions.map((it, i) => (
-                <li key={i} className="flex flex-wrap items-baseline gap-x-1.5 border-l-4 border-[var(--accent)] pl-2">
-                  {it.type && (
-                    <span className="tag">
-                      {it.type}
-                    </span>
-                  )}
-                  <strong className="text-[var(--text)]">{it.name}</strong>
-                  <span className="text-xs font-semibold text-[var(--accent)]">
-                    {it.idlePointCost} pts de ócio
-                  </span>
-                  {it.description && <span className="text-xs text-[var(--text)] opacity-70">— {it.description}</span>}
+                <li key={i} className="bubble p-2 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <strong className="panel-title">{it.name}</strong>
+                    {it.type && <span className="tag">{it.type}</span>}
+                    <span className="tag-accent tag">{it.idlePointCost} pts de ócio</span>
+                  </div>
+                  {it.description && <p className="mt-1 opacity-80">{it.description}</p>}
                 </li>
               ))}
             </ul>
           </section>
         )}
 
-
-        <DetailList
-          title="Traços"
-          items={npc.traits}
-          render={(t) => (
-            <>
-              <strong className="text-[var(--text)]">{t.name}</strong>
-              {t.description ? <span className="text-[var(--text)] opacity-70"> — {t.description}</span> : ''}
-            </>
-          )}
-        />
         <DetailList
           title="Specs"
           items={npc.specs}
           render={(s) => (
             <>
-              <strong className="text-[var(--text)]">{s.name}</strong>
-              {s.description ? <span className="text-[var(--text)] opacity-70"> — {s.description}</span> : ''}
+              <strong className="panel-title">{s.name}</strong>
+              {s.description ? <p className="mt-1 opacity-80">{s.description}</p> : null}
             </>
           )}
         />
@@ -204,8 +119,8 @@ function NpcDetailView({ npc, campaignId }) {
           items={npc.knowledge}
           render={(k) => (
             <>
-              <strong className="text-[var(--text)]">{k.name}</strong>
-              {k.description ? <span className="text-[var(--text)] opacity-70"> — {k.description}</span> : ''}
+              <strong className="panel-title">{k.name}</strong>
+              {k.description ? <p className="mt-1 opacity-80">{k.description}</p> : null}
             </>
           )}
         />

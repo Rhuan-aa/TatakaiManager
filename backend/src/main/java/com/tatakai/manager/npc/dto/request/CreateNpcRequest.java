@@ -25,7 +25,6 @@ public record CreateNpcRequest(
         @Valid
         List<NpcDetailDto> specs,
 
-        @NotEmpty(message = "informe ao menos um tipo de interação")
         @Valid
         List<NpcInteractionDto> interactions
 
