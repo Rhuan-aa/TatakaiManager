@@ -166,7 +166,7 @@ export default function RollReveal({ roll, fresh, onReveal, onAnimated, damage =
           {stage !== 'rolling' && (
             <div className="flex flex-col items-center gap-1">
               {values && (
-                <div className="flex flex-wrap items-center justify-center gap-2">
+                <div className={`flex flex-wrap items-center justify-center gap-2 ${stage === 'fly' ? 'dice-out' : 'dice-in'}`}>
                   {sides.map((n, i) => <Die key={i} sides={n} face={values[i]} extreme={extremes[i]} small />)}
                 </div>
               )}

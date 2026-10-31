@@ -644,6 +644,18 @@ h3,
   background: var(--paper); color: var(--ink); border: 2px solid var(--ink);
 }
 
+/* Dados pousando sobre o número e sumindo antes dele voar para o card */
+.dice-in { animation: dice-in 550ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes dice-in {
+  from { opacity: 0; transform: translateY(-22px) scale(0.85); filter: blur(3px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+.dice-out { animation: dice-out 420ms ease-in forwards; }
+@keyframes dice-out {
+  from { opacity: 1; transform: none; filter: none; }
+  to { opacity: 0; transform: translateY(10px) scale(0.7); filter: blur(4px); }
+}
+
 /* Dado nas pontas: máximo brilha e gira, mínimo encolhe e treme */
 .die-max { animation: die-max 700ms ease-out both; filter: drop-shadow(0 0 10px var(--highlight)); }
 @keyframes die-max {
