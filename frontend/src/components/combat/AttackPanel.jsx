@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import RollReveal from '../rolls/RollReveal';
 import { getRollProfiles } from '../../api/rolls';
 import { OUTCOME_LABEL, REACTION_LABEL, LATE_COUNTER_LABEL } from './combatLabels';
@@ -96,8 +96,7 @@ function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
 }
 
 export default function AttackPanel({ pending, resolved, canCancel, onReact, onCancel, onLateCounter, targetSheetId,
-  attackerSheetId, onChain }) {
-  const initialIds = useRef(new Set(resolved.map((a) => a.id))); // já resolvidos ao montar: sem animação
+  attackerSheetId, onChain, freshIds }) {
   const [chaining, setChaining] = useState(null);
   return (
     <div className="space-y-3">
@@ -146,10 +145,13 @@ export default function AttackPanel({ pending, resolved, canCancel, onReact, onC
                 onClick={() => setChaining(a.id)}>Encadear</button>)}
         </div>
       ))}
-      {resolved.length > 0 && (
-        <details open={resolved.some((a) => a.targets.some((t) => t.canLateCounter && !t.lateCounter))}>
-          <summary className="caption cursor-pointer">Ataques resolvidos ({resolved.length})</summary>
-          <div className="mt-2 space-y-2">{resolved.map((a) => <Resolved key={a.id} a={a} fresh={!initialIds.current.has(a.id)} targetSheetId={targetSheetId} onLateCounter={onLateCounter} />)}</div>
+      {/* O último ataque fica sempre visível (as rolagens não podem nascer escondidas); os anteriores recolhem. */}
+      {resolved.length > 0 && <h3 className="panel-title text-lg">Último ataque</h3>}
+      {resolved.slice(0, 1).map((a) => <Resolved key={a.id} a={a} fresh={freshIds.has(a.id)} targetSheetId={targetSheetId} onLateCounter={onLateCounter} />)}
+      {resolved.length > 1 && (
+        <details>
+          <summary className="caption cursor-pointer">Ataques anteriores ({resolved.length - 1})</summary>
+          <div className="mt-2 space-y-2">{resolved.slice(1).map((a) => <Resolved key={a.id} a={a} fresh={false} targetSheetId={targetSheetId} onLateCounter={onLateCounter} />)}</div>
         </details>
       )}
     </div>

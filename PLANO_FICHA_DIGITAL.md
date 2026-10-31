@@ -2570,19 +2570,19 @@ Ordem: **51.1 → 51.2 → 51.3 (bloco TimeSkip, máxima prioridade)**, depois 5
 - Badges `Ócio` (âmbar) e `TimeSkip` (índigo) não combinam com o design quadrinhos/brutalismo. Trocar por classe do
   sistema (`--ink/--paper/--accent/--highlight`, estilo `.caption`/`.bubble`) em `TimeSkipPanel.jsx`.
 
-### 51.4 Rolagens não aparecem no combate
+### 51.4 Rolagens não aparecem no combate — **feito**: o último ataque fica sempre visível; antes ficava num `<details>` fechado
 - Investigar por que as rolagens do combate não surgem (fila `revealQueue`/`RollReveal`, canal `/topic/.../rolls`, filtro
   por `encounterId`). Reproduzir antes de corrigir; teste do caso.
 
-### 51.5 Uma rolagem por vez no canal de rolagens
+### 51.5 Uma rolagem por vez no canal de rolagens — **feito**
 - Clique repetido cancela a animação em curso e outra a sobrepõe. No canal de rolagens (fora do combate, que já enfileira)
   bloquear nova rolagem enquanto a animação atual roda (botão desabilitado ou entrada na `revealQueue`).
 
-### 51.6 Animação por tipo de dado
+### 51.6 Animação por tipo de dado — **feito** (lados lidos da `formula`, até 8 dados)
 - Hoje só o D20 tem animação. Criar uma para d4/d6/d8/d10/d12/d100 e **mostrar N dados na tela** conforme a rolagem
   (ex.: 3d6 = 3 dados animados). Componente reutilizável em `RollReveal`.
 
-### 51.7 Histórico e rolagens retroativas
+### 51.7 Histórico e rolagens retroativas — **feito**: `freshIds` vem do `CombatPanel` (`fx`), não do 1º render
 - Botão de histórico de rolagens: aplicar o estilo do site (hoje destoa).
 - Rolagens antigas **não** devem animar ao entrar na tela de combate: animar só mensagens recebidas ao vivo (via WS após
   o mount); carga inicial do histórico entra já revelada.

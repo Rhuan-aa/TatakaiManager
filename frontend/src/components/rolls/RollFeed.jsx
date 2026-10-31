@@ -31,7 +31,8 @@ function GmRollForm({ campaignId, tab }) {
     } catch (err) {
       toast(parseApiError(err).message, 'error');
     } finally {
-      setBusy(false);
+      // §51.5: segura o botão até a animação da rolagem acabar (a resposta chega pelo WS)
+      setTimeout(() => setBusy(false), 2000);
     }
   }
 
@@ -201,7 +202,7 @@ export default function RollFeed({ campaignId, isMaster }) {
       )}
       {history.length > 0 && (
         <div>
-          <button type="button" className="text-xs underline" aria-expanded={showHistory} onClick={() => setShowHistory((s) => !s)}>
+          <button type="button" className="btn-secondary px-3 py-1 text-xs" aria-expanded={showHistory} onClick={() => setShowHistory((s) => !s)}>
             Histórico ({history.length})
           </button>
           {showHistory && (

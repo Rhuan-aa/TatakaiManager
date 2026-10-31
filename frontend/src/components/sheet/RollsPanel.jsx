@@ -87,6 +87,8 @@ export default function RollsPanel({ sheetId, campaignId, isMaster, isNpc, refre
   const [channelSel, setChannelSel] = useState('PUBLIC');
   const [channels, setChannels] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [animating, setAnimating] = useState(false); // §51.5: uma rolagem por vez
+  const locked = busy || animating;
   const [result, setResult] = useState(null);
   const [builder, setBuilder] = useState(null);
 
@@ -113,6 +115,7 @@ export default function RollsPanel({ sheetId, campaignId, isMaster, isNpc, refre
         ...body, channel, customChannelId: custom, campaignId: isNpc ? campaignId : undefined,
       });
       setResult(r);
+      setAnimating(true);
       setBuilder(null);
     } catch (err) {
       toast(parseApiError(err).message, 'error');
@@ -136,7 +139,7 @@ export default function RollsPanel({ sheetId, campaignId, isMaster, isNpc, refre
         </label>
       )}
 
-      <div aria-live="polite">{result && <RollReveal key={result.id} roll={result} fresh />}</div>
+      <div aria-live="polite">{result && <RollReveal key={result.id} roll={result} fresh onAnimated={() => setAnimating(false)} />}</div>
 
       <div>
         <h4 className="caption mb-1">Ataques e técnicas</h4>
@@ -147,12 +150,12 @@ export default function RollsPanel({ sheetId, campaignId, isMaster, isNpc, refre
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <strong className="flex-1">{p.name}{p.variation ? ` (${p.variation})` : ''}</strong>
                 <span className="caption">{p.hitFormula}{p.damageFormula ? ` · ${p.damageFormula}` : ''}{p.spCost ? ` · ${p.spCost} SP` : ''}</span>
-                <button type="button" className="btn-primary text-xs" disabled={busy}
+                <button type="button" className="btn-primary text-xs" disabled={locked}
                   onClick={() => run({ ...profileBody(p), mode: 'QUICK' })}>Rolar</button>
                 <button type="button" className="btn-ghost text-xs" onClick={() => setBuilder(builder === key(p) ? null : key(p))}>Detalhar</button>
               </div>
               {builder === key(p) && (
-                <Builder profile={p} busy={busy} onClose={() => setBuilder(null)}
+                <Builder profile={p} busy={locked} onClose={() => setBuilder(null)}
                   onRoll={(extra) => run({ ...profileBody(p), ...extra })} />
               )}
             </li>
@@ -164,7 +167,7 @@ export default function RollsPanel({ sheetId, campaignId, isMaster, isNpc, refre
         <h4 className="caption mb-1">Testes de atributo</h4>
         <div className="flex flex-wrap gap-2">
           {ATTRS.map((a) => (
-            <button key={a.key} type="button" className="btn-ghost text-xs" disabled={busy}
+            <button key={a.key} type="button" className="btn-ghost text-xs" disabled={locked}
               onClick={() => run({ sourceType: 'ATTRIBUTE_TEST', attribute: a.enumName, mode: 'QUICK' })}>{a.label}</button>
           ))}
         </div>

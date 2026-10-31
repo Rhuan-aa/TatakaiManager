@@ -232,6 +232,7 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
               )}
 
               <AttackPanel
+                freshIds={new Set(fx.map((a) => a.id))}
                 pending={attacks.filter((a) => a.status === 'AWAITING_REACTIONS')}
                 resolved={attacks.filter((a) => a.status === 'RESOLVED').slice(0, 5)}
                 canCancel={(a) => {

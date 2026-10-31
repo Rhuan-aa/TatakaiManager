@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import RollCard from './RollCard';
 import { queueSlot } from './revealQueue';
@@ -11,12 +11,32 @@ const REVEAL_MS = ROLL_MS + SHOW_MS + FLY_MS;
 const seen = new Set(); // ids já exibidos nesta sessão: nunca animam de novo
 const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-function Die({ face }) {
+// Silhueta por tipo de dado (viewBox 100×100); d20 e desconhecidos usam o icosaedro.
+const SHAPES = {
+  4: '50,8 94,88 6,88',
+  6: '14,14 86,14 86,86 14,86',
+  8: '50,4 92,50 50,96 8,50',
+  10: '50,4 90,38 76,92 24,92 10,38',
+  12: '50,4 88,30 78,80 50,96 22,80 12,30',
+  100: '50,4 90,38 76,92 24,92 10,38',
+  20: '50,4 93,28 93,72 50,96 7,72 7,28',
+};
+const MAX_DICE = 8;
+
+/** Lados de cada dado da fórmula ("2d6+1d4 | dano 1d8" → [6, 6, 4, 8]); sem dados reconhecíveis → [20]. */
+export function diceSides(formula) {
+  const out = [];
+  for (const m of (formula ?? '').matchAll(/(\d+)d(\d+)/g)) {
+    for (let i = 0; i < Number(m[1]) && out.length < MAX_DICE; i++) out.push(Number(m[2]));
+  }
+  return out.length ? out : [20];
+}
+
+function Die({ sides, face }) {
   return (
-    <svg viewBox="0 0 100 100" className="dice-rolling h-24 w-24" aria-hidden="true">
-      <polygon points="50,4 93,28 93,72 50,96 7,72 7,28" fill="var(--paper)" stroke="var(--ink)" strokeWidth="5" strokeLinejoin="round" />
-      <path d="M50 4 L7 72 M50 4 L93 72 M7 28 L93 28 M7 72 L93 72" stroke="var(--ink)" strokeWidth="2" fill="none" opacity="0.4" />
-      <text x="50" y="62" textAnchor="middle" fontSize="30" fontWeight="900" fill="var(--ink)">{face}</text>
+    <svg viewBox="0 0 100 100" className="dice-rolling h-20 w-20" aria-hidden="true">
+      <polygon points={SHAPES[sides] ?? SHAPES[20]} fill="var(--paper)" stroke="var(--ink)" strokeWidth="5" strokeLinejoin="round" />
+      <text x="50" y="62" textAnchor="middle" fontSize={sides === 100 ? 24 : 30} fontWeight="900" fill="var(--ink)">{face}</text>
     </svg>
   );
 }
@@ -25,10 +45,11 @@ function Die({ face }) {
  * Revela uma rolagem em duas etapas: o d20 gira no centro da tela, o total aparece grande no centro e
  * depois voa/encolhe até o número do RollCard. `fresh` = rolagem que chegou com a página aberta.
  */
-export default function RollReveal({ roll, fresh, onReveal }) {
+export default function RollReveal({ roll, fresh, onReveal, onAnimated }) {
   // waiting → rolling → result → fly → done
   const [stage, setStage] = useState(() => (fresh && !seen.has(roll.id) && !reduced() ? 'waiting' : 'done'));
-  const [face, setFace] = useState(20);
+  const sides = useMemo(() => diceSides(roll.formula), [roll.formula]);
+  const [faces, setFaces] = useState(() => sides.map((n) => n));
   const slot = useRef(null);
   const cardRef = useRef(null);
   const numRef = useRef(null);
@@ -43,7 +64,7 @@ export default function RollReveal({ roll, fresh, onReveal }) {
 
   useEffect(() => {
     if (stage === 'rolling') {
-      const tick = setInterval(() => setFace(1 + Math.floor(Math.random() * 20)), 70);
+      const tick = setInterval(() => setFaces(sides.map((n) => 1 + Math.floor(Math.random() * n))), 70);
       const t = setTimeout(() => setStage('result'), ROLL_MS);
       return () => { clearInterval(tick); clearTimeout(t); };
     }
@@ -73,6 +94,8 @@ export default function RollReveal({ roll, fresh, onReveal }) {
     return () => anim.cancel();
   }, [stage]);
 
+  useEffect(() => { if (stage === 'done') onAnimated?.(); }, [stage]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (stage === 'done') return <RollCard roll={roll} onReveal={onReveal} />;
   const who = roll.characterName || roll.actorName;
   return (
@@ -83,7 +106,11 @@ export default function RollReveal({ roll, fresh, onReveal }) {
       </div>
       {stage !== 'waiting' && createPortal(
         <div className="roll-stage" aria-hidden="true">
-          {stage === 'rolling' && <Die face={face} />}
+          {stage === 'rolling' && (
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {sides.map((n, i) => <Die key={i} sides={n} face={faces[i]} />)}
+            </div>
+          )}
           {stage !== 'rolling' && (
             <div className="flex flex-col items-center gap-1">
               <span ref={numRef} className={`roll-stage-number${roll.critical ? ' is-crit' : roll.fumble ? ' is-fumble' : ''}`}>
