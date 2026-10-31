@@ -63,6 +63,10 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     event.preventDefault();
     setCreateError('');
     setCreateFields({});
+    if (!form.name.trim()) {
+      setCreateFields({ name: 'Informe o nome.' });
+      return;
+    }
     try {
       const created = await createTimeSkip(campaignId, {
         name: form.name,
@@ -163,9 +167,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
                 className={`${t.id === selectedId ? 'btn-primary' : 'btn-secondary'} px-3 py-1.5 text-sm inline-flex items-center gap-2`}
               >
                 <span
-                  className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded border border-black/30 ${
-                    isIdle ? 'bg-amber-400 text-black' : 'bg-blue-600 text-white'
-                  }`}
+                  className={`caption ${isIdle ? '' : 'bg-[var(--ink)] text-[var(--paper)]'}`}
                 >
                   {isIdle ? 'Ócio' : 'TimeSkip'}
                 </span>
@@ -211,7 +213,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
           className="panel mt-4 p-4"
           noValidate
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
             <div className="w-full sm:w-64">
               <label htmlFor="ts-mode" className="block text-sm font-bold uppercase text-[var(--text)]">
                 Tipo de período
@@ -333,11 +335,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
           <div className="mb-4 pb-3 border-b-2 border-black/15 flex flex-col md:flex-row md:items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`text-xs font-black uppercase px-2 py-0.5 rounded border border-black/30 shadow-sm ${
-                  selected.mode === 'IDLE_PERIOD'
-                    ? 'bg-amber-400 text-black'
-                    : 'bg-blue-600 text-white'
-                }`}
+                className={`caption ${selected.mode === 'IDLE_PERIOD' ? '' : 'bg-[var(--ink)] text-[var(--paper)]'}`}
               >
                 {selected.mode === 'IDLE_PERIOD' ? 'Período Ocioso' : 'TimeSkip'}
               </span>
