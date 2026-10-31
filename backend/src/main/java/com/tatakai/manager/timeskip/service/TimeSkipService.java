@@ -91,6 +91,9 @@ public class TimeSkipService {
             throw new TimeSkipClosedException();
         }
 
+        // Consolida tudo que ainda não foi processado (em TIMESKIP, é o único momento: §51.2)
+        if (timeSkip.getProcessedDay() == null) timeSkip.setProcessedDay((short) 0);
+        trainingService.processUpTo(timeSkip, (short) (timeSkip.getTotalDays() + 1));
         timeSkip.setStatus(TimeSkipStatus.CLOSED);
         timeSkip.setClosedAt(Instant.now());
         return changed(timeSkipRepository.save(timeSkip));
@@ -140,7 +143,9 @@ public class TimeSkipService {
                     "O dia deve estar entre 1 e " + timeSkip.getTotalDays());
         }
 
-        trainingService.processUpTo(timeSkip, day);
+        if (timeSkip.getMode() != com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP) {
+            trainingService.processUpTo(timeSkip, day);
+        }
         timeSkip.setCurrentDay(day);
         return changed(timeSkipRepository.save(timeSkip));
     }

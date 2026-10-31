@@ -292,6 +292,39 @@ class TimeSkipServiceTest {
     }
 
     @Test
+    @DisplayName("§51.2: em TIMESKIP avançar o dia não processa treino/desgaste")
+    void setCurrentDay_timeSkipMode_doesNotProcess() {
+        TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign)
+                .name("Inverno").totalDays((short) 7).currentDay((short) 1)
+                .mode(com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP)
+                .status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        mockMaster(true);
+        when(timeSkipRepository.save(any(TimeSkip.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.setCurrentDay(ts.getId(), master.getId(), (short) 4);
+
+        verify(trainingService, never()).processUpTo(any(), anyShort());
+    }
+
+    @Test
+    @DisplayName("§51.2: encerrar TIMESKIP consolida todos os dias de uma vez")
+    void close_timeSkipMode_processesWholeRange() {
+        TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign).name("Inverno")
+                .totalDays((short) 5).currentDay((short) 3)
+                .mode(com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP)
+                .status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        mockMaster(true);
+        when(timeSkipRepository.save(any(TimeSkip.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.close(ts.getId(), master.getId());
+
+        assertThat(ts.getProcessedDay()).isEqualTo((short) 0);
+        verify(trainingService).processUpTo(ts, (short) 6);
+    }
+
+    @Test
     @DisplayName("Tempo de jogo: jogador não pode avançar o dia — AccessDenied")
     void setCurrentDay_byNonMaster_throwsAccessDenied() {
         TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign)

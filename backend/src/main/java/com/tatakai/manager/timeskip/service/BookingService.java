@@ -21,6 +21,7 @@ import com.tatakai.manager.timeskip.dto.response.SlotUpdateMessage;
 import com.tatakai.manager.timeskip.entity.Booking;
 import com.tatakai.manager.timeskip.entity.SoloActivityType;
 import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.TimeSkipMode;
 import com.tatakai.manager.timeskip.entity.TimeSkipActivity;
 import com.tatakai.manager.timeskip.entity.TimeSkipDay;
 import com.tatakai.manager.timeskip.entity.TimeSkipStatus;
@@ -96,8 +97,8 @@ public class BookingService {
                 .findByTimeSkipIdAndDayNumber(timeSkipId, req.dayNumber())
                 .orElseThrow(() -> new InvalidBookingException("Dia inválido para este TimeSkip"));
 
-        // Tempo de jogo: não se agenda em um dia que já passou
-        if (day.getDayNumber() < timeSkip.getCurrentDay()) {
+        // Tempo de jogo: não se agenda em um dia que já passou (TIMESKIP não bloqueia, §51.2)
+        if (timeSkip.getMode() != TimeSkipMode.TIMESKIP && day.getDayNumber() < timeSkip.getCurrentDay()) {
             throw new InvalidBookingException("Não é possível agendar em um dia que já passou");
         }
 
@@ -291,7 +292,8 @@ public class BookingService {
         TimeSkip timeSkip = booking.getTimeSkipDay().getTimeSkip();
 
         // Tempo de jogo: só é possível desmarcar agendamentos cujo dia ainda não passou
-        if (booking.getTimeSkipDay().getDayNumber() < timeSkip.getCurrentDay()) {
+        if (timeSkip.getMode() != TimeSkipMode.TIMESKIP
+                && booking.getTimeSkipDay().getDayNumber() < timeSkip.getCurrentDay()) {
             throw new BookingAlreadyPassedException();
         }
 

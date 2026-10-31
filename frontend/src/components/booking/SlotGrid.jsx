@@ -111,7 +111,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
   }, [campaignId, user?.userId]);
 
   const isActive = timeSkip.status === 'ACTIVE';
-  const isPastDay = day < timeSkip.currentDay;
+  const isPastDay = timeSkip.mode !== 'TIMESKIP' && day < timeSkip.currentDay;
   const canBook = isActive && !isPastDay;
 
   useEffect(() => {

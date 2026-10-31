@@ -24,6 +24,7 @@ import com.tatakai.manager.timeskip.entity.TimeSkipActivity;
 import com.tatakai.manager.timeskip.entity.TimeSkipDay;
 import com.tatakai.manager.timeskip.entity.TimeSkipStatus;
 import com.tatakai.manager.timeskip.exception.BookingAlreadyPassedException;
+import com.tatakai.manager.timeskip.entity.TimeSkipMode;
 import com.tatakai.manager.timeskip.exception.InvalidBookingException;
 import com.tatakai.manager.timeskip.exception.SlotTakenException;
 import com.tatakai.manager.timeskip.exception.TimeSkipActivityNotFoundException;
@@ -643,6 +644,7 @@ class BookingServiceTest {
     @DisplayName("Tempo de jogo: jogador não pode cancelar agendamento de dia que já passou (409)")
     void cancel_pastBooking_rejected() {
         // dia atual da campanha = 5; o agendamento é no dia 3 (já passou)
+        activeSkip.setMode(TimeSkipMode.IDLE_PERIOD);
         activeSkip.setCurrentDay((short) 5);
         Booking booking = Booking.builder().id(UUID.randomUUID())
                 .timeSkipDay(day3).npcId(aldric.getId()).npcName(aldric.getName()).user(player)
@@ -659,6 +661,7 @@ class BookingServiceTest {
     @Test
     @DisplayName("Tempo de jogo: não é possível agendar em um dia que já passou (400)")
     void book_onPastDay_rejected() {
+        activeSkip.setMode(TimeSkipMode.IDLE_PERIOD);
         activeSkip.setCurrentDay((short) 5);
         mockPlayerMember();
         when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
@@ -669,6 +672,39 @@ class BookingServiceTest {
                 .isInstanceOf(InvalidBookingException.class);
 
         verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("§51.2: em TIMESKIP, dia anterior ao atual continua cancelável")
+    void cancel_pastBooking_allowedInTimeSkipMode() {
+        activeSkip.setMode(TimeSkipMode.TIMESKIP);
+        activeSkip.setCurrentDay((short) 5);
+        Booking booking = Booking.builder().id(UUID.randomUUID())
+                .timeSkipDay(day3).npcId(aldric.getId()).npcName(aldric.getName()).user(player)
+                .slotNumber((short) 1).interactionName("Treino").idlePointCost((short) 2).build();
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+
+        service.cancel(booking.getId(), player.getId());
+
+        verify(bookingRepository).delete(booking);
+    }
+
+    @Test
+    @DisplayName("§51.2: em TIMESKIP, dia anterior ao atual continua agendável")
+    void book_onPastDay_allowedInTimeSkipMode() {
+        activeSkip.setMode(TimeSkipMode.TIMESKIP);
+        activeSkip.setCurrentDay((short) 5);
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        mockVisibleAssociation();
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 1));
+
+        verify(bookingRepository).save(any(Booking.class));
     }
 
     @Test
