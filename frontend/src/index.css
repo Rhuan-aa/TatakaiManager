@@ -626,7 +626,11 @@ h3,
 .roll-stage {
   position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none;
   background: radial-gradient(circle, color-mix(in srgb, var(--ink) 55%, transparent) 0, transparent 60%);
-  animation: fade-in 120ms ease-out;
+  animation: fade-in 300ms ease-out;
+}
+/* Tema claro: véu de papel em vez de uma sombra escura que surge do nada */
+[data-theme='light'] .roll-stage {
+  background: radial-gradient(circle, color-mix(in srgb, var(--paper) 85%, transparent) 0, transparent 62%);
 }
 .roll-stage-number {
   display: inline-block; font-family: var(--font-display); font-size: 8rem; line-height: 1; color: var(--paper);
@@ -638,6 +642,22 @@ h3,
 .roll-stage-caption {
   padding: 0.1rem 0.6rem; font-weight: 700; text-transform: uppercase; font-size: 0.8rem;
   background: var(--paper); color: var(--ink); border: 2px solid var(--ink);
+}
+
+/* Dado nas pontas: máximo brilha e gira, mínimo encolhe e treme */
+.die-max { animation: die-max 700ms ease-out both; filter: drop-shadow(0 0 10px var(--highlight)); }
+@keyframes die-max {
+  0% { transform: scale(0.6) rotate(-40deg); }
+  55% { transform: scale(1.35) rotate(12deg); }
+  100% { transform: scale(1.1) rotate(0); }
+}
+.die-min { animation: die-min 600ms ease-out both; opacity: 0.8; filter: grayscale(0.6) drop-shadow(0 0 6px var(--accent)); }
+@keyframes die-min {
+  0% { transform: scale(1.2); }
+  30% { transform: translateX(-6px) scale(0.85); }
+  50% { transform: translateX(6px) scale(0.85); }
+  70% { transform: translateX(-3px) scale(0.8); }
+  100% { transform: scale(0.8); }
 }
 
 /* Animação de ataque no rastreador (combat/attackFx.js) */

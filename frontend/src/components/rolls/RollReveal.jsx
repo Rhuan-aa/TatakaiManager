@@ -29,13 +29,14 @@ const SHAPES = {
   // octaedro: losango com cintura e faces triangulares
   8: { outline: '50,3 94,50 50,97 6,50', edges: 'M6 50 L94 50 M50 3 L30 50 M50 3 L70 50 M50 97 L30 50 M50 97 L70 50' },
   // trapezoedro pentagonal: pipa com arestas em "V"
-  10: { outline: '50,2 93,40 50,98 7,40', edges: 'M7 40 L50 60 L93 40 M50 60 L50 98 M50 2 L28 40 M50 2 L72 40' },
+  10: { outline: '50,2 93,40 50,98 7,40', edges: 'M7 40 L50 26 L93 40 M50 26 L50 2', textY: 66 },
   // dodecaedro: decágono com pentágono central ligado aos vértices
   12: { outline: pts(dec), edges: `${lines(pent.map((p, i) => [p, pent[(i + 1) % 5]]))} ${lines(pent.map((p, i) => [p, dec[i * 2]]))}` },
   // icosaedro: hexágono com triângulo interno
   20: { outline: pts(hex), edges: 'M50 18 L78 66 L22 66 Z M50 4 L50 18 M93 27 L78 66 M7 27 L22 66 M93 73 L78 66 M7 73 L22 66 M50 96 L22 66 M50 96 L78 66' },
 };
 SHAPES[100] = SHAPES[10];
+const countDice = (text) => [...(text ?? '').matchAll(/(\d+)d\d+/g)].reduce((n, m) => n + Number(m[1]), 0);
 SHAPES[3] = SHAPES[6]; // d3 = d6 ÷ 2
 const MAX_DICE = 8;
 
@@ -48,10 +49,12 @@ export function diceSides(text) {
   return out;
 }
 
-function Die({ sides, face }) {
+function Die({ sides, face, extreme, small }) {
+  const size = small ? 'h-14 w-14' : 'h-20 w-20';
+  const cls = extreme ? ` die-${extreme}` : small ? '' : ' dice-rolling';
   if (sides === 2) { // d2 = d6 ÷ 3: moeda
     return (
-      <svg viewBox="0 0 100 100" className="dice-rolling h-20 w-20" aria-hidden="true">
+      <svg viewBox="0 0 100 100" className={`${size}${cls}`} aria-hidden="true">
         <circle cx="50" cy="50" r="44" fill="var(--paper)" stroke="var(--ink)" strokeWidth="5" />
         <circle cx="50" cy="50" r="34" fill="none" stroke="var(--ink)" strokeWidth="2" opacity="0.4" />
         <text x="50" y="62" textAnchor="middle" fontSize="32" fontWeight="900" fill="var(--ink)">{face}</text>
@@ -60,10 +63,10 @@ function Die({ sides, face }) {
   }
   const shape = SHAPES[sides] ?? SHAPES[20];
   return (
-    <svg viewBox="0 0 100 100" className="dice-rolling h-20 w-20" aria-hidden="true">
+    <svg viewBox="0 0 100 100" className={`${size}${cls}`} aria-hidden="true">
       <polygon points={shape.outline} fill="var(--paper)" stroke="var(--ink)" strokeWidth="5" strokeLinejoin="round" />
       <path d={shape.edges} stroke="var(--ink)" strokeWidth="2" fill="none" opacity="0.45" />
-      <text x="50" y="62" textAnchor="middle" fontSize={sides === 100 ? 22 : 28} fontWeight="900" fill="var(--ink)" stroke="var(--paper)" strokeWidth="3" paintOrder="stroke">{face}</text>
+      <text x="50" y={shape.textY ?? 62} textAnchor="middle" fontSize={sides === 100 ? 22 : 28} fontWeight="900" fill="var(--ink)" stroke="var(--paper)" strokeWidth="3" paintOrder="stroke">{face}</text>
     </svg>
   );
 }
@@ -83,6 +86,18 @@ export default function RollReveal({ roll, fresh, onReveal, onAnimated, damage =
   }, [mainText]);
   const dmgSides = useMemo(() => (damage && roll.damageTotal > 0 ? diceSides(dmgText) : []), [damage, roll.damageTotal, dmgText]);
   const sides = phase === 'damage' ? dmgSides : mainSides;
+  // Valores reais dos dados da fase (diceResults: dados do ataque primeiro, depois os de dano)
+  const values = useMemo(() => {
+    const all = roll.diceResults ?? [];
+    const from = phase === 'damage' ? countDice(mainText) : 0;
+    const n = phase === 'damage' ? countDice(dmgText) : countDice(mainText);
+    const v = all.slice(from, from + n).slice(0, sides.length);
+    return v.length === sides.length ? v : null;
+  }, [roll.diceResults, phase, mainText, dmgText, sides.length]);
+  // Pontas: dado máximo/mínimo (o d20 já tem crítico/falha)
+  const extremes = values ? values.map((v, i) => (sides[i] === 20 ? null : v === sides[i] ? 'max' : v === 1 ? 'min' : null)) : [];
+  const allMax = values && sides.every((n, i) => n !== 20 && extremes[i] === 'max');
+  const allMin = values && sides.every((n, i) => n !== 20 && extremes[i] === 'min');
   const [faces, setFaces] = useState(() => mainSides.map((n) => n));
   const slot = useRef(null);
   const cardRef = useRef(null);
@@ -150,11 +165,16 @@ export default function RollReveal({ roll, fresh, onReveal, onAnimated, damage =
           )}
           {stage !== 'rolling' && (
             <div className="flex flex-col items-center gap-1">
+              {values && (
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {sides.map((n, i) => <Die key={i} sides={n} face={values[i]} extreme={extremes[i]} small />)}
+                </div>
+              )}
               <span ref={numRef} className={`roll-stage-number${phase === 'damage' ? '' : roll.critical ? ' is-crit' : roll.fumble ? ' is-fumble' : ''}`}>
                 {phase === 'damage' ? roll.damageTotal : roll.total}
               </span>
               {stage === 'result' && (
-                <span className="roll-stage-caption">{phase === 'damage' ? 'Dano — ' : ''}{who}{roll.sourceName ? ` — ${roll.sourceName}` : ''}</span>
+                <span className="roll-stage-caption">{allMax ? 'Dado máximo! ' : allMin ? 'Dado mínimo. ' : ''}{phase === 'damage' ? 'Dano — ' : ''}{who}{roll.sourceName ? ` — ${roll.sourceName}` : ''}</span>
               )}
             </div>
           )}
