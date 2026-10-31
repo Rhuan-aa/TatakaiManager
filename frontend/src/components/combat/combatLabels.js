@@ -91,3 +91,8 @@ export const BASIC_HINT = {
   PISAO: 'Só contra alvo Derrubado · + mod. de Peso no dano · +1 PQ na cabeça',
 };
 export const FLOOR_LABEL = { SOFT: 'Macio', STANDARD: 'Padrão', HARD: 'Duro' };
+
+export const CONDITION_LABEL = {
+  AREA_EM_CHAMAS: 'Área em chamas',
+  NA_FUMACA: 'Na fumaça',
+};

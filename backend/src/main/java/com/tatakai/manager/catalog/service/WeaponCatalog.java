@@ -25,7 +25,9 @@ public class WeaponCatalog {
                       boolean flexible, boolean fragile, String breaksInto, boolean entangle, boolean returning,
                       boolean dispersion, Double explosiveRadius, boolean incendiary, boolean smoke, String reload,
                       boolean slowCock, Integer burst, Integer unstable, Integer bonus, String alt, boolean twoHands,
-                      boolean throwOnly, boolean selfWound, boolean hidden, String price, String access) {
+                      boolean throwOnly, boolean selfWound, boolean hidden, String price, String access,
+                      /** Chave do consumível de munição (§50.2); null = não usa munição. */
+                      String ammo) {
 
         public boolean firearm() { return "FIREARM".equals(group); }
         public boolean augment() { return "AUGMENT".equals(group); }

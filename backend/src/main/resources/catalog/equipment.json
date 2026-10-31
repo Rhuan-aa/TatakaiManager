@@ -159,6 +159,27 @@
     "text": "−1 PQ em golpes na Têmpora e na Nuca"
   },
   {
+    "key": "CAPACETE_FECHADO",
+    "name": "Capacete Fechado",
+    "kind": "PROTECTION",
+    "price": "3",
+    "access": "Livre",
+    "protection": {
+      "BLUNT": 3,
+      "PIERCE": 2
+    },
+    "cover": [
+      "CABECA"
+    ],
+    "weightKg": 2,
+    "category": "LIGHT",
+    "effects": [
+      "HELMET",
+      "CLOSED_HELMET"
+    ],
+    "text": "−1 PQ em golpes na Têmpora, na Nuca e no Queixo; desvantagem em percepção visual"
+  },
+  {
     "key": "BANDAGEM",
     "name": "Bandagem de Mãos",
     "kind": "COMPETITION",

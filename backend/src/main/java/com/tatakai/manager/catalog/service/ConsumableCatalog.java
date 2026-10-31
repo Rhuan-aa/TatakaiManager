@@ -15,7 +15,7 @@ import java.util.Optional;
 public class ConsumableCatalog {
 
     /**
-     * use: SELF (Ação Menor em si), ALLY (Ação Maior em aliado), OFFENSIVE (Ação Menor ofensiva num alvo), NONE (fora de
+     * use: SELF (Ação Menor em si), ALLY (Ação Maior em aliado), OFFENSIVE (Ação Menor ofensiva num alvo), AMMO (munição, §50.2), NONE (fora de
      * combate). effect: STANCH, STANCH_HEAL, WAKE_KP, SP_1D6, GRIP_CHALK, PEPPER, STIMULANT; null = o Mestre aplica.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)

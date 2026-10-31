@@ -213,7 +213,7 @@ class CombatServiceTest {
                 new com.tatakai.manager.combat.service.VitalService(participants, conditions, timeline, activityLog, rolls,
                         new ConditionCatalog(), org.mockito.Mockito.mock(com.tatakai.manager.roll.service.RollProfileService.class)),
                 new com.tatakai.manager.combat.service.MartialService(arts, martialArts, techniqueRepo, rivals, counterRepo,
-                        new com.tatakai.manager.catalog.service.ArtCounterCatalog(), timeline), ruleService, profiles);
+                        new com.tatakai.manager.catalog.service.ArtCounterCatalog(), timeline), profiles, ruleService);
     }
 
     private int initA = 10, initB = 10;

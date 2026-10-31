@@ -224,5 +224,137 @@
     "text": "Como o Ciclo Pesado; 1d6: 1–2 adulterada (sem efeito, +2 Desgaste Físico)",
     "price": "5 (Ilegal: dobra)",
     "access": "Ilegal"
+  },
+  {
+    "key": "PEDRA",
+    "name": "Pedra",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição de Estilingue (1 por disparo)",
+    "dose": false,
+    "price": null,
+    "access": "Livre"
+  },
+  {
+    "key": "DARDO",
+    "name": "Dardo de Zarabatana",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição de Zarabatana (1 por disparo)",
+    "dose": false,
+    "price": null,
+    "access": "Livre"
+  },
+  {
+    "key": "FLECHA",
+    "name": "Flecha",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição de Arco (1 por disparo)",
+    "dose": false,
+    "price": null,
+    "access": "Livre"
+  },
+  {
+    "key": "VIROTE",
+    "name": "Virote",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição de Besta (1 por disparo)",
+    "dose": false,
+    "price": null,
+    "access": "Livre"
+  },
+  {
+    "key": "POLVORA_BALA",
+    "name": "Pólvora e Bala",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição de Arma de Pederneira (1 por disparo)",
+    "dose": false,
+    "price": null,
+    "access": "Proibido"
+  },
+  {
+    "key": "MUNICAO_9MM",
+    "name": "Munição 9mm",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição 9mm para pistolas e submetralhadoras (Glock, MP5)",
+    "dose": false,
+    "price": null,
+    "access": "Proibido"
+  },
+  {
+    "key": "MUNICAO_38",
+    "name": "Munição .38",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição .38 para revólveres (Taurus)",
+    "dose": false,
+    "price": null,
+    "access": "Proibido"
+  },
+  {
+    "key": "CARTUCHO_12",
+    "name": "Cartucho calibre 12",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Cartucho calibre 12 para escopetas (Cano Curto, M1014)",
+    "dose": false,
+    "price": null,
+    "access": "Proibido"
+  },
+  {
+    "key": "MUNICAO_556",
+    "name": "Munição 5.56",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição 5.56 para fuzis de assalto (M4A1)",
+    "dose": false,
+    "price": null,
+    "access": "Proibido"
+  },
+  {
+    "key": "MUNICAO_RIFLE",
+    "name": "Munição de Rifle",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição de fuzis e rifles (Springfield, Rifle de Caça, AWP)",
+    "dose": false,
+    "price": null,
+    "access": "Proibido"
+  },
+  {
+    "key": "MUNICAO_762",
+    "name": "Munição 7.62",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Munição 7.62 para metralhadoras (Machine Gun)",
+    "dose": false,
+    "price": null,
+    "access": "Proibido"
+  },
+  {
+    "key": "FOGUETE",
+    "name": "Foguete de RPG",
+    "group": "AMMO",
+    "use": "AMMO",
+    "effect": null,
+    "text": "Foguete para lança-foguetes (RPG-7)",
+    "dose": false,
+    "price": null,
+    "access": "Proibido"
   }
 ]

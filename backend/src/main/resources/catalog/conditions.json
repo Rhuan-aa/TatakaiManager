@@ -320,5 +320,21 @@
     "exit": "Ação Maior + FOR/DES contra o ND da amarra (Corda 14, Abraçadeira 16, Algemas 22)",
     "defaultExpiresAt": "MANUAL",
     "stack": "RENEW"
+  },
+  {
+    "key": "AREA_EM_CHAMAS",
+    "name": "Área em chamas",
+    "effect": "No fim do turno: Queimando",
+    "exit": "Mover (sai da área)",
+    "defaultExpiresAt": "COUNTER",
+    "stack": "RENEW"
+  },
+  {
+    "key": "NA_FUMACA",
+    "name": "Na fumaça",
+    "effect": "Cobertura Total contra disparo/arremesso de fora; ataques por/contra com desvantagem",
+    "exit": "Mover (sai da área)",
+    "defaultExpiresAt": "COUNTER",
+    "stack": "RENEW"
   }
 ]

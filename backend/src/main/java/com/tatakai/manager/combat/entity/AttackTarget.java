@@ -38,6 +38,10 @@ public class AttackTarget {
     @Column(name = "auto_resolved", nullable = false)
     private boolean autoResolved;
 
+    /** Alvo no resto do raio de um explosivo: não reage e leva metade do dano (§50.1). */
+    @Column(name = "splash", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean splash;
+
     @Column(name = "responded_at")
     private Instant respondedAt;
 

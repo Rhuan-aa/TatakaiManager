@@ -124,6 +124,7 @@ class AttackServiceTest {
     @Mock private MartialArtRepository martialArts;
     @Mock private RivalRepository rivals;
     @Mock private CombatCounterRepository counters;
+    @Mock private com.tatakai.manager.campaign.service.CampaignRuleService ruleService;
 
     private AttackService service;
     private UUID cid;
@@ -289,7 +290,7 @@ class AttackServiceTest {
         service = new AttackService(encounters, participants, conditions, timeline, attackRepo, targetRepo, sheets,
                 techniques, members, rolls, profiles, activityLog, publisher,
                 new com.tatakai.manager.combat.service.VitalService(participants, conditions, timeline, activityLog, rolls,
-                        new com.tatakai.manager.catalog.service.ConditionCatalog(), profiles), martial);
+                        new com.tatakai.manager.catalog.service.ConditionCatalog(), profiles), martial, ruleService);
     }
 
     // ---------- declarar ----------

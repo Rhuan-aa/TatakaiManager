@@ -16,6 +16,7 @@ import com.tatakai.manager.catalog.service.ConditionCatalog;
 import com.tatakai.manager.catalog.service.ConsumableCatalog;
 import com.tatakai.manager.catalog.service.EquipmentCatalog;
 import com.tatakai.manager.catalog.service.WeaponCatalog;
+import com.tatakai.manager.combat.service.rules.AmmoRules;
 import com.tatakai.manager.combat.dto.request.AddConditionRequest;
 import com.tatakai.manager.combat.dto.request.CombatActionRequest;
 import com.tatakai.manager.combat.dto.request.GrappleRequest;
@@ -135,8 +136,8 @@ public class CombatService {
                          CampaignNpcRepository campaignNpcs, CampaignMemberRepository members,
                          RollService rolls, SheetActivityLogService activityLog, ConditionCatalog catalog,
                          ApplicationEventPublisher publisher, PendingAttackRepository attacks,
-                         VitalService vital, MartialService martial, CampaignRuleService rules,
-                         RollProfileService profiles) {
+                         VitalService vital, MartialService martial, RollProfileService profiles,
+                         CampaignRuleService rules) {
         this.profiles = profiles;
         this.rules = rules;
         this.encounters = encounters;
@@ -535,6 +536,9 @@ public class CombatService {
             if (item.getConsumableKey() != null) {
                 consumable = consumables.find(item.getConsumableKey())
                         .orElseThrow(() -> new InvalidCombatException(item.getName() + " não é um consumível do catálogo"));
+                if ("AMMO".equalsIgnoreCase(consumable.use())) {
+                    throw new InvalidCombatException("Munição não se usa: recarregue a arma");
+                }
                 pa = useCost(item, consumable, p, useTarget);
             } else if (item.getEquipmentKey() != null && COMBAT_TOOLS.contains(item.getEquipmentKey())) {
                 if (item.getLocation() != ItemLocation.HAND && item.getLocation() != ItemLocation.QUICK) {
@@ -546,7 +550,7 @@ public class CombatService {
                 throw new InvalidCombatException(item.getName() + " não é um consumível do catálogo");
             }
         }
-        if (item != null) gearCheck(s, action, item, weapon, req);
+        if (item != null) gearCheck(e, s, action, item, weapon, req);
         if (action == CombatAction.CHANGE_BASE) {
             pa = CombatRules.baseChangeCost(p.getActiveBaseId() != null, req.baseId() != null);
             BaseRules.Profile target = req.baseId() == null ? null : profiles.baseProfile(s, req.baseId());
@@ -648,6 +652,13 @@ public class CombatService {
                 if (base != null && fighter.hasArtNamed("Sumo")) d = d / 2; // Preso ao Solo (Sumo): −50% em base
                 if (p.getMovesThisTurn() == 1) d = com.tatakai.manager.combat.service.rules.EquipmentRules.firstMove(d, armorWeight(s));
                 text.append(" — Moveu ").append(d == Math.floor(d) ? String.valueOf((int) d) : String.valueOf(d).replace('.', ',')).append(" m");
+                List<CombatCondition> zones = mine.stream()
+                        .filter(c -> "AREA_EM_CHAMAS".equals(c.getConditionKey()) || "NA_FUMACA".equals(c.getConditionKey()))
+                        .toList();
+                if (!zones.isEmpty()) {
+                    conditions.deleteAll(zones);
+                    log(e, p.getId(), CombatEventType.ACTION, p.getName() + " sai da área");
+                }
             }
             case STAND_UP -> {
                 conditions.deleteAll(down);
@@ -682,7 +693,7 @@ public class CombatService {
                 text.append(newBase == null ? " — sem base ativa" : " — base " + newBase.getName()
                         + (entered != null && entered.distanceControl() ? " (Controle de Distância)" : ""));
             }
-            case DRAW, RELOAD, COCK, UNJAM, TOGGLE_MODE -> text.append(" — ").append(gear(action, item, weapon, req));
+            case DRAW, RELOAD, COCK, UNJAM, TOGGLE_MODE -> text.append(" — ").append(gear(e, s, action, item, weapon, req));
             case USE_ITEM -> {
                 if (consumable != null) {
                     text.append(" — ").append(useItem(e, p, s, item, consumable, useTarget, ctx, userId, actor));
@@ -883,7 +894,7 @@ public class CombatService {
     }
 
     /** Validações das ações de equipamento, antes de gastar PA. */
-    private void gearCheck(CharacterSheet s, CombatAction a, com.tatakai.manager.sheet.entity.InventoryItem item,
+    private void gearCheck(Encounter e, CharacterSheet s, CombatAction a, com.tatakai.manager.sheet.entity.InventoryItem item,
                            WeaponCatalog.Def w, CombatActionRequest req) {
         boolean inHand = item.getLocation() == ItemLocation.HAND;
         switch (a) {
@@ -896,6 +907,13 @@ public class CombatService {
             }
             case RELOAD -> {
                 if (!inHand) throw new InvalidCombatException("A arma precisa estar em mãos");
+                if (rules.isEnabled(e.getCampaignId(), OptionalRule.AMMO_STOCK) && w != null && w.ammo() != null) {
+                    int avail = AmmoRules.available(s.getInventory(), w.ammo());
+                    if (avail == 0) {
+                        String ammoName = consumables.find(w.ammo()).map(ConsumableCatalog.Def::name).orElse(w.ammo());
+                        throw new InvalidCombatException("Sem " + ammoName + " no inventário");
+                    }
+                }
             }
             case COCK -> {
                 if (w == null || !w.slowCock()) throw new InvalidCombatException(item.getName() + " não precisa ser engatilhada");
@@ -912,8 +930,8 @@ public class CombatService {
     }
 
     /** Aplica a ação de equipamento já validada; devolve o texto para a linha do tempo. */
-    private String gear(CombatAction a, com.tatakai.manager.sheet.entity.InventoryItem item, WeaponCatalog.Def w,
-                        CombatActionRequest req) {
+    private String gear(Encounter e, CharacterSheet s, CombatAction a, com.tatakai.manager.sheet.entity.InventoryItem item,
+                        WeaponCatalog.Def w, CombatActionRequest req) {
         switch (a) {
             case DRAW -> {
                 if (item.getLocation() == ItemLocation.HAND) {
@@ -926,8 +944,21 @@ public class CombatService {
                 return from + item.getName() + (item.isTwoHanded() ? " (duas mãos)" : "");
             }
             case RELOAD -> {
-                item.setLoaded(w.capacity());
-                return "recarregou " + item.getName() + " (" + w.capacity() + ")";
+                if (rules.isEnabled(e.getCampaignId(), OptionalRule.AMMO_STOCK) && w != null && w.ammo() != null) {
+                    int capacity = w.capacity() == null ? 0 : w.capacity();
+                    int loaded = item.getLoaded();
+                    int wanted = Math.max(0, capacity - loaded);
+                    int taken = AmmoRules.take(s.getInventory(), w.ammo(), wanted);
+                    item.setLoaded(loaded + taken);
+                    if (taken < wanted) {
+                        return "recarregou " + taken + " (" + item.getLoaded() + "/" + capacity + ")";
+                    } else {
+                        return "recarregou " + item.getName() + " (" + capacity + ")";
+                    }
+                } else {
+                    item.setLoaded(w.capacity());
+                    return "recarregou " + item.getName() + " (" + w.capacity() + ")";
+                }
             }
             case COCK -> {
                 item.setCocked(true);
@@ -1304,8 +1335,27 @@ public class CombatService {
             }
         }
         vital.onTurnEnd(e, p, sheetOf(p), ctx);
-        // Opressão da Cordilheira (Wrestling): alvo Derrubado preso por um wrestler perde 4 + mod. de Peso de SP no fim do turno
+        // Área em chamas: renova QUEIMANDO com intensidade mínima 1 e loga "<nome> continua na área em chamas"
         List<CombatCondition> myConds = conditions.findByParticipantIdIn(List.of(p.getId()));
+        if (myConds.stream().anyMatch(c -> "AREA_EM_CHAMAS".equals(c.getConditionKey()))) {
+            CombatCondition burning = myConds.stream()
+                    .filter(c -> VitalService.BURNING.equals(c.getConditionKey()))
+                    .findFirst().orElse(null);
+            if (burning != null) {
+                burning.setIntensity(Math.max(1, burning.getIntensity() == null ? 0 : burning.getIntensity()));
+                conditions.save(burning);
+            } else {
+                vital.addCondition(e, p, VitalService.BURNING, ConditionExpiry.MANUAL, null, "Área em chamas");
+                conditions.findByParticipantIdIn(List.of(p.getId())).stream()
+                        .filter(c -> VitalService.BURNING.equals(c.getConditionKey()))
+                        .findFirst().ifPresent(c -> {
+                            c.setIntensity(Math.max(1, c.getIntensity() == null ? 0 : c.getIntensity()));
+                            conditions.save(c);
+                        });
+            }
+            log(e, p.getId(), CombatEventType.ACTION, p.getName() + " continua na área em chamas");
+        }
+        // Opressão da Cordilheira (Wrestling): alvo Derrubado preso por um wrestler perde 4 + mod. de Peso de SP no fim do turno
         if (myConds.stream().anyMatch(c -> KNOCKED_DOWN.equals(c.getConditionKey()))) {
             myConds.stream().filter(c -> (GRABBED.equals(c.getConditionKey()) || RESTRAINED.equals(c.getConditionKey()))
                     && c.getSourceParticipantId() != null).findFirst().ifPresent(hold -> {

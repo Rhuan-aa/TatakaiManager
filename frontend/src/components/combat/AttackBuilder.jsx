@@ -32,6 +32,7 @@ export default function AttackBuilder({ participant: p, participants, initialKin
   const [idx, setIdx] = useState(0);
   const [kind, setKind] = useState(initialKind);
   const [targets, setTargets] = useState([]);
+  const [splashTargets, setSplashTargets] = useState([]);
   const [region, setRegion] = useState('');
   const [penalty, setPenalty] = useState(0);
   const [side, setSide] = useState('');
@@ -53,6 +54,13 @@ export default function AttackBuilder({ participant: p, participants, initialKin
   const mods = prof?.modules ?? [];
   // §41: Varredura atinge 2 alvos, Círculo todos; o resto, 1
   const weapon = prof?.weaponKey ? weapons[prof.weaponKey] : null;
+
+  useEffect(() => {
+    if (weapon?.explosiveRadius == null) {
+      setSplashTargets([]);
+    }
+  }, [weapon?.explosiveRadius]);
+
   const maxTargets = weapon?.explosiveRadius || mods.includes('Círculo') ? Infinity
     : mods.includes('Supressão') ? 3
     : mods.includes('Varredura') || mods.includes('Transpassar') ? 2 : 1;
@@ -60,11 +68,26 @@ export default function AttackBuilder({ participant: p, participants, initialKin
   const oneHandWeapon = weapon && !weapon.twoHands && !weapon.heavyStr && !weapon.large && !(weapon.rangeM && !weapon.compact);
   const sided = prof?.basicAttack ? SIDED_BASICS.includes(prof.basicAttack) || oneHandWeapon : !!prof && (!weapon || oneHandWeapon);
   const stealth = (t) => t.conditions.some((c) => c.key === 'FURTIVO');
-  const toggle = (id) => setTargets((cur) => (cur.includes(id) ? cur.filter((x) => x !== id)
-    : maxTargets === 1 ? [id] : cur.length >= maxTargets ? cur : [...cur, id]));
+  const toggle = (id) => {
+    setSplashTargets((cur) => cur.filter((x) => x !== id));
+    setTargets((cur) => (cur.includes(id) ? cur.filter((x) => x !== id)
+      : maxTargets === 1 ? [id] : cur.length >= maxTargets ? cur : [...cur, id]));
+  };
+  const toggleSplash = (id) => setSplashTargets((cur) => (cur.includes(id)
+    ? cur.filter((x) => x !== id)
+    : [...cur, id]));
+
+  const ammoStock = weapon?.ammo && p.gear
+    ? p.gear
+      .filter((i) => i.consumableKey === weapon.ammo && i.location !== 'DROPPED')
+      .reduce((sum, i) => sum + (i.quantity ?? 0), 0)
+    : null;
 
   function submit(e) {
     e.preventDefault();
+    const validSplash = weapon?.explosiveRadius != null
+      ? splashTargets.filter((id) => !targets.includes(id) && id !== p.id)
+      : [];
     onSubmit({
       attackerId: p.id,
       sourceType: prof.basicAttack ? 'BASIC_ATTACK' : 'TECHNIQUE',
@@ -73,6 +96,7 @@ export default function AttackBuilder({ participant: p, participants, initialKin
       ...(prof.basicAttack ? { basicAttack: prof.basicAttack } : {}),
       actionKind: kind,
       targetIds: targets,
+      ...(validSplash.length > 0 ? { splashTargetIds: validSplash } : {}),
       ...(region.trim() ? { region: region.trim() } : {}),
       regionPenalty: -Math.abs(penalty),
       ...(sided && side ? { strikeSide: side } : {}),
@@ -151,7 +175,11 @@ export default function AttackBuilder({ participant: p, participants, initialKin
           </div>
           {prof && <p className="caption">Acerto: {prof.hitFormula} · Dano: {prof.damageFormula ?? 'nenhum'}</p>}
           {BASIC_HINT[prof?.basicAttack] && <p className="caption">{BASIC_HINT[prof.basicAttack]}</p>}
-          {weapon && <p className="caption">{weaponHint(weapon)}</p>}
+          {weapon && (
+            <p className="caption">
+              {weaponHint(weapon)}{ammoStock != null ? ` · Munição: ${ammoStock}` : ''}
+            </p>
+          )}
           <fieldset className="flex flex-wrap gap-3">
             <legend className="caption">
               Alvos{maxTargets === 1 ? ' (1)' : maxTargets === 2 ? ` (até 2, ${mods.includes('Transpassar') ? 'Transpassar' : 'Varredura'})` : maxTargets === 3 ? ' (até 3, Supressão)' : ' (Círculo)'}
@@ -166,6 +194,23 @@ export default function AttackBuilder({ participant: p, participants, initialKin
               );
             })}
           </fieldset>
+          {weapon?.explosiveRadius != null && (
+            <fieldset className="flex flex-wrap gap-3">
+              <legend className="caption">
+                No raio (metade do dano)
+              </legend>
+              <p className="-mt-1 w-full text-xs opacity-75">Não reagem; recebem metade do dano.</p>
+              {participants.filter((t) => t.id !== p.id && !targets.includes(t.id)).map((t) => (
+                <label key={t.id} className="flex items-center gap-1 text-xs">
+                  <input type="checkbox" checked={splashTargets.includes(t.id)} onChange={() => toggleSplash(t.id)} />
+                  {t.name}
+                </label>
+              ))}
+              {participants.filter((t) => t.id !== p.id && !targets.includes(t.id)).length === 0 && (
+                <span className="text-xs opacity-75">Nenhum outro participante no raio.</span>
+              )}
+            </fieldset>
+          )}
         </>
       )}
       <div className="flex gap-2">

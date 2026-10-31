@@ -578,7 +578,8 @@
     "compact": true,
     "reload": "FAST",
     "impact": 1,
-    "capacity": 1
+    "capacity": 1,
+    "ammo": "PEDRA"
   },
   {
     "key": "ZARABATANA",
@@ -593,7 +594,8 @@
     "rangeM": 10,
     "compact": true,
     "reload": "NORMAL",
-    "capacity": 1
+    "capacity": 1,
+    "ammo": "DARDO"
   },
   {
     "key": "ARCO_CURTO",
@@ -607,7 +609,8 @@
     "access": "Livre",
     "rangeM": 96,
     "reload": "FAST",
-    "capacity": 1
+    "capacity": 1,
+    "ammo": "FLECHA"
   },
   {
     "key": "ARCO_LONGO",
@@ -621,7 +624,8 @@
     "access": "Livre",
     "rangeM": 180,
     "reload": "FAST",
-    "capacity": 1
+    "capacity": 1,
+    "ammo": "FLECHA"
   },
   {
     "key": "ARCO_COMPOSTO",
@@ -635,7 +639,8 @@
     "access": "Livre",
     "rangeM": 200,
     "reload": "FAST",
-    "capacity": 1
+    "capacity": 1,
+    "ammo": "FLECHA"
   },
   {
     "key": "BESTA_MAO",
@@ -650,7 +655,8 @@
     "rangeM": 36,
     "compact": true,
     "reload": "FAST",
-    "capacity": 1
+    "capacity": 1,
+    "ammo": "VIROTE"
   },
   {
     "key": "BESTA",
@@ -664,7 +670,8 @@
     "access": "Livre",
     "rangeM": 96,
     "reload": "NORMAL",
-    "capacity": 1
+    "capacity": 1,
+    "ammo": "VIROTE"
   },
   {
     "key": "BESTA_PESADA",
@@ -678,7 +685,8 @@
     "access": "Livre",
     "rangeM": 120,
     "reload": "SLOW",
-    "capacity": 1
+    "capacity": 1,
+    "ammo": "VIROTE"
   },
   {
     "key": "PEDERNEIRA",
@@ -694,7 +702,8 @@
     "capacity": 1,
     "compact": true,
     "reload": "SLOW",
-    "unstable": 3
+    "unstable": 3,
+    "ammo": "POLVORA_BALA"
   },
   {
     "key": "GLOCK",
@@ -709,7 +718,8 @@
     "rangeM": 50,
     "capacity": 15,
     "compact": true,
-    "reload": "NORMAL"
+    "reload": "NORMAL",
+    "ammo": "MUNICAO_9MM"
   },
   {
     "key": "TAURUS",
@@ -724,7 +734,8 @@
     "rangeM": 50,
     "capacity": 6,
     "compact": true,
-    "reload": "SLOW"
+    "reload": "SLOW",
+    "ammo": "MUNICAO_38"
   },
   {
     "key": "MP5",
@@ -739,7 +750,8 @@
     "rangeM": 50,
     "capacity": 30,
     "reload": "NORMAL",
-    "burst": 3
+    "burst": 3,
+    "ammo": "MUNICAO_9MM"
   },
   {
     "key": "M4A1",
@@ -754,7 +766,8 @@
     "rangeM": 50,
     "capacity": 30,
     "reload": "NORMAL",
-    "burst": 2
+    "burst": 2,
+    "ammo": "MUNICAO_556"
   },
   {
     "key": "CANO_CURTO",
@@ -769,7 +782,8 @@
     "rangeM": 50,
     "capacity": 2,
     "dispersion": true,
-    "reload": "SLOW"
+    "reload": "SLOW",
+    "ammo": "CARTUCHO_12"
   },
   {
     "key": "M1014",
@@ -784,7 +798,8 @@
     "rangeM": 50,
     "capacity": 7,
     "dispersion": true,
-    "reload": "SLOW"
+    "reload": "SLOW",
+    "ammo": "CARTUCHO_12"
   },
   {
     "key": "SPRINGFIELD",
@@ -799,7 +814,8 @@
     "rangeM": 400,
     "capacity": 5,
     "reload": "SLOW",
-    "slowCock": true
+    "slowCock": true,
+    "ammo": "MUNICAO_RIFLE"
   },
   {
     "key": "RIFLE_CACA",
@@ -814,7 +830,8 @@
     "rangeM": 400,
     "capacity": 5,
     "reload": "SLOW",
-    "slowCock": true
+    "slowCock": true,
+    "ammo": "MUNICAO_RIFLE"
   },
   {
     "key": "AWP",
@@ -829,7 +846,8 @@
     "rangeM": 2000,
     "capacity": 5,
     "reload": "SLOW",
-    "slowCock": true
+    "slowCock": true,
+    "ammo": "MUNICAO_RIFLE"
   },
   {
     "key": "MACHINE_GUN",
@@ -844,7 +862,8 @@
     "rangeM": 1800,
     "capacity": 100,
     "reload": "SLOW",
-    "burst": 10
+    "burst": 10,
+    "ammo": "MUNICAO_762"
   },
   {
     "key": "RPG7",
@@ -860,6 +879,7 @@
     "capacity": 1,
     "reload": "SLOW",
     "slowCock": true,
-    "explosiveRadius": 4.5
+    "explosiveRadius": 4.5,
+    "ammo": "FOGUETE"
   }
 ]

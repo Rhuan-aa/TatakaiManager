@@ -2470,16 +2470,155 @@ seção nova e risque o item aqui.
   - **Lutador que treinou/forjou sem agendar Repouso (`!bookings.isEmpty()`) ou consumiu todos os 4 slots do dia (`totalSlotsUsedInDay >= 4`) sem Repouso**: continua recebendo `+1` Desgaste Físico (`"Dia X sem Repouso"`).
 - **Verificação E2E (Bloco G)**: validados ponta a ponta na stack Docker (`:8080` + `:3001`) os catálogos (`/catalog/weapons`, `/catalog/equipment`, `/catalog/consumables`), validador de técnica armada (`/catalog/assembly/check` com `weaponClass`), fluxo `IDLE_PERIOD` vs `TIMESKIP`, ajustes de inventário com itens de catálogo (`FACA`, `SAQUINHO_PO`, `COQUILHA`, `BANDAGEM`) e encontro de combate completo (`PATCH /encounters/{id}` com `floor`, `DRAW`, `USE_ITEM`, ataque com `distanceM`/`runMeters`/`surface` e reação).
 
+## 50. Bloco E — Explosivos em área, estoque de Munição e Capacete Fechado (contrato, 26/10/2026)
+
+Itens 14, 15 e 20 da §45. Não há grade/posição (item 3), então "quem está no raio" é **declarado** por quem ataca e as
+zonas (chamas, fumaça) ficam **por participante** como condição com contador; sair da zona = ação `MOVE` (ou o Mestre
+remove a condição).
+
+### 50.1 Explosivos (item 14)
+- `CreateAttackRequest` ganha **no final** `@Size(max = 20) List<@NotNull UUID> splashTargetIds` — alvos no resto do
+  raio (só vale com arma de área, `weapon.area()`; com outra arma ou id repetido entre `targetIds` e `splashTargetIds`
+  → `InvalidCombatException` 400). Mantém todos os construtores atuais (o de 15 args passa `null`).
+- `AttackTarget` ganha `@Column(name = "splash", nullable = false, columnDefinition = "boolean not null default false")
+  boolean splash`. Alvos de respingo **não reagem** (não entram na espera de reação nem travam `next-turn`): na
+  resolução recebem `outcome = HIT`, `mitigationPct = 0` e **metade do dano** (`floor`), passando por Proteção, Ferida
+  por tipo e `weaponHit` (Incendiária/Fumaça) como os demais. `checkModules` continua contando 0 alvos para arma de área.
+- **Erro (total < ND 14)**: rola `1d3` (quadrados) e `1d8` (direção: 1 = N, 2 = NE … 8 = NO) via `rolls.rollInternal`
+  e loga `"<arma> erra o ponto (X vs ND 14): desvia N quadrado(s) para <direção>; o Mestre aplica o dano se alguém
+  estiver lá"`. Todos os alvos (inclusive respingo) ficam `MISS`; nenhuma zona é criada.
+- **Zona em chamas (Incendiária)**: no acerto, cada alvo atingido (principal e respingo) recebe a condição
+  `AREA_EM_CHAMAS` (`ConditionExpiry.COUNTER`, 3 turnos, nota = nome da arma) além do `QUEIMANDO` (Intenso) que já
+  existe. No `endTurn` de quem ainda tem `AREA_EM_CHAMAS`: renova `QUEIMANDO` com intensidade mínima 1 e loga
+  `"<nome> continua na área em chamas"`.
+- **Fumaça**: no acerto (ND 14), cada alvo (principal e respingo) recebe `NA_FUMACA` (`COUNTER`, 3 turnos). Efeitos:
+  - ataque **de disparo/arremesso** contra alvo `NA_FUMACA` vindo de quem **não** está `NA_FUMACA` → 400
+    `"Cobertura Total: <alvo> está dentro da fumaça"` (arma de área é exceção — explode na nuvem);
+  - qualquer outro ataque feito **por** ou **contra** quem está `NA_FUMACA` → `−1` de vantagem (desvantagem), uma vez só.
+- **Sair da zona**: a ação `MOVE` remove `AREA_EM_CHAMAS` e `NA_FUMACA` do participante e loga `"<nome> sai da área"`.
+- `conditions.json` ganha `AREA_EM_CHAMAS` ("Área em chamas": no fim do turno, Queimando; sai com Mover) e `NA_FUMACA`
+  ("Na fumaça": cobertura Total contra disparo/arremesso de fora; ataques por/contra com desvantagem; sai com Mover),
+  ambos `defaultExpiresAt = COUNTER`, `stack = RENEW`.
+
+### 50.2 Estoque de Munição (item 15)
+- Nova regra opcional `OptionalRule.AMMO_STOCK` (padrão **desligada** → comportamento atual, recarga infinita).
+  UI: `RuleSettings` "Estoque de munição — recarregar gasta munição do inventário".
+- `WeaponCatalog.Def` ganha **no final** `String ammo` (chave de consumível; null = não usa munição). `weapons.json`:
+  `ESTILINGUE→PEDRA`, `ZARABATANA→DARDO`, `ARCO_*→FLECHA`, `BESTA*→VIROTE`, `PEDERNEIRA→POLVORA_BALA`,
+  `GLOCK|MP5→MUNICAO_9MM`, `TAURUS→MUNICAO_38`, `CANO_CURTO|M1014→CARTUCHO_12`, `M4A1→MUNICAO_556`,
+  `SPRINGFIELD|RIFLE_CACA|AWP→MUNICAO_RIFLE`, `MACHINE_GUN→MUNICAO_762`, `RPG7→FOGUETE`.
+- `consumables.json` ganha o grupo `AMMO` (`use = "AMMO"`, `effect = null`, `dose = false`, `price = null`,
+  `access` = o da arma) com essas 12 chaves e nomes pt-BR (Pedra, Dardo de Zarabatana, Flecha, Virote, Pólvora e Bala,
+  Munição 9mm, Munição .38, Cartucho calibre 12, Munição 5.56, Munição de Rifle, Munição 7.62, Foguete de RPG).
+  `USE_ITEM` em munição → 400 `"Munição não se usa: recarregue a arma"`.
+- `combat/service/rules/AmmoRules` (pura, `final`, construtor privado):
+  ```
+  static int available(List<InventoryItem> inv, String ammoKey)          // Σ quantity dos itens com consumableKey == ammoKey e location != DROPPED
+  static int take(List<InventoryItem> inv, String ammoKey, int wanted)    // desconta até `wanted` (itens em ordem), devolve quanto tirou; quantidade vai a 0 (item não é removido)
+  ```
+- Com `AMMO_STOCK` ligada e `weapon.ammo() != null`:
+  - `RELOAD` (e a recarga livre depois de técnica em `AttackService`): carrega `take(inv, ammo, capacity − loaded)`;
+    0 disponível → 400 `"Sem <nome da munição> no inventário"`; parcial → loga `"recarregou X (n/capacidade)"`.
+  - Recarga Rápida (`reload = FAST`, sem `loaded`): cada disparo gasta `shots` direto do inventário em `consumeShot`;
+    sem munição suficiente → 400 no `fireCheck` (antes de gastar PA).
+- `CombatService` e `AttackService` recebem `CampaignRuleService` **no final** do construtor
+  (`isEnabled(e.getCampaignId(), OptionalRule.AMMO_STOCK)`).
+
+### 50.3 Capacete Fechado (item 20)
+- `equipment.json` ganha `CAPACETE_FECHADO` ("Capacete Fechado", `PROTECTION`, mesma proteção/cobertura do `CAPACETE`,
+  `weightKg 2`, `LIGHT`, `effects ["HELMET", "CLOSED_HELMET"]`, texto "−1 PQ em golpes na Têmpora, na Nuca e no Queixo;
+  desvantagem em percepção visual").
+- `AttackService.helmet`: Queixo com `CLOSED_HELMET` vestido → `1`. (Percepção segue texto.)
+
+### 50.4 Frontend
+- `AttackBuilder.jsx`: com arma de área em mãos, segundo seletor "No raio (metade do dano)" → `splashTargetIds`
+  (exclui os alvos principais). Mostra a munição em estoque ao lado da arma quando `weapon.ammo` existe.
+- `RuleSettings.jsx`: rótulo de `AMMO_STOCK`. `combatLabels.js`: `AREA_EM_CHAMAS`, `NA_FUMACA` se houver mapa de rótulos.
+
+### 50.5 Testes
+- `AmmoRulesTest` (available ignora DROPPED/outras chaves; take parcial e entre vários itens).
+- `AttackServiceTest`: respingo leva metade sem reagir; erro rola 1d3+1d8 e não cria zona; Fumaça (400 de fora com
+  disparo, desvantagem dentro); Incendiária cria `AREA_EM_CHAMAS`; Capacete Fechado no Queixo; disparo FAST sem
+  munição com `AMMO_STOCK` → 400.
+- `CombatServiceTest`: `RELOAD` com `AMMO_STOCK` gasta do inventário / parcial / 400 sem munição / regra desligada =
+  enche; `MOVE` remove zonas; `endTurn` renova Queimando em `AREA_EM_CHAMAS`; `USE_ITEM` em munição → 400.
+
+## 51. Adendos do Mestre (27/10/2026) — prioridade: TimeSkip para a campanha real
+
+Ordem: **51.1 → 51.2 → 51.3 (bloco TimeSkip, máxima prioridade)**, depois 51.4–51.7 (rolagens), depois 51.8–51.9 (NPC).
+
+### 51.1 Formulário de criação (bug visual)
+- Criar Período Ocioso/TimeSkip **sem nome**: um input fica no lugar com texto cru e o outro desce com a mensagem de erro
+  tratada (layout quebra). Corrigir em `TimeSkipPanel.jsx`: erro de validação (`parseApiError().fields`) exibido no mesmo
+  padrão em todos os campos (mensagem sob o input, sem deslocar o outro), e nome vazio barrado no cliente antes do POST.
+
+### 51.2 Semântica real dos modos (hoje §49 trata os dois quase iguais)
+- **Período Ocioso (`IDLE_PERIOD`)**: **um único dia** com X pontos de ócio (hoje fixo em 4 slots; X configurável na criação).
+  Sem seletor de nº de dias.
+- **TimeSkip (`TIMESKIP`)**: período longo **não vivido dia a dia**. Tem dias (para organizar), mas **avançar o dia não
+  bloqueia os anteriores** (agendar/cancelar continua liberado em qualquer dia até o encerramento). Nada é processado a cada
+  avanço: **todo o treino/repouso/desgaste é acumulado e consolidado só ao encerrar** o TimeSkip (`TrainingService` processa
+  o intervalo inteiro de uma vez; `processedDay`/`currentDay` deixam de ser gatilho nesse modo).
+- **Avisos de cansaço**: antes de encerrar (e na grade, por jogador) mostrar projeção de Desgaste Físico/Mental acumulado
+  (dias sem Repouso, limites de faixa de desgaste de `SheetRules`) para o Mestre/jogador decidir encaixar Repouso.
+- Backend: `TimeSkip.slotsPerDay`/pontos por dia (coluna nova com default 4), `BookingService` não aplica o bloqueio
+  `dayNumber >= currentDay` quando `mode = TIMESKIP`; `TimeSkipService.close` dispara o processamento acumulado;
+  `GET /timeskips/{tid}/fatigue-preview`. Atualizar `SlotGrid.jsx` (`canBook`) e §4.6/§16 do AGENTS.md. Testes primeiro
+  (TDD) em `BookingServiceTest`/`TimeSkipServiceTest`/`TrainingServiceTest`.
+
+### 51.3 Tag de modo fora do estilo
+- Badges `Ócio` (âmbar) e `TimeSkip` (índigo) não combinam com o design quadrinhos/brutalismo. Trocar por classe do
+  sistema (`--ink/--paper/--accent/--highlight`, estilo `.caption`/`.bubble`) em `TimeSkipPanel.jsx`.
+
+### 51.4 Rolagens não aparecem no combate
+- Investigar por que as rolagens do combate não surgem (fila `revealQueue`/`RollReveal`, canal `/topic/.../rolls`, filtro
+  por `encounterId`). Reproduzir antes de corrigir; teste do caso.
+
+### 51.5 Uma rolagem por vez no canal de rolagens
+- Clique repetido cancela a animação em curso e outra a sobrepõe. No canal de rolagens (fora do combate, que já enfileira)
+  bloquear nova rolagem enquanto a animação atual roda (botão desabilitado ou entrada na `revealQueue`).
+
+### 51.6 Animação por tipo de dado
+- Hoje só o D20 tem animação. Criar uma para d4/d6/d8/d10/d12/d100 e **mostrar N dados na tela** conforme a rolagem
+  (ex.: 3d6 = 3 dados animados). Componente reutilizável em `RollReveal`.
+
+### 51.7 Histórico e rolagens retroativas
+- Botão de histórico de rolagens: aplicar o estilo do site (hoje destoa).
+- Rolagens antigas **não** devem animar ao entrar na tela de combate: animar só mensagens recebidas ao vivo (via WS após
+  o mount); carga inicial do histórico entra já revelada.
+
+### 51.8 Ficha de NPC (simples e completa)
+- Ficha simples **sem atributos** (remover os 6 do Mongo da UI), **com Arte Marcial** opcional.
+- Ambas as fichas: aplicar o design do site em **Interações, Conhecimentos e Specs** (hoje sem tratamento).
+- Tudo que já tem catálogo (traços, clãs, artes, técnicas, itens…) deve ser **linkado** à ficha do NPC, permitindo também
+  **traços de campanha** (extensão do catálogo por campanha já existente, §13).
+
+### 51.9 Ficha aleatória configurável
+- Menu de configuração do gerador: **perfil** (Novato, Experiente, Mestre, Rival, Chefe — escala atributos, recursos e EL);
+  **arte marcial** (nenhuma / aleatória / específica; graduação aleatória ou fixa) com atributos focados na arte;
+  **traços** (quantidade total, por raridade, por categoria — desenvolvível ou não); **clã** (sim/não).
+- Regras de geração em classe pura (`service/rules`), testada; menu no front ao lado de "ficha instantânea" (§29).
+
 ---
-## Anotações de acompanhamento
-- **Gasto de PA — já coberto (conferido 26/10/2026):** `CombatService` (`act`, `useItem`, linhas ~582/1091/1184) e
-  `AttackService` (~321) já lançam `InvalidCombatException("PA insuficiente: …")` antes de executar, e "Mãos ocupadas"
-  vem do `gearCheck`. Há teste em `CombatServiceTest`. Os erros do script E2E eram do script (ação cara, item em `HAND`),
-  não falta de validação. Nada a implementar aqui.
-- **Pendente do Bloco G:** rodar `./mvnw test` e commitar (`TimeSkipMode`, `TrainingService`, `TimeSkipPanel`, docs).
-- **Próximas frentes (de §45):**
-  - **Bloco D** — consumíveis de TimeSkip (Analgésico, Termogênico, Energético, Ração, Suplemento Proteico,
-    Hipercalórico, Corda de Pular), Kit de Cutman (5 usos), Regra de Dose + Colaterais adiados (itens 22, 24, 25).
-  - **Bloco E** — Explosivos em área, estoque de Munição, Capacete fechado no Queixo (itens 14, 15, 20).
-  - Depois: Bombas (27), grade/posição (3), limitações em texto (4), loja/Diárias (19), vestir proteção (23).
+## Anotações de acompanhamento e Estado Atual (26/10/2026)
+- **Prioridade atual (27/10/2026):** §51.1–51.3 (TimeSkip) antes de qualquer outro bloco, inclusive o Bloco E pendente.
+- **Bloco G — Concluído e commitado (`693acb3`):**
+  - Implementado `TimeSkipMode` (`IDLE_PERIOD` vs `TIMESKIP`).
+  - Tratamento de fadiga/desgaste e repouso implícito para lutador off-screen em `TrainingService`.
+  - Frontend atualizado em `TimeSkipPanel.jsx`.
+  - 793 testes passando no backend e verificação visual/E2E efetuada.
+- **Bloco E — Explosivos em área, estoque de Munição e Capacete Fechado (§50) — Em andamento (Código concluído, testes pendentes):**
+  - **Catálogos JSON:** `weapons.json` com `ammo`, `consumables.json` com grupo `AMMO`, `equipment.json` com `CAPACETE_FECHADO`, `conditions.json` com `AREA_EM_CHAMAS` e `NA_FUMACA`.
+  - **Entidades e DTOs:** `OptionalRule.AMMO_STOCK`, `CreateAttackRequest.splashTargetIds`, `AttackTarget.splash` (com DDL `ALTER TABLE attack_targets ADD COLUMN splash boolean not null default false;`).
+  - **Regras puras:** `AmmoRules.available` e `AmmoRules.take` criados em `combat/service/rules/AmmoRules.java`.
+  - **Serviços de combate:** `AttackService` e `CombatService` atualizados com lógica de splash/área, desvio em erro (1d3+1d8), zonas de chamas/fumaça, consumo de munição via `AMMO_STOCK`, bloqueio de `USE_ITEM` em munição e capacete fechado no queixo.
+  - **Frontend:** `AttackBuilder.jsx` exibe seletor de alvos no raio (`splashTargetIds`) e estoque de munição; rótulos de condições em `combatLabels.js` e toggle em `RuleSettings.jsx`.
+  - **Onde parou exatamente / Próximos passos imediatos do Bloco E:**
+    1. Atualizar construtores em testes unitários existentes (`CombatServiceTest` e `AttackServiceTest` que receberam `CampaignRuleService` como último argumento).
+    2. Implementar novos testes unitários para o Bloco E (`AmmoRulesTest`, cenários de splash, munição e capacete fechado).
+    3. Atualizar `schema.sql` com a coluna `splash` em `attack_targets`.
+    4. Rodar suíte completa de testes (`JAVA_HOME=/home/rhuanaab/.jdks/jbr-21.0.11 ./mvnw test`) e commitar Bloco E.
+- **Próximas frentes planejadas (de §45):**
+  - **Bloco D** — consumíveis de TimeSkip (Analgésico, Termogênico, Energético, Ração, Suplemento Proteico, Hipercalórico, Corda de Pular), Kit de Cutman (5 usos), Regra de Dose + Colaterais adiados (itens 22, 24, 25).
+  - Após Bloco D e E: Bombas e Ciclos (item 27), Grid/Posicionamento (item 3), Limitações em texto (item 4), Loja/Diárias (item 19), Vestir proteção (item 23).
 ---

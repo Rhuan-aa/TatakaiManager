@@ -36,6 +36,7 @@ const RULES = {
   EXTRA_SPEC_SLOTS: ['Slots extras de Spec', 'Slots extras de Spec por mérito, com tetos por raridade'],
   GM_REROLLS: ['Rerrolagem pelo Mestre', 'Mestre pode mandar rerrolar na Construção Inicial'],
   FREE_CREATION: ['Criação livre', 'Jogadores criam ficha livremente, sem Construção Inicial'],
+  AMMO_STOCK: ['Estoque de munição', 'Recarregar gasta munição do inventário'],
 };
 
 export default function RuleSettings({ campaignId, isMaster }) {

@@ -34,7 +34,18 @@ public record CreateAttackRequest(
         /** Esmagar: há superfície sólida adjacente ao alvo (§41) */
         Boolean surface,
         /** Distância até o alvo em metros (disparo/arremesso, Grande, Dispersão; §42); null = não informada */
-        @jakarta.validation.constraints.PositiveOrZero @Max(5000) Double distanceM) {
+        @jakarta.validation.constraints.PositiveOrZero @Max(5000) Double distanceM,
+        /** Explosivos: alvos no resto do raio, recebem metade do dano sem reagir (§50.1); só com arma de área */
+        @Size(max = 20) List<@NotNull UUID> splashTargetIds) {
+
+    public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
+                               BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
+                               String region, Integer regionPenalty, StrikeSide strikeSide,
+                               com.tatakai.manager.combat.service.rules.GrappleRules.Grip grip, Boolean squeeze,
+                               Double runMeters, Boolean surface, Double distanceM) {
+        this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
+                strikeSide, grip, squeeze, runMeters, surface, distanceM, null);
+    }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
                                BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
@@ -42,7 +53,7 @@ public record CreateAttackRequest(
                                com.tatakai.manager.combat.service.rules.GrappleRules.Grip grip, Boolean squeeze,
                                Double runMeters, Boolean surface) {
         this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
-                strikeSide, grip, squeeze, runMeters, surface, null);
+                strikeSide, grip, squeeze, runMeters, surface, null, null);
     }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
@@ -50,20 +61,20 @@ public record CreateAttackRequest(
                                String region, Integer regionPenalty, StrikeSide strikeSide,
                                com.tatakai.manager.combat.service.rules.GrappleRules.Grip grip, Boolean squeeze) {
         this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
-                strikeSide, grip, squeeze, null, null, null);
+                strikeSide, grip, squeeze, null, null, null, null);
     }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
                                BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
                                String region, Integer regionPenalty, StrikeSide strikeSide) {
         this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
-                strikeSide, null, null, null, null, null);
+                strikeSide, null, null, null, null, null, null);
     }
 
     public CreateAttackRequest(UUID attackerId, RollSourceType sourceType, UUID sourceId, String variation,
                                BasicAttack basicAttack, AttackActionKind actionKind, List<UUID> targetIds,
                                String region, Integer regionPenalty) {
         this(attackerId, sourceType, sourceId, variation, basicAttack, actionKind, targetIds, region, regionPenalty,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 }
