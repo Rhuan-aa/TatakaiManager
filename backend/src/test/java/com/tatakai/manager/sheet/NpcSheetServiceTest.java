@@ -192,7 +192,7 @@ class NpcSheetServiceTest {
         Campaign c2 = Campaign.builder().id(UUID.randomUUID()).build();
         CampaignNpc cn2 = CampaignNpc.builder().id(UUID.randomUUID()).campaign(c2).npcId(npc.getId()).build();
         when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
-        when(sheetRepository.existsByNpcId(npc.getId())).thenReturn(false);
+        when(sheetRepository.findByNpcId(npc.getId())).thenReturn(Optional.empty());
         when(campaignNpcRepository.findByNpcId(npc.getId())).thenReturn(List.of(cn, cn2));
 
         CharacterSheetResponse r = service.createForNpc(npc.getId(), createReq(), owner.getId());
@@ -238,12 +238,28 @@ class NpcSheetServiceTest {
     @DisplayName("createForNpc: NPC que já tem ficha -> NpcSheetAlreadyExistsException")
     void createForNpc_existing() {
         when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
-        when(sheetRepository.existsByNpcId(npc.getId())).thenReturn(true);
+        when(sheetRepository.findByNpcId(npc.getId())).thenReturn(Optional.of(sheet));
         assertThatThrownBy(() -> service.createForNpc(npc.getId(), createReq(), owner.getId()))
                 .isInstanceOf(NpcSheetAlreadyExistsException.class);
     }
 
     // ------------------------------------------------------------------ acesso via /character-sheets
+
+    @Test
+    @DisplayName("§51.8: createForNpc completa a ficha leve existente (upsert) e a deixa pronta para combate")
+    void createForNpc_completesLightSheet() {
+        CharacterSheet light = CharacterSheet.builder().id(UUID.randomUUID()).npcId(npc.getId())
+                .npcOwnerId(owner.getId()).combatReady(false).build();
+        when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
+        when(sheetRepository.findByNpcId(npc.getId())).thenReturn(Optional.of(light));
+        when(campaignNpcRepository.findByNpcId(npc.getId())).thenReturn(List.of(cn));
+
+        CharacterSheetResponse r = service.createForNpc(npc.getId(), createReq(), owner.getId());
+
+        assertThat(r.id()).isEqualTo(light.getId());
+        assertThat(r.combatReady()).isTrue();
+        assertThat(r.resources().hpMax()).isEqualTo(22);
+    }
 
     @Test
     @DisplayName("ficha de NPC: não-dono recebe CharacterSheetNotFoundException em get/update/gm-adjustment")

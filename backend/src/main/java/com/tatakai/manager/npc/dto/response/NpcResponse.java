@@ -23,6 +23,8 @@ public record NpcResponse(
         Boolean visible,
         /** Id da ficha digital do NPC (null se o NPC não tem ficha). */
         UUID sheetId,
+        /** false = ficha leve (sem atributos/recursos): ainda não serve para combate. */
+        boolean combatReady,
         /** Arte marcial do catálogo (ficha simples) e graduação; null = sem arte. */
         UUID martialArtId,
         com.tatakai.manager.catalog.entity.Graduation martialGraduation

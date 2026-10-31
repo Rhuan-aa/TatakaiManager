@@ -110,7 +110,11 @@ public class NpcService {
                 .createdAt(Instant.now())
                 .build();
 
-        return toResponse(npcRepository.save(npc), null);
+        Npc saved = npcRepository.save(npc);
+        // §51.8: todo NPC tem uma única ficha; nasce leve (sem atributos/recursos) e é completada depois
+        sheetRepository.save(CharacterSheet.builder().npcId(saved.getId()).npcOwnerId(ownerId).name(saved.getName())
+                .buildStatus(com.tatakai.manager.build.entity.BuildStatus.COMPLETED).combatReady(false).build());
+        return toResponse(saved, null);
     }
 
     // ---------- US-07: editar ----------
@@ -121,6 +125,7 @@ public class NpcService {
         requireOwner(npc, requesterId);
 
         npc.setName(req.name());
+        sheetRepository.findByNpcId(npcId).ifPresent(sh -> { sh.setName(req.name()); sheetRepository.save(sh); });
         npc.setDescription(req.description());
         npc.setAttributes(toAttributes(req.attributes()));
         npc.getKnowledge().clear();
@@ -223,11 +228,12 @@ public class NpcService {
     @Transactional(readOnly = true)
     public List<NpcSummaryResponse> listOwned(UUID ownerId) {
         List<Npc> npcs = npcRepository.findByOwnerId(ownerId);
-        Map<UUID, UUID> sheets = sheetIdsByNpc(npcs.stream().map(Npc::getId).toList());
+        Map<UUID, CharacterSheet> sheets = sheetsByNpc(npcs.stream().map(Npc::getId).toList());
         return npcs.stream()
                 .map(n -> new NpcSummaryResponse(n.getId(), n.getName(), true,
                         npcImageRepository.existsById(n.getId()),
-                        toInteractionDtos(n.getInteractions()), sheets.get(n.getId()), true))
+                        toInteractionDtos(n.getInteractions()), sheetIdOf(sheets, n.getId()), true,
+                        readyOf(sheets, n.getId())))
                 .toList();
     }
 
@@ -245,14 +251,15 @@ public class NpcService {
                 .findAllById(associations.stream().map(CampaignNpc::getNpcId).toList()).stream()
                 .collect(Collectors.toMap(Npc::getId, Function.identity()));
 
-        Map<UUID, UUID> sheets = sheetIdsByNpc(npcById.keySet());
+        Map<UUID, CharacterSheet> sheets = sheetsByNpc(npcById.keySet());
         return associations.stream()
                 .filter(a -> npcById.containsKey(a.getNpcId()))
                 .map(a -> {
                     Npc npc = npcById.get(a.getNpcId());
                     return new NpcSummaryResponse(a.getNpcId(), npc.getName(),
                             a.isVisible(), npcImageRepository.existsById(a.getNpcId()),
-                            toInteractionDtos(npc.getInteractions()), sheets.get(a.getNpcId()), a.isBookable());
+                            toInteractionDtos(npc.getInteractions()), sheetIdOf(sheets, a.getNpcId()), a.isBookable(),
+                            readyOf(sheets, a.getNpcId()));
                 })
                 .toList();
     }
@@ -386,9 +393,19 @@ public class NpcService {
                 .toList();
     }
 
-    private Map<UUID, UUID> sheetIdsByNpc(java.util.Collection<UUID> npcIds) {
+    private Map<UUID, CharacterSheet> sheetsByNpc(java.util.Collection<UUID> npcIds) {
         return sheetRepository.findByNpcIdIn(npcIds).stream()
-                .collect(Collectors.toMap(CharacterSheet::getNpcId, CharacterSheet::getId, (a, b) -> a));
+                .collect(Collectors.toMap(CharacterSheet::getNpcId, Function.identity(), (a, b) -> a));
+    }
+
+    private static UUID sheetIdOf(Map<UUID, CharacterSheet> sheets, UUID npcId) {
+        CharacterSheet s = sheets.get(npcId);
+        return s == null ? null : s.getId();
+    }
+
+    private static boolean readyOf(Map<UUID, CharacterSheet> sheets, UUID npcId) {
+        CharacterSheet s = sheets.get(npcId);
+        return s != null && s.isCombatReady();
     }
 
     private NpcResponse toResponse(Npc npc, Boolean visible) {
@@ -405,6 +422,7 @@ public class NpcService {
                 npcImageRepository.existsById(npc.getId()),
                 visible,
                 sheetRepository.findByNpcId(npc.getId()).map(CharacterSheet::getId).orElse(null),
+                sheetRepository.findByNpcId(npc.getId()).map(CharacterSheet::isCombatReady).orElse(false),
                 npc.getMartialArtId(),
                 npc.getMartialGraduation());
     }

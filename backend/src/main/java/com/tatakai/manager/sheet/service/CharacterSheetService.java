@@ -672,14 +672,16 @@ public class CharacterSheetService {
         if (!requesterId.equals(npc.getOwnerId())) {
             throw new AccessDeniedException("Apenas o dono do NPC pode criar a ficha");
         }
-        if (sheetRepository.existsByNpcId(npcId)) {
-            throw new NpcSheetAlreadyExistsException();
-        }
-        CharacterSheet sheet = CharacterSheet.builder()
+        // upsert (§51.8): a ficha leve criada com o NPC é completada aqui; ficha já pronta continua dando 409
+        CharacterSheet sheet = sheetRepository.findByNpcId(npcId).orElseGet(() -> CharacterSheet.builder()
                 .npcId(npcId)
                 .npcOwnerId(npc.getOwnerId())
                 .buildStatus(BuildStatus.COMPLETED)
-                .build();
+                .build());
+        if (sheet.getId() != null && sheet.isCombatReady()) {
+            throw new NpcSheetAlreadyExistsException();
+        }
+        sheet.setCombatReady(true);
         applyBuild(sheet, req.name(), req.bodyType(), req.dominance(), req.heightM(), req.weightKg(),
                 req.attributes());
         CharacterSheet saved = sheetRepository.save(sheet);

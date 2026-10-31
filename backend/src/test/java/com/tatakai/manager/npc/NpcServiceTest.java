@@ -169,6 +169,9 @@ class NpcServiceTest {
 
         assertThat(res.martialArtId()).isEqualTo(art);
         assertThat(res.martialGraduation()).isEqualTo(com.tatakai.manager.catalog.entity.Graduation.BEGINNER);
+        // §51.8: o NPC nasce com a ficha leve
+        verify(sheetRepository).save(org.mockito.ArgumentMatchers.<com.tatakai.manager.sheet.entity.CharacterSheet>argThat(
+                sh -> !sh.isCombatReady() && sh.getNpcId() != null));
     }
 
     @Test
