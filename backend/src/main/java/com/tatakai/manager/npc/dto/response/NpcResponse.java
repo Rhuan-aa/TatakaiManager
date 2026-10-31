@@ -1,6 +1,5 @@
 package com.tatakai.manager.npc.dto.response;
 
-import com.tatakai.manager.npc.dto.request.NpcAttributesDto;
 import com.tatakai.manager.npc.dto.request.NpcDetailDto;
 import com.tatakai.manager.npc.dto.request.NpcInteractionDto;
 
@@ -11,9 +10,7 @@ public record NpcResponse(
         UUID id,
         String name,
         String description,
-        NpcAttributesDto attributes,
         List<NpcDetailDto> knowledge,
-        List<NpcDetailDto> traits,
         List<NpcDetailDto> specs,
         List<NpcInteractionDto> interactions,
         UUID ownerId,
@@ -24,8 +21,5 @@ public record NpcResponse(
         /** Id da ficha digital do NPC (null se o NPC não tem ficha). */
         UUID sheetId,
         /** false = ficha leve (sem atributos/recursos): ainda não serve para combate. */
-        boolean combatReady,
-        /** Arte marcial do catálogo (ficha simples) e graduação; null = sem arte. */
-        UUID martialArtId,
-        com.tatakai.manager.catalog.entity.Graduation martialGraduation
+        boolean combatReady
 ) {}

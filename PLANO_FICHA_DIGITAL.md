@@ -2587,7 +2587,7 @@ Ordem: **51.1 → 51.2 → 51.3 (bloco TimeSkip, máxima prioridade)**, depois 5
 - Rolagens antigas **não** devem animar ao entrar na tela de combate: animar só mensagens recebidas ao vivo (via WS após
   o mount); carga inicial do histórico entra já revelada.
 
-### 51.8 Ficha de NPC (simples e completa)
+### 51.8 Ficha de NPC — **feito como ficha única** (leve/pronta para combate; ver AGENTS.md §12)
 - Ficha simples **sem atributos** (remover os 6 do Mongo da UI), **com Arte Marcial** opcional.
 - Ambas as fichas: aplicar o design do site em **Interações, Conhecimentos e Specs** (hoje sem tratamento).
 - Tudo que já tem catálogo (traços, clãs, artes, técnicas, itens…) deve ser **linkado** à ficha do NPC, permitindo também

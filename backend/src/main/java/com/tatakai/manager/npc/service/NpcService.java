@@ -10,7 +10,6 @@ import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
 import com.tatakai.manager.campaign.repository.CampaignRepository;
 import com.tatakai.manager.log.repository.InteractionLogRepository;
 import com.tatakai.manager.npc.dto.request.CreateNpcRequest;
-import com.tatakai.manager.npc.dto.request.NpcAttributesDto;
 import com.tatakai.manager.npc.dto.request.NpcDetailDto;
 import com.tatakai.manager.npc.dto.request.NpcInteractionDto;
 import com.tatakai.manager.npc.dto.request.UpdateNpcRequest;
@@ -99,14 +98,10 @@ public class NpcService {
                 .id(UUID.randomUUID())
                 .name(req.name())
                 .description(req.description())
-                .attributes(toAttributes(req.attributes()))
                 .ownerId(ownerId)
                 .knowledge(toDetails(req.knowledge()))
-                .traits(toDetails(req.traits()))
                 .specs(toDetails(req.specs()))
                 .interactions(toInteractions(req.interactions()))
-                .martialArtId(req.martialArtId())
-                .martialGraduation(req.martialArtId() == null ? null : graduationOrDefault(req.martialGraduation()))
                 .createdAt(Instant.now())
                 .build();
 
@@ -127,17 +122,12 @@ public class NpcService {
         npc.setName(req.name());
         sheetRepository.findByNpcId(npcId).ifPresent(sh -> { sh.setName(req.name()); sheetRepository.save(sh); });
         npc.setDescription(req.description());
-        npc.setAttributes(toAttributes(req.attributes()));
         npc.getKnowledge().clear();
         npc.getKnowledge().addAll(toDetails(req.knowledge()));
-        npc.getTraits().clear();
-        npc.getTraits().addAll(toDetails(req.traits()));
         npc.getSpecs().clear();
         npc.getSpecs().addAll(toDetails(req.specs()));
         npc.getInteractions().clear();
         npc.getInteractions().addAll(toInteractions(req.interactions()));
-        npc.setMartialArtId(req.martialArtId());
-        npc.setMartialGraduation(req.martialArtId() == null ? null : graduationOrDefault(req.martialGraduation()));
 
         NpcResponse out = toResponse(npcRepository.save(npc), null);
         campaignNpcRepository.findByNpcId(npcId).forEach(a -> notifyNpcs(a.getCampaign().getId(), npcId));
@@ -347,24 +337,6 @@ public class NpcService {
 
     // ---------- mapeamentos ----------
 
-    private NpcAttributes toAttributes(NpcAttributesDto dto) {
-        if (dto == null) return null;
-        return NpcAttributes.builder()
-                .forca(dto.forca())
-                .destreza(dto.destreza())
-                .constituicao(dto.constituicao())
-                .mental(dto.mental())
-                .inteligencia(dto.inteligencia())
-                .talento(dto.talento())
-                .build();
-    }
-
-    private NpcAttributesDto toAttributesDto(NpcAttributes a) {
-        if (a == null) return null;
-        return new NpcAttributesDto(a.getForca(), a.getDestreza(), a.getConstituicao(),
-                a.getMental(), a.getInteligencia(), a.getTalento());
-    }
-
     private List<NpcDetail> toDetails(List<NpcDetailDto> dtos) {
         if (dtos == null) return new ArrayList<>();
         return dtos.stream()
@@ -413,22 +385,13 @@ public class NpcService {
                 npc.getId(),
                 npc.getName(),
                 npc.getDescription(),
-                toAttributesDto(npc.getAttributes()),
                 toDetailDtos(npc.getKnowledge()),
-                toDetailDtos(npc.getTraits()),
                 toDetailDtos(npc.getSpecs()),
                 toInteractionDtos(npc.getInteractions()),
                 npc.getOwnerId(),
                 npcImageRepository.existsById(npc.getId()),
                 visible,
                 sheetRepository.findByNpcId(npc.getId()).map(CharacterSheet::getId).orElse(null),
-                sheetRepository.findByNpcId(npc.getId()).map(CharacterSheet::isCombatReady).orElse(false),
-                npc.getMartialArtId(),
-                npc.getMartialGraduation());
-    }
-
-    private static com.tatakai.manager.catalog.entity.Graduation graduationOrDefault(
-            com.tatakai.manager.catalog.entity.Graduation g) {
-        return g != null ? g : com.tatakai.manager.catalog.entity.Graduation.BEGINNER;
+                sheetRepository.findByNpcId(npc.getId()).map(CharacterSheet::isCombatReady).orElse(false));
     }
 }

@@ -658,6 +658,12 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
   `POST /character-sheets/{id}/gm-adjustments` (`GmAction`, motivo obrigatório).
 - **Auditoria:** toda mutação grava `sheet_activity_logs` (imutável) e publica
   `SheetUpdateMessage` → `SheetEventListener` (AFTER_COMMIT) → `/topic/campaign/{id}/sheets`.
+- **Ficha única de NPC (§51.8):** todo NPC tem exatamente uma `CharacterSheet` (criada em `NpcService.create`). Nasce **leve**
+  (`combatReady=false`: sem atributos/recursos; `toResponse` só devolve os atributos crus) e vira pronta via
+  `POST /npcs/{id}/sheet` (upsert). `SheetRules.requireCombatReady` barra combate (`addParticipant`), rolagens, recursos e
+  exportação enquanto leve. O Mongo `Npc` guarda só identidade/agenda (interações, conhecimentos, specs); atributos, traços
+  e arte marcial vivem na ficha. `NpcSheetMigrator` (boot, idempotente) migra NPCs antigos. Produção com `validate`:
+  `ALTER TABLE character_sheets ADD COLUMN combat_ready boolean not null default true`.
 - **Ficha de NPC (F1.1):** mesma entidade, com `npcId`/`npcOwnerId` no lugar de
   `campaignMember` (1 por NPC do acervo, estado compartilhado entre campanhas).
   Só o dono do NPC acessa via `/character-sheets/{id}` (outros → 404); jogadores

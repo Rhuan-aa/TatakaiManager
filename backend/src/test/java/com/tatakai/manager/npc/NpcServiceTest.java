@@ -10,7 +10,6 @@ import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
 import com.tatakai.manager.campaign.repository.CampaignRepository;
 import com.tatakai.manager.log.repository.InteractionLogRepository;
 import com.tatakai.manager.npc.dto.request.CreateNpcRequest;
-import com.tatakai.manager.npc.dto.request.NpcAttributesDto;
 import com.tatakai.manager.npc.dto.request.NpcDetailDto;
 import com.tatakai.manager.npc.dto.request.NpcInteractionDto;
 import com.tatakai.manager.npc.dto.request.UpdateNpcRequest;
@@ -125,9 +124,7 @@ class NpcServiceTest {
     void create_withOptionalAttributes_setsOwner() {
         var req = new CreateNpcRequest(
                 "Vael", "Mercenário taciturno",
-                new NpcAttributesDto((short) 14, (short) 16, null, null, null, null),
                 List.of(new NpcDetailDto("Visão nas trevas", "Enxerga no escuro")),
-                List.of(new NpcDetailDto("Cicatriz no rosto", "Marca de uma antiga batalha")),
                 List.of(new NpcDetailDto("Golpe giratório", "Ataque em área")),
                 List.of(new NpcInteractionDto("Treino", "Esgrima", "Sessão de treino", (short) 2)));
 
@@ -142,34 +139,26 @@ class NpcServiceTest {
 
         assertThat(res.name()).isEqualTo("Vael");
         assertThat(res.ownerId()).isEqualTo(master.getId());
-        assertThat(res.attributes().forca()).isEqualTo((short) 14);
-        assertThat(res.attributes().constituicao()).isNull();
         assertThat(res.interactions()).hasSize(1);
         assertThat(res.interactions().get(0).type()).isEqualTo("Treino");
         assertThat(res.interactions().get(0).name()).isEqualTo("Esgrima");
         assertThat(res.interactions().get(0).idlePointCost()).isEqualTo((short) 2);
         assertThat(res.knowledge()).hasSize(1);
         assertThat(res.knowledge().get(0).name()).isEqualTo("Visão nas trevas");
-        assertThat(res.traits()).hasSize(1);
-        assertThat(res.traits().get(0).name()).isEqualTo("Cicatriz no rosto");
         assertThat(res.specs()).hasSize(1);
         assertThat(res.specs().get(0).name()).isEqualTo("Golpe giratório");
     }
 
     @Test
-    @DisplayName("§51.8: NPC guarda a arte marcial do catálogo (graduação padrão Iniciante)")
-    void create_withMartialArt_defaultsGraduation() {
-        UUID art = UUID.randomUUID();
-        var req = new CreateNpcRequest("Vael", null, null, null, null, null,
-                List.of(new NpcInteractionDto("Treino", "Esgrima", "x", (short) 1)), art, null);
+    @DisplayName("§51.8: o NPC nasce com a ficha leve (sem atributos/recursos)")
+    void create_createsLightSheet() {
+        var req = new CreateNpcRequest("Vael", null, null, null,
+                List.of(new NpcInteractionDto("Treino", "Esgrima", "x", (short) 1)));
         when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
         when(npcRepository.save(any(Npc.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        NpcResponse res = service.create(master.getId(), req);
+        service.create(master.getId(), req);
 
-        assertThat(res.martialArtId()).isEqualTo(art);
-        assertThat(res.martialGraduation()).isEqualTo(com.tatakai.manager.catalog.entity.Graduation.BEGINNER);
-        // §51.8: o NPC nasce com a ficha leve
         verify(sheetRepository).save(org.mockito.ArgumentMatchers.<com.tatakai.manager.sheet.entity.CharacterSheet>argThat(
                 sh -> !sh.isCombatReady() && sh.getNpcId() != null));
     }
@@ -182,15 +171,13 @@ class NpcServiceTest {
         when(npcRepository.save(any(Npc.class))).thenAnswer(inv -> inv.getArgument(0));
 
         var req = new UpdateNpcRequest("Aldric, o Veterano", "Atualizado",
-                new NpcAttributesDto((short) 18, null, null, null, null, null),
-                List.of(), List.of(), List.of(), List.of(
+                List.of(), List.of(), List.of(
                         new NpcInteractionDto("Treino", "Esgrima", null, (short) 1),
                         new NpcInteractionDto("Trabalho", "Ferraria", null, (short) 3)));
 
         NpcResponse res = service.update(npc.getId(), master.getId(), req);
 
         assertThat(res.name()).isEqualTo("Aldric, o Veterano");
-        assertThat(res.attributes().forca()).isEqualTo((short) 18);
         assertThat(res.interactions()).extracting(NpcInteractionDto::name)
                 .containsExactlyInAnyOrder("Esgrima", "Ferraria");
     }
@@ -201,7 +188,7 @@ class NpcServiceTest {
         Npc npc = npcOwnedByMaster();
         when(npcRepository.findById(npc.getId())).thenReturn(Optional.of(npc));
 
-        var req = new UpdateNpcRequest("Hack", null, null, List.of(), List.of(), List.of(),
+        var req = new UpdateNpcRequest("Hack", null, List.of(), List.of(),
                 List.of(new NpcInteractionDto("Treino", "Esgrima", null, (short) 1)));
 
         assertThatThrownBy(() -> service.update(npc.getId(), player.getId(), req))
