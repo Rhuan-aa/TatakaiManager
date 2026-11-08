@@ -9,6 +9,8 @@ import com.tatakai.manager.build.dto.request.ReopenBuildRequest;
 import com.tatakai.manager.build.dto.request.ResolveTraitSlotRequest;
 import com.tatakai.manager.build.dto.request.StartBuildRequest;
 import com.tatakai.manager.build.dto.request.TraitChoiceRequest;
+import com.tatakai.manager.build.dto.request.TraitTableRequest;
+import com.tatakai.manager.build.dto.request.PickTraitRequest;
 import com.tatakai.manager.build.dto.response.CharacterBuildResponse;
 import com.tatakai.manager.build.entity.BuildStep;
 import com.tatakai.manager.build.service.CharacterBuildService;
@@ -58,6 +60,18 @@ public class CharacterBuildController {
     public ResponseEntity<CharacterBuildResponse> chooseTraits(@PathVariable UUID sheetId,
                                                                @Valid @RequestBody TraitChoiceRequest request) {
         return ResponseEntity.ok(build.chooseTraits(sheetId, request, AuthenticatedUser.id()));
+    }
+
+    @PutMapping("/character-sheets/{sheetId}/build/traits/table")
+    public ResponseEntity<CharacterBuildResponse> setTraitTable(@PathVariable UUID sheetId,
+                                                                @Valid @RequestBody TraitTableRequest request) {
+        return ResponseEntity.ok(build.setTraitTable(sheetId, request, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/character-sheets/{sheetId}/build/traits/slots/{index}/pick")
+    public ResponseEntity<CharacterBuildResponse> pickTrait(@PathVariable UUID sheetId, @PathVariable int index,
+                                                            @Valid @RequestBody PickTraitRequest request) {
+        return ResponseEntity.ok(build.pickTrait(sheetId, index, request, AuthenticatedUser.id()));
     }
 
     @PostMapping("/character-sheets/{sheetId}/build/traits/slots/{index}/resolve")

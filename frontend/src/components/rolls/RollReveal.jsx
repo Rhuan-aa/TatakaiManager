@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import RollCard from './RollCard';
 import { queueSlot } from './revealQueue';
+import { rollKind } from './rollKind';
 
 const ROLL_MS = 900;   // d20 girando no centro
 const SHOW_MS = 550;   // número parado no centro
@@ -49,7 +50,7 @@ export function diceSides(text) {
   return out;
 }
 
-function Die({ sides, face, extreme, small }) {
+export function Die({ sides, face, extreme, small }) {
   const size = small ? 'h-14 w-14' : 'h-20 w-20';
   const cls = extreme ? ` die-${extreme}` : small ? '' : ' dice-rolling';
   if (sides === 2) { // d2 = d6 ÷ 3: moeda
@@ -95,9 +96,54 @@ export default function RollReveal({ roll, fresh, onReveal, onAnimated, damage =
     return v.length === sides.length ? v : null;
   }, [roll.diceResults, phase, mainText, dmgText, sides.length]);
   // Pontas: dado máximo/mínimo (o d20 já tem crítico/falha)
-  const extremes = values ? values.map((v, i) => (sides[i] === 20 ? null : v === sides[i] ? 'max' : v === 1 ? 'min' : null)) : [];
-  const allMax = values && sides.every((n, i) => n !== 20 && extremes[i] === 'max');
-  const allMin = values && sides.every((n, i) => n !== 20 && extremes[i] === 'min');
+  // Microrolagens: cada d20 pode ser crítico (20) ou falha crítica (1) por conta própria
+  const parts = roll.breakdown ?? [];
+  const hasMicro = parts.some((q) => q.part === 'MICRO');
+  const isFreeRoll = hasMicro || parts.some((q) => q.part === 'DICE');
+  // Rolagem livre com vários dados somados: d20 é dado comum (máximo/mínimo); só o d20 isolado tem crítico/falha
+  const d20Special = (n) => n === 20 && (hasMicro || !isFreeRoll || sides.length === 1);
+  const extremes = values ? values.map((v, i) => (d20Special(sides[i]) && !hasMicro ? null : v === sides[i] ? 'max' : v === 1 ? 'min' : null)) : [];
+  const allMax = values && sides.length > 0 && sides.every((n, i) => extremes[i] === 'max');
+  const allMin = values && sides.length > 0 && sides.every((n, i) => extremes[i] === 'min');
+  const nMax = extremes.filter((e) => e === 'max').length;
+  const nMin = extremes.filter((e) => e === 'min').length;
+  const microCrit = hasMicro && phase === 'main' && values?.some((v, i) => sides[i] === 20 && v === 20);
+  const microFumble = hasMicro && phase === 'main' && !microCrit && values?.some((v, i) => sides[i] === 20 && v === 1);
+  // Rolagem livre com vantagem/desvantagem: rola em dobro, o descartado aparece apagado ao lado
+  const freeAdv = roll.advantage && isFreeRoll ? Math.sign(roll.advantage) : 0;
+  const microDisc = parts.filter((q) => q.part === 'MICRO').map((q) => { const m = q.source.match(/descartado (\d+)/); return m ? Number(m[1]) : null; });
+  const discarded = phase === 'main'
+    ? parts.find((q) => q.part === 'DISCARDED')?.dice ?? (microDisc.length && microDisc.every((v) => v != null) ? microDisc : null)
+    : null;
+  // O que a vantagem/desvantagem fez com um d20 crítico ou falho (mantido ou descartado)
+  const advNote = (() => {
+    if (!freeAdv || !values || !discarded || phase !== 'main') return null;
+    if (!hasMicro && sides.length !== 1) { // vários dados somados: conta os 20 e 1 naturais mantidos e descartados
+      const cnt = (arr, v) => arr.filter((x, i) => sides[i] === 20 && x === v).length;
+      const pl = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
+      if (freeAdv > 0) {
+        if (cnt(values, 20)) return { kind: 'up', text: `Vantagem manteve ${pl(cnt(values, 20), '20 natural')}!`.replace('20 naturals', '20 naturais') };
+        if (cnt(discarded, 1)) return { kind: 'up', text: `Vantagem descartou ${pl(cnt(discarded, 1), '1 natural')}!`.replace('1 naturals', '1 naturais') };
+      } else {
+        if (cnt(values, 1)) return { kind: 'down', text: `Desvantagem manteve ${pl(cnt(values, 1), '1 natural')}!`.replace('1 naturals', '1 naturais') };
+        if (cnt(discarded, 20)) return { kind: 'down', text: `Desvantagem descartou ${pl(cnt(discarded, 20), '20 natural')}!`.replace('20 naturals', '20 naturais') };
+      }
+      return null;
+    }
+    for (let i = 0; i < sides.length; i++) {
+      if (sides[i] !== 20 || discarded[i] == null) continue;
+      if (freeAdv > 0 && values[i] === 20) return { kind: 'up', text: 'Vantagem fez o crítico!' };
+      if (freeAdv < 0 && values[i] === 1) return { kind: 'down', text: 'Desvantagem causou a falha!' };
+    }
+    for (let i = 0; i < sides.length; i++) {
+      if (sides[i] !== 20 || discarded[i] == null) continue;
+      if (freeAdv > 0 && discarded[i] === 1) return { kind: 'up', text: 'Vantagem evitou uma falha!' };
+      if (freeAdv < 0 && discarded[i] === 20) return { kind: 'down', text: 'Desvantagem roubou um crítico!' };
+    }
+    return null;
+  })();
+  const rollSides = discarded ? [...sides, ...sides] : sides;
+  const advClass = freeAdv > 0 ? 'roll-adv' : freeAdv < 0 ? 'roll-dis' : '';
   const [faces, setFaces] = useState(() => mainSides.map((n) => n));
   const slot = useRef(null);
   const cardRef = useRef(null);
@@ -113,7 +159,7 @@ export default function RollReveal({ roll, fresh, onReveal, onAnimated, damage =
 
   useEffect(() => {
     if (stage === 'rolling') {
-      const tick = setInterval(() => setFaces(sides.map((n) => 1 + Math.floor(Math.random() * n))), 70);
+      const tick = setInterval(() => setFaces(rollSides.map((n) => 1 + Math.floor(Math.random() * n))), 70);
       const t = setTimeout(() => setStage('result'), ROLL_MS);
       return () => { clearInterval(tick); clearTimeout(t); };
     }
@@ -122,7 +168,7 @@ export default function RollReveal({ roll, fresh, onReveal, onAnimated, damage =
       return () => clearTimeout(t);
     }
     return undefined;
-  }, [stage, sides]);
+  }, [stage, sides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Voo: do centro da tela até o total do card (FLIP com Web Animations). Card escondido (ex.: <details>
   // fechado) não tem caixa: o número só some.
@@ -150,6 +196,7 @@ export default function RollReveal({ roll, fresh, onReveal, onAnimated, damage =
 
   if (stage === 'done') return <RollCard roll={roll} onReveal={onReveal} />;
   const who = roll.characterName || roll.actorName;
+  const kind = rollKind(roll);
   return (
     <div ref={cardRef} aria-live="polite" aria-label={stage === 'waiting' ? undefined : 'Rolando dados'}>
       {/* Card real (sem crítico/falha) invisível: mantém a altura e dá o alvo do voo. */}
@@ -159,8 +206,8 @@ export default function RollReveal({ roll, fresh, onReveal, onAnimated, damage =
       {stage !== 'waiting' && createPortal(
         <div className="roll-stage" aria-hidden="true">
           {stage === 'rolling' && (
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {sides.map((n, i) => <Die key={i} sides={n} face={faces[i] ?? n} />)}
+            <div className={`flex flex-wrap items-center justify-center gap-3 ${advClass}`}>
+              {rollSides.map((n, i) => <Die key={i} sides={n} face={faces[i] ?? n} />)}
             </div>
           )}
           {stage !== 'rolling' && (
@@ -168,13 +215,19 @@ export default function RollReveal({ roll, fresh, onReveal, onAnimated, damage =
               {values && (
                 <div className={`flex flex-wrap items-center justify-center gap-2 ${stage === 'fly' ? 'dice-out' : 'dice-in'}`}>
                   {sides.map((n, i) => <Die key={i} sides={n} face={values[i]} extreme={extremes[i]} small />)}
+                  {discarded && (
+                    <span className="flex items-center gap-2 die-discard" title="Rolagem descartada">
+                      {discarded.map((v, i) => <Die key={i} sides={sides[i] ?? sides[0]} face={v} small />)}
+                    </span>
+                  )}
                 </div>
               )}
-              <span ref={numRef} className={`roll-stage-number${phase === 'damage' ? '' : roll.critical ? ' is-crit' : roll.fumble ? ' is-fumble' : ''}`}>
+              <span ref={numRef} className={`roll-stage-number${phase === 'damage' ? '' : roll.critical || microCrit ? ' is-crit' : roll.fumble || microFumble ? ' is-fumble' : ''}`}>
                 {phase === 'damage' ? roll.damageTotal : roll.total}
               </span>
+              {stage === 'result' && advNote && <span className={`adv-note adv-note-${advNote.kind}`}>{advNote.text}</span>}
               {stage === 'result' && (
-                <span className="roll-stage-caption">{allMax ? 'Dado máximo! ' : allMin ? 'Dado mínimo. ' : ''}{phase === 'damage' ? 'Dano — ' : ''}{who}{roll.sourceName ? ` — ${roll.sourceName}` : ''}</span>
+                <span className="roll-stage-caption"><span className="roll-kind" style={{ '--kind': kind.color }}>{kind.label}</span> {freeAdv > 0 ? 'Vantagem! ' : freeAdv < 0 ? 'Desvantagem! ' : ''}{microCrit ? 'Crítico! ' : microFumble ? 'Falha crítica! ' : ''}{allMax ? (sides.length > 1 ? 'Todos no máximo! ' : 'Dado máximo! ') : allMin ? (sides.length > 1 ? 'Todos no mínimo. ' : 'Dado mínimo. ') : nMax > 1 ? `${nMax} dados no máximo! ` : nMax === 1 && sides.length > 1 ? 'Um dado no máximo! ' : nMin > 1 ? `${nMin} dados no mínimo. ` : ''}{phase === 'damage' ? 'Dano — ' : ''}{who}{roll.sourceName ? ` — ${roll.sourceName}` : ''}</span>
               )}
             </div>
           )}

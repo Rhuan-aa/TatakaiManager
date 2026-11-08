@@ -3,6 +3,7 @@ import {
   getCatalogPermissions, listTraits, createTrait, updateTrait, deleteTrait,
   listClans, createClan, updateClan, deleteClan, importCatalog,
 } from '../../api/catalog';
+import { listRules, updateRule } from '../../api/campaignRules';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 import { ATTRS } from '../sheet/sheetRules';
@@ -406,6 +407,28 @@ export default function CatalogManager({ campaignId, isMaster }) {
   const [category, setCategory] = useState('');
   const [scope, setScope] = useState('');
   const [artsKey, setArtsKey] = useState(0);
+  const [excluded, setExcluded] = useState([]); // pool de rolagem: ids fora (Mestre)
+
+  useEffect(() => {
+    if (!isMaster || !campaignId) return undefined;
+    let active = true;
+    listRules(campaignId).then((rs) => {
+      const r = rs.find((x) => x.ruleKey === 'TRAIT_POOL');
+      if (active) setExcluded(r?.enabled && r.params?.excluded ? r.params.excluded.split(',').filter(Boolean) : []);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [campaignId, isMaster]);
+
+  async function togglePool(id) {
+    const next = excluded.includes(id) ? excluded.filter((x) => x !== id) : [...excluded, id];
+    try {
+      await updateRule(campaignId, 'TRAIT_POOL', { enabled: true, params: { excluded: next.join(',') } });
+      setExcluded(next);
+    } catch (err) {
+      toast(parseApiError(err).message, 'error');
+    }
+  }
+  const poolCount = (r) => traits.filter((t) => t.rarity === r && !excluded.includes(t.id)).length;
 
   const load = useCallback(async () => {
     try {
@@ -520,6 +543,15 @@ export default function CatalogManager({ campaignId, isMaster }) {
         </label>
       </div>}
 
+      {isTrait && isMaster && campaignId && (
+        <p className="caption">Pool de rolagem:{' '}
+          {['COMMON', 'RARE', 'EPIC', 'LEGENDARY', 'DIVINE'].map((r) => {
+            const need = r === 'DIVINE' ? 10 : 20;
+            return <span key={r} className="mr-2">{lab(RARITIES, r)} {poolCount(r)}{poolCount(r) < need ? ` (faltam ${need - poolCount(r)} para a tabela)` : ''}</span>;
+          })}
+        </p>
+      )}
+
       {!isOwnList ? null : loading ? (
         <div className="skeleton h-24" aria-busy="true" />
       ) : items.length === 0 ? (
@@ -535,6 +567,12 @@ export default function CatalogManager({ campaignId, isMaster }) {
                 {isTrait && <span className="tag">{lab(CATEGORIES, it.category)}</span>}
                 <span className="tag">{it.campaignId ? 'Campanha' : 'Sistema'}</span>
                 <span className="tag">v{it.version}</span>
+                {isTrait && isMaster && campaignId && (
+                  <label className="inline-flex items-center gap-1 text-sm">
+                    <input type="checkbox" checked={!excluded.includes(it.id)} onChange={() => togglePool(it.id)} />
+                    No pool de rolagem
+                  </label>
+                )}
                 {canEdit(it) && (
                   <span className="ml-auto flex gap-2">
                     <button className="btn-secondary" onClick={() => { setShowImport(false); setForm({ editing: it, initial: fromItem(tab, it) }); }}

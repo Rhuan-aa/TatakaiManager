@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { rollAttributes, assignAttributes } from '../../api/characterBuild';
 import { ATTRS } from '../sheet/sheetRules';
-import { DiceResult, StepActions } from './buildUi';
+import { AttrBonus, DiceResult, DiceSequence, StepActions } from './buildUi';
 
 export default function AttributesStep({ build, canAct, busy, act, confirm, burst, onBack }) {
   const fixed = build.settings.randomAttributes; // 7d20 em ordem estrita
   const dice = build.attributeDice ?? [];
   const [assign, setAssign] = useState(() => ({ ...(build.assignment ?? {}) }));
   const [sel, setSel] = useState(null); // índice do dado selecionado
+  const [anim, setAnim] = useState(null);
   const used = new Set(Object.values(assign));
   const complete = ATTRS.every((a) => assign[a.enumName] != null);
 
@@ -23,10 +24,13 @@ export default function AttributesStep({ build, canAct, busy, act, confirm, burs
     <div className="flex flex-col gap-4">
       {canAct && dice.length === 0 && (
         <div><button type="button" className="btn-primary" disabled={busy}
-          onClick={() => act(() => rollAttributes(build.sheetId), 'ROLL!')}>
+          onClick={() => act(() => rollAttributes(build.sheetId)).then((r) => r && setAnim(fixed
+            ? ATTRS.map((a, i) => ({ label: a.label, sides: [20], values: [r.attributeDice[i]] }))
+            : [{ label: '7d12', sides: r.attributeDice.map(() => 12), values: r.attributeDice }]))}>
           Rolar {fixed ? '7d20' : '7d12'}</button></div>
       )}
-      {dice.length > 0 && (
+      {anim && <DiceSequence beats={anim} onDone={() => setAnim(null)} />}
+      {dice.length > 0 && !anim && (
         <>
           {fixed ? (
             <>
@@ -34,7 +38,7 @@ export default function AttributesStep({ build, canAct, busy, act, confirm, burs
               <ul className="grid grid-cols-7 gap-2" aria-label="Atributos em ordem">
                 {ATTRS.map((a, i) => (
                   <li key={a.key} className="panel p-2 text-center"><div className="text-xs">{a.label}</div>
-                    <div className="panel-title text-2xl">{dice[i]}</div></li>
+                    <div className="panel-title text-2xl">{dice[i]}</div><AttrBonus b={build.bonuses?.[a.enumName]} /></li>
                 ))}
               </ul>
             </>
@@ -59,6 +63,7 @@ export default function AttributesStep({ build, canAct, busy, act, confirm, burs
                       onClick={() => pickAttr(a.enumName)}>
                       <div className="text-xs">{a.label}</div>
                       <div className="panel-title text-2xl">{assign[a.enumName] != null ? dice[assign[a.enumName]] : '—'}</div>
+                      <AttrBonus b={build.bonuses?.[a.enumName]} />
                     </button>
                   </li>
                 ))}
@@ -67,7 +72,7 @@ export default function AttributesStep({ build, canAct, busy, act, confirm, burs
           )}
         </>
       )}
-      <StepActions canAct={canAct} busy={busy} disabled={dice.length === 0 || (!fixed && !complete)} onBack={onBack}
+      <StepActions canAct={canAct} busy={busy} disabled={!!anim || dice.length === 0 || (!fixed && !complete)} onBack={onBack}
         onConfirm={() => confirm(fixed ? null : () => assignAttributes(build.sheetId, { assignment: assign }))} />
     </div>
   );

@@ -65,6 +65,13 @@ public class CampaignRuleService {
         if (rule == OptionalRule.DIVINE_INTERVENTION && req.enabled()) {
             requireParam(params, "mode", DIVINE_MODES, "Modo de intervenção divina inválido");
         }
+        if (rule == OptionalRule.TRAIT_POOL) {
+            try {
+                parseIds(params.get("excluded"));
+            } catch (IllegalArgumentException e) {
+                throw new InvalidCharacterSheetException("Lista de traços excluídos inválida");
+            }
+        }
         CampaignRuleSetting s = ruleRepository.findByCampaignIdAndRuleKey(campaignId, rule)
                 .orElseGet(() -> {
                     CampaignRuleSetting n = new CampaignRuleSetting();
@@ -89,6 +96,21 @@ public class CampaignRuleService {
                 isEnabled(campaignId, OptionalRule.MAX_RANDOM_CLAN),
                 isEnabled(campaignId, OptionalRule.MAX_RANDOM_ATTRIBUTES),
                 isEnabled(campaignId, OptionalRule.GM_REROLLS));
+    }
+
+    /** Traços que o Mestre tirou do pool de rolagem (vazio = todos ativos). */
+    @Transactional(readOnly = true)
+    public Set<UUID> excludedTraits(UUID campaignId) {
+        CampaignRuleSetting s = ruleRepository.findByCampaignIdAndRuleKey(campaignId, OptionalRule.TRAIT_POOL).orElse(null);
+        if (s == null || !s.isEnabled() || s.getParams() == null) return Set.of();
+        return parseIds(s.getParams().get("excluded"));
+    }
+
+    private static Set<UUID> parseIds(String csv) {
+        Set<UUID> out = new java.util.HashSet<>();
+        if (csv == null || csv.isBlank()) return out;
+        for (String part : csv.split(",")) out.add(UUID.fromString(part.trim()));
+        return out;
     }
 
     @Transactional(readOnly = true)

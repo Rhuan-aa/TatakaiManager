@@ -12,6 +12,8 @@ import com.tatakai.manager.build.dto.request.ReopenBuildRequest;
 import com.tatakai.manager.build.dto.request.ResolveTraitSlotRequest;
 import com.tatakai.manager.build.dto.request.StartBuildRequest;
 import com.tatakai.manager.build.dto.request.TraitChoiceRequest;
+import com.tatakai.manager.build.dto.request.TraitTableRequest;
+import com.tatakai.manager.build.dto.request.PickTraitRequest;
 import com.tatakai.manager.build.dto.response.CharacterBuildResponse;
 import com.tatakai.manager.build.entity.BuildGains;
 import com.tatakai.manager.build.entity.BuildSettings;
@@ -47,7 +49,6 @@ import com.tatakai.manager.sheet.entity.CharacterClan;
 import com.tatakai.manager.sheet.entity.CharacterSheet;
 import com.tatakai.manager.sheet.entity.CharacterTrait;
 import com.tatakai.manager.sheet.entity.Dominance;
-import com.tatakai.manager.sheet.exception.CharacterSheetAlreadyExistsException;
 import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.sheet.exception.SheetLockedException;
 import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
@@ -146,9 +147,6 @@ public class CharacterBuildService {
         if (member.getRole() != Role.PLAYER) {
             throw new AccessDeniedException("Apenas jogadores têm ficha de personagem");
         }
-        if (sheetRepository.existsByCampaignMemberId(member.getId())) {
-            throw new CharacterSheetAlreadyExistsException();
-        }
 
         // valores provisórios: a ficha só recebe os números reais no envio (submit)
         CharacterSheet saved = sheetRepository.save(CharacterSheet.builder()
@@ -226,7 +224,7 @@ public class CharacterBuildService {
                 : d(c, "1d4", "Construção: quantidade de traços");
         st.setTraitCountRoll(count);
 
-        List<TraitDefinition> cat = catalog.traitsForCampaign(c.campaignId());
+        List<TraitDefinition> cat = pool(c.campaignId());
         Set<UUID> used = new HashSet<>();
         List<TraitSlot> slots = new ArrayList<>();
         for (int i = 0; i < count; i++) {
@@ -238,11 +236,11 @@ public class CharacterBuildService {
             slot.setRarity(prodigy ? BuildRules.promoteForProdigy(rarity) : rarity);
             slot.setTableRoll(d(c, tableDie(slot.getRarity()),
                     "Construção: tabela de traços " + rarityName(slot.getRarity()) + " (traço " + (i + 1) + ")"));
-            resolveByTable(slot, cat, used);
+            resolveByTable(slot, cat, used, st.getTraitTables());
             slots.add(slot);
         }
         if ("FREE_DIVINE_TRAIT".equals(se.divineMode())) {
-            slots.add(divineSlot(c, count, cat, used));
+            slots.add(divineSlot(c, count, cat, used, st.getTraitTables()));
         }
         st.setTraitSlots(slots);
         st.setTraitsConfirmed(false);
@@ -288,12 +286,68 @@ public class CharacterBuildService {
                 slots.add(previous);
             } else {
                 Set<UUID> used = ids.stream().collect(Collectors.toCollection(HashSet::new));
-                slots.add(divineSlot(c, slots.size(), cat, used));
+                slots.add(divineSlot(c, slots.size(), cat, used, st.getTraitTables()));
             }
         }
         st.setTraitSlots(slots);
         st.setTraitsConfirmed(false);
         return finish(c, "CHOOSE_TRAITS", null);
+    }
+
+    @Transactional
+    public CharacterBuildResponse setTraitTable(UUID sheetId, TraitTableRequest req, UUID requesterId) {
+        Ctx c = ownerInBuild(sheetId, requesterId);
+        requireStep(c, BuildStep.TRAITS);
+        BuildState st = c.state();
+        if ("BALANCED_CHOICE".equals(c.settings().traitMethod())) {
+            throw new InvalidBuildStepException("Este método usa escolha de traços, não tabela");
+        }
+        if (st.getTraitCountRoll() != null) {
+            throw new InvalidBuildStepException("A tabela fica travada após a rolagem");
+        }
+        List<UUID> ids = req.traitIds();
+        if (ids.isEmpty()) {
+            st.getTraitTables().remove(req.rarity());
+            return finish(c, "SET_TRAIT_TABLE", req.rarity().name());
+        }
+        int size = tableDie(req.rarity()).equals("1d10") ? 10 : 20;
+        if (ids.size() != size || new HashSet<>(ids).size() != size) {
+            throw new InvalidBuildStepException("A tabela precisa de exatamente " + size + " traços diferentes");
+        }
+        Map<UUID, TraitDefinition> byId = pool(c.campaignId()).stream()
+                .collect(Collectors.toMap(TraitDefinition::getId, t -> t, (a, b) -> a));
+        for (UUID id : ids) {
+            TraitDefinition t = byId.get(id);
+            if (t == null || t.getRarity() != req.rarity()) {
+                throw new InvalidBuildStepException("Traço fora do pool ou de outra raridade");
+            }
+        }
+        st.getTraitTables().put(req.rarity(), new ArrayList<>(ids));
+        return finish(c, "SET_TRAIT_TABLE", req.rarity().name());
+    }
+
+    @Transactional
+    public CharacterBuildResponse pickTrait(UUID sheetId, int index, PickTraitRequest req, UUID requesterId) {
+        Ctx c = ownerInBuild(sheetId, requesterId);
+        requireStep(c, BuildStep.TRAITS);
+        BuildState st = c.state();
+        TraitSlot slot = st.getTraitSlots().stream().filter(x -> x.getIndex() == index).findFirst()
+                .orElseThrow(() -> new InvalidBuildStepException("Slot de traço inválido"));
+        if (slot.getStatus() != TraitSlotStatus.PENDING_GM) {
+            throw new InvalidBuildStepException("Este slot não está pendente");
+        }
+        TraitDefinition t = pool(c.campaignId()).stream().filter(x -> req.traitId().equals(x.getId())).findFirst()
+                .orElseThrow(() -> new InvalidBuildStepException("Traço indisponível nesta campanha"));
+        if (t.getRarity() != slot.getRarity()) {
+            throw new InvalidBuildStepException("O traço precisa ser da raridade do slot");
+        }
+        boolean taken = st.getTraitSlots().stream().anyMatch(x -> x != slot && t.getId().equals(x.getTraitId()));
+        if (taken) throw new InvalidBuildStepException("Este traço já foi concedido em outro slot");
+        slot.setTraitId(t.getId());
+        slot.setTraitName(t.getName());
+        slot.setStatus(TraitSlotStatus.RESOLVED);
+        slot.setNote("Escolhido pelo jogador");
+        return finish(c, "PICK_TRAIT_SLOT", "slot:" + index);
     }
 
     @Transactional
@@ -319,7 +373,7 @@ public class CharacterBuildService {
             action = "REROLL_TRAIT_SLOT";
             slot.setTableRoll(d(c, tableDie(slot.getRarity()),
                     "Construção: rerrolagem do traço " + (index + 1) + " (Mestre)"));
-            resolveByTable(slot, catalog.traitsForCampaign(c.campaignId()), others);
+            resolveByTable(slot, pool(c.campaignId()), others, st.getTraitTables());
             slot.setNote(slot.getTraitId() == null ? slot.getNote() : req.reason());
         } else {
             if (req.traitId() == null) {
@@ -682,20 +736,29 @@ public class CharacterBuildService {
         };
     }
 
-    /** Resolve o slot pelo catálogo; sem traço, repetido ou Lendário 20, fica com o Mestre. */
-    private void resolveByTable(TraitSlot slot, List<TraitDefinition> cat, Set<UUID> used) {
+    /** Resolve o slot pela tabela do jogador (se houver) ou pelo catálogo; sem traço, repetido ou Lendário 20 sem tabela, fica pendente. */
+    private void resolveByTable(TraitSlot slot, List<TraitDefinition> cat, Set<UUID> used,
+                                Map<TraitRarity, List<UUID>> tables) {
         slot.setTraitId(null);
         slot.setTraitName(null);
         Integer roll = slot.getTableRoll();
-        Optional<TraitDefinition> match = cat.stream()
-                .filter(t -> t.getRarity() == slot.getRarity() && roll != null && roll.equals(t.getRollNumber()))
-                .findFirst();
-        if (slot.getRarity() == TraitRarity.LEGENDARY && Integer.valueOf(20).equals(roll)) {
-            pending(slot, "Lendário 20: o Mestre escolhe a reposição \"X\" ou manda rerrolar");
+        List<UUID> table = tables == null ? null : tables.get(slot.getRarity());
+        boolean custom = table != null && !table.isEmpty();
+        Optional<TraitDefinition> match;
+        if (custom) {
+            UUID id = roll != null && roll >= 1 && roll <= table.size() ? table.get(roll - 1) : null;
+            match = cat.stream().filter(t -> t.getId().equals(id)).findFirst();
+        } else {
+            match = cat.stream()
+                    .filter(t -> t.getRarity() == slot.getRarity() && roll != null && roll.equals(t.getRollNumber()))
+                    .findFirst();
+        }
+        if (!custom && slot.getRarity() == TraitRarity.LEGENDARY && Integer.valueOf(20).equals(roll)) {
+            pending(slot, "Lendário 20: escolha a reposição \"X\" (ou o Mestre manda rerrolar)");
         } else if (match.isEmpty()) {
-            pending(slot, "Nenhum traço no catálogo para esta rolagem");
+            pending(slot, custom ? "Traço da sua tabela fora do pool: escolha outro" : "Nenhum traço no catálogo para esta rolagem");
         } else if (used.contains(match.get().getId())) {
-            pending(slot, "Traço repetido");
+            pending(slot, "Traço repetido: escolha outro da raridade");
         } else {
             slot.setTraitId(match.get().getId());
             slot.setTraitName(match.get().getName());
@@ -705,18 +768,27 @@ public class CharacterBuildService {
         }
     }
 
+    /** Catálogo da campanha menos os traços que o Mestre tirou do pool. */
+    private List<TraitDefinition> pool(UUID campaignId) {
+        Set<UUID> excluded = ruleService.excludedTraits(campaignId);
+        List<TraitDefinition> all = catalog.traitsForCampaign(campaignId);
+        return excluded == null || excluded.isEmpty() ? all
+                : all.stream().filter(t -> !excluded.contains(t.getId())).toList();
+    }
+
     private static void pending(TraitSlot slot, String note) {
         slot.setStatus(TraitSlotStatus.PENDING_GM);
         slot.setNote(note);
     }
 
-    private TraitSlot divineSlot(Ctx c, int index, List<TraitDefinition> cat, Set<UUID> used) {
+    private TraitSlot divineSlot(Ctx c, int index, List<TraitDefinition> cat, Set<UUID> used,
+                                 Map<TraitRarity, List<UUID>> tables) {
         TraitSlot slot = new TraitSlot();
         slot.setIndex(index);
         slot.setRarity(TraitRarity.DIVINE);
         slot.setDivineBonus(true);
         slot.setTableRoll(d(c, "1d10", "Construção: traço divino gratuito"));
-        resolveByTable(slot, cat, used);
+        resolveByTable(slot, cat, used, tables);
         return slot;
     }
 
@@ -846,10 +918,11 @@ public class CharacterBuildService {
                 : BuildRules.resources(layers.get(Attribute.CON).finalValue(), g.all());
         return new CharacterBuildResponse(s.getId(), s.getName(), c.build().getStep(), c.settings(),
                 s.getBodyType(), s.getDominance(), s.getHeightM(), s.getWeightKg(),
-                st.getTraitCountRoll(), st.getTraitSlots(), st.isTraitsConfirmed(),
+                st.getTraitCountRoll(), st.getTraitSlots(), st.isTraitsConfirmed(), st.getTraitTables(),
                 st.getBloodTestRoll(), st.getClanSlots(), clans, st.isClansConfirmed(),
                 st.getAttributeDice(), st.getAssignment(), st.isAttributesConfirmed(),
                 layers, freePointsAvailable(c, g), st.getFreePoints(), st.isFreePointsConfirmed(),
-                resources, s.getBuildStatus());
+                resources, s.getBuildStatus(), st.getClanRolls(),
+                BuildRules.layers(new EnumMap<>(Attribute.class), g.clanGains(), g.traitGains(), Map.of()));
     }
 }

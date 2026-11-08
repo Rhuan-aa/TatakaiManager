@@ -4,16 +4,16 @@
     "rarity": "COMMON",
     "category": "PHYSICAL",
     "rollNumber": 1,
-    "description": "Um humano dotado de habilidades acrobáticas excepcionais, que lhe permitem realizar saltos impressionantes e utilizar o ambiente ao seu redor para se movimentar com fluidez e agilidade.\nEssas capacidades são tanto treinadas quanto inatas, tornando-o capaz de realizar movimentos acrobáticos com facilidade e naturalidade.",
+    "description": "Uma propriocepção afinada e tendões elásticos dão ao portador um corpo que sabe onde está mesmo de cabeça para baixo. Saltar, rolar e cair são, para ele, uma extensão do andar.\nO chão nunca é uma surpresa: quando é derrubado, ele já está rolando antes de bater, e quando salta, sabe exatamente onde o pé vai encontrar apoio.",
     "effects": [
       {
         "name": "Acrobacias",
-        "text": "Vantagem em manobras de movimentação, como por exemplo: cambalhotas e pulos."
+        "text": "Vantagem em testes de Destreza para saltar, rolar, escalar, equilibrar-se e amortecer quedas."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "DEX": 3
+        "DEX": 5
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -23,8 +23,8 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -34,25 +34,25 @@
     "rarity": "COMMON",
     "category": "PHYSICAL",
     "rollNumber": 2,
-    "description": "Trata-se de uma capacidade excepcional de gasto de ATP (adenosina trifosfato) do corpo durante atividades físicas intensas. Embora seja um traço relativamente comum, a maioria das pessoas não possui essa capacidade, que permite um alto nível de resistência e um gasto energético mais eficiente.\nCom essa habilidade, o portador pode realizar atividades com menos desgaste físico do que o normal, o que resulta em um desempenho notavelmente superior.",
+    "description": "Mitocôndrias densas e uma rede capilar acima da média fazem o músculo queimar oxigênio com uma eficiência rara. O lactato demora a subir, e quando sobe, o corpo o limpa antes que ele pese nos braços.\nNa luta, isso aparece no quinto minuto: quando o oponente já respira pela boca e baixa a guarda entre os golpes, o portador ainda está trocando no mesmo ritmo do primeiro.",
     "effects": [
       {
         "name": "Reserva de Energia",
-        "text": "Reduz o gasto de qualquer fonte em -1SP, caso essa tenha um custo maior que este."
+        "text": "A ação Respirar recupera +2 SP adicionais."
       }
     ],
     "buildGains": {
       "attributeFlat": {},
       "attributePercent": {},
       "maxHp": 0,
-      "maxSp": 10,
+      "maxSp": 15,
       "maxKp": 0,
       "limiters": {},
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -62,16 +62,16 @@
     "rarity": "COMMON",
     "category": "PHYSICAL",
     "rollNumber": 3,
-    "description": "O traço Altura Superior confere ao portador um crescimento simétrico muito acima da média da humanidade. Desde a adolescência, sua altura mínima é de 1.85 metros, podendo chegar a 2 metros em seu estado adulto.\nEssa característica física única não só causa impacto visual imediato, mas também proporciona uma série de vantagens em combate, como maior alcance e força nos golpes, tornando o portador uma verdadeira força da natureza no campo de batalha.",
+    "description": "Um crescimento simétrico que não parou onde o dos outros parou. Desde a adolescência, o portador olha a maioria das pessoas de cima, e chega à vida adulta com alavancas mais longas e uma sombra que entra na sala antes dele.\nEm combate, a altura é distância: os golpes dele chegam antes, e quem quer acertá-lo precisa primeiro atravessar o espaço que os braços dele controlam.",
     "effects": [
       {
         "name": "Altura Superior",
-        "text": "Altura do lutador vai de 1,85m até 2m, sendo assim adiciona +0,10m para o máximo de altura do personagem."
+        "text": "A altura do lutador fica entre 1,81 m e 1,99 m (Categoria Muito Alto)."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "STR": 3,
+        "STR": 4,
         "CON": 3
       },
       "attributePercent": {},
@@ -83,7 +83,37 @@
     },
     "developable": false,
     "upgradable": false,
-    "activation": "PASSIVE",
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Arrancada Explosiva",
+    "rarity": "COMMON",
+    "category": "PHYSICAL",
+    "rollNumber": 4,
+    "description": "Fibras rápidas de velocista e um sistema nervoso que dispara antes de o sinal terminar. O portador é sempre o primeiro a se mexer, seja para atacar ou para sair do caminho.\nQuando a luta começa, o oponente ainda está decidindo o primeiro passo, e ele já deu o segundo.",
+    "effects": [
+      {
+        "name": "Primeiro Passo",
+        "text": "+2 nas rolagens de iniciativa, e o lutador sempre conta como treinado nelas, usando o Modificador de Destreza inteiro."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "DEX": 6
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": false,
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -92,16 +122,19 @@
     "name": "Audição Melhorada",
     "rarity": "COMMON",
     "category": "PHYSICAL",
-    "rollNumber": 4,
-    "description": "O portador deste traço possui um olfato altamente desenvolvido, muito superior à média humana, permitindo-lhe detectar e identificar odores com extrema precisão.\nCapaz de perceber aromas a longas distâncias, ele distingue facilmente uma ampla variedade de cheiros, mesmo aqueles que passariam despercebidos para a maioria das pessoas.\nEssa capacidade proporciona uma sensibilidade olfativa incomum, útil para identificar mudanças sutis no ambiente, antecipar perigos ou localizar fontes específicas de cheiro com grande eficácia.",
+    "rollNumber": 5,
+    "description": "Um ouvido que separa o passo do vento e o arrastar do pé que prepara o chute. O som chega a ele com detalhe e direção, como se cada ruído trouxesse um mapa junto.\nO corpo reage ao som antes de a cabeça virar: o rangido da madeira atrás dele já é um alerta.",
     "effects": [
       {
-        "name": "Audição Apurada",
-        "text": "Consegue diferenciar sons com facilidade sem rodar dados, além de percepção com vantagem caso seja a partir de audição.\n+1 na rolagem de percepção."
+        "name": "Ouvido Atento",
+        "text": "Identifica a origem de sons sem teste e tem vantagem em testes de percepção que dependam da audição."
       }
     ],
     "buildGains": {
-      "attributeFlat": {},
+      "attributeFlat": {
+        "DEX": 3,
+        "INT": 2
+      },
       "attributePercent": {},
       "maxHp": 0,
       "maxSp": 0,
@@ -110,8 +143,8 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -120,18 +153,18 @@
     "name": "Braços Longos",
     "rarity": "COMMON",
     "category": "PHYSICAL",
-    "rollNumber": 5,
-    "description": "O portador deste traço possui uma musculatura nos braços naturalmente mais desenvolvida, resultado de uma predisposição genética herdada dos pais.\nEssa característica confere uma potência explosiva elevada, permitindo que ele realize ataques com maior força e precisão, tanto com as mãos quanto com armas de alcance médio.\nCom um alcance superior e golpes mais eficazes, esse indivíduo é capaz de causar danos consideráveis aos oponentes, destacando-se em situações que exigem força, impacto e destreza nos movimentos dos membros superiores.",
+    "rollNumber": 6,
+    "description": "Uma envergadura maior que a altura, como a dos grandes boxeadores de distância. Ombros soltos e escápulas que deslizam mais do que deveriam permitem ao portador estender o braço além do ponto em que qualquer outro já teria parado.\nO movimento é feio, quase errado: o ombro avança, o tronco se inclina, o corpo inteiro se oferece para que o punho ganhe mais meio metro. E o punho ganha.",
     "effects": [
       {
         "name": "Grandes Braços",
-        "text": "Todo tipo de técnica que utiliza os braços como ataque tem um alcance de 0,5 metros maior."
+        "text": "Como Ação Menor (1 PA), até o fim do turno, os ataques do lutador com os braços, desarmados ou com armas de mão, sobem uma escala de alcance (Curto → Médio, Médio → Longo)."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "STR": 2,
-        "DEX": 1
+        "STR": 3,
+        "DEX": 3
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -141,8 +174,8 @@
       "freePoints": 0
     },
     "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -151,14 +184,9 @@
     "name": "Corpo Equilibrado",
     "rarity": "COMMON",
     "category": "HYBRID",
-    "rollNumber": 6,
-    "description": "O traço corpo equilibrado é um traço que permite ao usuário distribuir seus pontos de atributo de maneira equilibrada entre esses, evitando assim ter fraquezas em áreas específicas.\nCom esse traço, o usuário é capaz de iniciar com seus atributos de forma mais harmônica e equilibrada, garantindo um desempenho geral melhor em qualquer situação.\nEsse traço é bastante comum entre os humanos, mas aqueles que o possuem são considerados mais versáteis e levemente mais capazes de lidar com diversas situações.",
-    "effects": [
-      {
-        "name": "Pontos",
-        "text": "+2 pontos em todos os status"
-      }
-    ],
+    "rollNumber": 7,
+    "description": "Nenhum ponto alto, nenhum ponto fraco. Um corpo sem defeitos de nascença que tende a ser funcional em tudo o que tenta.\nEle nunca é o melhor da sala em nada, e quase nunca é o pior.",
+    "effects": [],
     "buildGains": {
       "attributeFlat": {
         "STR": 1,
@@ -166,19 +194,18 @@
         "CON": 1,
         "INT": 1,
         "CHA": 1,
-        "MEN": 1,
-        "TAL": 1
+        "MEN": 1
       },
       "attributePercent": {},
-      "maxHp": 0,
+      "maxHp": 6,
       "maxSp": 0,
       "maxKp": 0,
       "limiters": {},
       "freePoints": 0
     },
     "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -187,18 +214,17 @@
     "name": "Elasticidade Mediana",
     "rarity": "COMMON",
     "category": "PHYSICAL",
-    "rollNumber": 7,
-    "description": "A elasticidade mediana é uma habilidade adquirida através de um tempo de treinamento em alongamento. O usuário é capaz de esticar seus membros e alcançar seu potencial máximo de flexibilidade. Essa habilidade permite que o usuário execute movimentos mais suaves e fluidos, além de prevenir lesões musculares e articulares.\nA elasticidade é uma característica que pode ser treinada e desenvolvida com o tempo, e aqueles com o Traço de Elasticidade Mediana têm a vantagem de possuir um corpo naturalmente flexível e adaptável.",
+    "rollNumber": 8,
+    "description": "Hipermobilidade articular: ligamentos frouxos e cápsulas que cedem mais do que deveriam. O ombro que não sai do lugar em ninguém sai no dele, e volta, e o punho escapa de pegadas que prenderiam qualquer outro.\nQuem o agarra sente o corpo dele escorrer entre os dedos, como se não houvesse osso para segurar.",
     "effects": [
       {
         "name": "Elasticidade",
-        "text": "O usuário pode dobrar e flexionar seu corpo, em torções recebe 25% do dano, além disso, pode alongar seus ataque em 0,25 metros, alcançando alvo que não conseguiria normalmente."
+        "text": "+2 nos testes para escapar das condições Agarrado e Imobilizado."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "DEX": 2,
-        "CON": 1
+        "DEX": 5
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -208,8 +234,39 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Empatia Nata",
+    "rarity": "COMMON",
+    "category": "MENTAL",
+    "rollNumber": 9,
+    "description": "Uma leitura instintiva de rosto, tom e postura. O portador sente o desconforto antes de a pessoa saber que está desconfortável, e percebe a mentira pela pausa antes da resposta.\nAs pessoas confiam nele porque se sentem entendidas, e quase sempre estão.",
+    "effects": [
+      {
+        "name": "Leitura de Gente",
+        "text": "Vantagem em testes para perceber mentiras, intenções e emoções de outra pessoa."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CHA": 3,
+        "INT": 2
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -218,17 +275,17 @@
     "name": "Força de Vontade",
     "rarity": "COMMON",
     "category": "MENTAL",
-    "rollNumber": 8,
-    "description": "O portador deste traço possui uma força de vontade inabalável. Nenhuma distração ou obstáculo será capaz de afastá-lo de sua meta, pois ele se mantém focado e determinado até alcançá-la.\nA resistência mental desse indivíduo é notável, tornando-o praticamente imune a influências externas que possam desviá-lo de seu caminho.",
+    "rollNumber": 10,
+    "description": "O medo chega, como chega para todos, mas não manda. A decisão tomada antes da luta continua valendo depois do primeiro sangue, do primeiro tropeço e do primeiro apagão.\nQuando o corpo pede para ficar no chão, alguma coisa nele responde que ainda não.",
     "effects": [
       {
-        "name": "Vontade",
-        "text": "A vontade de perseguir o seu Propósito Maior é maior do que a força dos seus medos, dessa forma, possui vantagem em testes de mental contra medo e persuasão, ganhando +1PP quando ganhar algum ponto de propósito."
+        "name": "Vontade Firme",
+        "text": "Vantagem em todos os Testes de Vontade."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "MEN": 3
+        "MEN": 5
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -238,8 +295,8 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -248,23 +305,25 @@
     "name": "Força Elevada",
     "rarity": "COMMON",
     "category": "PHYSICAL",
-    "rollNumber": 9,
-    "description": "Um indivíduo dotado do traço força elevada possui uma quantidade de massa muscular maior do que a média da população humana, resultando em uma força física consideravelmente maior.\nSeus músculos possuem uma capacidade de contração mais intensa, permitindo que execute movimentos de maior potência e realize tarefas que requerem mais força com mais facilidade.",
+    "rollNumber": 11,
+    "description": "Mais fibras rápidas e uma inervação que recruta mais delas ao mesmo tempo. O portador empurra, puxa e esmaga com uma potência que o treino de outros demora anos para alcançar.\nO primeiro sinal costuma vir cedo: a porta que ele abre com força demais, o aperto de mão que faz o outro recolher a mão.",
     "effects": [],
     "buildGains": {
       "attributeFlat": {
-        "STR": 5
+        "STR": 6
       },
       "attributePercent": {},
       "maxHp": 0,
       "maxSp": 0,
       "maxKp": 0,
-      "limiters": {},
+      "limiters": {
+        "STR": 5
+      },
       "freePoints": 0
     },
     "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -273,9 +332,71 @@
     "name": "Inteligência Elevada",
     "rarity": "COMMON",
     "category": "MENTAL",
-    "rollNumber": 10,
-    "description": "O portador deste traço apresenta uma capacidade intelectual significativamente acima da média, o que se traduz em uma facilidade natural para aprender novos conceitos, mesmo os mais desafiadores.\nCom uma habilidade aprimorada para entender ideias complexas e uma agilidade mental diferenciada, ele tende a resolver problemas com eficiência e criatividade.\nEssa capacidade não só acelera o processo de aprendizado, mas também permite uma aplicação prática e inovadora do conhecimento, facilitando a adaptação a diferentes situações e a busca por soluções originais.",
+    "rollNumber": 12,
+    "description": "Uma cabeça que monta o problema inteiro antes que os outros terminem de ler o enunciado. Conceitos difíceis chegam a ele como coisas óbvias, e o raciocínio corre em linhas retas onde outros tropeçam.originais.",
     "effects": [],
+    "buildGains": {
+      "attributeFlat": {
+        "INT": 6
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {
+        "INT": 5
+      },
+      "freePoints": 0
+    },
+    "developable": false,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Mãos Rápidas",
+    "rarity": "COMMON",
+    "category": "PHYSICAL",
+    "rollNumber": 13,
+    "description": "Uma coordenação motora fina acima do normal: dedos que encontram o cabo da faca sem procurar e mãos que trocam um objeto de lugar antes que o olho do outro acompanhe.\nNo meio da luta, ele saca, solta e pega de novo como quem respira.",
+    "effects": [
+      {
+        "name": "Manuseio Ágil",
+        "text": "Uma vez por turno, o lutador realiza um Manuseio (sacar, guardar, recarregar ou pegar um objeto) como Ação Livre."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "DEX": 5
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Memória Fotográfica",
+    "rarity": "COMMON",
+    "category": "MENTAL",
+    "rollNumber": 14,
+    "description": "O que foi visto com atenção fica guardado como uma fotografia: a página do livro, o desenho de uma guarda, o rosto de quem estava na porta.\nPara ele, ler é decorar. Ele fecha o manual e continua enxergando o diagrama na mesma posição da página.",
+    "effects": [
+      {
+        "name": "Câmera Mental",
+        "text": "Todo Estudo que use Material como fonte rende +1 ponto de estudo."
+      }
+    ],
     "buildGains": {
       "attributeFlat": {
         "INT": 5
@@ -287,39 +408,9 @@
       "limiters": {},
       "freePoints": 0
     },
-    "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": null,
-    "variations": []
-  },
-  {
-    "name": "Memória Fotográfica",
-    "rarity": "COMMON",
-    "category": "MENTAL",
-    "rollNumber": 11,
-    "description": "O portador deste traço possui uma capacidade cognitiva voltada à retenção visual. Imagens, símbolos, textos ou cenas observadas recentemente podem ser lembradas com clareza incomum, facilitando revisões mentais e uso prático da informação.\nÉ uma habilidade útil para quem depende de aprendizado visual, reconhecimento de padrões ou memorização de instruções. Embora não garanta compreensão imediata, reduz drasticamente o esquecimento de detalhes.\nSua utilidade depende do foco e da atenção aplicada no momento da observação, sendo limitada principalmente àquilo que o usuário de fato enxergou e prestou atenção com intenção.",
-    "effects": [
-      {
-        "name": "Câmera Mental",
-        "text": "Recebe vantagem em testes de reconhecimento de padrões e também pode guardar informações detalhadas para si. Recebe vantagem em testes de inteligência para se lembrar de algo ou coisa do gênero."
-      }
-    ],
-    "buildGains": {
-      "attributeFlat": {
-        "INT": 3
-      },
-      "attributePercent": {},
-      "maxHp": 0,
-      "maxSp": 0,
-      "maxKp": 0,
-      "limiters": {},
-      "freePoints": 0
-    },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -328,16 +419,19 @@
     "name": "Olfato Melhorado",
     "rarity": "COMMON",
     "category": "PHYSICAL",
-    "rollNumber": 12,
-    "description": "O portador deste traço possui um olfato altamente desenvolvido, muito superior à média humana, permitindo-lhe detectar e identificar odores com extrema precisão.\nCapaz de perceber aromas a longas distâncias, ele distingue facilmente uma ampla variedade de cheiros, mesmo aqueles que passariam despercebidos para a maioria das pessoas.\nEssa capacidade proporciona uma sensibilidade olfativa incomum, útil para identificar mudanças sutis no ambiente, antecipar perigos ou localizar fontes específicas de cheiro com grande eficácia.",
+    "rollNumber": 15,
+    "description": "Um epitélio olfativo mais extenso que o humano comum. Sangue, suor, medo e pólvora têm cheiros diferentes, e o portador sabe qual é qual.\nEle sente o adversário que acabou de passar por um corredor, o ferimento escondido sob a camisa e o nervosismo de quem jura estar calmo.",
     "effects": [
       {
         "name": "Olfato Apurado",
-        "text": "Consegue diferenciar aromas com facilidade sem rodar dados, além de percepção com vantagem caso seja a partir de olfato.\n+1 na rolagem de percepção."
+        "text": "Identifica odores sem teste e tem vantagem em testes de percepção que dependam do olfato."
       }
     ],
     "buildGains": {
-      "attributeFlat": {},
+      "attributeFlat": {
+        "INT": 3,
+        "MEN": 2
+      },
       "attributePercent": {},
       "maxHp": 0,
       "maxSp": 0,
@@ -346,8 +440,8 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -356,18 +450,18 @@
     "name": "Pernas Longas",
     "rarity": "COMMON",
     "category": "PHYSICAL",
-    "rollNumber": 13,
-    "description": "O traço Pernas Longas proporciona ao indivíduo uma musculatura inferior mais desenvolvida desde o nascimento, fruto de uma herança genética recebida dos pais.\nEssa característica resulta em uma capacidade excepcional para gerar potência explosiva nos membros inferiores, permitindo saltos de grande altura e corridas com velocidade e força superiores à média da população.\nA estrutura das pernas longas favorece um desempenho atlético diferenciado, destacando-se em atividades que exigem força, explosão e agilidade, tornando o indivíduo apto a superar desafios físicos com facilidade e eficiência.",
+    "rollNumber": 16,
+    "description": "Fêmur e tíbia acima da proporção comum, herdados dos pais. A perna dianteira do portador vira uma cerca que o oponente precisa atravessar, e o chute chega onde o soco do outro ainda não alcança.\nLutadores de pernas longas aprendem cedo a lutar de longe: o teep na barriga, o chute baixo na coxa, sempre na ponta do próprio alcance.",
     "effects": [
       {
         "name": "Pernudo",
-        "text": "Devido a suas pernas de tamanho acima da média possui um deslocamento de +1,5 metros, além disso, todo tipo de técnica que utiliza as pernas como ataque tem um alcance de 0,5 metros maior."
+        "text": "Os chutes do lutador, básicos ou de técnica, o alcance base passa a ter alcance Médio."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "STR": 1,
-        "DEX": 1
+        "STR": 3,
+        "DEX": 3
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -377,8 +471,66 @@
       "freePoints": 0
     },
     "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Pés Firmes",
+    "rarity": "COMMON",
+    "category": "PHYSICAL",
+    "rollNumber": 17,
+    "description": "Um centro de gravidade baixo e pés que se agarram ao chão como raízes. O corpo cede ao empurrão sem perder a base, e volta ao lugar como um joão-bobo.\nDerrubá-lo exige mais do que força: exige convencer o chão a soltá-lo.",
+    "effects": [
+      {
+        "name": "Base Baixa",
+        "text": "+2 para resistir aos Efeitos Derrubar, Empurrar e Quebrar Base."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "DEX": 3,
+        "CON": 2
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Pescoço Grosso",
+    "rarity": "COMMON",
+    "category": "PHYSICAL",
+    "rollNumber": 18,
+    "description": "Trapézio e esternocleidomastoideo largos como os de um lutador de wrestling que nunca treinou. A cabeça acelera menos no impacto, e o cérebro chacoalha menos dentro dela.\nO golpe no queixo que apagaria outro faz a cabeça dele girar meio palmo e voltar.",
+    "effects": [],
+    "buildGains": {
+      "attributeFlat": {
+        "CON": 1
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 1,
+      "limiters": {
+        "KP": 1
+      },
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -386,8 +538,8 @@
   {
     "name": "Precisão",
     "rarity": "COMMON",
-    "category": "MENTAL",
-    "rollNumber": 14,
+    "category": "HYBRID",
+    "rollNumber": 19,
     "description": "O portador deste traço possui uma habilidade excepcional de precisão em seus movimentos, especialmente em relação ao acerto de alvos a distância.\nSeja com armas de longo alcance ou com arremessos, o usuário é capaz de visualizar a trajetória do objeto lançado, permitindo que ajuste sua mira com precisão milimétrica.\nEssa capacidade é resultado de um tempo de treinamento e prática, e permite que o usuário acerte alvos em movimento e em situações desafiadoras com facilidade.",
     "effects": [
       {
@@ -414,12 +566,78 @@
     "variations": []
   },
   {
-    "name": "Resistência Elevada",
+    "name": "Presença Imponente",
+    "rarity": "COMMON",
+    "category": "MENTAL",
+    "rollNumber": 20,
+    "description": "Uma voz grave, uma postura que ocupa espaço e um olhar que pesa. O portador não precisa levantar a mão para que os outros recuem um passo.\nQuando ele entra na roda, o oponente demora um instante a mais para esquentar: o corpo do outro já entendeu o que a cabeça ainda não aceitou.",
+    "effects": [
+      {
+        "name": "Peso da Presença",
+        "text": "No início de cada combate, todo oponente que veja o lutador faz um Teste de Vontade contra ND 10 + mod. de Carisma do lutador. Quem falha não recebe Pontos de Adrenalina no seu primeiro turno. Fora de combate, o lutador recebe +2 em testes de Carisma para intimidar."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CHA": 5
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Provocador",
+    "rarity": "COMMON",
+    "category": "MENTAL",
+    "rollNumber": null,
+    "description": "Um talento nato para encontrar a frase que tira o outro do sério: o apelido certo, o sorriso na hora errada, o gesto que diz que o golpe não doeu. O portador sabe onde está o orgulho de cada um e aperta ali.\nO oponente provocado esquece o resto da luta. O aliado caído no chão deixa de existir, e só sobra o rosto que está rindo dele.",
+    "effects": [
+      {
+        "name": "Provocação",
+        "text": "Como Ação Menor (1 PA), o lutador provoca um oponente que possa ouvi-lo, que faz um Teste de Vontade contra ND 10 + mod. de Carisma do lutador. Na falha, até o fim do próximo turno dele, os seus ataques contra qualquer alvo que não seja o lutador sofrem −2 no acerto."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CHA": 3,
+        "MEN": 2
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Resistência Corporal",
     "rarity": "COMMON",
     "category": "PHYSICAL",
-    "rollNumber": 15,
-    "description": "O traço resistência elevada é uma habilidade que dota o portador com uma capacidade física superior para suportar atividades intensas e prolongadas.\nGraças a essa característica, o indivíduo consegue manter o desempenho físico por mais tempo, enfrentando a exaustão e a fadiga com maior facilidade do que a média.\nEssa resistência aprimorada permite ao portador realizar tarefas fisicamente exigentes de maneira constante, adaptando-se melhor a esforços prolongados e mantendo o foco e a eficácia em situações de alta demanda física.",
-    "effects": [],
+    "rollNumber": null,
+    "description": "Um coração que não se assusta com esforço e um corpo que se recupera do cansaço de ontem antes que ele se some ao de hoje. O portador aguenta rotinas que derrubariam outros em uma semana.\nÉ o lutador que treina de manhã, trabalha à tarde e ainda luta à noite, e só sente o peso de tudo isso quando os outros já pararam há dias.",
+    "effects": [
+      {
+        "name": "Corpo Incansável",
+        "text": "As faixas de Desgaste Físico do lutador começam 1 ponto depois (Cansado em 4, Esgotado em 7, Exaurido em 10, Colapso em 13)."
+      }
+    ],
     "buildGains": {
       "attributeFlat": {
         "CON": 5
@@ -432,8 +650,8 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -442,16 +660,77 @@
     "name": "Resistência Mental",
     "rarity": "COMMON",
     "category": "MENTAL",
-    "rollNumber": 16,
-    "description": "O traço de Resistência Mental confere ao usuário uma incrível capacidade de suportar situações mentais desafiadoras. Seja diante de estresse, pressão ou traumas psicológicos, o portador deste traço é capaz de lidar com essas adversidades sem se abalar emocionalmente.\nSua mente é treinada para lidar com situações difíceis e encontrar soluções eficazes para superar os obstáculos.\nAtravés da disciplina e do autocontrole, o usuário deste traço é capaz de manter a estabilidade emocional mesmo em situações extremas.",
+    "rollNumber": null,
+    "description": "Uma mente que absorve pressão como um corpo grande absorve pancada. Noites mal dormidas, cobranças e dias de estudo pesam sobre ele, mas pesam menos.\nEnquanto os outros já estão irritados e distraídos, ele continua pensando com a cabeça fria do primeiro dia.",
     "effects": [
       {
-        "name": "Resiliência Mental",
-        "text": "Devido a suas experiências passadas o portador tem resiliência a emoções negativas, podendo reduzir o ganho de pontos de trauma em 1 quando o ganho passar de 2PTs."
+        "name": "Mente Robusta",
+        "text": "As faixas de Desgaste Mental do lutador começam 1 ponto depois (Cansado em 4, Esgotado em 7, Exaurido em 10, Colapso em 13)."
       }
     ],
     "buildGains": {
       "attributeFlat": {
+        "MEN": 5
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Sedutor",
+    "rarity": "COMMON",
+    "category": "MENTAL",
+    "rollNumber": null,
+    "description": "Um rosto que os outros querem olhar e uma voz que os outros querem ouvir. O portador entra na sala e os olhares mudam de direção.\nO charme abre portas que a força teria de arrombar, e muitas vezes evita que a luta comece.",
+    "effects": [
+      {
+        "name": "Charme",
+        "text": "+2 em testes de Carisma para seduzir, persuadir e conquistar simpatia."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CHA": 5
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Sono Profundo",
+    "rarity": "COMMON",
+    "category": "HYBRID",
+    "rollNumber": null,
+    "description": "O corpo dele desliga por completo quando deita: um sono de onda lenta longo, sem despertares e sem pensamentos que voltam. Nessas horas, o músculo se reconstrói e o cérebro limpa o que o dia deixou para trás.\nEle acorda como se tivesse dormido o dobro, seja depois de um dia de treino pesado, seja depois de uma noite inteira debruçado sobre os livros. O preço é conhecido de todos que dividem quarto com ele: nada o acorda antes da hora.",
+    "effects": [
+      {
+        "name": "Descanso Completo",
+        "text": "Cada Repouso remove 1 ponto adicional de Desgaste Físico ou de Desgaste Mental, à escolha do lutador a cada Repouso."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CON": 3,
         "MEN": 3
       },
       "attributePercent": {},
@@ -461,39 +740,9 @@
       "limiters": {},
       "freePoints": 0
     },
-    "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": null,
-    "variations": []
-  },
-  {
-    "name": "Sedutor",
-    "rarity": "COMMON",
-    "category": "MENTAL",
-    "rollNumber": 17,
-    "description": "O traço sedutor caracteriza um indivíduo com uma aparência física marcante, alinhada aos padrões de beleza predominantes na sociedade, o que naturalmente atrai a atenção das pessoas ao redor.\nAlém do aspecto visual, essa pessoa possui um talento nato para a persuasão e uma eloquência acima da média, o que lhe permite convencer e até influenciar outros com facilidade.\nEsse poder de sedução vai além da simples aparência, manifestando-se em um charme e carisma que tornam suas interações envolventes e, muitas vezes, difíceis de resistir.",
-    "effects": [
-      {
-        "name": "Arte da Sedução",
-        "text": "+2 em rolagens voltadas a teste de blefe, sedução e persuasão;"
-      }
-    ],
-    "buildGains": {
-      "attributeFlat": {
-        "CHA": 4
-      },
-      "attributePercent": {},
-      "maxHp": 0,
-      "maxSp": 0,
-      "maxKp": 0,
-      "limiters": {},
-      "freePoints": 0
-    },
-    "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "developable": false,
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -502,17 +751,18 @@
     "name": "Talentoso",
     "rarity": "COMMON",
     "category": "HYBRID",
-    "rollNumber": 18,
-    "description": "O traço talentoso concede ao portador habilidades excepcionais em uma ou mais áreas específicas, como música, artes, esportes, matemática e muito mais. Essas habilidades são inatas, permitindo que ele exiba um talento especial e um desempenho naturalmente acima da média em suas áreas de atuação.\nAlém disso, esse dom natural pode ser ainda mais aprimorado com treinamento e prática, possibilitando que o portador alcance um nível de expertise notável.\nCom essa vantagem, ele tem a capacidade de se destacar e progredir rapidamente em sua área, transformando potencial em excelência e, muitas vezes, em um domínio profundo e refinado do que faz.",
+    "rollNumber": null,
+    "description": "O corpo e a mente aprendem rápido, qualquer coisa. Não é força nem velocidade: é a velocidade com que ambas aparecem.\nO que outros levam meses para conquistar, ele encontra pronto em algum canto do próprio corpo.",
     "effects": [
       {
         "name": "Corpo Maleável",
-        "text": "Pode cumprir um requisito de traço de raridade comum de algum traço ou spec que o portador venha a desenvolver, substituindo algum traço comum que o mesmo necessite para tal mas não tenha."
+        "text": "Uma vez, o lutador pode tratar um Traço Comum que não possui como cumprido para fins de requisito de outro Traço ou Spec."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "TAL": 2
+        "TAL": 3,
+        "INT": 1
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -522,8 +772,8 @@
       "freePoints": 0
     },
     "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -531,22 +781,19 @@
   {
     "name": "Tolerância a Dor",
     "rarity": "COMMON",
-    "category": "MENTAL",
-    "rollNumber": 19,
+    "category": "HYBRID",
+    "rollNumber": null,
     "description": "O traço tolerância à dor confere ao usuário uma capacidade excepcional de suportar níveis elevados de dor sem perder a funcionalidade física. Mesmo diante de lesões graves ou traumas intensos, o indivíduo é capaz de manter o controle e continuar lutando.\nEssa capacidade pode ser treinada ao longo do tempo, mas também há um componente genético que influencia na sua manifestação.\nCom isso, o usuário pode suportar dor em níveis que seriam incapacitantes para a maioria das pessoas, podendo assim ter uma vantagem decisiva em batalhas.",
     "effects": [
       {
-        "name": "Insensibilidade à dor",
-        "text": "Mesmo com lesões e luxações o portador pode movimentar sem dificuldade na questão de dor nos membros, além disso efeitos por dor (como: chutar genital) não tem efeitos, e por fim o usuário passa de forma instantânea no primeiro teste de queda."
-      },
-      {
-        "name": "Adrenalina Reduzida",
-        "text": "O ganho de adrenalina é reduzido em 2%."
+        "name": "Anestesia Natural",
+        "text": "O lutador ignora os efeitos de Ataques Localizados que dependem da dor: o Teste de Vontade e a condição Vulnerável de um golpe nos Genitais (inclusive no crítico; a perda de SP ainda ocorre), e os Efeitos de Ataques Localizados Improvisados que o narrador justifique pela dor, como nas costelas, na canela ou nos dedos. Efeitos neurológicos, respiratórios e mecânicos continuam valendo normalmente, como os dos Pontos de Nocaute, do Fígado, do Diafragma, da Garganta e do Joelho."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "CON": 3
+        "CON": 3,
+        "MEN": 2
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -556,8 +803,8 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -566,8 +813,8 @@
     "name": "Velocidade Elevada",
     "rarity": "COMMON",
     "category": "PHYSICAL",
-    "rollNumber": 20,
-    "description": "O portador deste traço possui uma estrutura corporal singular, com músculos inferiores densamente compactados e tendões de elasticidade anormal, configurando um sistema locomotor voltado quase inteiramente para a aceleração e a manutenção de velocidade. Essa fisiologia confere ao indivíduo uma potência de arrancada impressionante, tornando seus movimentos iniciais quase instantâneos — como se o corpo disparasse com impulso explosivo.\nAlém da arrancada, há um equilíbrio excepcional entre resistência e controle motor, permitindo que o portador sustente velocidades elevadas por longos períodos sem sofrer os efeitos típicos da fadiga muscular. Em combate, essa capacidade se traduz em esquivas quase imprevisíveis, movimentação ofensiva contínua e uma vantagem tática inigualável ao transitar rapidamente pelo campo de batalha.\nAlguns portadores treinados conseguem desenvolver reflexos sinestésicos, nos quais a velocidade se alia à percepção espacial refinada, permitindo mudanças de direção bruscas e precisas em qualquer tipo de terreno. Com o tempo, essa velocidade pode se expandir para além das pernas, afetando também os membros superiores e tornando até os golpes físicos mais rápidos e contundentes.",
+    "rollNumber": null,
+    "description": "Tendões de Aquiles longos e panturrilhas que funcionam como molas. A arrancada é quase instantânea, e o corpo continua ficando mais rápido muito depois de os outros terem parado de melhorar.\nA distância entre dois lutadores some antes que o outro termine de piscar, e volta a existir antes que ele consiga reagir.",
     "effects": [
       {
         "name": "Pontos",
@@ -576,18 +823,20 @@
     ],
     "buildGains": {
       "attributeFlat": {
-        "DEX": 3
+        "DEX": 4
       },
       "attributePercent": {},
       "maxHp": 0,
       "maxSp": 0,
       "maxKp": 0,
-      "limiters": {},
+      "limiters": {
+        "DEX": 5
+      },
       "freePoints": 0
     },
     "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -597,74 +846,16 @@
     "rarity": "COMMON",
     "category": "PHYSICAL",
     "rollNumber": null,
-    "description": "O traço visão melhorada confere ao usuário uma capacidade de enxergar além dos limites da maioria das pessoas.\nSua visão é mais nítida e precisa, permitindo a observação de detalhes em longas distâncias e tornando-o capaz de identificar objetos ou pessoas a grandes distâncias.\nCom essa capacidade, o usuário pode detectar movimentos sutis e pequenas mudanças no ambiente ao seu redor, tornando-se mais capaz de antecipar e reagir a situações de risco ou oportunidades que outros não seriam capazes de perceber.",
+    "description": "Mais cones na fóvea e um campo periférico que capta o ombro que se mexe antes do soco. O detalhe distante é nítido, e o movimento curto não passa despercebido.\nO portador lê placas que os outros não enxergam e percebe o peso trocando de perna antes de o oponente decidir atacar.",
     "effects": [
       {
-        "name": "Visão Apurada",
-        "text": "Os olhos do portador são mais potentes, o limiar de visão nítida desse é +1,5km, além de vantagem em rolagens de percepção ligadas a visão.\n+1 na rolagem de percepção."
-      }
-    ],
-    "buildGains": {
-      "attributeFlat": {},
-      "attributePercent": {},
-      "maxHp": 0,
-      "maxSp": 0,
-      "maxKp": 0,
-      "limiters": {},
-      "freePoints": 0
-    },
-    "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": null,
-    "variations": []
-  },
-  {
-    "name": "Adrenalina Explosiva",
-    "rarity": "RARE",
-    "category": "PHYSICAL",
-    "rollNumber": 1,
-    "description": "\"Adrenalina Explosiva\" é uma capacidade sobre-humana que permite ao portador elevar seus níveis de adrenalina a patamares extraordinários em momentos de perigo ou risco iminente.\nEssa explosão de adrenalina concede ao usuário um aumento significativo em força física, velocidade, resistência e reflexos, proporcionando uma resposta instantânea e poderosa diante de situações críticas.\nCom essa capacidade, o portador consegue superar limites normais de desempenho, enfrentando desafios extremos com agilidade e vigor excepcionais, tornando-se altamente eficaz em confrontos ou situações que demandam reação imediata e máxima performance física.",
-    "effects": [
-      {
-        "name": "Explosão de Adrenalina",
-        "text": "Recebe +2 pontos de Adrenalina por turno em combate."
+        "name": "Olho Atento",
+        "text": "Enxerga com nitidez a distâncias duas vezes maiores e tem vantagem em testes de percepção que dependam da visão."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "DEX": 5
-      },
-      "attributePercent": {},
-      "maxHp": 0,
-      "maxSp": 0,
-      "maxKp": 0,
-      "limiters": {},
-      "freePoints": 0
-    },
-    "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": null,
-    "variations": []
-  },
-  {
-    "name": "Ambidestro",
-    "rarity": "RARE",
-    "category": "MENTAL",
-    "rollNumber": 2,
-    "description": "O traço \"Ambidestro\" concede ao portador a habilidade de usar ambas as mãos com igual destreza e precisão, permitindo que ele realize tarefas complexas alternando entre a mão esquerda e a direita sem perda de velocidade ou coordenação.\nEssa habilidade oferece uma vantagem significativa em situações que exigem flexibilidade, pois o usuário pode executar ataques, manobras e técnicas com uma fluidez que surpreende os oponentes e facilita uma resposta ágil em combate ou atividades técnicas.\nEssa destreza equilibrada aumenta a versatilidade do portador, tornando-o mais adaptável e eficiente em qualquer tarefa que demande habilidade manual.",
-    "effects": [
-      {
-        "name": "Ambidestria",
-        "text": ""
-      }
-    ],
-    "buildGains": {
-      "attributeFlat": {
-        "TAL": 4,
+        "DEX": 2,
         "INT": 3
       },
       "attributePercent": {},
@@ -675,8 +866,71 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Adrenalina Explosiva",
+    "rarity": "RARE",
+    "category": "PHYSICAL",
+    "rollNumber": 1,
+    "description": "As glândulas suprarrenais do portador respondem ao perigo como se cada luta fosse a última. Onde o corpo comum leva alguns minutos para entender que a ameaça é real, o dele entende no primeiro olhar: o coração dispara, as pupilas se abrem e o sangue foge do estômago para os músculos antes mesmo do primeiro golpe.\nNa prática, ele chega ao limite enquanto o oponente ainda está se aquecendo. Os primeiros segundos de qualquer luta são dele, e quem não termina rápido descobre que está enfrentando alguém que já esqueceu o que é se conter.\nO preço é conhecido de quem convive com ele: mãos que tremem depois de uma discussão, noites sem sono depois de um susto e um pavio que nunca foi muito longo.",
+    "effects": [
+      {
+        "name": "Descarga Precoce",
+        "text": "O corpo do portador não espera a luta pedir para entrar em regime de combate. Ele recebe +1 Ponto de Adrenalina adicional no início de cada um dos seus turnos em combate, além do fluxo natural."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "DEX": 5,
+        "STR": 3
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": false,
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Fogo Contido ou Arrancada Explosiva",
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Ambidestro",
+    "rarity": "RARE",
+    "category": "MENTAL",
+    "rollNumber": 2,
+    "description": "Dois hemisférios igualmente donos do corpo. O portador escreve, come e luta com qualquer uma das mãos, e nunca teve um lado fraco para esconder.\nNo combate, isso desmonta a leitura do oponente. A guarda troca de lado sem que nada se perca, o golpe de trás passa a vir da frente, e o lutador que estudou o adversário para defender o lado forte descobre que os dois lados são fortes. Canhotos assustam destros; ambidestros assustam os dois.",
+    "effects": [
+      {
+        "name": "Ambidestria",
+        "text": "O portador não tem mão dominante: tem duas. Ele possui Ambidestria, conforme o capítulo de Dominância."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "TAL": 2,
+        "DEX": 2,
+        "INT": 2
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -716,20 +970,20 @@
     "rarity": "RARE",
     "category": "MENTAL",
     "rollNumber": 4,
-    "description": "Essa capacidade resulta da aptidão inata do usuário para o aprendizado, proporcionando-lhe um vasto e diversificado conhecimento em várias áreas.\nO portador desse traço possui uma habilidade excepcional para reter informações e absorver novos conteúdos, sejam eles específicos ou amplos.\nEssa facilidade para adquirir conhecimento lhe permite explorar uma variedade de temas com profundidade e rapidez, tornando-o versado em diversos assuntos e apto a compreender contextos complexos com facilidade.",
+    "description": "Uma curiosidade que nunca descansa e uma memória que guarda o que a curiosidade encontra. O portador leu sobre tudo um pouco, ouviu conversas que não eram para ele e guarda na cabeça uma biblioteca desorganizada que, de alguma forma, sempre tem a página certa.\nDiante de um problema fora da sua área, ele raramente fica sem resposta: lembra de um artigo, de um professor, de um tio que trabalhava com aquilo. Não é especialista em quase nada, mas quase nunca é ignorante em nada.",
     "effects": [
       {
         "name": "Relembrar Conteúdo",
-        "text": "O usuário pode reconhecer certas informações mesmo que não seja de dentro do seu conhecimento, caso já tenha o conhecimento da área, poderá saber algo de um nível de conhecimento superior, onde caberá ao mestre determinar o nível de desafio."
+        "text": "A cabeça do portador costuma ter um fio solto que leva à resposta. Em um teste de conhecimento numa área que ele possui, pode tratar o seu nível como um acima do real. Numa área que não possui, pode fazer o teste como se tivesse o nível Básico. O narrador decide se a informação estava ao alcance de alguém curioso."
       },
       {
-        "name": "Acadêmico",
-        "text": "O portador começa com um conhecimento à mais a escolha (não sendo de área Misticismo e Ocultos), ganhando +1 ponto de estudo por estudo. O conhecimento adicional não é recebido caso seja adquirido por desenvolvimento."
+        "name": "Pontos",
+        "text": "+1 Conhecimento não Restrito, à escolha, no nível Básico"
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "INT": 2
+        "INT": 8
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -739,10 +993,10 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "ACTIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
-    "developmentRequirements": "Inteligência Elevada",
+    "developmentRequirements": "Inteligência Elevada ou Memória Fotográfica",
     "variations": []
   },
   {
@@ -750,20 +1004,17 @@
     "rarity": "RARE",
     "category": "MENTAL",
     "rollNumber": 5,
-    "description": "Seres com o traço de Criatividade possuem uma capacidade excepcional para desenvolver soluções inovadoras e enfrentar desafios de forma única.\nCom uma inclinação natural para pensar \"fora da caixa,\" eles conseguem identificar caminhos e estratégias que outros não enxergam, resolvendo problemas complexos com abordagens não convencionais.\nAlém disso, sua capacidade criativa vai além do combate, estendendo-se à geração de ideias e conceitos que podem impactar diversas áreas, desde as artes marciais e o entretenimento até o mundo dos negócios e da tecnologia, tornando-os valiosos pela versatilidade e originalidade com que abordam qualquer situação.",
+    "description": "Uma mente que monta peças que não foram feitas para se encaixar. Onde outros veem um golpe que falhou, o portador vê um golpe que quase funcionou, e já está imaginando o que precisaria mudar.\nSob pressão, essa cabeça não trava: improvisa. O ombro do rival, o apoio torto do próprio pé, a parede ao lado, tudo vira ingrediente. E quando a luta acaba, ele não descansa: volta para o galpão com o caderno cheio, testa a ideia torta até ela ficar reta e, em semanas, transforma em golpe o que outros levariam meses para entender.",
     "effects": [
       {
-        "name": "Combatente Criativo",
-        "text": "O portador do traço possui facilidade de descontruir os conceitos de suas capacidades, visto sua criatividade, dessa forma, este tem vantagem em suas rolagens de desconstrução."
-      },
-      {
-        "name": "Desenvolvimento Criativo",
-        "text": "Seres com as capacidades criativas do traço possuem +1 de bônus ao desenvolver ou criar algo (não se aplica para desconstrução)."
+        "name": "Inventor Marcial",
+        "text": "A cabeça do portador encontra o golpe novo mais rápido, e o corpo aprende a corrigi-lo mais cedo.\n\n- Forja: criar uma técnica ou base pela Forja custa 2 × a Complexidade Final em pontos de treino, em vez de 3 ×.\n- Desconstrução: recebe +2 nas rolagens de Desconstrução Marcial de Criação.\n- Vício: as suas criações, forjadas ou desconstruídas, são corrigidas com um sparring, em vez de dois."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "INT": 1
+        "INT": 4,
+        "TAL": 2
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -773,8 +1024,8 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": "Inteligência Elevada",
     "variations": []
@@ -788,12 +1039,12 @@
     "effects": [
       {
         "name": "Alta Flexibilidade",
-        "text": "O usuário pode dobrar e flexionar seu corpo, em torções recebe 50% do dano, além disso, pode alongar seus ataque em 0,5 metros, alcançando alvo que não conseguiria normalmente."
+        "text": "As alavancas que funcionam em outros corpos encontram no dele uma articulação que não tem fim de curso. O lutador tem vantagem para resistir aos Efeitos de técnicas de chave de articulação e torção, e nos testes para escapar delas."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "DEX": 4,
+        "DEX": 5,
         "CON": 3
       },
       "attributePercent": {},
@@ -804,10 +1055,10 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": "Elasticidade Mediana",
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Elasticidade Mediana ou Acrobata",
+    "developmentRequirements": null,
     "variations": []
   },
   {
@@ -815,17 +1066,21 @@
     "rarity": "RARE",
     "category": "MENTAL",
     "rollNumber": 7,
-    "description": "O portador desse traço possui uma base sólida em artes marciais, demonstrando destreza e fluidez na execução de movimentos básicos e fundamentais.\nEssa habilidade inclui técnicas essenciais de golpes, defesas, posturas e controle da respiração.\nEmbora ele domine esses elementos com naturalidade, o avanço para níveis mais complexos e sofisticados exige dedicação contínua, com treinamento e prática constantes para refinar e expandir suas habilidades no campo das artes marciais.",
+    "description": "Uma predisposição para o gesto marcial. O corpo do portador entende a postura na primeira aula e a guarda na segunda; o quadril gira na hora certa sem que ninguém precise explicar por quê, e o pé de apoio já sabe onde ficar.\nMestres reconhecem esses alunos logo no primeiro treino: não são os mais fortes, nem os mais dedicados, mas aprendem como quem lembra, e não como quem descobre. O que outros precisam repetir cem vezes, eles precisam repetir sessenta.",
     "effects": [
       {
-        "name": "Iniciado nas Artes",
-        "text": "O portador do traço pode optar por iniciar sua jornada com uma arte marcial de raridade comum, já iniciando com as técnicas e bases dela."
+        "name": "Corpo Marcial",
+        "text": "O gesto da luta encontra no portador um corpo que já parece conhecê-lo, no treino e na luta.\n\n- Treino: todo treino de arte marcial (técnica, base, graduação ou maestria) concede +1 ponto.\n- Uso: ao fim de cada luta Real ou Letal, cada técnica e base que ele usou recebe +1 ponto de maestria, além dos pontos normais de Uso."
+      },
+      {
+        "name": "Pontos",
+        "text": "+1 ponto de arte marcial"
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "DEX": 2,
-        "STR": 3
+        "STR": 4,
+        "DEX": 4
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -835,8 +1090,8 @@
       "freePoints": 0
     },
     "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -846,17 +1101,17 @@
     "rarity": "RARE",
     "category": "HYBRID",
     "rollNumber": 8,
-    "description": "O portador deste traço carrega uma condição neurológica incomum, onde o estresse e a tensão emocional, em vez de afetarem negativamente seu desempenho, atuam como catalisadores para impulsos neurais acelerados. À medida que o combate se intensifica e o desgaste mental aumenta, sua mente entra em um estado de alerta extremo, liberando uma descarga de adrenalina contínua que acelera drasticamente seus reflexos e movimentos.\nEsse comportamento o transforma num combatente cada vez mais veloz e agressivo quanto mais prolongado ou desafiador for o confronto. Sua velocidade de reação, força nos golpes e percepção de ameaça aumentam proporcionalmente à sua frustração ou raiva, tornando-o mais perigoso conforme a luta avança. No entanto, essa aceleração pode ser instável e difícil de controlar, levando o usuário a agir de forma precipitada ou impulsiva.\nEmbora pareça um estado de fúria, trata-se de uma resposta adaptativa e automática, como se seu corpo transformasse o caos mental em eficiência física. Alguns aprendem a canalizar essa característica, utilizando gatilhos mentais específicos para induzir o estresse sob controle, enquanto outros apenas se perdem em sua própria fúria crescente até que o combate termine.",
+    "description": "Uma condição neurológica incomum: o estresse que paralisa os outros acelera o portador. À medida que a luta se arrasta e a frustração cresce, a mente dele entra em um estado de alerta cada vez mais agudo, e o corpo responde com uma descarga contínua de adrenalina que encurta os reflexos e acelera cada movimento.\nParece fúria, mas não é. É uma resposta adaptativa, como se o corpo convertesse o caos da cabeça em velocidade. Quanto mais o oponente demora para derrubá-lo, mais rápido ele fica, até que a luta deixa de ser uma troca e passa a ser uma corrida que o outro já perdeu.",
     "effects": [
       {
-        "name": "Proatividade Agressiva",
-        "text": "O usuário ganha um ponto de estresse a cada duas rodadas em combate, ganhando 1 no valor de destreza a cada dois pontos de estresse armazenados pelo portador. O estresse do lutador ganhado por este traço é zerado após a luta. Toda vez que recebe 1 ponto de propósito ganha um novo ponto de estresse."
+        "name": "Pressão Acumulada",
+        "text": "Cada rodada de luta empilha mais tensão no corpo do portador, e a tensão vira velocidade. Ele ganha 1 Ponto de Estresse ao fim de cada rodada em combate, até 6. A cada 2 Pontos de Estresse, recebe +1 em todas as rolagens de Destreza (acerto, reações e iniciativa). Os pontos zeram ao fim da luta."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "MEN": 2,
-        "DEX": 3
+        "DEX": 5,
+        "MEN": 3
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -866,66 +1121,130 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": "Força de Vontade",
+    "variations": []
+  },
+  {
+    "name": "Extensão do Braço",
+    "rarity": "RARE",
+    "category": "PHYSICAL",
+    "rollNumber": 9,
+    "description": "O cérebro humano tem um mapa do próprio corpo, e, quando a mão segura uma ferramenta por tempo suficiente, esse mapa se estende até a ponta dela. No portador, esse processo é quase instantâneo: em poucos minutos com um bastão, uma faca ou uma espada, o objeto deixa de ser algo que ele segura e passa a ser algo que ele é.\nEle sente a ponta da lâmina como sente a ponta do dedo. Sabe onde ela está sem olhar, corrige o ângulo no meio do golpe e recupera a guarda com o peso da arma como se ela não pesasse nada. Mestres de esgrima dizem que levam uma vida inteira para que a espada pare de ser um objeto; nele, ela nunca chegou a ser.\nDesarmado, é um lutador como outro qualquer. Com qualquer coisa nas mãos, um cabo de vassoura, uma corrente ou uma garrafa, se torna outra pessoa.",
+    "effects": [
+      {
+        "name": "Arma como Corpo",
+        "text": "A arma na mão do portador pesa no golpe, mas não pesa no braço.\n\n- Leveza: a Carga de qualquer arma corpo a corpo que ele empunhe é reduzida em 2 (mínimo 1) para o Gasto de Uso das técnicas armadas.\n- Pegada Firme: uma falha crítica de ataque não o faz soltar a arma, e testes para desarmá-lo são feitos com desvantagem."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "DEX": 5,
+        "STR": 3
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Mãos Rápidas ou Braços Longos",
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Fibra Rápida",
+    "rarity": "RARE",
+    "category": "PHYSICAL",
+    "rollNumber": 10,
+    "description": "Uma proporção de fibras rápidas do tipo IIx que se encontra em velocistas de cem metros e em quase mais ninguém. O músculo do portador não é o mais forte nem o mais resistente, mas dispara em uma fração do tempo que o dos outros precisa para começar.\nO jab sai antes que o oponente veja o ombro se mexer, e o segundo já está no rosto dele quando ele ainda está reagindo ao primeiro. Não há mais peso nesses golpes, há apenas mais deles, e uma guarda que precisa responder a três coisas quando esperava uma.",
+    "effects": [
+      {
+        "name": "Disparo Curto",
+        "text": "Os golpes rápidos do portador saem quase sem custo. Uma vez por turno, uma Ação Menor ofensiva custa a ele 1 PA em vez de 2."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "DEX": 6,
+        "STR": 4
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": false,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": null,
     "variations": []
   },
   {
     "name": "Fôlego Superior",
     "rarity": "RARE",
     "category": "PHYSICAL",
-    "rollNumber": 9,
-    "description": "Trata-se de uma capacidade excepcionalmente elevada de utilização de ATP durante atividades físicas, caracterizando-se como uma das mais extremas.\nEste traço é raro, pois a maioria das pessoas não possui uma resistência tão notável. O portador desta habilidade apresenta uma estamina significativamente aprimorada, permitindo-lhe realizar tarefas que exigiriam muito mais esforço energético para outros, resultando em um desempenho quase sobre-humano.\nEssa eficiência na utilização de energia proporciona um rendimento físico muito superior, permitindo que o usuário mantenha um nível elevado de atividade com um desgaste consideravelmente menor.",
+    "rollNumber": 11,
+    "description": "Um diafragma forte, uma capacidade pulmonar de nadador de elite e uma rede de capilares que leva oxigênio até a última fibra do músculo. O portador respira devagar quando os outros arfam, e o ar que entra nele parece render o dobro.\nEm luta, isso se traduz em algo simples e cruel: ele pode se dar ao luxo de gastar. A técnica pesada que outros guardam para o momento certo, ele usa duas vezes, e quando o oponente finalmente encontra a abertura que esperava, descobre que o lutador à sua frente ainda tem fôlego para fechá-la.\nMuitos campeões de luta longa não eram os mais fortes nem os mais técnicos. Eram apenas os que ainda respiravam no último assalto.",
     "effects": [
       {
         "name": "Armazenamento de Estamina",
-        "text": "Reduz o gasto de qualquer fonte em -2SP, caso essa tenha um custo maior que este, caso seja exatamente o valor é reduzido para 1SP gasto."
+        "text": "Cada gesto do portador consome menos oxigênio do que deveria, e o músculo demora a pedir a conta. Todas as técnicas do lutador custam −1 SP (mínimo 1). O desconto se soma ao da Eficiência Energética do patamar Fluxo."
       }
     ],
     "buildGains": {
       "attributeFlat": {},
       "attributePercent": {},
       "maxHp": 0,
-      "maxSp": 25,
+      "maxSp": 24,
       "maxKp": 0,
       "limiters": {},
       "freePoints": 0
     },
     "developable": true,
     "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": "Alta Estamina",
+    "activation": null,
+    "requirements": "Alta Estamina",
+    "developmentRequirements": null,
     "variations": []
   },
   {
     "name": "Força Anormal",
     "rarity": "RARE",
     "category": "PHYSICAL",
-    "rollNumber": 10,
-    "description": "Este traço é uma condição excepcional que concede ao indivíduo uma força formidável desde o nascimento, superando consideravelmente a força média de pessoas com idade, altura e tipo físico semelhantes.\nDesde os primeiros momentos de sua existência, o portador desse traço exibe uma potência muscular e uma força física notavelmente superiores àquelas encontradas na maioria das pessoas. Essa força excepcional permite ao portador realizar proezas físicas impressionantes, superando os limites convencionais do corpo humano.",
+    "rollNumber": 12,
+    "description": "Uma força que não combina com o tamanho de quem a carrega. Desde criança, o portador quebra coisas sem querer: maçanetas, cadeiras, o pulso de um colega que tentou queda de braço. Os músculos não parecem maiores que os de outra pessoa, mas cada fibra contrai com uma potência que a medicina chamaria de anomalia.\nO que pesa para os outros não pesa para ele. Martelos, troncos, sacos de cimento e homens adultos são carregados como bagagem de mão, e uma arma que exige dois braços e um corpo inteiro para ser manejada na mão dele vira uma ferramenta como outra qualquer.",
     "effects": [
       {
-        "name": "Carregador",
-        "text": "O portador do traço possui a capacidade de carregar +50% do peso que conseguiria normalmente. Além de não sofrer a penalidade de armas com propriedade “pesada”."
+        "name": "Ombros de Carga",
+        "text": "O corpo do portador foi feito para levantar o que outros arrastam. Ele carrega o dobro do peso que conseguiria normalmente e, pelo mesmo motivo, ignora a penalidade da propriedade Pesada das armas: o peso que puxa o corpo dos outros depois do golpe não chega a puxar o dele."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "STR": 6
+        "STR": 8
       },
       "attributePercent": {},
       "maxHp": 0,
       "maxSp": 0,
       "maxKp": 0,
-      "limiters": {},
+      "limiters": {
+        "STR": 5
+      },
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": "Força Elevada",
     "variations": []
@@ -934,21 +1253,17 @@
     "name": "Genética Única",
     "rarity": "RARE",
     "category": "PHYSICAL",
-    "rollNumber": 11,
-    "description": "Esse traço concede ao portador uma vantagem genética excepcional, permitindo que seu corpo se adapte de forma acelerada a treinos e exercícios físicos.\nGraças a essa capacidade, o indivíduo experimenta um ganho de força e desenvolvimento das capacidades físicas em um ritmo mais rápido que o habitual.\nEssa capacidade facilita a progressão física e a resistência, permitindo que o portador alcance novos patamares de desempenho com maior rapidez e eficiência.",
+    "rollNumber": 13,
+    "description": "O corpo do portador responde ao estímulo como se tivesse pressa. Uma sessão de treino deixa nele a marca que, em outro, exigiria duas; um gesto repetido algumas vezes já começa a sair sozinho, e a adaptação que leva meses para os outros chega a ele em semanas.\nTreinadores reconhecem esse tipo de aluno no primeiro mês e costumam ter dois sentimentos ao mesmo tempo: o entusiasmo de quem encontrou um diamante e o medo de quem sabe que um corpo assim também se acostuma rápido a não ser exigido.\nNão é força nem velocidade. É a velocidade com que as duas aparecem.",
     "effects": [
       {
         "name": "Corpo Talentoso",
-        "text": "O corpo do portador é maleável e adaptável quanto ao treino deste, dessa forma seus músculos são construídos de forma veloz, ganhando +1 ponto de atributo em qual quer treino físico de atributo. E +3 pontos em qualquer treino físico de status."
-      },
-      {
-        "name": "Limitador Expandido",
-        "text": "+5 para o valor do limitador base para todos os atributos físicos."
+        "text": "Cada treino do portador encontra um corpo pronto para mudar. Todo treino de Força, Destreza ou Constituição concede +1 ponto. O bônus é ignorado acima do Limitador, conforme a regra de Além do Limite."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "TAL": 1
+        "TAL": 4
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -958,8 +1273,8 @@
       "freePoints": 0
     },
     "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": null,
     "variations": []
@@ -968,24 +1283,113 @@
     "name": "Instinto Selvagem",
     "rarity": "RARE",
     "category": "HYBRID",
-    "rollNumber": 12,
+    "rollNumber": 14,
     "description": "O \"Instinto Selvagem\" é uma capacidade natural que permite ao portador entrar em um estado de hiperfoco extremo, intensificando suas capacidades mentais e reflexos de maneira sobrenatural.\nEsse estado é ativado por um aumento nos níveis de adrenalina, tornando o usuário altamente alerta e reativo em situações de perigo ou combate.\nNesse modo, ele é capaz de tomar decisões em frações de segundo e agir com precisão implacável, tornando-se uma presença formidável e uma força temida por seus oponentes.",
     "effects": [
       {
-        "name": "Instinto Primitivo",
-        "text": "O portador do traço possui uma capacidade natural de se desviar das entidades que o alvejam, com isso possui +1 na rolagem de desvio."
-      },
-      {
-        "name": "Hiperfoco Selvagem",
-        "text": "O lutador ao atingir 50% de adrenalina seu corpo começa a ficar com seu tempo de reação mais apurado, permitindo com que o usuário tenha vantagem nas rolagens de desvio."
+        "name": "Faro do Perigo",
+        "text": "O corpo do portador sempre sabe por onde o golpe vem, e sabe melhor quando o sangue ferve. Ele recebe +1 em todas as Esquivas e, enquanto estiver no patamar Fluxo ou acima, faz as Esquivas com vantagem."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "DEX": 1
+        "DEX": 7,
+        "MEN": 3
       },
       "attributePercent": {},
       "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": false,
+    "upgradable": true,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": "Instinto Crítico",
+    "variations": []
+  },
+  {
+    "name": "Intuição de Fraquezas",
+    "rarity": "RARE",
+    "category": "MENTAL",
+    "rollNumber": 15,
+    "description": "Um olho clínico para o corpo dos outros. O portador olha um adversário e enxerga o joelho que sustenta peso demais, o ombro que sobe antes do soco, a costela que ainda não sarou da última luta. É uma leitura que nasce da inteligência, mas que funciona rápido demais para ser apenas raciocínio.\nQuando ele decide estudar alguém de verdade, o efeito é perturbador. Ele para, observa, deixa um ou dois golpes passarem, e então começa a lutar como se tivesse o mapa do oponente nas mãos. A partir dali, cada ataque vai para onde dói e cada defesa espera exatamente o que vem.",
+    "effects": [
+      {
+        "name": "Leitura Clínica",
+        "text": "O portador transforma a observação em vantagem, rápida ou profunda. Toda ação Analisar que ele faz recebe +2 no teste. Uma vez por combate, ele pode fazer uma Leitura Profunda: um Analisar que custa 2 PA, com teste de Inteligência ND 18. No sucesso, ele recebe vantagem no acerto e nas reações contra aquele oponente até o fim do combate."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "INT": 6,
+        "DEX": 2
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": "Inteligência Elevada ou Inteligência Elevada",
+    "variations": []
+  },
+  {
+    "name": "Líder Nato",
+    "rarity": "RARE",
+    "category": "MENTAL",
+    "rollNumber": 16,
+    "description": "Uma voz que corta o barulho e uma presença que faz os outros olharem para ele quando não sabem o que fazer. O portador não precisa de patente nem de cargo: em qualquer grupo, alguém acaba perguntando o que ele acha.\nNa luta, isso se transforma em comando. Um grito no momento certo, uma indicação de onde o oponente está aberto, um nome chamado com força suficiente para trazer de volta um aliado que já estava perdendo o foco. Os que lutam ao lado dele lutam melhor, e muitas vezes não percebem que é por causa dele.1’",
+    "effects": [
+      {
+        "name": "Voz de Comando",
+        "text": "O portador transforma o que vê em ordem, e a ordem em ação alheia. Como Ação Menor (1 PA), uma vez por rodada, ele dá um comando a um aliado que possa ouvi-lo: a próxima rolagem desse aliado, até o fim do próximo turno dele, recebe um bônus igual ao mod. de Carisma do lutador (mínimo +1, máximo +4)."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CHA": 6,
+        "MEN": 2
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": "Presença Imponente ou Empatia Nata",
+    "variations": []
+  },
+  {
+    "name": "Longevidade",
+    "rarity": "RARE",
+    "category": "PHYSICAL",
+    "rollNumber": 17,
+    "description": "Telômeros longos, uma replicação celular que quase não erra e um sistema endócrino que parece ter esquecido de envelhecer. O portador chega aos quarenta com o corpo de trinta e aos oitenta com a disposição de quem tem cinquenta, e há relatos de portadores que passaram dos cento e vinte anos ainda lutando.\nO que mais impressiona os treinadores não é a juventude, mas a teimosia do corpo em continuar melhorando. Onde outros lutadores encontram o próprio teto e passam a lutar apenas para não cair dele, o portador continua subindo, devagar, mês após mês, como uma árvore que não sabe a altura em que deveria parar.",
+    "effects": [
+      {
+        "name": "Longevidade Corporal",
+        "text": "O portador envelhece na metade do ritmo humano, e o tempo que passa por ele continua empurrando o seu teto para cima. Ao fim de cada mês de campanha, jogado ou em timeskip, ele recebe +5 no Limitador de Força, Destreza, Constituição, HP ou SP, à escolha, até +15 em cada um."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CON": 8
+      },
+      "attributePercent": {},
+      "maxHp": 6,
       "maxSp": 0,
       "maxKp": 0,
       "limiters": {},
@@ -999,45 +1403,15 @@
     "variations": []
   },
   {
-    "name": "Intuição de Fraquezas",
-    "rarity": "RARE",
-    "category": "MENTAL",
-    "rollNumber": 13,
-    "description": "Essa capacidade confere ao usuário uma percepção rápida e intuitiva da anatomia do oponente, permitindo-lhe identificar visualmente pontos fracos e vulnerabilidades.\nPara ativar essa capacidade, é necessária concentração e a realização de um teste de Inteligência. Ao empregar essa capacidade, o usuário consegue detectar fraquezas em seu adversário e aproveitá-las estrategicamente durante o combate, aumentando suas chances de sucesso e eficácia nas confrontações.\nEssa compreensão intuitiva da estrutura corporal do oponente oferece uma vantagem significativa em situações de luta, transformando o conhecimento em ação decisiva.",
-    "effects": [
-      {
-        "name": "Ver Fraquezas",
-        "text": "Em caso de combate o usuário deve concentrar-se em sua capacidade cognitiva e intuitiva para conseguir uma analise precisa, dessa forma, este não pode se mover no turno no qual utilizar o traço, bem como, gastar sua ação menor para tal, sendo um rolagem de inteligência de ND 18, contudo, caso passe, ganha vantagem para qualquer ataque contra o ser analisado até o fim do combate.\nAlém disso, fora deste pode fazer a rolagem, contudo uma vez a cada uma hora por alvo."
-      }
-    ],
-    "buildGains": {
-      "attributeFlat": {
-        "INT": 5
-      },
-      "attributePercent": {},
-      "maxHp": 0,
-      "maxSp": 0,
-      "maxKp": 0,
-      "limiters": {},
-      "freePoints": 0
-    },
-    "developable": true,
-    "upgradable": true,
-    "activation": "ACTIVE",
-    "requirements": null,
-    "developmentRequirements": "Inteligência Elevada ou Precisão e + de 10 de inteligência",
-    "variations": []
-  },
-  {
-    "name": "Longevidade",
+    "name": "Mandíbula de Ferro",
     "rarity": "RARE",
     "category": "PHYSICAL",
-    "rollNumber": 14,
-    "description": "Longevidade é uma condição rara que proporciona ao portador uma notável capacidade de prolongar sua vida de maneira natural.\nO corpo do usuário demonstra uma resistência excepcional ao envelhecimento, com uma eficiência superior na regeneração celular, permitindo-lhe viver além dos 120 anos sem enfrentar sérios problemas de saúde ou perda de vitalidade.\nAlém disso, essa longevidade confere ao portador uma robusta resistência a doenças e hemorragias, capacitando-o a se recuperar mais rapidamente de lesões e enfermidades. Essa combinação de fatores resulta em uma vida prolongada e saudável, repleta de energia e disposição.",
+    "rollNumber": 18,
+    "description": "Um queixo largo, um pescoço curto e grosso e uma musculatura cervical que trava a cabeça no instante do impacto. A ponta do queixo, que em qualquer outro funciona como um interruptor, no portador parece ter sido soldada ao resto do crânio.\nO gancho perfeito, aquele que encaixa no ângulo certo e faz a plateia levantar, chega nele e a cabeça apenas gira meio palmo. Os olhos piscam, o corpo balança, e ele volta para a guarda como se tivesse levado um empurrão. Boxeadores chamam isso de queixo de granito, e passam a carreira inteira tentando encontrar um.",
     "effects": [
       {
-        "name": "Longevidade Corporal",
-        "text": "Após o inicio da narrativa com o lutador essa capacidade começa a ser utilizada, sendo que o limitador do usuário aumenta em 5 a cada um mês. Além disso, esse possui resistência a doenças, mitigando pela metade os efeitos dessas."
+        "name": "Queixo de Granito",
+        "text": "Os golpes que desligam os outros não encontram no portador o mesmo interruptor.\n\n- Queixo e Têmpora: um crítico nessas regiões nunca o deixa Atordoado. O Queixo contra ele também não recebe a Margem de Crítico ampliada e não dobra a perda de PQ.\n- Cabeça Travada: uma vez por rodada, quando perde PQ por um golpe em um Ponto de Nocaute, ele perde 1 PQ a menos (mínimo 1)."
       }
     ],
     "buildGains": {
@@ -1045,16 +1419,16 @@
         "CON": 4
       },
       "attributePercent": {},
-      "maxHp": 10,
+      "maxHp": 0,
       "maxSp": 0,
-      "maxKp": 0,
+      "maxKp": 1,
       "limiters": {},
       "freePoints": 0
     },
-    "developable": false,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Pescoço Grosso",
     "developmentRequirements": null,
     "variations": []
   },
@@ -1062,17 +1436,17 @@
     "name": "Mentalmente Estável",
     "rarity": "RARE",
     "category": "MENTAL",
-    "rollNumber": 15,
-    "description": "A capacidade \"Mentalmente Estável\" confere ao portador uma mente extremamente resiliente e equilibrada, permitindo-lhe enfrentar situações extremas sem sucumbir à pressão.\nO usuário demonstra uma notável capacidade de resiliência, o que facilita a superação de traumas e estresses mentais com agilidade.\nAlém disso, essa habilidade também atua como um escudo contra transtornos mentais, como ansiedade e depressão, promovendo uma saúde mental robusta. Assim, o portador é significativamente mais apto a enfrentar as adversidades da vida, mantendo-se centrado e eficaz mesmo em circunstâncias desafiadoras.",
+    "rollNumber": 19,
+    "description": "Uma calma que não é indiferença. O portador sente o medo, a dor e o desespero como qualquer um, mas eles chegam a ele como vozes em outra sala: audíveis, compreensíveis e incapazes de dar ordens.\nQuando o corpo grita para parar, a mente responde com uma voz baixa e firme. Quando a pressão de uma sala inteira cai sobre ele, a respiração continua no mesmo ritmo. É o tipo de pessoa que os outros procuram nos piores momentos, sem saber explicar por quê.",
     "effects": [
       {
         "name": "Mente Calma",
-        "text": "Visto a sua capacidade em racionalizar a situações e controlar suas emoções, possui -2 no ND em todos dos testes de mental relacionados a trauma. Podendo negar um evento psicológico de nível I por sessão, e o tratamento de traumas profundos pode ser feito em 3 dias."
+        "text": "A cabeça do portador se mantém de pé quando todo o resto já cedeu. Ele tem vantagem em todos os Testes de Vontade e +2 em todos os testes de Mental, incluindo os Testes de Vontade."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "MEN": 5
+        "MEN": 8
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -1082,8 +1456,39 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": "Força de Vontade ou Resistência Mental",
+    "variations": []
+  },
+  {
+    "name": "Mente Compartimentada",
+    "rarity": "RARE",
+    "category": "MENTAL",
+    "rollNumber": 20,
+    "description": "Uma mente que separa as coisas em gavetas e fecha as que não interessam. O cansaço de uma semana de provas, o luto de uma perda recente, a briga de ontem com o pai, tudo fica guardado em algum lugar quando a luta começa.\nDepois, as gavetas abrem de novo, e o portador paga a conta inteira de uma vez: chora, dorme doze horas, perde a paciência por nada. Mas durante a luta, ele está inteiro, e os oponentes que esperavam encontrar alguém exausto encontram alguém que parece ter acabado de acordar.",
+    "effects": [
+      {
+        "name": "Gavetas Fechadas",
+        "text": "A mente do portador adia o que o corpo deveria sentir agora. Até duas vezes por combate, como Ação Livre, no momento em que sofre uma das condições abaixo, ele pode guardá-la: a condição não o afeta até o fim do combate.\n\n- Vulnerável: ao fim do combate, recebe +2 Desgaste Mental.\n- Desorientado, Atordoado ou Paralisado: ao fim do combate, recebe +1 Desgaste Mental.\n\nUm lutador na faixa Exaurido ou em Colapso Mental não tem mais onde guardar nada e não pode usar este efeito."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "MEN": 6,
+        "INT": 2
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
     "developmentRequirements": "Resistência Mental",
     "variations": []
@@ -1092,47 +1497,51 @@
     "name": "Ossagem",
     "rarity": "RARE",
     "category": "PHYSICAL",
-    "rollNumber": 16,
+    "rollNumber": null,
     "description": "Essa é uma capacidade física rara, adquirida através de uma condição genética que resulta em ossos excepcionalmente densos e resistentes, devido a uma concentração anormal de cálcio no organismo.\nEssa característica confere ao portador uma alta resistência a impactos e fraturas, uma condição que também pode se fortalecer pela adaptação gradual do corpo a lesões repetidas.\nAlém disso, essa densidade óssea elevada oferece uma maior estabilidade corporal, reduzindo significativamente o risco de desmaios ou perda súbita de consciência em situações de estresse físico intenso.",
     "effects": [
       {
-        "name": "Corpo de Combate",
-        "text": "O corpo do portador passa a ser capaz de resistir a ataques contundentes de forma mais eficaz, ganhando uma redução de um de dano físico concussivo.\nEsse traço pode ter diversos níveis de efetividade, sendo dividos de I a V, onde recebe novamente o ganho de pontos do traço, e a redução aumenta em um a cada nível.\nPara aumentar o nível do traço é da mesma forma que o desenvolve."
+        "name": "Esqueleto de Mármore",
+        "text": "O impacto que entra no corpo do portador encontra osso onde deveria encontrar vazio, e o osso não cede. Ele recebe Redução de Dano 1 contra todo dano contundente. Quando Defende com sucesso um golpe desarmado, o atacante sofre dano contundente igual ao mod. de Constituição do portador (mínimo 1): o punho bateu em pedra."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "CON": 1
+        "CON": 5
       },
       "attributePercent": {},
-      "maxHp": 2,
+      "maxHp": 9,
       "maxSp": 0,
       "maxKp": 0,
       "limiters": {},
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": "receber dois ataques críticos no mesmo local",
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Resistência Corporal",
+    "developmentRequirements": null,
     "variations": []
   },
   {
-    "name": "Recuperação Rápida",
+    "name": "Passo Leve",
     "rarity": "RARE",
     "category": "PHYSICAL",
-    "rollNumber": 17,
-    "description": "Esse traço proporciona ao usuário uma capacidade excepcional de regeneração acelerada durante o descanso, resultante de uma elevada produção de nutrientes, plaquetas e hormônios que promovem a recuperação do corpo.\nComo consequência, o portador pode se recuperar rapidamente, mesmo enquanto realiza atividades físicas, permitindo que retorne ao combate em um tempo surpreendentemente curto.\nEssa capacidade de recuperação eficiente não apenas aumenta sua resistência em situações de pressão, mas também o capacita a sustentar um desempenho elevado durante longos períodos de esforço.",
+    "rollNumber": null,
+    "description": "Tornozelos firmes, panturrilhas reativas e um senso de distância que o corpo parece calcular sozinho. O portador anda na ponta dos pés sem perceber, e o peso dele nunca está inteiro sobre um calcanhar.\nNa luta, isso vira um jogo de entrar e sair. Ele toca e já não está mais lá, recua sem dar as costas e reaparece pelo lado quando o oponente ainda está olhando para onde ele estava. Os grandes lutadores de distância têm esse passo, e quem os enfrenta passa a luta inteira perseguindo uma sombra.",
     "effects": [
       {
-        "name": "Recuperação Acelerada",
-        "text": "Durante os descansos o portador recupera mais rapidamente seus status físicos, sendo eles, HP e SP, o qual é um aumento de 2x para o valor normal."
+        "name": "Pés que Não Pesam",
+        "text": "O portador entra e sai da distância do oponente sem nunca ficar parado dentro dela. Ele nunca provoca Ataque de Oportunidade ao sair do alcance de um oponente, como se sempre tivesse Desengajado. Além disso, depois de uma Esquiva bem-sucedida, pode se mover até 1,5 m como Ação Livre, sem provocar Ataques de Oportunidade."
+      },
+      {
+        "name": "Pontos",
+        "text": "+1,5 m de Movimentação"
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "CON": 6
+        "DEX": 6
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -1142,27 +1551,88 @@
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Velocidade Elevada ou Pés Firmes",
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Presença Serena",
+    "rarity": "RARE",
+    "category": "MENTAL",
+    "rollNumber": null,
+    "description": "Há pessoas cuja simples presença faz os outros respirarem mais devagar. O portador fala baixo, se move sem pressa e olha para o caos como quem olha para a chuva: algo que vai passar.\nNa luta, essa calma contagia. O aliado que estava a um passo do pânico olha para o lado, vê o portador firme no lugar, e encontra de volta a própria coragem. Ninguém sabe explicar como funciona, mas todos os que lutaram ao lado dele dizem a mesma coisa: com ele por perto, é mais difícil desistir.",
+    "effects": [
+      {
+        "name": "Âncora do Grupo",
+        "text": "A serenidade do portador vira a vontade de quem luta ao lado dele. Aliados a até 3 m que possam vê-lo ou ouvi-lo:\n\n- Calma Emprestada: em Testes de Vontade, usam o mod. de Carisma do portador no lugar do próprio mod. de Mental, se for maior, e recebem +2.\n- Não Caia Agora: uma vez por combate, quando um desses aliados falha em um Teste de Vontade para não cair por HP, SP ou PQ, o portador pode, como Ação Livre, fazê-lo rolar de novo."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CHA": 6,
+        "MEN": 2
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
     "requirements": null,
-    "developmentRequirements": "Resistência Elevada",
+    "developmentRequirements": "Empatia Nata ou Força de Vontade",
+    "variations": []
+  },
+  {
+    "name": "Recuperação Rápida",
+    "rarity": "RARE",
+    "category": "PHYSICAL",
+    "rollNumber": null,
+    "description": "Uma produção elevada de plaquetas, hormônios de crescimento e proteínas de reparo transforma cada noite de sono do portador em uma pequena reforma. O músculo rasgado no treino de ontem amanhece inteiro, e o roxo que em outros duraria uma semana some em três dias.\nÉ o lutador que volta ao tatame no dia seguinte a uma surra, e que os médicos de academia olham com desconfiança, tentando entender como aquele corpo ainda não cobrou a conta de tudo o que já passou.",
+    "effects": [
+      {
+        "name": "Sono Reparador",
+        "text": "O corpo do portador aproveita cada hora de descanso como se fosse duas. O Dado de Recuperação dos seus Repousos sobe um passo (d6 → d8 → d10 → d12; máximo d12)."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CON": 8
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 6,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Resistência Corporal ou Sono Profundo",
+    "developmentRequirements": null,
     "variations": []
   },
   {
     "name": "Reflexos de Autodefesa",
     "rarity": "RARE",
     "category": "PHYSICAL",
-    "rollNumber": 18,
-    "description": "\"Reflexos de Autodefesa\" é uma capacidade rara que proporciona ao usuário uma excepcional agilidade motora, permitindo reações instantâneas e eficazes para se proteger contra ataques iminentes.\nEssa habilidade resulta de uma anomalia no cérebro, que otimiza a comunicação entre o sistema nervoso central e o sistema motor, possibilitando que os movimentos de autodefesa sejam executados com grande precisão e velocidade.\nO mais impressionante é que o usuário pode realizar essas ações de forma quase automática, sem a necessidade de processar conscientemente cada movimento, tornando-o altamente eficiente em situações de perigo.",
+    "rollNumber": null,
+    "description": "Uma anomalia no tronco encefálico encurta o caminho entre o olho e a mão. O estímulo que no cérebro comum precisa subir até o córtex para virar decisão, no dele dispara direto da medula para o músculo, como o reflexo que puxa a mão de uma panela quente.\nO braço sobe para cobrir o rosto antes que a consciência registre o golpe, e quando o oponente se expõe ao atacar, o corpo do portador já respondeu antes de ele decidir responder. Quem o enfrenta descreve a experiência como lutar contra alguém que não pensa, e de certa forma é exatamente isso.",
     "effects": [
       {
         "name": "Reflexos Anormais",
-        "text": "O usuário do traço é parcialmente imune a ataques de oportunidade, visto que, seu corpo se move de maneira autônoma para reagir aos perigos a volta, contudo o inimigo ainda poderá ter vantagem pelo ataque surpresa. Além disso, tem vantagens nas reações de contra-ataque."
+        "text": "O corpo do portador reage ao perigo sem esperar ordens. Ele tem vantagem nas reações contra Ataques de Oportunidade e em todos os seus Contra-Ataques, sejam Diretos ou Tardios."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "DEX": 5
+        "DEX": 10
       },
       "attributePercent": {},
       "maxHp": 0,
@@ -1179,123 +1649,124 @@
     "variations": []
   },
   {
-    "name": "Resistência a Calor",
-    "rarity": "RARE",
-    "category": "PHYSICAL",
-    "rollNumber": 19,
-    "description": "Essa habilidade corporal confere ao usuário uma resistência única ao calor, tanto no aspecto físico quanto mental.\nO portador é capaz de suportar temperaturas extremamente altas sem sofrer queimaduras ou outros danos térmicos ao corpo.\nAlém disso, essa capacidade também oferece proteção contra ataques mentais relacionados ao calor, como ilusões ou manipulações da percepção de temperatura corporal, permitindo-lhe enfrentar ambientes e situações de calor intenso com segurança e resiliência incomuns.",
-    "effects": [
-      {
-        "name": "Resiliência a Calor",
-        "text": "O corpo do portador possui uma resistência passiva a altas temperaturas, resistindo até 80°c sem teste algum. Além disso, recebe 50% dos danos de queimaduras por fogo."
-      }
-    ],
-    "buildGains": {
-      "attributeFlat": {
-        "CON": 5
-      },
-      "attributePercent": {},
-      "maxHp": 0,
-      "maxSp": 0,
-      "maxKp": 0,
-      "limiters": {},
-      "freePoints": 0
-    },
-    "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": "Resistência Elevada",
-    "variations": []
-  },
-  {
     "name": "Resistência a Fome",
     "rarity": "RARE",
     "category": "PHYSICAL",
-    "rollNumber": 20,
-    "description": "Este traço representa uma capacidade corporal de aproveitamento altamente eficiente de nutrientes e energia, permitindo que o portador passe longos períodos sem necessidade frequente de alimentos.\nO corpo é capaz de armazenar e distribuir nutrientes de forma otimizada, retardando a sensação de fome e garantindo um fornecimento constante de energia.\nEssa habilidade permite ao usuário manter o foco em tarefas críticas ou em situações de combate sem a preocupação constante de se alimentar, promovendo resiliência e prolongada resistência física mesmo em condições de escassez alimentar.",
-    "effects": [
-      {
-        "name": "Armazenamento de Nutrientes",
-        "text": "Pode sobreviver até 10 dias mantendo suas condições básicas com praticamente 100% da capacidade corporal, bem como, seu biotipo é favorecido pelo traço, aumentando os ganhos do biotipo (limitador e ganho de pontos) em 2x."
-      }
-    ],
-    "buildGains": {
-      "attributeFlat": {
-        "CON": 5
-      },
-      "attributePercent": {},
-      "maxHp": 0,
-      "maxSp": 0,
-      "maxKp": 0,
-      "limiters": {},
-      "freePoints": 0
-    },
-    "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": "Resistência Elevada",
-    "variations": []
-  },
-  {
-    "name": "Resistência a Frio",
-    "rarity": "RARE",
-    "category": "PHYSICAL",
     "rollNumber": null,
-    "description": "\"Resistência ao Frio\" é uma habilidade corporal que permite ao portador manter a estabilidade térmica mesmo em ambientes extremamente frios, reduzindo os efeitos adversos das baixas temperaturas.\nCom essa capacidade, o corpo do usuário preserva seu calor de forma eficiente, protegendo-o dos riscos de hipotermia e outros efeitos prejudiciais do frio intenso.\nAlém disso, essa resistência proporciona uma adaptação superior a climas gélidos, permitindo-lhe operar física e mentalmente com eficácia em condições que normalmente comprometeriam o desempenho e a saúde da maioria das pessoas.",
+    "description": "Um metabolismo avarento, que guarda cada caloria como se fosse a última e distribui a energia com precisão de contador. O portador come pouco, aproveita tudo e passa dias inteiros com o que outros comeriam em uma refeição.\nA consequência mais útil aparece no descanso. Onde outro corpo precisa de cama limpa, comida quente e tranquilidade para se reconstruir, o dele faz o mesmo trabalho com um canto de galpão e um pedaço de pão. Lutadores de rua, soldados e andarilhos com esse traço costumam ser os únicos do grupo que acordam bem depois de uma noite ruim.",
     "effects": [
       {
-        "name": "Resiliência a Frio",
-        "text": "O corpo do portador possui uma resistência passiva a altas temperaturas, resistindo até -30°c sem teste algum. Além disso, recebe 50% dos danos de queimaduras por frio."
+        "name": "Metabolismo de Reserva",
+        "text": "O corpo do portador se reconstrói com o que tiver à mão. A qualidade de todos os seus Repousos sobe um grau, até o máximo de Confortável (Precário → Simples → Confortável), e esse aumento não se soma ao dos Cuidados. Dias passados em Fome não lhe causam Desgaste Físico, embora o peso continue variando normalmente."
       }
     ],
     "buildGains": {
       "attributeFlat": {
-        "CON": 5
+        "CON": 6
       },
       "attributePercent": {},
       "maxHp": 0,
-      "maxSp": 0,
+      "maxSp": 6,
       "maxKp": 0,
       "limiters": {},
       "freePoints": 0
     },
     "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": null,
-    "developmentRequirements": "Resistência Elevada",
-    "variations": []
-  },
-  {
-    "name": "Resistência a Venenos",
-    "rarity": "RARE",
-    "category": "PHYSICAL",
-    "rollNumber": null,
-    "description": "Este traço confere ao portador uma resistência ampliada a venenos e toxinas, reduzindo significativamente seus efeitos sobre o organismo.\nEmbora não garanta imunidade completa, essa resistência permite que os efeitos dos venenos sejam enfraquecidos, prolongando o tempo de reação para o tratamento e diminuindo tanto a intensidade quanto a duração dos sintomas.\nCom essa vantagem, o usuário consegue lidar de forma mais eficaz com ameaças envenenadas e se adaptar melhor a ambientes hostis, aumentando suas chances de sobrevivência e resiliência em situações onde outros poderiam sucumbir rapidamente aos efeitos de substâncias tóxicas.",
-    "effects": [
-      {
-        "name": "Resistente a Toxinas",
-        "text": "Recebe 50% de dano reduzido para fontes de toxinas e venenos, além disso, diminui o tempo de eficácia do mesmo pela metade. E por fim aumenta pela metade o tempo para afetar o portador do traço."
-      }
-    ],
-    "buildGains": {
-      "attributeFlat": {
-        "CON": 5
-      },
-      "attributePercent": {},
-      "maxHp": 0,
-      "maxSp": 0,
-      "maxKp": 0,
-      "limiters": {},
-      "freePoints": 0
-    },
-    "developable": true,
-    "upgradable": true,
-    "activation": "PASSIVE",
-    "requirements": "Resistência Elevada",
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Resistência Corporal",
     "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Resistência Ambiental",
+    "rarity": "RARE",
+    "category": "PHYSICAL",
+    "rollNumber": null,
+    "description": "Um corpo que se recusa a ser vencido pelo lugar em que está. Glândulas sudoríparas abundantes e uma pele que demora a queimar, gordura marrom que acende quando o frio aperta e um fígado que desmonta toxinas antes que elas cheguem ao sangue: o portador carrega por dentro um pequeno laboratório de sobrevivência.\nForjas, nevascas e bebidas batizadas são, para ele, inconvenientes. O calor ainda o faz suar, o frio ainda deixa os dedos vermelhos e o veneno ainda arde, mas tudo chega a ele mais fraco, mais tarde e por menos tempo.\nNo mundo de Tatakai, onde lâminas envenenadas e lutas em lugares impossíveis fazem parte da rotina, isso costuma ser a diferença entre uma noite ruim e um enterro.",
+    "effects": [
+      {
+        "name": "Corpo Adaptado",
+        "text": "O organismo do portador amortece tudo o que o ambiente tenta fazer com ele.\n\n- Calor: suporta até 60 °C sem testes e sofre metade do dano por fogo, calor e queimaduras.\n- Frio: suporta até −30 °C sem testes e sofre metade do dano por frio e congelamento.\n- Venenos: sofre metade do dano de venenos e toxinas, e os seus efeitos duram metade do tempo."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CON": 6
+      },
+      "attributePercent": {},
+      "maxHp": 6,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Resistência Corporal",
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Sangue Espesso",
+    "rarity": "RARE",
+    "category": "PHYSICAL",
+    "rollNumber": null,
+    "description": "Uma coagulação anormalmente rápida: plaquetas em excesso, fatores de coagulação que respondem na hora e vasos que se contraem ao menor corte. Em um exame de rotina, o médico franziria a testa; em uma luta de facas, é uma bênção.\nO corte que abriria um rio no braço de outro lutador vira um filete que seca antes de chegar ao cotovelo. Oponentes que contam com o sangramento para vencer pelo tempo descobrem que o tempo não está trabalhando para eles.\nO corpo do portador fecha as próprias feridas como quem fecha uma porta, e só abre de novo quando alguém insiste muito.",
+    "effects": [
+      {
+        "name": "Coagulação Rápida",
+        "text": "O sangue do portador sela os cortes quase tão rápido quanto eles se abrem. No início de cada um dos seus turnos, antes da perda de HP do sangramento, ele fecha 1 Ferida aberta."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "CON": 6
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 6,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": "Resistência Corporal",
+    "developmentRequirements": null,
+    "variations": []
+  },
+  {
+    "name": "Visão Periférica",
+    "rarity": "RARE",
+    "category": "MENTAL",
+    "rollNumber": null,
+    "description": "Um campo visual mais largo que o comum e um cérebro que processa as bordas da imagem com a mesma atenção que dá ao centro. O portador percebe o movimento atrás do ombro, o braço que se levanta à direita e o pé que se arrasta à esquerda, sem precisar virar a cabeça.\nContra um oponente só, a diferença é pequena. Contra vários, ela decide quem volta para casa. Enquanto os outros lutadores giram tentando encontrar de onde vem o próximo golpe, ele já sabe, e às vezes faz mais do que sair do caminho: dá meio passo para o lado no instante exato, e o soco que vinha nele termina na cara do homem que estava às suas costas.\nBrigas de bar contra ele costumam terminar com os agressores discutindo entre si sobre quem acertou quem.",
+    "effects": [
+      {
+        "name": "Olhos nas Bordas",
+        "text": "O portador enxerga a luta inteira, e usa os oponentes uns contra os outros.\n\n- Ninguém pelas costas: ataques de oponentes Furtivos contra ele não recebem vantagem no acerto nem impõem desvantagem na reação.\n- Desvio Cruzado: quando o portador Esquiva com sucesso de um golpe corpo a corpo, por 5 ou mais, e há outro oponente adjacente a ele dentro do alcance do golpe, pode fazer o golpe seguir até esse outro oponente, que reage normalmente como se fosse o alvo. Uma vez por rodada."
+      }
+    ],
+    "buildGains": {
+      "attributeFlat": {
+        "DEX": 6,
+        "INT": 2
+      },
+      "attributePercent": {},
+      "maxHp": 0,
+      "maxSp": 0,
+      "maxKp": 0,
+      "limiters": {},
+      "freePoints": 0
+    },
+    "developable": true,
+    "upgradable": false,
+    "activation": null,
+    "requirements": null,
+    "developmentRequirements": "Visão Melhorada",
     "variations": []
   },
   {

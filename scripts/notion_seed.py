@@ -158,6 +158,11 @@ def apply_gain(line, g):
             for a in PHYS:
                 g["limiters"][a] = g["limiters"].get(a, 0) + n
             return True
+        alvo = re.sub(r"^.*limitador\s+(de\s+|do\s+)?", "", rest).strip()
+        key = {"pq": "KP", "hp": "HP", "sp": "SP"}.get(alvo) or ATTRS.get(alvo)
+        if key:
+            g["limiters"][key] = g["limiters"].get(key, 0) + n
+            return True
         return False
     rest = re.sub(r"^(pontos?\s+)?", "", rest)
     rest = re.sub(r"^(de valor de|do valor de|no valor de|em valor de|para o valor de|no valor|de|em)\s+", "", rest)
@@ -172,13 +177,13 @@ def apply_gain(line, g):
             tgt = ALL_ATTRS
         elif tok in ("todos atributos fisicos", "todos os atributos fisicos", "atributos fisicos"):
             tgt = PHYS
-        elif not pct and tok in ("hp", "hpmax", "vida"):
+        elif not pct and tok in ("hp", "hpmax", "hp maximo", "vida"):
             g["maxHp"] += n
             continue
-        elif not pct and tok in ("sp", "spmax", "estamina", "stamina points"):
+        elif not pct and tok in ("sp", "spmax", "sp maximo", "estamina", "stamina points"):
             g["maxSp"] += n
             continue
-        elif not pct and tok == "pq":
+        elif not pct and tok in ("pq", "pq maximo"):
             g["maxKp"] += n
             continue
         else:

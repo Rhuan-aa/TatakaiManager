@@ -15,6 +15,10 @@ export const rollTraits = (sheetId) => call('post', `${b(sheetId)}/traits/roll`)
 export const chooseTraits = (sheetId, { traitIds }) => call('put', `${b(sheetId)}/traits/choice`, { traitIds });
 export const resolveTraitSlot = (sheetId, index, data) =>
   call('post', `${b(sheetId)}/traits/slots/${index}/resolve`, data);
+export const setTraitTable = (sheetId, { rarity, traitIds }) =>
+  call('put', `${b(sheetId)}/traits/table`, { rarity, traitIds });
+export const pickTrait = (sheetId, index, traitId) =>
+  call('post', `${b(sheetId)}/traits/slots/${index}/pick`, { traitId });
 export const rollBloodTest = (sheetId) => call('post', `${b(sheetId)}/blood-test/roll`);
 export const chooseClans = (sheetId, { clanIds }) => call('put', `${b(sheetId)}/clans`, { clanIds });
 export const rollClans = (sheetId) => call('post', `${b(sheetId)}/clans/roll`);

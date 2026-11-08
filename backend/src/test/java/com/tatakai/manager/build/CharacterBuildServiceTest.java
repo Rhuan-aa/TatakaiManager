@@ -7,6 +7,8 @@ import com.tatakai.manager.build.dto.request.ClanChoiceRequest;
 import com.tatakai.manager.build.dto.request.FreePointsRequest;
 import com.tatakai.manager.build.dto.request.ReopenBuildRequest;
 import com.tatakai.manager.build.dto.request.ResolveTraitSlotRequest;
+import com.tatakai.manager.build.dto.request.TraitTableRequest;
+import com.tatakai.manager.build.dto.request.PickTraitRequest;
 import com.tatakai.manager.build.dto.request.StartBuildRequest;
 import com.tatakai.manager.build.dto.request.TraitChoiceRequest;
 import com.tatakai.manager.build.dto.response.CharacterBuildResponse;
@@ -42,7 +44,6 @@ import com.tatakai.manager.sheet.entity.BodyType;
 import com.tatakai.manager.sheet.entity.CharacterSheet;
 import com.tatakai.manager.sheet.entity.CharacterTrait;
 import com.tatakai.manager.sheet.entity.Dominance;
-import com.tatakai.manager.sheet.exception.CharacterSheetAlreadyExistsException;
 import com.tatakai.manager.sheet.exception.SheetLockedException;
 import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
 import com.tatakai.manager.sheet.service.CharacterSheetService;
@@ -183,7 +184,6 @@ class CharacterBuildServiceTest {
     @Test
     @DisplayName("start: jogador cria ficha IN_BUILD no passo IDENTITY e publica SHEET_CREATED")
     void start_ok() {
-        when(sheetRepository.existsByCampaignMemberId(playerMember.getId())).thenReturn(false);
         when(ruleService.buildSettings(campaign.getId())).thenReturn(CLASSIC);
 
         CharacterBuildResponse r = service.start(campaign.getId(), new StartBuildRequest("Kaito"), playerUser.getId());
@@ -200,13 +200,10 @@ class CharacterBuildServiceTest {
     }
 
     @Test
-    @DisplayName("start: Mestre não tem ficha (403) e segunda ficha é rejeitada")
+    @DisplayName("start: Mestre não tem ficha (403)")
     void start_rules() {
         assertThatThrownBy(() -> service.start(campaign.getId(), new StartBuildRequest("X"), masterUser.getId()))
                 .isInstanceOf(AccessDeniedException.class);
-        when(sheetRepository.existsByCampaignMemberId(playerMember.getId())).thenReturn(true);
-        assertThatThrownBy(() -> service.start(campaign.getId(), new StartBuildRequest("X"), playerUser.getId()))
-                .isInstanceOf(CharacterSheetAlreadyExistsException.class);
         verify(buildRepository, never()).save(any());
     }
 
@@ -283,6 +280,63 @@ class CharacterBuildServiceTest {
 
         assertThat(r.traitCountRoll()).isEqualTo(2); // 1d2 + 1
         assertThat(r.traitSlots().get(0).getRarity()).isEqualTo(TraitRarity.RARE);
+    }
+
+    @Test
+    @DisplayName("Tabela do jogador: valida tamanho/pool/raridade, trava após rolagem e a rolagem usa a tabela")
+    void traitTable() {
+        build.setStep(BuildStep.TRAITS);
+        List<TraitDefinition> commons = new ArrayList<>();
+        for (int i = 1; i <= 25; i++) commons.add(trait(TraitRarity.COMMON, i, null));
+        TraitDefinition rare = trait(TraitRarity.RARE, 1, null);
+        List<TraitDefinition> all = new ArrayList<>(commons);
+        all.add(rare);
+        when(catalog.traitsForCampaign(campaign.getId())).thenReturn(all);
+        List<UUID> ids = new ArrayList<>(commons.subList(5, 25).stream().map(TraitDefinition::getId).toList());
+
+        assertThatThrownBy(() -> service.setTraitTable(sheet.getId(),
+                new TraitTableRequest(TraitRarity.COMMON, ids.subList(0, 19)), playerUser.getId()))
+                .isInstanceOf(InvalidBuildStepException.class);
+        List<UUID> wrong = new ArrayList<>(ids);
+        wrong.set(0, rare.getId());
+        assertThatThrownBy(() -> service.setTraitTable(sheet.getId(),
+                new TraitTableRequest(TraitRarity.COMMON, wrong), playerUser.getId()))
+                .isInstanceOf(InvalidBuildStepException.class);
+
+        service.setTraitTable(sheet.getId(), new TraitTableRequest(TraitRarity.COMMON, ids), playerUser.getId());
+        assertThat(st().getTraitTables().get(TraitRarity.COMMON)).isEqualTo(ids);
+
+        die("1d4", 2);
+        die("1d100", 10, 10);
+        die("1d20", 7, 7);
+        CharacterBuildResponse r = service.rollTraits(sheet.getId(), playerUser.getId());
+        assertThat(r.traitSlots().get(0).getTraitId()).isEqualTo(ids.get(6));
+        assertThat(r.traitSlots().get(1).getStatus()).isEqualTo(TraitSlotStatus.PENDING_GM); // repetido
+
+        assertThatThrownBy(() -> service.setTraitTable(sheet.getId(),
+                new TraitTableRequest(TraitRarity.COMMON, ids), playerUser.getId()))
+                .isInstanceOf(InvalidBuildStepException.class);
+    }
+
+    @Test
+    @DisplayName("Traço excluído do pool pelo Mestre vira pendente; o jogador escolhe a reposição da raridade")
+    void pickTrait() {
+        build.setStep(BuildStep.TRAITS);
+        TraitDefinition a = trait(TraitRarity.COMMON, 1, null);
+        TraitDefinition b = trait(TraitRarity.COMMON, 2, null);
+        TraitDefinition rare = trait(TraitRarity.RARE, 1, null);
+        when(catalog.traitsForCampaign(campaign.getId())).thenReturn(List.of(a, b, rare));
+        when(ruleService.excludedTraits(campaign.getId())).thenReturn(java.util.Set.of(a.getId()));
+        st().setTraitSlots(new ArrayList<>(List.of(slot(0, TraitRarity.COMMON, TraitSlotStatus.PENDING_GM, null))));
+
+        assertThatThrownBy(() -> service.pickTrait(sheet.getId(), 0, new PickTraitRequest(a.getId()), playerUser.getId()))
+                .isInstanceOf(InvalidBuildStepException.class); // fora do pool
+        assertThatThrownBy(() -> service.pickTrait(sheet.getId(), 0, new PickTraitRequest(rare.getId()), playerUser.getId()))
+                .isInstanceOf(InvalidBuildStepException.class); // outra raridade
+
+        service.pickTrait(sheet.getId(), 0, new PickTraitRequest(b.getId()), playerUser.getId());
+        assertThat(st().getTraitSlots().get(0).getTraitId()).isEqualTo(b.getId());
+        assertThat(st().getTraitSlots().get(0).getStatus()).isEqualTo(TraitSlotStatus.RESOLVED);
     }
 
     @Test

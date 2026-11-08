@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { setFreePoints } from '../../api/characterBuild';
 import { ATTRS } from '../sheet/sheetRules';
-import { StepActions, crossesBarrier } from './buildUi';
+import { AttrBonus, StepActions, crossesBarrier } from './buildUi';
 
 export default function FreePointsStep({ build, canAct, busy, confirm, onBack }) {
   const skipped = build.settings.randomAttributes;
@@ -35,7 +35,10 @@ export default function FreePointsStep({ build, canAct, busy, confirm, onBack })
           const next = (l?.afterPercent ?? 0) + v + 1;
           return (
             <li key={a.key} className="panel flex items-center justify-between gap-2 p-2">
-              <span className="font-bold">{a.label} <span className="opacity-70">{l?.afterPercent ?? '—'}</span></span>
+              <span className="flex flex-col gap-1">
+                <span className="font-bold">{a.label} <span className="opacity-70">{l?.afterPercent ?? '—'}</span></span>
+                <AttrBonus b={l} />
+              </span>
               <span className="flex items-center gap-2">
                 <button type="button" className="btn-secondary" disabled={!canAct || busy || v === 0}
                   aria-label={`Diminuir ${a.label}`} onClick={() => step(a.enumName, -1)}>−</button>

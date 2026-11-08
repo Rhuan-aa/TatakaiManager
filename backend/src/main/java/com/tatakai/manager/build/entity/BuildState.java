@@ -18,6 +18,9 @@ public class BuildState {
     private Integer traitCountRoll;
     private List<TraitSlot> traitSlots = new ArrayList<>();
     private boolean traitsConfirmed;
+    /** Tabela de rolagem do jogador por raridade: índice i = resultado i+1 do dado. Vazio = rollNumber do catálogo. */
+    private Map<com.tatakai.manager.catalog.entity.TraitRarity, List<UUID>> traitTables =
+            new EnumMap<>(com.tatakai.manager.catalog.entity.TraitRarity.class);
 
     private Integer bloodTestRoll;
     private int clanSlots;
