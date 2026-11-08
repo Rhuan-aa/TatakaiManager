@@ -8,7 +8,10 @@ import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
 import com.tatakai.manager.log.dto.request.CreateLogRequest;
 import com.tatakai.manager.log.dto.request.UpdateLogRequest;
 import com.tatakai.manager.log.dto.response.LogResponse;
+import com.tatakai.manager.campaign.dto.response.CampaignUpdateMessage;
 import com.tatakai.manager.log.entity.InteractionLog;
+import com.tatakai.manager.log.entity.LogStatus;
+import com.tatakai.manager.log.exception.LogConflictException;
 import com.tatakai.manager.log.exception.LogNotFoundException;
 import com.tatakai.manager.log.repository.InteractionLogRepository;
 import com.tatakai.manager.log.service.LogService;
@@ -28,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +49,7 @@ class LogServiceTest {
     @Mock private InteractionLogRepository logRepository;
     @Mock private BookingRepository bookingRepository;
     @Mock private CampaignMemberRepository memberRepository;
+    @Mock private ApplicationEventPublisher events;
 
     // Sanitizador real para validar a remoção de XSS de verdade
     private final TextSanitizer sanitizer = new TextSanitizer();
@@ -59,7 +64,7 @@ class LogServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new LogService(logRepository, bookingRepository, memberRepository, sanitizer);
+        service = new LogService(logRepository, bookingRepository, memberRepository, sanitizer, events);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Ana").build();
         otherPlayer = User.builder().id(UUID.randomUUID()).name("Bruno").build();
@@ -134,16 +139,33 @@ class LogServiceTest {
     }
 
     @Test
-    @DisplayName("jogador NÃO pode adicionar log livre (sem agendamento) — AccessDenied")
-    void createLog_freeLog_byPlayer_throwsAccessDenied() {
+    @DisplayName("jogador pede permissão: log livre vira PENDING (texto sanitizado) e avisa a campanha")
+    void createLog_freeLog_byPlayer_becomesPending() {
         mockMember(player, Role.PLAYER);
+        when(logRepository.save(any(InteractionLog.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        var req = new CreateLogRequest(null, "tentando log livre");
+        LogResponse res = service.create(campaign.getId(), player.getId(),
+                new CreateLogRequest(null, "Pedido <script>x</script> de log"));
 
-        assertThatThrownBy(() -> service.create(campaign.getId(), player.getId(), req))
-                .isInstanceOf(AccessDeniedException.class);
+        assertThat(res.status()).isEqualTo("PENDING");
+        assertThat(res.narrative()).doesNotContain("<script>");
+        verify(events).publishEvent(any(CampaignUpdateMessage.class));
+    }
 
-        verify(logRepository, never()).save(any());
+    @Test
+    @DisplayName("log do Mestre e log de jogador no próprio agendamento nascem PUBLISHED, sem aviso")
+    void createLog_masterAndBooking_arePublished() {
+        when(logRepository.save(any(InteractionLog.class))).thenAnswer(inv -> inv.getArgument(0));
+        mockMember(master, Role.MASTER);
+        assertThat(service.create(campaign.getId(), master.getId(), new CreateLogRequest(null, "Narração")).status())
+                .isEqualTo("PUBLISHED");
+
+        mockMember(player, Role.PLAYER);
+        when(bookingRepository.findById(playerBooking.getId())).thenReturn(Optional.of(playerBooking));
+        assertThat(service.create(campaign.getId(), player.getId(),
+                new CreateLogRequest(playerBooking.getId(), "Treino")).status()).isEqualTo("PUBLISHED");
+
+        verifyNoInteractions(events);
     }
 
     @Test
@@ -281,15 +303,102 @@ class LogServiceTest {
         verify(logRepository).delete(log);
     }
 
-    @Test
-    @DisplayName("jogador não pode excluir log — AccessDenied")
-    void delete_byPlayer_throwsAccessDenied() {
-        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), player.getId(), Role.MASTER))
-                .thenReturn(false);
+    private InteractionLog logOf(User author, LogStatus status) {
+        return InteractionLog.builder().id(UUID.randomUUID()).campaign(campaign).author(author)
+                .narrative("Texto").status(status).build();
+    }
 
-        assertThatThrownBy(() -> service.delete(campaign.getId(), UUID.randomUUID(), player.getId()))
+    @Test
+    @DisplayName("jogador não pode excluir log PUBLISHED, nem o de outro — AccessDenied")
+    void delete_byPlayer_publishedOrForeign_throwsAccessDenied() {
+        InteractionLog published = logOf(player, LogStatus.PUBLISHED);
+        InteractionLog foreign = logOf(otherPlayer, LogStatus.PENDING);
+        when(logRepository.findByIdAndCampaignId(published.getId(), campaign.getId())).thenReturn(Optional.of(published));
+        when(logRepository.findByIdAndCampaignId(foreign.getId(), campaign.getId())).thenReturn(Optional.of(foreign));
+
+        assertThatThrownBy(() -> service.delete(campaign.getId(), published.getId(), player.getId()))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> service.delete(campaign.getId(), foreign.getId(), player.getId()))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(logRepository, never()).delete(any(InteractionLog.class));
+    }
+
+    @Test
+    @DisplayName("autor cancela o próprio pedido (PENDING/REJECTED)")
+    void delete_byAuthor_ownPendingRequest_removes() {
+        InteractionLog pending = logOf(player, LogStatus.PENDING);
+        when(logRepository.findByIdAndCampaignId(pending.getId(), campaign.getId())).thenReturn(Optional.of(pending));
+
+        service.delete(campaign.getId(), pending.getId(), player.getId());
+
+        verify(logRepository).delete(pending);
+        verify(events).publishEvent(any(CampaignUpdateMessage.class));
+    }
+
+    @Test
+    @DisplayName("lista: Mestre vê todos; jogador vê PUBLISHED + os próprios pedidos")
+    void listForCampaign_filtersByRole() {
+        InteractionLog pub = logOf(otherPlayer, LogStatus.PUBLISHED);
+        InteractionLog foreignPending = logOf(otherPlayer, LogStatus.PENDING);
+        InteractionLog ownPending = logOf(player, LogStatus.PENDING);
+        InteractionLog ownRejected = logOf(player, LogStatus.REJECTED);
+        when(memberRepository.existsByCampaignIdAndUserId(any(), any())).thenReturn(true);
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), master.getId(), Role.MASTER))
+                .thenReturn(true);
+        when(logRepository.findByCampaignIdOrderByCreatedAtDesc(campaign.getId()))
+                .thenReturn(List.of(pub, foreignPending, ownPending, ownRejected));
+
+        assertThat(service.listForCampaign(campaign.getId(), master.getId())).hasSize(4);
+        assertThat(service.listForCampaign(campaign.getId(), player.getId()))
+                .extracting(LogResponse::id).containsExactly(pub.getId(), ownPending.getId(), ownRejected.getId());
+    }
+
+    @Test
+    @DisplayName("Mestre aprova pedido: PUBLISHED, nota e updatedAt gravados, avisa a campanha")
+    void review_approve_publishes() {
+        InteractionLog pending = logOf(player, LogStatus.PENDING);
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), master.getId(), Role.MASTER))
+                .thenReturn(true);
+        when(logRepository.findByIdAndCampaignId(pending.getId(), campaign.getId())).thenReturn(Optional.of(pending));
+        when(logRepository.save(any(InteractionLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LogResponse res = service.review(campaign.getId(), pending.getId(), master.getId(), true, "Boa!");
+
+        assertThat(res.status()).isEqualTo("PUBLISHED");
+        assertThat(res.reviewNote()).isEqualTo("Boa!");
+        assertThat(res.updatedAt()).isNotNull();
+        verify(events).publishEvent(any(CampaignUpdateMessage.class));
+    }
+
+    @Test
+    @DisplayName("Mestre recusa pedido: REJECTED")
+    void review_reject_rejects() {
+        InteractionLog pending = logOf(player, LogStatus.PENDING);
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), master.getId(), Role.MASTER))
+                .thenReturn(true);
+        when(logRepository.findByIdAndCampaignId(pending.getId(), campaign.getId())).thenReturn(Optional.of(pending));
+        when(logRepository.save(any(InteractionLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LogResponse res = service.review(campaign.getId(), pending.getId(), master.getId(), false, null);
+
+        assertThat(res.status()).isEqualTo("REJECTED");
+        assertThat(res.reviewNote()).isNull();
+    }
+
+    @Test
+    @DisplayName("revisar: jogador não pode (403); log fora de PENDING dá conflito (409)")
+    void review_forbiddenAndConflict() {
+        assertThatThrownBy(() -> service.review(campaign.getId(), UUID.randomUUID(), player.getId(), true, null))
+                .isInstanceOf(AccessDeniedException.class);
+
+        InteractionLog done = logOf(player, LogStatus.PUBLISHED);
+        when(memberRepository.existsByCampaignIdAndUserIdAndRole(campaign.getId(), master.getId(), Role.MASTER))
+                .thenReturn(true);
+        when(logRepository.findByIdAndCampaignId(done.getId(), campaign.getId())).thenReturn(Optional.of(done));
+
+        assertThatThrownBy(() -> service.review(campaign.getId(), done.getId(), master.getId(), true, null))
+                .isInstanceOf(LogConflictException.class);
+        verify(logRepository, never()).save(any());
     }
 }

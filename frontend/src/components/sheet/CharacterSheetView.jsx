@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import SheetVisibilityPanel from './SheetVisibilityPanel';
 import { exportSheet } from '../../api/characterSheets';
 import { listTraits } from '../../api/catalog';
@@ -16,11 +16,15 @@ import MartialPanel from './MartialPanel';
 import TrainingPanel from './TrainingPanel';
 import ProgressPanel from './ProgressPanel';
 import NotebookPanel from './NotebookPanel';
-import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, KEIKEN, label } from './sheetRules';
+import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, KEIKEN, KEIKEN_MIN, label } from './sheetRules';
 import { RARITY, rarityTagStyle } from '../ui/rarity';
 import RichText from '../ui/RichText';
 import { ITEM_LOCATION } from '../ui/gear';
 import Icon from '../ui/Icon';
+import BleedEdge from '../ui/BleedEdge';
+import ConditionFx from '../ui/ConditionFx';
+import useSheetConditions from './useSheetConditions';
+import { themeFor } from '../combat/conditionThemes';
 
 const kg = (v) => (Math.round((v ?? 0) * 10) / 10).toString().replace('.', ',');
 // Carga (capítulo de Condições): efeitos de cada estado acima da Carga
@@ -109,11 +113,18 @@ function FatigueMeter({ name, points, bandKey, kind, onSave }) {
   );
 }
 
-function ProgressChip({ title, value, color }) {
+function ProgressChip({ title, value, color, bar }) {
+  const pct = bar ? (bar.max > 0 ? Math.min(100, (100 * bar.value) / bar.max) : 100) : 0;
   return (
     <div className="panel flex min-w-20 flex-col items-center px-3 py-1" style={{ borderColor: color }}>
       <span className="panel-title text-3xl leading-none" style={{ color }}>{value}</span>
       <span className="text-[10px] uppercase">{title}</span>
+      {bar && (
+        <div className="meter mt-1 w-full" style={{ height: 8, borderWidth: 2 }} role="meter" aria-label={`${title} até a próxima patente`}
+          aria-valuenow={bar.value} aria-valuemin={0} aria-valuemax={bar.max}>
+          <div className="meter-fill" style={{ width: `${bar.value > 0 ? Math.max(pct, 6) : 0}%`, '--meter-color': color }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -137,9 +148,12 @@ function BodyIcon({ type }) {
   );
 }
 
-function IdentityChip({ icon, title, value, color }) {
+function IdentityChip({ icon, title, value, color, corner }) {
   return (
-    <div className="panel flex items-center gap-2 px-3 py-1.5" style={color ? { borderColor: color } : undefined}>
+    <div className="panel relative flex items-center gap-2 px-3 py-1.5" style={color ? { borderColor: color } : undefined}>
+      {corner != null && (
+        <span className="tag absolute right-1 top-1 px-1 text-[10px]" title="Modificador de peso" aria-label={`Modificador de peso ${corner}`}>{corner}</span>
+      )}
       {icon}
       <div className="leading-tight">
         <div className="text-[10px] uppercase opacity-70">{title}</div>
@@ -153,47 +167,67 @@ const fmtMod = (m) => (m == null ? '—' : m > 0 ? `+${m}` : m < 0 ? `−${Math.
 
 const INAPT_BANDS = ['COLLAPSE', 'INEPT', 'DEFICIENT', 'UNTRAINED'];
 
-function AttributeCard({ a, v, m, lim, bandKey }) {
+/** Soma o que traços e clãs deram a um atributo: { traits: [[nome, flat]], flat, pct }. */
+function gainsFor(sheet, en) {
+  const out = { items: [], flat: 0, pct: 0 };
+  [...(sheet.traits ?? []), ...(sheet.clans ?? [])].forEach((x) => {
+    const g = x.buildGains;
+    const f = g?.attributeFlat?.[en] ?? 0;
+    const p = g?.attributePercent?.[en] ?? 0;
+    if (f || p) { out.items.push(`${x.name}: ${f ? `${f > 0 ? '+' : ''}${f}` : ''}${p ? ` ${p > 0 ? '+' : ''}${p}%` : ''}`.trim()); out.flat += f; out.pct += p; }
+  });
+  return out;
+}
+
+function AttributeCard({ a, v, m, lim, bandKey, gains }) {
   const inapt = INAPT_BANDS.includes(bandKey);
   const pct = lim > 0 ? Math.min(100, Math.round((v / lim) * 100)) : 0;
   return (
-    <div className="panel flex flex-col gap-1 p-2">
-      <div className="flex items-start justify-between">
-        <span className="text-xs font-bold uppercase">{a.label}</span>
-        <span className={m == null ? 'tag-accent tag' : 'tag'}
-          style={inapt && m != null ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : undefined} title={m == null ? 'Estado crítico (valor 0)' : 'Modificador'}
+    <div className="panel attr-tile">
+      <div className="attr-tile-head">
+        <span>{a.label}</span>
+        <span className="tag" style={inapt && m != null ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : undefined}
+          title={m == null ? 'Estado crítico (valor 0)' : 'Modificador'}
           aria-label={m == null ? 'Modificador crítico' : `Modificador ${fmtMod(m)}`}>
           {fmtMod(m)}
         </span>
       </div>
-      <div className="panel-title text-4xl leading-none">{v}</div>
-      {lim != null && (
-        <div>
-          <div className="meter" style={{ height: 8, borderWidth: 2 }} role="meter" aria-label={`${a.label} em relação ao limitador`}
-            aria-valuenow={v} aria-valuemin={0} aria-valuemax={lim}>
-            <div className="meter-fill" style={{ width: `${pct}%`, '--meter-color': inapt ? 'var(--accent)' : 'var(--text)' }} />
+      <div className="flex flex-col gap-1 p-2">
+        <div className="panel-title text-4xl leading-none">{v}</div>
+        {gains && gains.items.length > 0 && (
+          <div className="flex flex-wrap gap-1 text-[10px]" title={gains.items.join('\n')}>
+            {gains.flat !== 0 && <span className="tag-accent">{gains.flat > 0 ? '+' : ''}{gains.flat} traços</span>}
+            {gains.pct !== 0 && <span className="tag-accent">{gains.pct > 0 ? '+' : ''}{gains.pct}%</span>}
           </div>
-          <div className="mt-0.5 text-[10px] uppercase opacity-70">Lim {lim}</div>
-        </div>
-      )}
-      <div className={`text-[10px] uppercase ${inapt ? 'font-bold text-[var(--accent)]' : 'opacity-70'}`}>{BAND_LABELS[bandKey]}</div>
+        )}
+        {lim != null && (
+          <div>
+            <div className="meter" style={{ height: 8, borderWidth: 2 }} role="meter" aria-label={`${a.label} em relação ao limitador`}
+              aria-valuenow={v} aria-valuemin={0} aria-valuemax={lim}>
+              <div className="meter-fill" style={{ width: `${pct}%`, '--meter-color': inapt ? 'var(--accent)' : 'var(--text)' }} />
+            </div>
+            <div className="mt-0.5 text-[10px] uppercase opacity-70">Lim {lim}</div>
+          </div>
+        )}
+        <div className={`text-[10px] uppercase ${inapt ? 'font-bold text-[var(--accent)]' : 'opacity-70'}`}>{BAND_LABELS[bandKey]}</div>
+      </div>
     </div>
   );
 }
 
-function Block({ title, aside, collapsible, defaultOpen = false, children }) {
+function Block({ id, title, aside, collapsible, defaultOpen = false, children }) {
   const [open, setOpen] = useState(!collapsible || defaultOpen);
   return (
-    <section className="panel p-4">
-      <div className={`flex flex-wrap items-center gap-2 ${open ? 'mb-3' : ''}`}>
+    <section id={id} className="panel scroll-mt-4 p-4">
+      <div className={`flex flex-wrap items-start gap-2 ${open ? 'mb-4' : ''}`}>
         {collapsible ? (
-          <button type="button" className="flex flex-1 items-center gap-2 text-left" aria-expanded={open}
+          <button type="button" className="flex flex-1 items-start gap-2 text-left" aria-expanded={open}
             onClick={() => setOpen((o) => !o)}>
-            <h3 className="panel-title flex-1">{title}</h3>
-            <span aria-hidden="true" className="text-xs">{open ? '▲' : '▼'}</span>
+            <h3 className="panel-title ribbon">{title}</h3>
+            <span aria-hidden="true" className="ml-auto text-xs">{open ? '▲' : '▼'}</span>
           </button>
-        ) : <h3 className="panel-title">{title}</h3>}
-        {aside}
+        ) : <h3 className="panel-title ribbon">{title}</h3>}
+        {aside && <span className="ml-auto">{aside}</span>}
       </div>
       <div className={`collapsible-body${open ? '' : ' is-collapsed'}`}>{children}</div>
     </section>
@@ -229,16 +263,26 @@ function TraitItem({ t, campaignId }) {
   );
 }
 
-export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, campaignId, refreshKey = 0, onChange, onBack }) {
+export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, campaignId, refreshKey = 0, onChange, onBack, focusSection }) {
   const { user } = useAuth();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
+  const condFx = useSheetConditions(campaignId, sheet.id);
   const [reason, setReason] = useState('');
   const isOwner = sheet.ownerUserId === user?.userId;
   const isNpc = sheet.npcId != null;
   // Ficha de NPC: o dono age como Mestre; o Mestre da campanha só lê.
   const isMaster = isNpc ? isOwner : isCampaignMaster;
   const draft = isNpc || sheet.buildStatus === 'DRAFT';
+
+  // Âncora vinda da aba Aprovações: rola até o bloco ao montar (e de novo quando os painéis assíncronos mudam a altura).
+  useEffect(() => {
+    if (!focusSection) return undefined;
+    const go = () => document.getElementById(`sheet-${focusSection}`)?.scrollIntoView({ block: 'start' });
+    go();
+    const t = setTimeout(go, 600);
+    return () => clearTimeout(t);
+  }, [focusSection]);
 
   const [reopenReason, setReopenReason] = useState('');
   async function reopen(e) {
@@ -291,6 +335,8 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
 
   return (
     <div className="page-gutter flex flex-col">
+      {r && <BleedEdge wounds={r.openWounds} page />}
+      <ConditionFx entries={[...(r?.openWounds > 0 ? [{ id: `w${r.openWounds}`, anchorId: null, key: 'FERIDA', name: `Feridas abertas ${r.openWounds}` }] : []), ...condFx]} />
       <div className="flex flex-wrap items-center gap-3">
         {onBack && <button type="button" className="btn-ghost" onClick={onBack}><Icon name="back" size={18} /> Fichas</button>}
         <h2 className="panel-title flex-1 text-2xl">{sheet.name}</h2>
@@ -306,197 +352,226 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         }}>Imprimir / PDF</button>
       </div>
       {!isNpc && <p className="caption self-start">Jogador · {sheet.ownerName}</p>}
-      <div className="flex flex-wrap gap-2" aria-label="Identidade">
-        <IdentityChip icon={ICON.ruler} title="Altura" value={`${sheet.heightM} m`} />
-        <IdentityChip icon={<BodyIcon type={sheet.bodyType} />} title="Tipo corporal" value={label(BODY_TYPES, sheet.bodyType)} />
-        <IdentityChip icon={ICON.hand} title="Dominância" value={label(DOMINANCES, sheet.dominance)} />
-        <IdentityChip icon={ICON.scale} title="Peso" value={`${sheet.weightKg} kg`} />
-        {d && <IdentityChip icon={ICON.pack} title="Carga" value={`${kg(d.carriedKg)} / ${d.carryKg} kg`} />}
-        {p && <IdentityChip icon={ICON.belt} title="Keiken" value={KEIKEN[p.keiken]} color="var(--keiken)" />}
-      </div>
-
-      {isOwner && draft && (
-        <button type="button" className="btn-secondary self-start" onClick={() => setEditing(true)}>Editar ficha</button>
-      )}
-
-      {!isNpc && isMaster && sheet.buildStatus === 'PENDING_APPROVAL' && (
-        <Block title="Aprovação">
-          <label className="label">
-            Motivo (opcional)
-            <input className="field mt-1 w-full" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
-          </label>
-          <div className="mt-3 flex gap-2">
-            <button type="button" className="btn-primary" onClick={() => decide(true)}>Aprovar</button>
-            <button type="button" className="btn-secondary" onClick={() => decide(false)}>Devolver</button>
-          </div>
+      <div className="sheet-layout">
+        <aside className="sheet-rail" aria-label="Resumo da ficha">
+        <Block title="Recursos">
+          {!r ? <Hidden name="recursos" /> : (
+            <>
+              <div className="flex flex-col gap-3">
+                <Meter name="HP" value={r.currentHp} max={r.effectiveHpMax} color="var(--meter-hp)" onSave={saveResource('currentHp')} />
+                <Meter name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" onSave={saveResource('currentSp')} />
+                <Meter name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" onSave={saveResource('currentKp')} />
+              </div>
+              <p className="mt-3 text-sm">
+                Feridas abertas: <strong>{r.openWounds}</strong>
+                {r.effectiveHpMax !== r.hpMax && ` · HP máx. base ${r.hpMax}`}
+              </p>
+              {f && (
+                <div className="mt-3 flex flex-col gap-2">
+                  <p className="caption">Desgaste (cansaço)</p>
+                  <FatigueMeter name="Físico" points={f.physical} bandKey={f.physicalBand} kind="physical" onSave={saveResource('physicalFatigue')} />
+                  <FatigueMeter name="Mental" points={f.mental} bandKey={f.mentalBand} kind="mental" onSave={saveResource('mentalFatigue')} />
+                </div>
+              )}
+              {p && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <ProgressChip title="EL" value={p.fightExperience} color="var(--chip-el)"
+                    bar={{ value: p.fightExperience - (KEIKEN_MIN[p.keiken] ?? 0), max: p.nextKeikenAt == null ? 0 : p.nextKeikenAt - (KEIKEN_MIN[p.keiken] ?? 0) }} />
+                  <ProgressChip title="PS pendentes" value={p.pendingOvercomePoints} color="var(--chip-ps)" />
+                </div>
+              )}
+            </>
+          )}
         </Block>
-      )}
 
-      <Block title="Atributos">
-        {!sheet.attributes ? <Hidden name="atributos" /> : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {ATTRS.map((a) => {
-              const v = sheet.attributes[a.enumName];
-              const m = d?.mods?.[a.enumName];
-              const lim = d?.limiters?.[a.enumName];
-              return <AttributeCard key={a.key} a={a} v={v} m={m} lim={lim} bandKey={d?.bands?.[a.enumName]} />;
-            })}
-          </div>
-        )}
-        {d && <p className="mt-2 text-xs">Mod. de peso: {d.weightMod}</p>}
-      </Block>
-
-      <Block title="Recursos">
-        {!r ? <Hidden name="recursos" /> : (
-          <>
-            <div className="flex flex-col gap-3">
-              <Meter name="HP" value={r.currentHp} max={r.effectiveHpMax} color="var(--meter-hp)" onSave={saveResource('currentHp')} />
-              <Meter name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" onSave={saveResource('currentSp')} />
-              <Meter name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" onSave={saveResource('currentKp')} />
+        <Block title="Atributos">
+          {!sheet.attributes ? <Hidden name="atributos" /> : (
+            <div className="grid grid-cols-2 gap-3">
+              {ATTRS.map((a) => {
+                const v = sheet.attributes[a.enumName];
+                const m = d?.mods?.[a.enumName];
+                const lim = d?.limiters?.[a.enumName];
+                // 7º atributo (TAL) sozinho na última linha: centralizado
+                const lone = a.key === 'tal' ? 'col-span-2 mx-auto w-1/2 min-w-[8rem]' : '';
+                return <div key={a.key} className={lone}><AttributeCard a={a} v={v} m={m} lim={lim} bandKey={d?.bands?.[a.enumName]} gains={gainsFor(sheet, a.enumName)} /></div>;
+              })}
             </div>
-            <p className="mt-3 text-sm">
-              Feridas abertas: <strong>{r.openWounds}</strong>
-              {r.effectiveHpMax !== r.hpMax && ` · HP máx. base ${r.hpMax}`}
-            </p>
-            {f && (
-              <div className="mt-3 flex flex-col gap-2">
-                <p className="caption">Desgaste (cansaço)</p>
-                <FatigueMeter name="Físico" points={f.physical} bandKey={f.physicalBand} kind="physical" onSave={saveResource('physicalFatigue')} />
-                <FatigueMeter name="Mental" points={f.mental} bandKey={f.mentalBand} kind="mental" onSave={saveResource('mentalFatigue')} />
-              </div>
-            )}
-            {p && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <ProgressChip title="EL" value={p.fightExperience} color="var(--chip-el)" />
-                <ProgressChip title="PS pendentes" value={p.pendingOvercomePoints} color="var(--chip-ps)" />
-              </div>
-            )}
-          </>
-        )}
-      </Block>
-
-      {(isOwner || isMaster) && !isNpc && p && (
-        <Block title="Progresso">
-          <ProgressPanel sheetId={sheet.id} progress={p} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
-            refreshKey={refreshKey + sheet.version} />
+          )}
         </Block>
-      )}
 
-      <Block title="Ferimentos">
-        {!sheet.injuries ? <Hidden name="ferimentos" /> : sheet.injuries.length === 0 ? (
-          <p className="text-sm">Nenhum ferimento.</p>
-        ) : (
-          <ul className="flex flex-col gap-2 text-sm">
-            {sheet.injuries.map((i) => (
-              <li key={i.id}>
-                <span className="tag mr-2">{SEVERITY[i.severity] ?? i.severity}</span>
-                {i.region} — HP máx. −{i.hpMaxReduction}
-                {i.affectedAttribute && `, limitador ${i.affectedAttribute} −${i.limiterReduction}`}
-                {i.treated && ' (tratado)'}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Block>
+          <div className="panel hero-card p-3">
+        <div className="grid grid-cols-2 gap-2" aria-label="Identidade">
+          <IdentityChip icon={ICON.ruler} title="Altura" value={`${sheet.heightM} m`} />
+          <IdentityChip icon={<BodyIcon type={sheet.bodyType} />} title="Tipo corporal" value={label(BODY_TYPES, sheet.bodyType)} />
+          <IdentityChip icon={ICON.hand} title="Dominância" value={label(DOMINANCES, sheet.dominance)} />
+          <IdentityChip icon={ICON.scale} title="Peso" value={`${sheet.weightKg} kg`} corner={d?.weightMod} />
+          {d && <IdentityChip icon={ICON.pack} title="Carga" value={`${kg(d.carriedKg)} / ${d.carryKg} kg`} />}
+          {p && <IdentityChip icon={ICON.belt} title="Keiken" value={KEIKEN[p.keiken]} color="var(--keiken)" />}
+        </div>
 
-      <Block title="Traços e clãs">
-        {!sheet.traits || !sheet.clans ? <Hidden name="traços e clãs" /> : (
-          <div className="flex flex-col gap-3">
-            {sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
-              <ul className="flex flex-col gap-2">
-                {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} />)}
-              </ul>
-            )}
-            {sheet.clans.map((c) => (
-              <div key={c.id} className="bubble p-2 text-sm">
-                <strong>Clã {c.name}</strong>
-                {c.heritage?.length > 0 && (
-                  <ul className="mt-1 list-disc pl-5">
-                    {c.heritage.map((h) => <li key={h}><RichText text={h} /></li>)}
-                  </ul>
-                )}
-              </div>
-            ))}
           </div>
+        {isOwner && draft && (
+          <button type="button" className="btn-secondary self-start" onClick={() => setEditing(true)}>Editar ficha</button>
         )}
-      </Block>
 
-      {(isOwner || isMaster) && (
-        <Block title="Artes marciais">
-          <MartialPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
-            refreshKey={refreshKey + sheet.version} />
-        </Block>
-      )}
-
-      {(isOwner || isMaster) && !isNpc && (
-        <Block title="Caderno Marcial e Forja">
-          <NotebookPanel sheetId={sheet.id} isMaster={isMaster} isOwner={isOwner} refreshKey={refreshKey + sheet.version} />
-        </Block>
-      )}
-
-      {(isOwner || isMaster) && !isNpc && (
-        <Block title="Treinos" collapsible defaultOpen>
-          <TrainingPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
-        </Block>
-      )}
-
-      <Block title="Inventário" aside={sheet.money != null && (
-        <span className="tag" style={{ borderColor: 'var(--chip-el)', color: 'var(--chip-el)' }}>Diárias {sheet.money}</span>
-      )}>
-        {d && d.loadState !== 'FREE' && (
-          <p className="mb-2 text-sm"><span className="tag tag-accent">{LOAD_LABEL[d.loadState]}</span> {LOAD_HINT[d.loadState]}</p>
+        </aside>
+        <div className="sheet-main">
+          {condFx.length > 0 && (
+            <div className="panel flex flex-wrap items-center gap-2 p-2" aria-label="Condições em combate">
+              <span className="caption">Em combate</span>
+              {condFx.map((c) => {
+                const t = themeFor(c.key, c.name);
+                return (
+                  <span key={c.id} className="cond-chip" style={{ '--fx-color': t.color }}>
+                    <Icon name={t.icon} size={16} />{t.word} {c.name}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        {!isNpc && isMaster && sheet.buildStatus === 'PENDING_APPROVAL' && (
+          <Block title="Aprovação">
+            <label className="label">
+              Motivo (opcional)
+              <input className="field mt-1 w-full" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+            </label>
+            <div className="mt-3 flex gap-2">
+              <button type="button" className="btn-primary" onClick={() => decide(true)}>Aprovar</button>
+              <button type="button" className="btn-secondary" onClick={() => decide(false)}>Devolver</button>
+            </div>
+          </Block>
         )}
-        {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : sheet.inventory.length === 0 ? (
-          <p className="text-sm">Inventário vazio.</p>
-        ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {sheet.inventory.map((i) => (
-              <li key={i.id}>
-                {i.quantity}× <strong>{i.name}</strong>{i.weightKg > 0 && ` · ${kg(i.weightKg * i.quantity)} kg`}
-                {i.location && i.location !== 'PACK' && <span className="tag ml-1">{ITEM_LOCATION[i.location]}</span>}
-                {(i.jammed || i.broken || i.damaged) && <span className="tag tag-accent ml-1">{i.broken ? 'quebrada' : i.jammed ? 'travada' : 'danificada'}</span>}
-                {i.description && ` — ${i.description}`}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Block>
 
-      {(isOwner || isMaster) && (
-        <>
-          <Block title="Rolagens">
-            <RollsPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isNpc={isNpc}
+        {(isOwner || isMaster) && !isNpc && p && (
+          <Block id="sheet-progress" title="Progresso">
+            <ProgressPanel sheetId={sheet.id} progress={p} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
               refreshKey={refreshKey + sheet.version} />
           </Block>
-          <Block title="Atividade da ficha" collapsible>
-            <ActivityLogPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
+        )}
+
+        {(isOwner || isMaster) && (
+          <Block id="sheet-martial" title="Artes marciais">
+            <MartialPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
+              refreshKey={refreshKey + sheet.version} />
           </Block>
-        </>
-      )}
+        )}
 
-      {!isNpc && (isOwner || isMaster) && sheet.campaignId && sheet.ownerUserId && (
-        <Block title="Visível para os outros jogadores" collapsible>
-          <SheetVisibilityPanel campaignId={sheet.campaignId} ownerUserId={sheet.ownerUserId} isMaster={isMaster} />
-        </Block>
-      )}
+        {(isOwner || isMaster) && !isNpc && (
+          <Block id="sheet-notebook" title="Caderno Marcial e Forja">
+            <NotebookPanel sheetId={sheet.id} isMaster={isMaster} isOwner={isOwner} refreshKey={refreshKey + sheet.version} />
+          </Block>
+        )}
 
-      {!isNpc && isMaster && ['COMPLETED', 'PENDING_APPROVAL'].includes(sheet.buildStatus) && (
-        <Block title="Reabrir construção">
-          <form onSubmit={reopen} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <label className="flex-1 text-xs uppercase">
-              Motivo (obrigatório)
-              <input required maxLength={500} className="field mt-1 w-full" value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} />
-            </label>
-            <button type="submit" className="btn-secondary" disabled={!reopenReason.trim()}>Reabrir construção</button>
-          </form>
-        </Block>
-      )}
+        {(isOwner || isMaster) && !isNpc && (
+          <Block title="Treinos" collapsible defaultOpen>
+            <TrainingPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
+          </Block>
+        )}
 
-      {isMaster && (
-        <Block title="Ajustes do Mestre">
-          <GmAdjustmentPanel sheet={sheet} campaignId={campaignId} onDone={onChange} />
-        </Block>
-      )}
+          <div className="sheet-pair">
+            <div className="sheet-col">
+          <Block title="Traços e clãs">
+            {!sheet.traits || !sheet.clans ? <Hidden name="traços e clãs" /> : (
+              <div className="flex flex-col gap-3">
+                {sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
+                  <ul className="flex flex-col gap-2">
+                    {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} />)}
+                  </ul>
+                )}
+                {sheet.clans.map((c) => (
+                  <div key={c.id} className="bubble p-2 text-sm">
+                    <strong>Clã {c.name}</strong>
+                    {c.heritage?.length > 0 && (
+                      <ul className="mt-1 list-disc pl-5">
+                        {c.heritage.map((h) => <li key={h}><RichText text={h} /></li>)}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Block>
+
+            </div>
+            <div className="sheet-col">
+          <Block title="Ferimentos">
+            {!sheet.injuries ? <Hidden name="ferimentos" /> : sheet.injuries.length === 0 ? (
+              <p className="text-sm">Nenhum ferimento.</p>
+            ) : (
+              <ul className="flex flex-col gap-2 text-sm">
+                {sheet.injuries.map((i) => (
+                  <li key={i.id}>
+                    <span className="tag mr-2">{SEVERITY[i.severity] ?? i.severity}</span>
+                    {i.region} — HP máx. −{i.hpMaxReduction}
+                    {i.affectedAttribute && `, limitador ${i.affectedAttribute} −${i.limiterReduction}`}
+                    {i.treated && ' (tratado)'}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Block>
+
+          <Block title="Inventário" aside={sheet.money != null && (
+            <span className="tag" style={{ borderColor: 'var(--chip-el)', color: 'var(--chip-el)' }}>Diárias {sheet.money}</span>
+          )}>
+            {d && d.loadState !== 'FREE' && (
+              <p className="mb-2 text-sm"><span className="tag tag-accent">{LOAD_LABEL[d.loadState]}</span> {LOAD_HINT[d.loadState]}</p>
+            )}
+            {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : sheet.inventory.length === 0 ? (
+              <p className="text-sm">Inventário vazio.</p>
+            ) : (
+              <ul className="flex flex-col gap-1 text-sm">
+                {sheet.inventory.map((i) => (
+                  <li key={i.id}>
+                    {i.quantity}× <strong>{i.name}</strong>{i.weightKg > 0 && ` · ${kg(i.weightKg * i.quantity)} kg`}
+                    {i.location && i.location !== 'PACK' && <span className="tag ml-1">{ITEM_LOCATION[i.location]}</span>}
+                    {(i.jammed || i.broken || i.damaged) && <span className="tag tag-accent ml-1">{i.broken ? 'quebrada' : i.jammed ? 'travada' : 'danificada'}</span>}
+                    {i.description && ` — ${i.description}`}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Block>
+
+            </div>
+          </div>
+        {(isOwner || isMaster) && (
+          <>
+            <Block title="Rolagens">
+              <RollsPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isNpc={isNpc}
+                refreshKey={refreshKey + sheet.version} />
+            </Block>
+            <Block title="Atividade da ficha" collapsible>
+              <ActivityLogPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
+            </Block>
+          </>
+        )}
+
+        {!isNpc && (isOwner || isMaster) && sheet.campaignId && sheet.ownerUserId && (
+          <Block title="Visível para os outros jogadores" collapsible>
+            <SheetVisibilityPanel campaignId={sheet.campaignId} ownerUserId={sheet.ownerUserId} isMaster={isMaster} />
+          </Block>
+        )}
+
+        {!isNpc && isMaster && ['COMPLETED', 'PENDING_APPROVAL'].includes(sheet.buildStatus) && (
+          <Block title="Reabrir construção">
+            <form onSubmit={reopen} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <label className="flex-1 text-xs uppercase">
+                Motivo (obrigatório)
+                <input required maxLength={500} className="field mt-1 w-full" value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} />
+              </label>
+              <button type="submit" className="btn-secondary" disabled={!reopenReason.trim()}>Reabrir construção</button>
+            </form>
+          </Block>
+        )}
+
+        {isMaster && (
+          <Block title="Ajustes do Mestre">
+            <GmAdjustmentPanel sheet={sheet} campaignId={campaignId} onDone={onChange} />
+          </Block>
+        )}
+        </div>
+      </div>
     </div>
   );
 }

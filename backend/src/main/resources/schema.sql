@@ -128,7 +128,7 @@ CREATE TABLE character_sheet_visibility (
 
 CREATE TABLE character_sheets (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    campaign_member_id       UUID UNIQUE REFERENCES campaign_members(id),
+    campaign_member_id       UUID REFERENCES campaign_members(id),
     npc_id                   UUID UNIQUE,  -- UUID solto (NPC vive no Mongo)
     npc_owner_id             UUID REFERENCES users(id),
     name                     VARCHAR(100) NOT NULL,

@@ -31,7 +31,6 @@ import com.tatakai.manager.sheet.entity.CharacterSheetVisibility;
 import com.tatakai.manager.sheet.entity.Dominance;
 import com.tatakai.manager.sheet.entity.InventoryItem;
 import com.tatakai.manager.sheet.entity.SheetSection;
-import com.tatakai.manager.sheet.exception.CharacterSheetAlreadyExistsException;
 import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
 import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
@@ -240,12 +239,9 @@ class SheetExportServiceTest {
     }
 
     @Test
-    @DisplayName("importar: 409 se já tem ficha, 403 para Mestre e não membro")
+    @DisplayName("importar: 403 para Mestre e não membro")
     void importGuards() {
-        org.mockito.Mockito.when(sheetRepository.existsByCampaignMemberId(playerMember.getId())).thenReturn(true);
         byte[] ok = json("{\"schemaVersion\":1,\"sheet\":{\"name\":\"A\"}}");
-        assertThatThrownBy(() -> service.importSheet(campaign.getId(), ok, "a.json", playerUser.getId()))
-                .isInstanceOf(CharacterSheetAlreadyExistsException.class);
         assertThatThrownBy(() -> service.importSheet(campaign.getId(), ok, "a.json", masterUser.getId()))
                 .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> service.importSheet(campaign.getId(), ok, "a.json", UUID.randomUUID()))

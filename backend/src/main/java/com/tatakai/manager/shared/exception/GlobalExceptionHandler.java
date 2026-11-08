@@ -11,6 +11,7 @@ import com.tatakai.manager.catalog.exception.InvalidMartialArtException;
 import com.tatakai.manager.combat.exception.CombatConflictException;
 import com.tatakai.manager.combat.exception.EncounterNotFoundException;
 import com.tatakai.manager.combat.exception.InvalidCombatException;
+import com.tatakai.manager.log.exception.LogConflictException;
 import com.tatakai.manager.log.exception.LogNotFoundException;
 import com.tatakai.manager.npc.exception.InvalidImageException;
 import com.tatakai.manager.npc.exception.NpcAlreadyAssociatedException;
@@ -26,6 +27,8 @@ import com.tatakai.manager.sheet.exception.SheetEntryNotFoundException;
 import com.tatakai.manager.sheet.exception.SheetLockedException;
 import com.tatakai.manager.timeskip.exception.ActiveTimeSkipExistsException;
 import com.tatakai.manager.timeskip.exception.BookingAlreadyPassedException;
+import com.tatakai.manager.timeskip.exception.SubmissionLockedException;
+import com.tatakai.manager.timeskip.exception.SubmissionPendingException;
 import com.tatakai.manager.timeskip.exception.BookingNotFoundException;
 import com.tatakai.manager.timeskip.exception.InvalidActivityNameException;
 import com.tatakai.manager.timeskip.exception.InvalidBookingException;
@@ -87,7 +90,8 @@ public class GlobalExceptionHandler {
             SlotTakenException.class, BookingAlreadyPassedException.class,
             InvalidActivityNameException.class, CharacterSheetAlreadyExistsException.class,
             NpcSheetAlreadyExistsException.class, RollChannelNameTakenException.class,
-            SheetLockedException.class, CombatConflictException.class, ObjectOptimisticLockingFailureException.class})
+            SheetLockedException.class, CombatConflictException.class, LogConflictException.class,
+            SubmissionLockedException.class, SubmissionPendingException.class, ObjectOptimisticLockingFailureException.class})
     public ResponseEntity<Map<String, Object>> handleConflict(RuntimeException ex) {
         String msg = ex instanceof ObjectOptimisticLockingFailureException
                 ? "A ficha foi alterada por outra pessoa. Recarregue e tente de novo."

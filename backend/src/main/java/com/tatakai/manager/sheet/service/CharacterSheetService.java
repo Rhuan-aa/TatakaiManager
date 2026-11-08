@@ -63,7 +63,6 @@ import com.tatakai.manager.sheet.entity.NpcSheetVisibility;
 import com.tatakai.manager.sheet.entity.PermanentInjury;
 import com.tatakai.manager.sheet.entity.ResourceType;
 import com.tatakai.manager.sheet.entity.SheetSection;
-import com.tatakai.manager.sheet.exception.CharacterSheetAlreadyExistsException;
 import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
 import com.tatakai.manager.sheet.exception.NpcSheetAlreadyExistsException;
@@ -149,9 +148,6 @@ public class CharacterSheetService {
         }
         if (!ruleService.isEnabled(campaignId, OptionalRule.FREE_CREATION)) {
             throw new InvalidCharacterSheetException("Esta campanha usa a Construção Inicial");
-        }
-        if (sheetRepository.existsByCampaignMemberId(member.getId())) {
-            throw new CharacterSheetAlreadyExistsException();
         }
 
         CharacterSheet sheet = CharacterSheet.builder()
@@ -858,11 +854,12 @@ public class CharacterSheetService {
         boolean showTraits = !hidden.contains(SheetSection.TRAITS); // NPC: o Mestre libera a seção (§51.8)
         List<CharacterTraitResponse> traits = showTraits ? s.getTraits().stream()
                 .map(t -> new CharacterTraitResponse(t.getId(), t.getTraitId(), t.getTraitVersion(), t.getName(),
-                        t.getRarity(), t.getCategory(), t.getDescription(), t.getAcquiredIn(), t.isGainsApplied()))
+                        t.getRarity(), t.getCategory(), t.getDescription(), t.getAcquiredIn(), t.isGainsApplied(),
+                        t.isGainsApplied() ? t.getBuildGains() : null))
                 .toList() : null;
         List<CharacterClanResponse> clans = showTraits ? s.getClans().stream()
                 .map(c -> new CharacterClanResponse(c.getId(), c.getClanId(), c.getName(),
-                        catalogService.findClan(c.getClanId()).map(Clan::getHeritage).orElse(List.of())))
+                        catalogService.findClan(c.getClanId()).map(Clan::getHeritage).orElse(List.of()), c.getBuildGains()))
                 .toList() : null;
 
         return new CharacterSheetResponse(s.getId(), npc ? null : m.getCampaign().getId(),

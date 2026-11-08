@@ -142,6 +142,11 @@ Caminhos como `service/rules/X`, `entity/Npc.java` ou `dto/request` neste docume
 módulo dono da classe (ex.: `combat/service/rules/AttackRules`). Classe nova vai no módulo do seu domínio;
 módulos podem importar uns dos outros (não há verificação de ciclo). O que é infra comum vai em `shared/`.
 
+**Estrutura interna e exceções.** Módulo de domínio = camadas `controller/ service/ (service/rules/) repository/ entity/
+dto/ (exception/ websocket/)`; crie só as pastas que o módulo usa (ex.: `martial` e `progression` não têm `exception/`).
+Exceções: `shared/` organiza por tipo de infra (`config/ security/ websocket/ exception/`), sem entidade nem controller;
+módulos só de leitura/agregação (ex.: `approval/`: `controller dto service`) podem omitir `entity/` e `repository/`.
+
 1. **Controller**: mapeia rota, aplica `@Valid` no body, pega o usuário com
    `AuthenticatedUser.id()` e chama **um** método do service. Retorna `201` em
    criação, `204` em delete/upload, `200` no resto.
@@ -712,6 +717,18 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
   `components/ui/rarity` (cores por raridade via tokens `--rarity-*`; caixas de base/técnica
   usam `--stat-*`).
 
+**Tabela de traços do jogador:** regra `TRAIT_POOL` (`params.excluded` = UUIDs CSV; vazio = todos ativos; editada no `CatalogManager`)
+define o pool; `BuildState.traitTables` (raridade → 20 ids, 10 no Divino; posição = resultado do dado) é montada em
+`PUT /character-sheets/{sid}/build/traits/table` antes da rolagem (`TraitTableEditor`). Sem tabela vale o `rollNumber`.
+Slot pendente (repetido, fora do pool, Lendário 20 sem tabela) é resolvido pelo jogador em `POST .../traits/slots/{i}/pick`
+(mesma raridade) ou pelo Mestre. Sem DDL (jsonb).
+
+**Animação e bônus na Construção:** `buildUi.DiceSequence` revela rolagens já feitas pelo servidor, uma a uma (Rolar próximo /
+Automático / Pular); `traitBeats(build)` monta quantidade → raridade → traço; usada em Traços, Teste de Sangue, Clãs
+(`CharacterBuildResponse.clanRolls`) e Atributos. Escolha direta (BALANCED_CHOICE) não anima, exceto o d10 do Divino grátis.
+`CharacterBuildResponse.bonuses` (base 0) e `CharacterTrait/ClanResponse.buildGains` alimentam os chips `AttrBonus` (passos de
+atributos/pontos livres) e o bônus de traços no card de atributo da ficha.
+
 ## 14. Criação Marcial (F3a)
 
 Contrato em `PLANO_FICHA_DIGITAL.md` §15.
@@ -835,6 +852,10 @@ Desfecho/mitigação/dano em `service/rules/AttackRules` (puro); Luta contra Gru
 `AttackService`. `next-turn` devolve 409 com ataque `AWAITING_REACTIONS`. Contra-dano = dano do SOCO do defensor (só o
 dano, sem teste de acerto). Sem alcance/grade nem prazo de reação.
 
+**Ataque localizado/detalhes:** `CreateAttackRequest.details` (≤300) → `PendingAttack.details` (coluna nova `pending_attacks.details`),
+anexado ao motivo da rolagem do ataque (histórico) e ao log de declaração. `AttackBuilder` oferece `LOCALIZED_REGIONS` ou região
+improvisada; a redução é digitada pelo jogador (não há tabela canônica de penalidades no repositório).
+
 ## 23. Desmaios e Adrenalina — F6c
 
 Contrato em `PLANO_FICHA_DIGITAL.md` §24. **Todo** HP/SP/PQ de combate passa por `service/VitalService`
@@ -888,6 +909,50 @@ reducao)` depois da % e antes do mínimo 1.
   (`CombatAction` não é persistido), então **não há CHECK a dropar**. Bancos com `validate` precisam de `combat_counters` e das
   colunas novas de `encounter_participants`, `pending_attacks` e `attack_targets`.
 - Testes: 712 (`MartialRulesTest`, `MartialServiceTest`, e F6d em `AttackServiceTest`/`CombatServiceTest`).
+
+## 24b. Revisão de ficha, combate, logs e agenda (§52)
+
+- **Ficha:** layout em trilho esquerdo (Recursos, Atributos, identidade) + coluna principal (`.sheet-layout`, `.ribbon`, `.attr-tile`);
+  botão de voltar fica no `AppShell` (`backAction`), fora do card. PS: `Stepper` com limite INT/CAR 2 por distribuição e erro por toast;
+  Instintos só os escolhidos + "Adicionar instinto". Âncoras `sheet-martial|notebook|progress` para a aba Aprovações.
+- **Combate:** ataque básico custa 1 SP (`RollProfileService.BASIC_SP_COST`; ajuste de Fluxo/Ápice/Dissociação só em
+  `AttackService.withAdrenaline`, sem cobrança dupla). Tipo marcial do lutador = arte da **base ativa** (`MartialService.fighter`);
+  atacante com técnica usa o tipo da técnica. Contra-ataque tardio guarda a rolagem (`attack_targets.late_counter_roll_id`,
+  `TargetResponse.lateCounterRoll`) e anima. HUD: `ActionOverlay` (pop-up, preferência `combat.autoActions` em localStorage),
+  `TurnQueue`, chão com `.class-card` e tokens `--floor-*`; tipo da ação nas rolagens (`rolls/rollKind.js`, `.roll-kind`).
+- **Ações genéricas:** `CombatActionRequest.paCost` (0..9; só MAJOR/MINOR/FREE) e `rollExpression` (NdM+K, validada por
+  `RollService.parse` antes de gastar PA/SP e rolada via `rollInternal`, total no evento ACTION); `CombatRules.spCost` aceita SP
+  informado também em MINOR/FREE (padrão 0). Menu `ActionConfigMenu` (Menor 1–2 PA).
+- **Times e avulsas:** `AddParticipantRequest.team` (1..9, opcional; padrão jogador 1/NPC 2). `POST /character-sheets/{sid}/techniques/loose`
+  (`LearnLooseRequest {artId, kind, name}`): técnica/base do catálogo sem a arte na ficha; jogador pede (REQUESTED), Mestre concede
+  (IN_TRAINING), sem checar graduação. Ação Livre por grupo: `paCost` vale também em MOVE/STAND_UP/DISENGAGE/SHOVE/MINOR_OFFENSIVE/BREATHE (`CombatService.PA_CUSTOM`).
+- **Logs:** `InteractionLog.status` (`PUBLISHED|PENDING|REJECTED`) + `reviewNote`; jogador pede log livre (PENDING), Mestre
+  `POST /campaigns/{cid}/logs/{lid}/review`; autor cancela pedido não publicado. Aviso WS tipo `LOGS`.
+- **TimeSkip (modo TIMESKIP):** `time_skip_submissions` (`PENDING|APPROVED|REJECTED`), rotas `/timeskips/{tid}/submission[s]`;
+  jogador com envio PENDING/APPROVED não agenda nem cancela (`SubmissionLockedException`); `close` bloqueia com PENDING
+  (`SubmissionPendingException`). "Avançar dia" só no `IDLE_PERIOD`.
+- **Aprovações (Mestre):** `GET /campaigns/{cid}/approvals` (`approval/`) agrega 9 tipos de pendência; aba "Aprovações" no
+  `CampaignDetail` com navegação por clique (`focusSheetId/Section`, `focusLogId`, `focusTimeSkipId`).
+- **Avulsas (técnica/base sem arte):** `CharacterTechnique.techniqueAssembly/baseAssembly` (jsonb) guardam a montagem (`RollProfileService.catalog/base` usam quando não há arte), `taughtBy`. `LearnLooseRequest.technique|base` = montada na hora (conferida por `AssemblyRules` categoria CREATED); `POST /character-sheets/{sid}/techniques/{tid}/teach {targetSheetId}` (jogador: pedido REQUESTED na ficha alvo; Mestre: em treino). Catálogo de avulsas: Mongo `looseMoves` (`LooseMove`), `/campaigns/{cid}/loose-moves` (Mestre cria/oculta/apaga; jogador só vê `visible`). Front: `sheet/LooseMoves.jsx` (seção minimizada por padrão em `MartialPanel`). Colunas novas sem migração: `character_techniques.technique_assembly/base_assembly/taught_by`.
+- **Várias fichas por jogador:** `CharacterSheet.campaignMember` é `@ManyToOne` (sem unique). Bancos existentes: `ALTER TABLE character_sheets DROP CONSTRAINT <uk de campaign_member_id>`. A visibilidade por seção continua por membro (vale para todas as fichas dele).
+- **Colunas/tabelas novas sem migração** (bancos com `validate`): `attack_targets.late_counter_roll_id`, `interaction_logs.status`/`review_note`,
+  tabela `time_skip_submissions`.
+- **Rolagem livre (adendos):** `RollService.parseFull` aceita vários termos (`2d6+1d4-1d8+3`, ≤30 dados); `RollRequest`/`CampaignRollRequest`
+  ganharam `advantage` (±1: rola em dobro, fica com melhor/pior, o descartado vem como parcela `DISCARDED`) e `separate` (microrolagens
+  `MICRO` no mesmo cartão; padrão soma tudo, parcelas `DICE`). Ação de combate `WILL_TEST` (0 PA, `nd` 1..40, padrão 12) usa `VitalService.willTest`.
+  Front: `useRevealBusy` (revealQueue) minimiza o `ActionOverlay` durante a animação; `.turn-active` marca o turno atual.
+- **Efeitos de condição/ferida estilo mangá (feito, só front; não verificado na tela):** `ui/ConditionFx.jsx` (onomatopoeia por portal
+  `position:fixed`, só para condição NOVA + entrada curta ao montar, via `queueSlot` de `rolls/revealQueue`), `ui/BleedEdge.jsx`
+  (sangramento na borda direita: do cartão no `InitiativeTracker`, da página na ficha; 1 gota por ferida, até 6),
+  `combat/conditionThemes.js` (chave da condição → tema: FOGO, GELO, VENENO, SUFOCO, CHOQUE, TONTURA, QUEDA, DESMAIO, SANGUE,
+  AGARRE, FOCO, GENERICO; palavras só em português), tokens `--blood`/`--fx-*`/`--shape-*` e classes `.cfx*`/`.bleed-edge*` em `index.css`.
+  Ligados em `CombatPanel` (condições + feridas por participante) e `CharacterSheetView` (só feridas: a ficha não tem condições).
+  Respeita `prefers-reduced-motion`; `pointer-events:none`; `.no-print`. Pendente: conferir visualmente nos dois temas.
+
+**Impacto na parede:** `CreateAttackRequest.surface` (checkbox "Parede/obstáculo junto do alvo" no `AttackBuilder` para Esmagar, Empurrar e Empurrão) faz o alvo empurrado sem resistir sofrer 1d4+3 (`AttackService.wallImpact`; PQ só no Esmagar).
+
+**Fora da especialização (não treinado):** metade do atributo no ataque básico desarmado (inclusive atacante Derrubado, que já tinha DES/2: fica DES/4),
+na reação (Defesa/Esquiva) e no acerto do Contragolpe quando o lutador não tem Contra-ataque especializado em nenhuma arte ACTIVE (`AttackService.counterCalc`).
 
 ## 25. Próximos itens
 

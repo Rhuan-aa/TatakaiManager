@@ -13,6 +13,8 @@ import RuleSettings from '../../components/campaign/RuleSettings';
 import RollFeed from '../../components/rolls/RollFeed';
 import CombatPanel from '../../components/combat/CombatPanel';
 import SheetsSection from '../../components/sheet/SheetsSection';
+import ApprovalsPanel from '../../components/approvals/ApprovalsPanel';
+import { useApprovals } from '../../components/approvals/useApprovals';
 import { useCampaignTopic } from '../../hooks/useWebSocket';
 
 export default function CampaignDetail() {
@@ -28,6 +30,8 @@ export default function CampaignDetail() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('NPCs');
   const [fightSheetIds, setFightSheetIds] = useState(undefined);
+  const [sheetBack, setSheetBack] = useState(null); // preenchido quando uma ficha está aberta
+  const [focus, setFocus] = useState(null); // destino vindo da aba Aprovações
 
   useEffect(() => {
     let active = true;
@@ -59,18 +63,32 @@ export default function CampaignDetail() {
 
   const isMaster = campaign?.currentUserRole === 'MASTER';
 
+  const goTab = (t) => { setFocus(null); setActiveTab(t); };
+  const approvals = useApprovals(id, isMaster);
+  // Aprovações: leva ao item (ficha/seção, log, TimeSkip) conforme o tipo da pendência
+  function openApproval(item) {
+    const section = { ART_REQUEST: 'martial', TECHNIQUE_REQUEST: 'martial', NOTEBOOK_DRAFT: 'notebook', OVERCOME: 'progress' }[item.kind];
+    if (item.sheetId) { setFocus({ sheetId: item.sheetId, section }); setActiveTab('Fichas'); }
+    else if (item.kind === 'LOG') { setFocus({ logId: item.logId }); setActiveTab('Logs'); }
+    else if (item.kind === 'TIMESKIP_SUBMISSION') { setFocus({ timeSkipId: item.timeSkipId }); setActiveTab('Agenda'); }
+    else if (item.kind === 'CREATED_ART') { setFocus(null); setActiveTab('Catálogo'); }
+  }
+
   const sidebarItems = [
     { key: 'back', label: 'Campanhas', icon: 'back', to: '/dashboard' },
     { divider: true },
-    { key: 'NPCs', label: 'NPCs', icon: 'users', active: activeTab === 'NPCs', onClick: () => setActiveTab('NPCs') },
-    { key: 'Fichas', label: 'Fichas', icon: 'sheet', active: activeTab === 'Fichas', onClick: () => { setFightSheetIds(undefined); setActiveTab('Fichas'); } },
-    { key: 'Agenda', label: 'Agenda', icon: 'calendar', active: activeTab === 'Agenda', onClick: () => setActiveTab('Agenda') },
-    { key: 'Combate', label: 'Combate', icon: 'swords', active: activeTab === 'Combate', onClick: () => setActiveTab('Combate') },
-    { key: 'Rolagens', label: 'Rolagens', icon: 'scroll', active: activeTab === 'Rolagens', onClick: () => setActiveTab('Rolagens') },
-    { key: 'Logs', label: 'Logs', icon: 'scroll', active: activeTab === 'Logs', onClick: () => setActiveTab('Logs') },
-    { key: 'Catálogo', label: 'Catálogo', icon: 'book', active: activeTab === 'Catálogo', onClick: () => setActiveTab('Catálogo') },
+    { key: 'NPCs', label: 'NPCs', icon: 'users', active: activeTab === 'NPCs', onClick: () => goTab('NPCs') },
+    { key: 'Fichas', label: 'Fichas', icon: 'sheet', active: activeTab === 'Fichas', onClick: () => { setFightSheetIds(undefined); goTab('Fichas'); } },
+    { key: 'Agenda', label: 'Agenda', icon: 'calendar', active: activeTab === 'Agenda', onClick: () => goTab('Agenda') },
+    { key: 'Combate', label: 'Combate', icon: 'swords', active: activeTab === 'Combate', onClick: () => goTab('Combate') },
+    { key: 'Rolagens', label: 'Rolagens', icon: 'scroll', active: activeTab === 'Rolagens', onClick: () => goTab('Rolagens') },
+    { key: 'Logs', label: 'Logs', icon: 'scroll', active: activeTab === 'Logs', onClick: () => goTab('Logs') },
+    { key: 'Catálogo', label: 'Catálogo', icon: 'book', active: activeTab === 'Catálogo', onClick: () => goTab('Catálogo') },
     ...(isMaster
-      ? [{ key: 'Configurações', label: 'Configurações', icon: 'settings', active: activeTab === 'Configurações', onClick: () => setActiveTab('Configurações') }]
+      ? [{ key: 'Aprovações', label: approvals.items.length ? `Aprovações (${approvals.items.length})` : 'Aprovações', icon: 'check', active: activeTab === 'Aprovações', onClick: () => goTab('Aprovações') }]
+      : []),
+    ...(isMaster
+      ? [{ key: 'Configurações', label: 'Configurações', icon: 'settings', active: activeTab === 'Configurações', onClick: () => goTab('Configurações') }]
       : []),
   ];
 
@@ -82,12 +100,14 @@ export default function CampaignDetail() {
     Rolagens: { label: 'Rolagens', hint: 'Rolagens da mesa em tempo real.' },
     Logs: { label: 'Logs', hint: 'Registro narrativo da campanha.' },
     Catálogo: { label: 'Catálogo', hint: 'Traços, clãs, artes e itens do sistema e da campanha.' },
+    Aprovações: { label: 'Aprovações', hint: 'Tudo que aguarda a decisão do Mestre. Clique para ir ao item.' },
     Configurações: { label: 'Configurações', hint: 'Membros e ajustes da mesa.' },
   };
   const meta = TAB_META[activeTab] ?? TAB_META.NPCs;
 
   return (
-    <AppShell items={sidebarItems}>
+    <AppShell items={sidebarItems}
+      backAction={activeTab === 'Fichas' && sheetBack ? { label: 'Fichas', onClick: sheetBack } : undefined}>
       {loading && (
         <div className="space-y-6">
           <div className="flex items-start gap-3">
@@ -129,23 +149,28 @@ export default function CampaignDetail() {
 
           {/* Seção ativa, dentro de uma superfície */}
           <Surface className="p-5 sm:p-6">
-            <div className="mb-5 border-b-[3px] border-[var(--line)] pb-4">
-              <h2 className="panel-title text-2xl">{meta.label}</h2>
-              <p className="mt-0.5 text-sm opacity-80">{meta.hint}</p>
-            </div>
+            {!(activeTab === 'Fichas' && sheetBack) && (
+              <div className="mb-5 border-b-[3px] border-[var(--line)] pb-4">
+                <h2 className="panel-title text-2xl">{meta.label}</h2>
+                <p className="mt-0.5 text-sm opacity-80">{meta.hint}</p>
+              </div>
+            )}
 
             {activeTab === 'NPCs' && (
               <NpcSection campaignId={id} isMaster={isMaster} npcs={npcs} setNpcs={setNpcs} />
             )}
-            {activeTab === 'Fichas' && <SheetsSection campaignId={id} isMaster={isMaster} fightSheetIds={fightSheetIds} npcs={npcs} setNpcs={setNpcs} />}
+            {activeTab === 'Fichas' && <SheetsSection campaignId={id} isMaster={isMaster} fightSheetIds={fightSheetIds} focusSheetId={focus?.sheetId} focusSection={focus?.section} npcs={npcs} setNpcs={setNpcs} onSheetOpen={setSheetBack} />}
             {activeTab === 'Agenda' && (
-              <TimeSkipPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
+              <TimeSkipPanel campaignId={id} isMaster={isMaster} npcs={npcs} focusTimeSkipId={focus?.timeSkipId} />
             )}
             {activeTab === 'Combate' && <CombatPanel campaignId={id} isMaster={isMaster} npcs={npcs}
               onCloseFight={(ids) => { setFightSheetIds(ids); setActiveTab('Fichas'); }} />}
             {activeTab === 'Rolagens' && <RollFeed campaignId={id} isMaster={isMaster} />}
             {activeTab === 'Logs' && (
-              <LogPanel campaignId={id} isMaster={isMaster} npcs={npcs} />
+              <LogPanel campaignId={id} isMaster={isMaster} npcs={npcs} focusLogId={focus?.logId} />
+            )}
+            {activeTab === 'Aprovações' && isMaster && (
+              <ApprovalsPanel campaignId={id} items={approvals.items} loading={approvals.loading} onReload={approvals.reload} onOpen={openApproval} />
             )}
             {activeTab === 'Catálogo' && <CatalogManager campaignId={id} isMaster={isMaster} />}
             {activeTab === 'Configurações' && isMaster && (

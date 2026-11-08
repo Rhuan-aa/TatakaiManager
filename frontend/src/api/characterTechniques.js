@@ -11,6 +11,7 @@ export const setArtGraduation = (sheetId, id, graduation) => call('patch', `${ba
 export const graduateArt = (sheetId, id, duelWon) => call('post', `${base(sheetId)}/arts/${id}/graduate`, { duelWon });
 export const addGraduationPoints = (sheetId, id, points) => call('post', `${base(sheetId)}/arts/${id}/graduation-points`, { points });
 export const removeCharacterArt = (sheetId, id) => call('delete', `${base(sheetId)}/arts/${id}`);
+export const learnLoose = (sheetId, body) => call('post', `${base(sheetId)}/techniques/loose`, body);
 export const learnMove = (sheetId, body) => call('post', `${base(sheetId)}/techniques`, body);
 export const reviewTechnique = (sheetId, id, approved) => call('post', `${base(sheetId)}/techniques/${id}/review`, { approved });
 export const trainTechnique = (sheetId, id, points) => call('post', `${base(sheetId)}/techniques/${id}/training`, { points });
@@ -19,3 +20,4 @@ export const addMasteryPoints = (sheetId, id, points) => call('post', `${base(sh
 export const levelUp = (sheetId, id, bonus) => call('post', `${base(sheetId)}/techniques/${id}/level-up`, { bonus });
 export const setMastery = (sheetId, id, mastery) => call('patch', `${base(sheetId)}/techniques/${id}/mastery`, { mastery });
 export const removeTechnique = (sheetId, id) => call('delete', `${base(sheetId)}/techniques/${id}`);
+export const teachLoose = (sheetId, id, targetSheetId) => call('post', `${base(sheetId)}/techniques/${id}/teach`, { targetSheetId });

@@ -50,6 +50,7 @@ class TimeSkipServiceTest {
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private BookingRepository bookingRepository;
     @Mock private InteractionLogRepository logRepository;
+    @Mock private com.tatakai.manager.timeskip.repository.TimeSkipSubmissionRepository submissionRepository;
 
     private TimeSkipService service;
 
@@ -64,7 +65,7 @@ class TimeSkipServiceTest {
     void setUp() {
         service = new TimeSkipService(timeSkipRepository, campaignRepository, memberRepository,
                 bookingRepository, logRepository, trainingService,
-                org.mockito.Mockito.mock(com.tatakai.manager.sheet.repository.CharacterSheetRepository.class), events);
+                org.mockito.Mockito.mock(com.tatakai.manager.sheet.repository.CharacterSheetRepository.class), events, submissionRepository);
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Player").build();
         campaign = Campaign.builder().id(UUID.randomUUID()).name("Aether").master(master).build();
@@ -366,5 +367,41 @@ class TimeSkipServiceTest {
                 .isInstanceOf(TimeSkipClosedException.class);
 
         verify(timeSkipRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Envio: encerrar TIMESKIP com envio PENDING é recusado (SubmissionPending)")
+    void close_timeSkipMode_withPendingSubmission_throws() {
+        TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign).name("Inverno")
+                .totalDays((short) 5).mode(com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP)
+                .status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        mockMaster(true);
+        when(submissionRepository.findByTimeSkipIdInAndStatus(
+                List.of(ts.getId()), com.tatakai.manager.timeskip.entity.SubmissionStatus.PENDING))
+                .thenReturn(List.of(com.tatakai.manager.timeskip.entity.TimeSkipSubmission.builder()
+                        .timeSkipId(ts.getId()).userId(player.getId()).build()));
+
+        assertThatThrownBy(() -> service.close(ts.getId(), master.getId()))
+                .isInstanceOf(com.tatakai.manager.timeskip.exception.SubmissionPendingException.class);
+
+        verify(trainingService, never()).processUpTo(any(), anyShort());
+        assertThat(ts.getStatus()).isEqualTo(TimeSkipStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("Envio: em IDLE_PERIOD, envios não bloqueiam o encerramento")
+    void close_idlePeriod_ignoresSubmissions() {
+        TimeSkip ts = TimeSkip.builder().id(UUID.randomUUID()).campaign(campaign).name("Inverno")
+                .totalDays((short) 5).mode(com.tatakai.manager.timeskip.entity.TimeSkipMode.IDLE_PERIOD)
+                .status(TimeSkipStatus.ACTIVE).build();
+        when(timeSkipRepository.findById(ts.getId())).thenReturn(Optional.of(ts));
+        mockMaster(true);
+        when(timeSkipRepository.save(any(TimeSkip.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.close(ts.getId(), master.getId());
+
+        assertThat(ts.getStatus()).isEqualTo(TimeSkipStatus.CLOSED);
+        verify(submissionRepository, never()).findByTimeSkipIdInAndStatus(any(), any());
     }
 }

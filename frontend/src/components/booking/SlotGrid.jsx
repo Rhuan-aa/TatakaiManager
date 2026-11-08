@@ -5,7 +5,8 @@ import { getMartial } from '../../api/characterTechniques';
 import { listTimeSkipActivities } from '../../api/timeSkipActivities';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import { listSubmissions, submitTimeSkip, reopenSubmission } from '../../api/timeskips';
+import { useWebSocket, useCampaignTopic } from '../../hooks/useWebSocket';
 import { EmptyState } from '../../components/layout/AppShell';
 import { useToast } from '../../contexts/ToastContext';
 import Icon from '../ui/Icon';
@@ -81,7 +82,7 @@ const fillOther = 'var(--panel-bg)';
 
 const slotKey = (day, npcId, slot) => `${day}:${npcId}:${slot}`;
 
-export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion }) {
+export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion, isMaster }) {
   // Pontos de ócio por dia variam por período (§51.2): sombreia as constantes do módulo
   const perDay = timeSkip.slotsPerDay ?? SLOTS_PER_DAY;
   const COLUMNS = [...SLOTS.slice(0, perDay), EXTRA_SLOT];
@@ -117,7 +118,45 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
 
   const isActive = timeSkip.status === 'ACTIVE';
   const isPastDay = timeSkip.mode !== 'TIMESKIP' && day < timeSkip.currentDay;
-  const canBook = isActive && !isPastDay;
+  // Envio para aprovação (só TimeSkip, só jogador): PENDING/APPROVED travam a agenda
+  const usesSubmission = timeSkip.mode === 'TIMESKIP' && !isMaster;
+  const [mySubmission, setMySubmission] = useState(null);
+  const [submissionTick, setSubmissionTick] = useState(0);
+  const [submissionBusy, setSubmissionBusy] = useState(false);
+  const onCampaignMsg = useCallback((msg) => {
+    if (msg?.type === 'TIMESKIP') setSubmissionTick((t) => t + 1);
+  }, []);
+  useCampaignTopic(campaignId, 'campaign', onCampaignMsg);
+  useEffect(() => {
+    if (!usesSubmission) return undefined;
+    let active = true;
+    listSubmissions(timeSkip.id)
+      .then((list) => { if (active) setMySubmission(list.find((s) => s.userId === user?.userId) ?? null); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [usesSubmission, timeSkip.id, user?.userId, submissionTick]);
+  const subStatus = mySubmission?.status ?? null;
+  const submissionLocked = usesSubmission && (subStatus === 'PENDING' || subStatus === 'APPROVED');
+  const canBook = isActive && !isPastDay && !submissionLocked;
+
+  async function handleSubmission(action) {
+    setActionError('');
+    setSubmissionBusy(true);
+    try {
+      if (action === 'submit') {
+        setMySubmission(await submitTimeSkip(timeSkip.id));
+        toast('Enviado para aprovação do Mestre.');
+      } else {
+        await reopenSubmission(timeSkip.id);
+        setMySubmission(null);
+        toast('Agenda reaberta para edição.');
+      }
+    } catch (err) {
+      toast(parseApiError(err).message, 'error');
+    } finally {
+      setSubmissionBusy(false);
+    }
+  }
 
   useEffect(() => {
     setDay(timeSkip.currentDay);
@@ -597,6 +636,29 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
 
   return (
     <div>
+      {usesSubmission && isActive && (
+        <div className="panel mb-3 flex flex-wrap items-center justify-between gap-2 p-3">
+          <p className="text-sm text-[var(--text)]">
+            <span className="caption mr-2">
+              {{ PENDING: 'Aguardando o Mestre', APPROVED: 'Aprovado', REJECTED: 'Recusado' }[subStatus] ?? 'Editando'}
+            </span>
+            {subStatus === 'REJECTED' && (mySubmission.note ? `Motivo: ${mySubmission.note}` : 'Sem motivo informado. Ajuste e reenvie.')}
+            {subStatus === 'PENDING' && 'A agenda está travada até o Mestre decidir.'}
+            {subStatus === 'APPROVED' && 'Sua agenda foi aprovada e não pode mais ser alterada.'}
+            {!subStatus && 'Monte sua agenda e envie para aprovação.'}
+          </p>
+          {(!subStatus || subStatus === 'REJECTED') && (
+            <button type="button" disabled={submissionBusy} onClick={() => handleSubmission('submit')} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">
+              {subStatus === 'REJECTED' ? 'Reenviar para aprovação' : 'Enviar para aprovação'}
+            </button>
+          )}
+          {subStatus === 'PENDING' && (
+            <button type="button" disabled={submissionBusy} onClick={() => handleSubmission('reopen')} className="btn-secondary px-3 py-1.5 text-sm disabled:opacity-50">
+              Editar (reabrir)
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button

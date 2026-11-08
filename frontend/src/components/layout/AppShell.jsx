@@ -68,12 +68,25 @@ export function SkeletonCard() {
  * Shell de aplicação: fundo decorativo + sidebar retrátil + container centrado.
  * Usado por todas as telas autenticadas (Dashboard, CampaignDetail).
  */
-export default function AppShell({ items = [], children, maxWidth = 'max-w-6xl' }) {
+export default function AppShell({ items = [], children, maxWidth = 'max-w-6xl', backAction }) {
   return (
     <div className="relative min-h-screen bg-[var(--bg)] text-[var(--text)]">
       <BackgroundDecor />
       <Sidebar items={items} />
       <div className="relative pl-16">
+        {/* Voltar: canto superior esquerdo, fora do card central (a sidebar expandida sobrepõe, como no resto do conteúdo) */}
+        {backAction && (
+          <div className="no-print px-4 pt-4 sm:px-8 sm:pt-6">
+            <button
+              type="button"
+              onClick={backAction.onClick}
+              className="btn-secondary transition-all hover:-translate-x-px hover:-translate-y-px hover:bg-[var(--accent)] hover:text-white hover:shadow-[4px_4px_0_var(--line)] focus-visible:bg-[var(--accent)] focus-visible:text-white"
+            >
+              <Icon name="back" size={18} />
+              {backAction.label}
+            </button>
+          </div>
+        )}
         <main className={`mx-auto ${maxWidth} px-4 py-6 sm:px-8 sm:py-10`}>{children}</main>
       </div>
     </div>

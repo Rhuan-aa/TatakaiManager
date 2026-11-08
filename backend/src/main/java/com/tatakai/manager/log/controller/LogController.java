@@ -1,6 +1,7 @@
 package com.tatakai.manager.log.controller;
 
 import com.tatakai.manager.log.dto.request.CreateLogRequest;
+import com.tatakai.manager.log.dto.request.ReviewLogRequest;
 import com.tatakai.manager.log.dto.request.UpdateLogRequest;
 import com.tatakai.manager.log.dto.response.LogResponse;
 import com.tatakai.manager.log.service.LogService;
@@ -41,6 +42,13 @@ public class LogController {
                                               @Valid @RequestBody UpdateLogRequest request) {
         LogResponse res = logService.update(campaignId, logId, AuthenticatedUser.id(), request);
         return ResponseEntity.ok(res);
+    }
+
+    @PostMapping("/{logId}/review")
+    public ResponseEntity<LogResponse> review(@PathVariable UUID campaignId, @PathVariable UUID logId,
+                                              @Valid @RequestBody ReviewLogRequest request) {
+        return ResponseEntity.ok(logService.review(campaignId, logId, AuthenticatedUser.id(),
+                request.approved(), request.note()));
     }
 
     @DeleteMapping("/{logId}")

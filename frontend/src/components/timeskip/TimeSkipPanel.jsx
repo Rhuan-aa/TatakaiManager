@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   listTimeSkips,
   createTimeSkip,
@@ -7,6 +7,8 @@ import {
   setVenue,
   getFatiguePreview,
   deleteTimeSkip,
+  listSubmissions,
+  reviewSubmission,
 } from '../../api/timeskips';
 import { parseApiError } from '../../api/parseApiError';
 import { EmptyState } from '../../components/layout/AppShell';
@@ -18,7 +20,9 @@ import Icon from '../ui/Icon';
 
 const inputClass = 'field';
 
-export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
+const SUB_LABEL = { PENDING: 'Aguardando', APPROVED: 'Aprovado', REJECTED: 'Recusado' };
+
+export default function TimeSkipPanel({ campaignId, isMaster, npcs, focusTimeSkipId }) {
   const toast = useToast();
   const [timeSkips, setTimeSkips] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -33,6 +37,10 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
   const [deleting, setDeleting] = useState(false);
   const [activitiesVersion, setActivitiesVersion] = useState(0);
   const [tick, setTick] = useState(0);
+  const [submissions, setSubmissions] = useState([]);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectNote, setRejectNote] = useState('');
+  const submissionsRef = useRef(null);
   // outro cliente mudou dia, encerrou, criou ou excluiu um TimeSkip: recarrega a lista
   const onCampaign = useCallback((msg) => { if (msg?.type === 'TIMESKIP') setTick((t) => t + 1); }, []);
   useCampaignTopic(campaignId, 'campaign', onCampaign);
@@ -44,7 +52,10 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
         const list = await listTimeSkips(campaignId);
         if (!active) return;
         setTimeSkips(list);
-        setSelectedId((prev) => (list.some((t) => t.id === prev) ? prev : list[0]?.id ?? null));
+        setSelectedId((prev) => {
+          if (focusTimeSkipId && list.some((t) => t.id === focusTimeSkipId)) return focusTimeSkipId;
+          return list.some((t) => t.id === prev) ? prev : list[0]?.id ?? null;
+        });
       } catch (err) {
         if (active) setError(parseApiError(err).message);
       } finally {
@@ -54,9 +65,43 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
     return () => {
       active = false;
     };
-  }, [campaignId, tick]);
+  }, [campaignId, tick, focusTimeSkipId]);
 
   const selected = timeSkips.find((t) => t.id === selectedId) ?? null;
+  const showSubmissions = isMaster && selected?.mode === 'TIMESKIP' && selected?.status === 'ACTIVE';
+  const selectedKey = showSubmissions ? selected.id : null;
+
+  // envios dos jogadores (Mestre): recarrega ao trocar de TimeSkip ou ao chegar evento TIMESKIP
+  useEffect(() => {
+    if (!selectedKey) { setSubmissions([]); return undefined; }
+    let active = true;
+    listSubmissions(selectedKey)
+      .then((list) => { if (active) setSubmissions(list); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [selectedKey, tick]);
+
+  // navegação vinda da aba Aprovações: rola até a lista de envios
+  useEffect(() => {
+    if (focusTimeSkipId && selectedKey === focusTimeSkipId) {
+      submissionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [focusTimeSkipId, selectedKey, submissions.length]);
+
+  async function handleReview(userId, approved) {
+    try {
+      const updated = await reviewSubmission(selected.id, userId, {
+        approved,
+        note: approved ? null : rejectNote.trim() || null,
+      });
+      setSubmissions((prev) => prev.map((s) => (s.userId === userId ? updated : s)));
+      setRejectingId(null);
+      setRejectNote('');
+      toast(approved ? 'Envio aprovado.' : 'Envio recusado.');
+    } catch (err) {
+      toast(parseApiError(err).message, 'error');
+    }
+  }
 
   function upsert(updated) {
     setTimeSkips((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
@@ -410,7 +455,7 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {selected.status === 'ACTIVE' && (
                 <>
-                  {selected.mode !== 'IDLE_PERIOD' && <button
+                  {selected.mode === 'IDLE_PERIOD' && <button
                     type="button"
                     onClick={handleAdvanceDay}
                     disabled={selected.currentDay >= selected.totalDays}
@@ -482,8 +527,49 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs }) {
               onChanged={() => setActivitiesVersion((v) => v + 1)}
             />
           )}
+          {showSubmissions && (
+            <div ref={submissionsRef} className="panel mb-4 p-3">
+              <p className="caption mb-2">Envios dos jogadores</p>
+              {submissions.length === 0 ? (
+                <p className="text-sm text-[var(--muted)]">Nenhum jogador enviou a agenda ainda.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {submissions.map((s) => (
+                    <li key={s.userId} className="text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <b>{s.userName}</b>
+                        <span className="caption">{SUB_LABEL[s.status] ?? s.status}</span>
+                        {s.status === 'REJECTED' && s.note && <span className="text-[var(--muted)]">{s.note}</span>}
+                        {s.status === 'PENDING' && rejectingId !== s.userId && (
+                          <span className="ml-auto flex gap-2">
+                            <button type="button" onClick={() => handleReview(s.userId, true)} className="btn-primary px-3 py-1 text-xs">Aprovar</button>
+                            <button type="button" onClick={() => { setRejectingId(s.userId); setRejectNote(''); }} className="btn-secondary px-3 py-1 text-xs text-[var(--accent)]">Recusar</button>
+                          </span>
+                        )}
+                      </div>
+                      {rejectingId === s.userId && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <input
+                            type="text"
+                            className={`${inputClass} m-0 flex-1`}
+                            placeholder="Motivo (opcional)"
+                            maxLength={500}
+                            value={rejectNote}
+                            onChange={(e) => setRejectNote(e.target.value)}
+                          />
+                          <button type="button" onClick={() => handleReview(s.userId, false)} className="btn-primary px-3 py-1 text-xs">Confirmar recusa</button>
+                          <button type="button" onClick={() => setRejectingId(null)} className="btn-secondary px-3 py-1 text-xs">Cancelar</button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <SlotGrid
             campaignId={campaignId}
+            isMaster={isMaster}
             timeSkip={selected}
             npcs={npcs.filter((n) => n.bookable !== false)}
             activitiesVersion={activitiesVersion}

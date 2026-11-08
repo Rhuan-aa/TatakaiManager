@@ -105,6 +105,26 @@ class RollServiceTest {
     }
 
     @Test
+    @DisplayName("expressão com vários termos, vantagem e microrolagens")
+    void roll_multiTermAdvantageSeparate() {
+        assertThat(RollService.parseFull("2d6+1d4-1d8+3").terms()).hasSize(3);
+        for (int i = 0; i < 200; i++) {
+            RollMessage adv = service.roll(sheet.getId(),
+                    new RollRequest("1d20", "x", null, null, null, 1, false), owner.getId());
+            int discarded = adv.breakdown().stream().filter(p -> "DISCARDED".equals(p.part())).findFirst().orElseThrow().value();
+            assertThat(adv.total()).isGreaterThanOrEqualTo(discarded);
+            RollMessage dis = service.roll(sheet.getId(),
+                    new RollRequest("1d20", "x", null, null, null, -1, false), owner.getId());
+            assertThat(dis.total()).isLessThanOrEqualTo(
+                    dis.breakdown().stream().filter(p -> "DISCARDED".equals(p.part())).findFirst().orElseThrow().value());
+            RollMessage sep = service.roll(sheet.getId(),
+                    new RollRequest("3d6+1", "x", null, null, null, null, true), owner.getId());
+            assertThat(sep.breakdown()).hasSize(3).allMatch(p -> "MICRO".equals(p.part()));
+            assertThat(sep.total()).isEqualTo(sep.breakdown().stream().mapToInt(p -> p.value()).sum());
+        }
+    }
+
+    @Test
     @DisplayName("total fica dentro do intervalo possível em muitas rolagens")
     void roll_totalWithinRange() {
         for (int i = 0; i < 300; i++) {

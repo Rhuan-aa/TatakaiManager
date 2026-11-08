@@ -55,6 +55,16 @@ public class InteractionLog {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    /** Pedido de jogador nasce PENDING; o restante nasce PUBLISHED. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(12) not null default 'PUBLISHED'")
+    @Builder.Default
+    private LogStatus status = LogStatus.PUBLISHED;
+
+    /** Nota do Mestre ao aprovar/recusar o pedido. */
+    @Column(name = "review_note", length = 500)
+    private String reviewNote;
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) createdAt = Instant.now();

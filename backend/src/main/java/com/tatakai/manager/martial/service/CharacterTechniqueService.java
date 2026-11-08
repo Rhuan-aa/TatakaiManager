@@ -5,6 +5,7 @@ import com.tatakai.manager.campaign.entity.Role;
 import com.tatakai.manager.campaign.repository.CampaignMemberRepository;
 import com.tatakai.manager.catalog.dto.request.ReviewArtRequest;
 import com.tatakai.manager.catalog.entity.ArtBase;
+import com.tatakai.manager.catalog.entity.ArtCategory;
 import com.tatakai.manager.catalog.entity.ArtStatus;
 import com.tatakai.manager.catalog.entity.ArtTechnique;
 import com.tatakai.manager.catalog.entity.BorrowedTechnique;
@@ -16,6 +17,7 @@ import com.tatakai.manager.catalog.service.rules.AssemblyRules;
 import com.tatakai.manager.martial.dto.request.CharacterArtRequest;
 import com.tatakai.manager.martial.dto.request.GraduateRequest;
 import com.tatakai.manager.martial.dto.request.GraduationRequest;
+import com.tatakai.manager.martial.dto.request.LearnLooseRequest;
 import com.tatakai.manager.martial.dto.request.LearnMoveRequest;
 import com.tatakai.manager.martial.dto.request.LevelUpRequest;
 import com.tatakai.manager.martial.dto.request.MasteryRequest;
@@ -227,6 +229,79 @@ public class CharacterTechniqueService {
                 .mastery(Mastery.STANDARD).masteryPoints(0).bonuses(new ArrayList<>())
                 .borrowedFrom(borrowed == null ? null : borrowed.getArt()).build());
         return finish(c, c.master() ? "ADD_TECHNIQUE" : "REQUEST_TECHNIQUE", "technique", null, move.name());
+    }
+
+    /**
+     * Técnica/base avulsa (sem arte na ficha): copiada ou adquirida por outro meio. Sem checagem de graduação;
+     * jogador pede (REQUESTED) e o Mestre concede direto (IN_TRAINING). Duplicata avulsa de mesmo tipo/nome -> 400.
+     */
+    @Transactional
+    public SheetMartialResponse learnLoose(UUID sheetId, LearnLooseRequest req, UUID requesterId) {
+        Ctx c = load(sheetId, requesterId);
+        Move move;
+        ArtTechnique techAsm = null;
+        ArtBase baseAsm = null;
+        if (req.artId() != null) {
+            MartialArt art = martialArtRepository.findById(req.artId()).orElseThrow(SheetEntryNotFoundException::new);
+            move = findMove(art, req.kind(), req.name());
+        } else if (req.technique() != null || req.base() != null) {
+            // montada na hora: conferida pelas regras da Criação Marcial (categoria Criada)
+            boolean base = req.kind() == MoveKind.BASE;
+            if (base ? req.base() == null : req.technique() == null) {
+                throw new InvalidCharacterSheetException("Envie a montagem do tipo escolhido");
+            }
+            var check = base ? AssemblyRules.checkBase(ArtCategory.CREATED, req.base())
+                    : AssemblyRules.checkTechnique(ArtCategory.CREATED, req.technique());
+            if (!check.issues().isEmpty()) throw new InvalidCharacterSheetException(String.join("; ", check.issues()));
+            Graduation g = base ? req.base().getGraduation() : req.technique().getGraduation();
+            move = new Move(req.name().trim(), g == null ? grad(null) : g, check.finalComplexity(), check.trainingPoints());
+            if (base) baseAsm = req.base(); else techAsm = req.technique();
+            if (base) baseAsm.setName(move.name()); else techAsm.setName(move.name());
+        } else {
+            int complexity = or(req.complexity(), 1);
+            move = new Move(req.name().trim(), grad(req.graduation()), complexity, or(req.trainingPoints(), 3 * complexity));
+        }
+        boolean already = techniqueRepository.findBySheetIdOrderByCreatedAt(sheetId).stream()
+                .anyMatch(t -> t.getCharacterArt() == null && t.getKind() == req.kind() && t.getName().equals(move.name()));
+        if (already) throw new InvalidCharacterSheetException("A ficha já possui " + move.name() + " avulsa");
+
+        techniqueRepository.save(CharacterTechnique.builder().sheet(c.sheet()).characterArt(null).kind(req.kind())
+                .name(move.name()).graduation(move.graduation()).complexity(move.complexity())
+                .trainingPoints(move.trainingPoints()).trainingProgress(0)
+                .state(c.master() ? TechniqueState.IN_TRAINING : TechniqueState.REQUESTED)
+                .techniqueAssembly(techAsm).baseAssembly(baseAsm)
+                .mastery(Mastery.STANDARD).masteryPoints(0).bonuses(new ArrayList<>()).build());
+        return finish(c, c.master() ? "ADD_LOOSE_TECHNIQUE" : "REQUEST_LOOSE_TECHNIQUE", "technique", null, move.name());
+    }
+
+    /**
+     * Ensinar uma avulsa a outra ficha da campanha. Quem ensina é o dono da ficha de origem (ou o Mestre); a cópia
+     * vai para a ficha de destino como pedido (REQUESTED), ou direto em treino se quem ensina é o Mestre.
+     */
+    @Transactional
+    public SheetMartialResponse teach(UUID sheetId, UUID techniqueId, UUID targetSheetId, UUID requesterId) {
+        Ctx c = load(sheetId, requesterId);
+        CharacterTechnique src = technique(c, techniqueId);
+        if (src.getCharacterArt() != null) throw new InvalidCharacterSheetException("Só técnicas e bases avulsas podem ser ensinadas");
+        if (src.getState() == TechniqueState.REQUESTED) throw new InvalidCharacterSheetException("A técnica ainda não foi aprovada");
+        CharacterSheet target = sheetRepository.findById(targetSheetId).orElseThrow(CharacterSheetNotFoundException::new);
+        if (target.isNpcSheet() || c.sheet().isNpcSheet()
+                || !target.getCampaignMember().getCampaign().getId().equals(c.sheet().getCampaignMember().getCampaign().getId())) {
+            throw new InvalidCharacterSheetException("A ficha de destino deve ser de um personagem da mesma campanha");
+        }
+        if (target.getId().equals(c.sheet().getId())) throw new InvalidCharacterSheetException("Escolha outra ficha");
+        boolean dup = techniqueRepository.findBySheetIdOrderByCreatedAt(target.getId()).stream()
+                .anyMatch(t -> t.getCharacterArt() == null && t.getKind() == src.getKind() && t.getName().equals(src.getName()));
+        if (dup) throw new InvalidCharacterSheetException("A ficha de destino já possui " + src.getName() + " avulsa");
+        String teacher = c.sheet().getName() != null ? c.sheet().getName() : c.actorName();
+        techniqueRepository.save(CharacterTechnique.builder().sheet(target).characterArt(null).kind(src.getKind())
+                .name(src.getName()).graduation(src.getGraduation()).complexity(src.getComplexity())
+                .trainingPoints(src.getTrainingPoints()).trainingProgress(0)
+                .state(c.master() ? TechniqueState.IN_TRAINING : TechniqueState.REQUESTED)
+                .techniqueAssembly(src.getTechniqueAssembly()).baseAssembly(src.getBaseAssembly()).taughtBy(teacher)
+                .mastery(Mastery.STANDARD).masteryPoints(0).bonuses(new ArrayList<>()).build());
+        finish(new Ctx(target, c.actorId(), c.actorName(), c.master()), "TEACH_LOOSE_TECHNIQUE", "technique", teacher, src.getName());
+        return response(c.sheet());
     }
 
     @Transactional
@@ -530,7 +605,8 @@ public class CharacterTechniqueService {
         List<CharacterTechniqueResponse> techniques = all.stream().map(t -> new CharacterTechniqueResponse(t.getId(), t.artIdOrNull(), t.getKind(),
                         t.getName(), t.getGraduation(), t.getComplexity(), t.getTrainingPoints(),
                         t.getTrainingProgress(), t.getState(), t.getMastery(), t.getMasteryPoints(),
-                        MasteryRules.nextLevelCost(t.getTrainingPoints(), t.getMastery()), t.getBonuses(), t.getBorrowedFrom())).toList();
+                        MasteryRules.nextLevelCost(t.getTrainingPoints(), t.getMastery()), t.getBonuses(), t.getBorrowedFrom(),
+                        t.getTechniqueAssembly() != null || t.getBaseAssembly() != null, t.getTaughtBy())).toList();
         return new SheetMartialResponse(arts, techniques);
     }
 }

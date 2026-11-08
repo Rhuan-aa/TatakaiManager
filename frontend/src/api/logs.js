@@ -18,3 +18,8 @@ export async function updateLog(campaignId, logId, { narrative }) {
 export async function deleteLog(campaignId, logId) {
   await client.delete(`/campaigns/${campaignId}/logs/${logId}`);
 }
+
+export async function reviewLog(campaignId, logId, { approved, note = null }) {
+  const { data } = await client.post(`/campaigns/${campaignId}/logs/${logId}/review`, { approved, note });
+  return data;
+}

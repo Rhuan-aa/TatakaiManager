@@ -21,6 +21,7 @@ import com.tatakai.manager.timeskip.dto.response.SlotUpdateMessage;
 import com.tatakai.manager.timeskip.entity.Booking;
 import com.tatakai.manager.timeskip.entity.SoloActivityType;
 import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.SubmissionStatus;
 import com.tatakai.manager.timeskip.entity.TimeSkipMode;
 import com.tatakai.manager.timeskip.entity.TimeSkipActivity;
 import com.tatakai.manager.timeskip.entity.TimeSkipDay;
@@ -29,6 +30,7 @@ import com.tatakai.manager.timeskip.exception.BookingAlreadyPassedException;
 import com.tatakai.manager.timeskip.exception.BookingNotFoundException;
 import com.tatakai.manager.timeskip.exception.InvalidBookingException;
 import com.tatakai.manager.timeskip.exception.SlotTakenException;
+import com.tatakai.manager.timeskip.exception.SubmissionLockedException;
 import com.tatakai.manager.timeskip.exception.TimeSkipActivityNotFoundException;
 import com.tatakai.manager.timeskip.exception.TimeSkipClosedException;
 import com.tatakai.manager.timeskip.exception.TimeSkipNotFoundException;
@@ -36,6 +38,7 @@ import com.tatakai.manager.timeskip.repository.BookingRepository;
 import com.tatakai.manager.timeskip.repository.TimeSkipActivityRepository;
 import com.tatakai.manager.timeskip.repository.TimeSkipDayRepository;
 import com.tatakai.manager.timeskip.repository.TimeSkipRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipSubmissionRepository;
 import com.tatakai.manager.timeskip.websocket.SlotEventPublisher;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -58,6 +61,7 @@ public class BookingService {
     private final TimeSkipActivityRepository timeSkipActivityRepository;
     private final SlotEventPublisher slotEventPublisher;
     private final InteractionLogRepository logRepository;
+    private final TimeSkipSubmissionRepository submissionRepository;
 
     public BookingService(BookingRepository bookingRepository,
                           TimeSkipRepository timeSkipRepository,
@@ -68,7 +72,9 @@ public class BookingService {
                           NpcRepository npcRepository,
                           TimeSkipActivityRepository timeSkipActivityRepository,
                           SlotEventPublisher slotEventPublisher,
-                          InteractionLogRepository logRepository) {
+                          InteractionLogRepository logRepository,
+                          TimeSkipSubmissionRepository submissionRepository) {
+        this.submissionRepository = submissionRepository;
         this.bookingRepository = bookingRepository;
         this.timeSkipRepository = timeSkipRepository;
         this.timeSkipDayRepository = timeSkipDayRepository;
@@ -91,6 +97,9 @@ public class BookingService {
         TimeSkip timeSkip = loadTimeSkipOfCampaign(timeSkipId, campaignId);
         if (timeSkip.getStatus() != TimeSkipStatus.ACTIVE) {
             throw new TimeSkipClosedException();
+        }
+        if (role == Role.PLAYER && submissionLocks(timeSkip, requesterId)) {
+            throw new SubmissionLockedException("Agendamentos enviados: reabra para editar");
         }
 
         TimeSkipDay day = timeSkipDayRepository
@@ -290,6 +299,13 @@ public class BookingService {
 
         // Captura os dados do slot antes de remover, para o broadcast
         TimeSkip timeSkip = booking.getTimeSkipDay().getTimeSkip();
+        UUID campaignId = timeSkip.getCampaign().getId();
+        // Mestre nunca é travado
+        if (submissionLocks(timeSkip, requesterId)
+                && memberRepository.findByCampaignIdAndUserId(campaignId, requesterId)
+                        .map(m -> m.getRole() == Role.PLAYER).orElse(false)) {
+            throw new SubmissionLockedException("Agendamentos enviados: reabra para editar");
+        }
 
         // Tempo de jogo: só é possível desmarcar agendamentos cujo dia ainda não passou
         if (timeSkip.getMode() != TimeSkipMode.TIMESKIP
@@ -297,7 +313,6 @@ public class BookingService {
             throw new BookingAlreadyPassedException();
         }
 
-        UUID campaignId = timeSkip.getCampaign().getId();
         SlotUpdateMessage message = SlotUpdateMessage.cancelled(
                 campaignId, timeSkip.getId(), booking.getId(), booking.getNpcId(),
                 booking.getTimeSkipDay().getDayNumber(), booking.getSlotNumber());
@@ -308,6 +323,13 @@ public class BookingService {
 
         // US-15: libera o slot nas telas dos jogadores em tempo real
         slotEventPublisher.publish(message);
+    }
+
+    /** Modo TIMESKIP: envio PENDING/APPROVED trava o jogador (REJECTED ou sem envio liberam; IDLE_PERIOD não tem envio). */
+    private boolean submissionLocks(TimeSkip timeSkip, UUID userId) {
+        return timeSkip.getMode() != TimeSkipMode.IDLE_PERIOD
+                && submissionRepository.findByTimeSkipIdAndUserId(timeSkip.getId(), userId)
+                        .filter(s -> s.getStatus() != SubmissionStatus.REJECTED).isPresent();
     }
 
     // ---------- US-12: visualizar disponibilidade ----------

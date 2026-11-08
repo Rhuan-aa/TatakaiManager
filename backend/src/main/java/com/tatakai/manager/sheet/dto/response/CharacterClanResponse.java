@@ -4,5 +4,6 @@ import java.util.List;
 import java.util.UUID;
 
 public record CharacterClanResponse(
-        UUID id, UUID clanId, String name, List<String> heritage
+        UUID id, UUID clanId, String name, List<String> heritage,
+        com.tatakai.manager.build.entity.BuildGains buildGains
 ) {}

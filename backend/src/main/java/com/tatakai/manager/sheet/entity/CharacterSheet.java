@@ -30,8 +30,8 @@ public class CharacterSheet {
     @GeneratedValue
     private UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "campaign_member_id", nullable = true, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "campaign_member_id", nullable = true)
     private CampaignMember campaignMember;
 
     @Column(name = "npc_id", unique = true)

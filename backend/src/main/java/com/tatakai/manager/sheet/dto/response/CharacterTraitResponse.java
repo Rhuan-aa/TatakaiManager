@@ -8,5 +8,6 @@ import java.util.UUID;
 
 public record CharacterTraitResponse(
         UUID id, UUID traitId, int traitVersion, String name, TraitRarity rarity, TraitCategory category,
-        String description, TraitAcquisition acquiredIn, boolean gainsApplied
+        String description, TraitAcquisition acquiredIn, boolean gainsApplied,
+        com.tatakai.manager.build.entity.BuildGains buildGains   // só quando gainsApplied
 ) {}

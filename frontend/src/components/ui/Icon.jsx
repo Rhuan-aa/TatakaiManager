@@ -95,6 +95,13 @@ const ICONS = {
     </>
   ),
   check: svg(<path d="M4 12.5l5 5L20 6.5" />),
+  flame: svg(<path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-7 1 1 2 2 3 4 1-2 0-5 0-7Z" />),
+  snow: svg(<path d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9 4l3 2 3-2M9 20l3-2 3 2" />),
+  drop: svg(<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11Z" />),
+  bolt: svg(<path d="M13 2 4 14h7l-1 8 9-12h-7Z" />),
+  spiral: svg(<path d="M12 12a2 2 0 1 1 2-2 4 4 0 1 1-4-4 6 6 0 1 1-6 6" />),
+  wind: svg(<path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8" />),
+  hand: svg(<path d="M7 13V6a1.5 1.5 0 0 1 3 0v5M10 10V4a1.5 1.5 0 0 1 3 0v6M13 10V5a1.5 1.5 0 0 1 3 0v6M16 11V8a1.5 1.5 0 0 1 3 0v6a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-3l-2.5-4.5a1.5 1.5 0 0 1 2.5-1.5L7 15" />),
   circle: svg(<circle cx="12" cy="12" r="7" />),
   forward: svg(<path d="M5 12h14M12 5l7 7-7 7" />),
   wrench: svg(<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-3 3-3-1-1-3Z" />),

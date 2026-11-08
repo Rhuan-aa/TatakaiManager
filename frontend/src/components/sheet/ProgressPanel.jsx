@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as api from '../../api/progression';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
-import { CLASSIFICATIONS, KEIKEN, KEIKEN_FLAVOR, KEIKEN_MIN } from './sheetRules';
+import { CLASSIFICATIONS, KEIKEN, KEIKEN_MIN } from './sheetRules';
 import Collapse from '../ui/Collapse';
 
 const KEIKEN_ORDER = Object.keys(KEIKEN);
@@ -10,8 +10,8 @@ const PS_TARGETS = [
   ['STR', 'Força'], ['DEX', 'Destreza'], ['CON', 'Constituição'], ['INT', 'Inteligência'], ['CHA', 'Carisma'],
   ['MEN', 'Mental'], ['HP', 'HP máx. (+3)'], ['SP', 'SP máx. (+3)'],
 ];
+const SHORT = { STR: 'FOR', DEX: 'DES', CON: 'CON', INT: 'INT', CHA: 'CAR', MEN: 'MEN', HP: 'HP', SP: 'SP' };
 const TARGET_LABEL = Object.fromEntries(PS_TARGETS);
-const STATUS = { PENDING: 'Aguardando o Mestre', APPROVED: 'Aprovada', REJECTED: 'Recusada' };
 const allocText = (a) => Object.entries(a).map(([k, n]) => `${TARGET_LABEL[k] ?? k} ${n}`).join(', ');
 
 /** Rival: lutas e Leitura (0–3); dono/Mestre anotam arte e técnicas conhecidas. */
@@ -50,10 +50,25 @@ function RivalRow({ r, canEdit, isMaster, run }) {
 const small = 'text-fine';
 
 function Bar({ value, max, color }) {
-  const pct = max > 0 ? Math.min(100, (100 * value) / max) : 100;
+  const raw = max > 0 ? Math.min(100, (100 * value) / max) : 100;
+  const pct = value > 0 ? Math.max(raw, 6) : raw; // com algum EL, o verde sempre aparece
   return (
-    <div className="h-2.5 w-full border-2 border-[var(--line)]" role="presentation">
-      <div className="h-full" style={{ width: `${pct}%`, background: color }} />
+    <div className="meter" style={{ height: 14 }} role="meter" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
+      <div className="meter-fill" style={{ width: `${pct}%`, '--meter-color': color }} />
+    </div>
+  );
+}
+
+/** Caixa de número: rótulo abreviado no topo, − valor + centralizados. */
+function Stepper({ label, value, onChange }) {
+  return (
+    <div className="panel flex flex-col overflow-hidden p-0 shadow-none">
+      <div className="attr-tile-head justify-center text-center"><span className="block w-full text-center">{label}</span></div>
+      <div className="grid grid-cols-3 place-items-center p-1">
+        <button type="button" className="btn-ghost m-0 w-full justify-center px-0 py-0 text-lg leading-none" aria-label={`Menos ${label}`} disabled={!value} onClick={() => onChange(value - 1)}>−</button>
+        <span className="panel-title w-full text-center text-2xl leading-none">{value}</span>
+        <button type="button" className="btn-ghost m-0 w-full justify-center px-0 py-0 text-lg leading-none" aria-label={`Mais ${label}`} onClick={() => onChange(value + 1)}>+</button>
+      </div>
     </div>
   );
 }
@@ -83,6 +98,11 @@ export default function ProgressPanel({ sheetId, progress: p, campaignId, isMast
   const [data, setData] = useState(null);
   const [catalog, setCatalog] = useState([]);
   const [alloc, setAlloc] = useState({});
+  const [adding, setAdding] = useState(false);
+  const usedNow = Object.values(alloc).reduce((a, b) => a + b, 0);
+  const prevUsed = useRef(0);
+  const lost = usedNow > prevUsed.current; // só pisca ao gastar pontos, não ao devolver
+  useEffect(() => { prevUsed.current = usedNow; }, [usedNow]);
 
   const load = useCallback(async () => {
     try { setData(await api.getProgression(sheetId)); } catch (err) { toast(parseApiError(err).message, 'error'); }
@@ -104,8 +124,18 @@ export default function ProgressPanel({ sheetId, progress: p, campaignId, isMast
   const free = p.instinctSlots - data.instincts.length;
   const rank = KEIKEN_ORDER.indexOf(p.keiken);
   const next = KEIKEN_ORDER[rank + 1];
-  const chosenIds = new Map(data.instincts.map((c) => [c.instinctId, c]));
+  const from = KEIKEN_MIN[p.keiken] ?? 0; // a barra mede só a distância até a próxima patente
+  const chosenIds = new Set(data.instincts.map((c) => c.instinctId));
+  const available = catalog.filter((i) => !chosenIds.has(i.id) && KEIKEN_ORDER.indexOf(i.rank) <= rank);
   const canAct = isOwner || isMaster;
+
+  // INT/CAR: máx. 2 por distribuição; o total não passa dos PS livres
+  function setPs(k, name, n) {
+    const cap = k === 'INT' || k === 'CHA' ? 2 : Infinity;
+    if (n > cap) return toast(`Não é possível colocar mais de ${cap} pontos em ${name}.`, 'error');
+    if (used - (alloc[k] ?? 0) + n > p.pendingOvercomePoints) return toast('Não há pontos de superação livres suficientes.', 'error');
+    setAlloc((a) => ({ ...a, [k]: Math.max(0, n) }));
+  }
 
   async function submitAlloc() {
     const body = Object.fromEntries(Object.entries(alloc).filter(([, n]) => n > 0));
@@ -118,14 +148,15 @@ export default function ProgressPanel({ sheetId, progress: p, campaignId, isMast
         <Collapse title="Keiken" aside={<span className="tag" style={{ borderColor: 'var(--keiken)', color: 'var(--keiken)' }}>{KEIKEN[p.keiken]}</span>}>
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline justify-between gap-2">
-              <span className={small}>EL rumo a {next ? KEIKEN[next] : 'topo'}</span>
+              <span className={small}>
+                {next ? `EL rumo a ${KEIKEN[next]} · faltam ${Math.max(0, p.nextKeikenAt - p.fightExperience)}` : 'Patente máxima'}
+              </span>
               <span>
-                <span className="panel-title text-xl leading-none" style={{ color: 'var(--chip-el)' }}>{p.fightExperience}</span>
-                {p.nextKeikenAt != null && <span className="panel-title text-sm opacity-70"> / {p.nextKeikenAt}</span>}
+                <span className="panel-title text-xl leading-none" style={{ color: 'var(--chip-el)' }}>{p.fightExperience - from}</span>
+                {p.nextKeikenAt != null && <span className="panel-title text-sm opacity-70"> / {p.nextKeikenAt - from}</span>}
               </span>
             </div>
-            <Bar value={p.fightExperience - KEIKEN_MIN[p.keiken]}
-              max={p.nextKeikenAt == null ? 0 : p.nextKeikenAt - KEIKEN_MIN[p.keiken]} color="var(--chip-el)" />
+            <Bar value={p.fightExperience - from} max={p.nextKeikenAt == null ? 0 : p.nextKeikenAt - from} color="var(--chip-el)" />
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline justify-between gap-2">
@@ -137,8 +168,9 @@ export default function ProgressPanel({ sheetId, progress: p, campaignId, isMast
         </Collapse>
 
         <Collapse title="Pontos de Superação"
-          aside={<span className="panel-title text-xl leading-none" style={{ color: 'var(--chip-ps)' }}>{p.pendingOvercomePoints}</span>}>
-          {p.barrierOvercomePoints > 0 && <span className={small}>{p.barrierOvercomePoints} deles cruzam Barreira</span>}
+          aside={<span className="panel-title text-xl leading-none" style={{ color: 'var(--chip-ps)' }} aria-label={`${p.pendingOvercomePoints - used} de ${p.pendingOvercomePoints} pontos livres`}>
+            <span key={used} className={`${lost ? 'ps-drop' : ''} inline-block`}>{p.pendingOvercomePoints - used}</span>/{p.pendingOvercomePoints}
+          </span>}>
           {pending ? (
             <div className="card-round flex flex-wrap items-center gap-2 text-sm">
               <span className={small}>Pedido</span><strong className="flex-1">{allocText(pending.allocations)}</strong>
@@ -153,49 +185,40 @@ export default function ProgressPanel({ sheetId, progress: p, campaignId, isMast
             <span className={small}>Nenhum PS pendente</span>
           ) : isOwner ? (
             <div className="flex flex-col gap-2">
-              <span className={small}>
-                {p.pendingOvercomePoints - used} de {p.pendingOvercomePoints} livres · 1 PS = +1 atributo ou +3 de status ·
-                INT/CAR máx. 2 · TAL e PQ não recebem
-              </span>
+              <span className={small}>+1 de atributo · +3 de recursos (HP/SP)</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {PS_TARGETS.map(([k, l]) => (
-                  <label key={k} className={small}>
-                    {l}
-                    <input type="number" min={0} max={k === 'INT' || k === 'CHA' ? 2 : p.pendingOvercomePoints}
-                      className="field mt-1 w-full px-2 py-1" value={alloc[k] ?? ''}
-                      onChange={(e) => setAlloc((a) => ({ ...a, [k]: Math.max(0, Number(e.target.value) || 0) }))} />
-                  </label>
+                  <Stepper key={k} label={SHORT[k]}
+                    value={alloc[k] ?? 0} onChange={(n) => setPs(k, l, n)} />
                 ))}
               </div>
-              <button type="button" className="btn-primary self-start" disabled={used === 0 || used > p.pendingOvercomePoints}
+              <button type="button" className="btn-primary self-start" disabled={used === 0}
                 onClick={submitAlloc}>Pedir aprovação</button>
             </div>
           ) : <span className={small}>{p.pendingOvercomePoints} PS pendentes; o jogador distribui</span>}
-          {data.distributions.filter((d) => d.status !== 'PENDING').slice(0, 5).map((d) => (
-            <span key={d.id} className={`${small} opacity-70`}>{STATUS[d.status]}: {allocText(d.allocations)}{d.reviewNote && ` — ${d.reviewNote}`}</span>
-          ))}
         </Collapse>
 
         <Collapse title="Instintos" aside={<span className={small}>{data.instincts.length}/{p.instinctSlots} vagas</span>}>
-          {catalog.length === 0 && <span className={small}>Nenhum Instinto no catálogo</span>}
-          {KEIKEN_ORDER.slice(1).map((rk, idx) => {
-            const list = catalog.filter((i) => i.rank === rk);
-            if (list.length === 0) return null;
-            const unlocked = idx + 1 <= rank;
-            return (
-              <Collapse key={rk} defaultOpen={unlocked} titleClass="text-xs font-bold uppercase tracking-wider"
-                title={<>{KEIKEN[rk]} {!unlocked && '· bloqueado'}{KEIKEN_FLAVOR[rk] && <span className="ml-2 font-normal normal-case tracking-normal opacity-70">{KEIKEN_FLAVOR[rk]}</span>}</>}>
+          {data.instincts.length === 0 && <span className={small}>Nenhum Instinto escolhido</span>}
+          <ul className="flex flex-col gap-2">
+            {data.instincts.map((c) => {
+              const i = catalog.find((x) => x.id === c.instinctId) ?? { name: c.name, description: null };
+              return <InstinctCard key={c.id} i={i} chosen isMaster={isMaster} onRemove={() => run(api.removeInstinct, c.id)} />;
+            })}
+          </ul>
+          {canAct && free > 0 && available.length > 0 && (
+            adding ? (
+              <div className="flex flex-col gap-2">
+                <span className={small}>Instintos disponíveis</span>
                 <ul className="flex flex-col gap-2">
-                  {list.map((i) => (
-                    <InstinctCard key={i.id} i={i} chosen={chosenIds.has(i.id)} isMaster={isMaster}
-                      canChoose={canAct && unlocked && free > 0 && !chosenIds.has(i.id)}
-                      onChoose={() => run(api.chooseInstinct, i.id)}
-                      onRemove={() => run(api.removeInstinct, chosenIds.get(i.id).id)} />
+                  {available.map((i) => (
+                    <InstinctCard key={i.id} i={i} canChoose onChoose={() => { setAdding(false); run(api.chooseInstinct, i.id); }} />
                   ))}
                 </ul>
-              </Collapse>
-            );
-          })}
+                <button type="button" className="btn-ghost self-start text-xs" onClick={() => setAdding(false)}>Cancelar</button>
+              </div>
+            ) : <button type="button" className="btn-secondary self-start" onClick={() => setAdding(true)}>Adicionar instinto</button>
+          )}
         </Collapse>
       </div>
 

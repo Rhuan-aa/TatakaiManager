@@ -18,5 +18,8 @@ public record LogResponse(
         Short slotNumber,
         String interactionName,
         // Custo em pontos de ócio do agendamento (nulo em log livre)
-        Short idlePointCost
+        Short idlePointCost,
+        // PUBLISHED | PENDING | REJECTED
+        String status,
+        String reviewNote
 ) {}

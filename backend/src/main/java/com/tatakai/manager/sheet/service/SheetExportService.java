@@ -42,7 +42,6 @@ import com.tatakai.manager.sheet.entity.Dominance;
 import com.tatakai.manager.sheet.entity.InventoryItem;
 import com.tatakai.manager.sheet.entity.PermanentInjury;
 import com.tatakai.manager.sheet.entity.SheetSection;
-import com.tatakai.manager.sheet.exception.CharacterSheetAlreadyExistsException;
 import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
 import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
@@ -218,9 +217,6 @@ public class SheetExportService {
                 .orElseThrow(() -> new AccessDeniedException("Você não pertence a esta campanha"));
         if (member.getRole() != Role.PLAYER) {
             throw new AccessDeniedException("Apenas jogadores têm ficha de personagem");
-        }
-        if (sheetRepository.existsByCampaignMemberId(member.getId())) {
-            throw new CharacterSheetAlreadyExistsException();
         }
         SheetExportFile f = parse(bytes, filename);
         List<String> warnings = new ArrayList<>();

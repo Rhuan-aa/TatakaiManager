@@ -33,3 +33,22 @@ export async function getFatiguePreview(timeSkipId) {
   const { data } = await client.get(`/timeskips/${timeSkipId}/fatigue-preview`);
   return data;
 }
+
+export async function submitTimeSkip(timeSkipId) {
+  const { data } = await client.post(`/timeskips/${timeSkipId}/submission`);
+  return data;
+}
+
+export async function reopenSubmission(timeSkipId) {
+  await client.delete(`/timeskips/${timeSkipId}/submission`);
+}
+
+export async function listSubmissions(timeSkipId) {
+  const { data } = await client.get(`/timeskips/${timeSkipId}/submissions`);
+  return data;
+}
+
+export async function reviewSubmission(timeSkipId, userId, payload) {
+  const { data } = await client.post(`/timeskips/${timeSkipId}/submissions/${userId}/review`, payload);
+  return data;
+}

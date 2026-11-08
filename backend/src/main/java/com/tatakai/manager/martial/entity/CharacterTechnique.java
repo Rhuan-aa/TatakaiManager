@@ -84,6 +84,19 @@ public class CharacterTechnique {
     @Column(name = "borrowed_from", length = 100)
     private String borrowedFrom;
 
+    /** Montagem própria da avulsa (sem arte no catálogo): técnica ou base montada; null = só nome/números. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "technique_assembly", columnDefinition = "jsonb")
+    private com.tatakai.manager.catalog.entity.ArtTechnique techniqueAssembly;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "base_assembly", columnDefinition = "jsonb")
+    private com.tatakai.manager.catalog.entity.ArtBase baseAssembly;
+
+    /** Quem ensinou (avulsa recebida de outro personagem ou do Mestre). */
+    @Column(name = "taught_by", length = 100)
+    private String taughtBy;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

@@ -42,7 +42,6 @@ import com.tatakai.manager.sheet.entity.InjuryType;
 import com.tatakai.manager.sheet.entity.InventoryItem;
 import com.tatakai.manager.sheet.entity.PermanentInjury;
 import com.tatakai.manager.sheet.entity.SheetSection;
-import com.tatakai.manager.sheet.exception.CharacterSheetAlreadyExistsException;
 import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
 import com.tatakai.manager.sheet.exception.SheetEntryNotFoundException;
 import com.tatakai.manager.sheet.exception.SheetLockedException;
@@ -169,7 +168,6 @@ class CharacterSheetServiceTest {
     @DisplayName("RN-ATR-07: jogador cria ficha com máximos iniciais derivados de CON e atuais = máximos")
     void create_player_ok() {
         when(ruleService.isEnabled(campaign.getId(), com.tatakai.manager.campaign.entity.OptionalRule.FREE_CREATION)).thenReturn(true);
-        when(sheetRepository.existsByCampaignMemberId(playerMember.getId())).thenReturn(false);
 
         CharacterSheetResponse r = service.create(campaign.getId(), createReq(), playerUser.getId());
 
@@ -191,16 +189,6 @@ class CharacterSheetServiceTest {
         assertThatThrownBy(() -> service.create(campaign.getId(), createReq(), masterUser.getId()))
                 .isInstanceOf(AccessDeniedException.class);
         verify(sheetRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("segunda ficha do mesmo jogador na campanha é rejeitada")
-    void create_second_rejected() {
-        when(ruleService.isEnabled(campaign.getId(), com.tatakai.manager.campaign.entity.OptionalRule.FREE_CREATION)).thenReturn(true);
-        when(sheetRepository.existsByCampaignMemberId(playerMember.getId())).thenReturn(true);
-
-        assertThatThrownBy(() -> service.create(campaign.getId(), createReq(), playerUser.getId()))
-                .isInstanceOf(CharacterSheetAlreadyExistsException.class);
     }
 
     @Test

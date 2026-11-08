@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { rollDice } from '../../api/characterSheets';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
-import { DICE_REGEX } from './sheetRules';
+import { diceOk } from './sheetRules';
+import DiceOptions from '../rolls/DiceOptions';
+import { DiceBreakdown } from '../rolls/RollCard';
 
 const describe = (r) =>
   `[${r.diceResults.join(', ')}]${r.modifier ? ` ${r.modifier > 0 ? '+' : '−'} ${Math.abs(r.modifier)}` : ''}`;
@@ -14,15 +16,17 @@ export default function RollBox({ sheetId, channel, customChannelId, campaignId,
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
+  const [adv, setAdv] = useState(0);
+  const [separate, setSeparate] = useState(false);
 
-  const exprOk = DICE_REGEX.test(expression.trim());
+  const exprOk = diceOk(expression);
   const canRoll = exprOk && purpose.trim() && !busy;
 
   async function handleRoll(e) {
     e.preventDefault();
     setBusy(true);
     try {
-      const r = await rollDice(sheetId, { expression: expression.trim(), purpose: purpose.trim(), channel, customChannelId, campaignId });
+      const r = await rollDice(sheetId, { expression: expression.trim(), purpose: purpose.trim(), channel, customChannelId, campaignId, advantage: adv, separate });
       setResult(r);
       setHistory((h) => [r, ...h].slice(0, 10));
       onRolled?.(r);
@@ -43,7 +47,7 @@ export default function RollBox({ sheetId, channel, customChannelId, campaignId,
             value={expression}
             onChange={(e) => setExpression(e.target.value)}
             aria-invalid={!exprOk}
-            placeholder="2d6+3"
+            placeholder="2d6+1d4+3"
           />
         </label>
         <label className="label">
@@ -60,7 +64,8 @@ export default function RollBox({ sheetId, channel, customChannelId, campaignId,
           {busy ? 'Rolando…' : 'Rolar'}
         </button>
       </div>
-      {!exprOk && <p className="text-xs" style={{ color: 'var(--accent)' }}>Use o formato NdX±M (ex.: 1d20, 2d6+3).</p>}
+      <DiceOptions adv={adv} onAdv={setAdv} separate={separate} onSeparate={setSeparate} />
+      {!exprOk && <p className="text-xs" style={{ color: 'var(--accent)' }}>Use termos NdX somados ou subtraídos (ex.: 1d20, 2d6+1d4+3).</p>}
       <div aria-live="polite" className="min-h-12">
         {result && (
           <div className="relative flex flex-wrap items-center gap-4">
@@ -72,7 +77,7 @@ export default function RollBox({ sheetId, channel, customChannelId, campaignId,
             <span className="panel-title text-5xl" aria-label={`Total ${result.total}`}>{result.total}</span>
             <div className="text-sm">
               <div className="font-bold">{result.expression}</div>
-              <div>Dados: {describe(result)}</div>
+              {result.breakdown?.length ? <DiceBreakdown roll={result} /> : <div>Dados: {describe(result)}</div>}
               {result.purpose && <div className="opacity-80">{result.purpose}</div>}
             </div>
           </div>

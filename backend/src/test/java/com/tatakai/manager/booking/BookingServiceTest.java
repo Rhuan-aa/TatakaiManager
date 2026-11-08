@@ -67,6 +67,7 @@ class BookingServiceTest {
     @Mock private TimeSkipActivityRepository timeSkipActivityRepository;
     @Mock private SlotEventPublisher slotEventPublisher;
     @Mock private com.tatakai.manager.log.repository.InteractionLogRepository logRepository;
+    @Mock private com.tatakai.manager.timeskip.repository.TimeSkipSubmissionRepository submissionRepository;
 
     private BookingService service;
 
@@ -81,7 +82,7 @@ class BookingServiceTest {
     void setUp() {
         service = new BookingService(bookingRepository, timeSkipRepository, timeSkipDayRepository,
                 campaignNpcRepository, memberRepository, userRepository, npcRepository,
-                timeSkipActivityRepository, slotEventPublisher, logRepository);
+                timeSkipActivityRepository, slotEventPublisher, logRepository, submissionRepository);
 
         master = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         player = User.builder().id(UUID.randomUUID()).name("Ana").build();
@@ -753,5 +754,155 @@ class BookingServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).slotNumber()).isEqualTo((short) 1);
+    }
+
+    // ---------- envio para aprovação (modo TIMESKIP) ----------
+
+    private void mockSubmission(com.tatakai.manager.timeskip.entity.SubmissionStatus status, UUID userId) {
+        when(submissionRepository.findByTimeSkipIdAndUserId(activeSkip.getId(), userId))
+                .thenReturn(Optional.of(com.tatakai.manager.timeskip.entity.TimeSkipSubmission.builder()
+                        .timeSkipId(activeSkip.getId()).userId(userId).status(status).build()));
+    }
+
+    private Booking playerBooking() {
+        Booking booking = Booking.builder().id(UUID.randomUUID())
+                .timeSkipDay(day3).user(player).slotNumber((short) 1)
+                .soloActivityType(SoloActivityType.ESTUDO).description("Estudar").idlePointCost((short) 1).build();
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        return booking;
+    }
+
+    @Test
+    @DisplayName("Envio: jogador com envio PENDING não agenda (SubmissionLocked)")
+    void book_withPendingSubmission_locked() {
+        mockPlayerMember();
+        activeSkip.setMode(TimeSkipMode.TIMESKIP);
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        mockSubmission(com.tatakai.manager.timeskip.entity.SubmissionStatus.PENDING, player.getId());
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                soloReq((short) 1, SoloActivityType.ESTUDO, "x")))
+                .isInstanceOf(com.tatakai.manager.timeskip.exception.SubmissionLockedException.class);
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Envio: jogador com envio APPROVED não agenda (SubmissionLocked)")
+    void book_withApprovedSubmission_locked() {
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        mockSubmission(com.tatakai.manager.timeskip.entity.SubmissionStatus.APPROVED, player.getId());
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                soloReq((short) 1, SoloActivityType.ESTUDO, "x")))
+                .isInstanceOf(com.tatakai.manager.timeskip.exception.SubmissionLockedException.class);
+    }
+
+    @Test
+    @DisplayName("Envio: envio REJECTED libera o agendamento")
+    void book_withRejectedSubmission_passes() {
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        mockSubmission(com.tatakai.manager.timeskip.entity.SubmissionStatus.REJECTED, player.getId());
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> {
+            Booking b = inv.getArgument(0);
+            b.setId(UUID.randomUUID());
+            return b;
+        });
+
+        BookingResponse res = service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                soloReq((short) 1, SoloActivityType.ESTUDO, "x"));
+
+        assertThat(res.slotNumber()).isEqualTo((short) 1);
+    }
+
+    @Test
+    @DisplayName("Envio: em IDLE_PERIOD não há trava (nem consulta ao envio)")
+    void book_idlePeriod_noLock() {
+        mockPlayerMember();
+        activeSkip.setMode(TimeSkipMode.IDLE_PERIOD);
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.book(campaign.getId(), activeSkip.getId(), player.getId(),
+                soloReq((short) 1, SoloActivityType.ESTUDO, "x"));
+
+        verify(submissionRepository, never()).findByTimeSkipIdAndUserId(any(), any());
+    }
+
+    @Test
+    @DisplayName("Envio: Mestre nunca é travado ao agendar")
+    void book_master_neverLocked() {
+        when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), master.getId()))
+                .thenReturn(Optional.of(CampaignMember.builder()
+                        .campaign(campaign).user(master).role(Role.MASTER).build()));
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        when(userRepository.findById(master.getId())).thenReturn(Optional.of(master));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.book(campaign.getId(), activeSkip.getId(), master.getId(),
+                soloReq((short) 1, SoloActivityType.ESTUDO, "x"));
+
+        verify(submissionRepository, never()).findByTimeSkipIdAndUserId(any(), any());
+    }
+
+    @Test
+    @DisplayName("Envio: jogador com envio PENDING não cancela (SubmissionLocked)")
+    void cancel_withPendingSubmission_locked() {
+        Booking booking = playerBooking();
+        mockPlayerMember();
+        mockSubmission(com.tatakai.manager.timeskip.entity.SubmissionStatus.PENDING, player.getId());
+
+        assertThatThrownBy(() -> service.cancel(booking.getId(), player.getId()))
+                .isInstanceOf(com.tatakai.manager.timeskip.exception.SubmissionLockedException.class);
+        verify(bookingRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Envio: envio REJECTED libera o cancelamento")
+    void cancel_withRejectedSubmission_passes() {
+        Booking booking = playerBooking();
+        mockSubmission(com.tatakai.manager.timeskip.entity.SubmissionStatus.REJECTED, player.getId());
+
+        service.cancel(booking.getId(), player.getId());
+
+        verify(bookingRepository).delete(booking);
+    }
+
+    @Test
+    @DisplayName("Envio: Mestre nunca é travado ao cancelar")
+    void cancel_master_neverLocked() {
+        Booking booking = Booking.builder().id(UUID.randomUUID())
+                .timeSkipDay(day3).user(master).slotNumber((short) 1)
+                .soloActivityType(SoloActivityType.ESTUDO).description("x").idlePointCost((short) 1).build();
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        mockSubmission(com.tatakai.manager.timeskip.entity.SubmissionStatus.APPROVED, master.getId());
+        when(memberRepository.findByCampaignIdAndUserId(campaign.getId(), master.getId()))
+                .thenReturn(Optional.of(CampaignMember.builder()
+                        .campaign(campaign).user(master).role(Role.MASTER).build()));
+
+        service.cancel(booking.getId(), master.getId());
+
+        verify(bookingRepository).delete(booking);
+    }
+
+    @Test
+    @DisplayName("Envio: em IDLE_PERIOD o cancelamento não é travado")
+    void cancel_idlePeriod_noLock() {
+        activeSkip.setMode(TimeSkipMode.IDLE_PERIOD);
+        Booking booking = playerBooking();
+
+        service.cancel(booking.getId(), player.getId());
+
+        verify(bookingRepository).delete(booking);
+        verify(submissionRepository, never()).findByTimeSkipIdAndUserId(any(), any());
     }
 }

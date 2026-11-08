@@ -11,10 +11,6 @@ import java.util.UUID;
 
 public interface CharacterSheetRepository extends JpaRepository<CharacterSheet, UUID> {
 
-    Optional<CharacterSheet> findByCampaignMemberId(UUID campaignMemberId);
-
-    boolean existsByCampaignMemberId(UUID campaignMemberId);
-
     List<CharacterSheet> findByCampaignMemberCampaignId(UUID campaignId);
 
     Optional<CharacterSheet> findByNpcId(UUID npcId);

@@ -40,8 +40,8 @@ export async function gmAdjust(sheetId, body) {
   return data;
 }
 
-export async function rollDice(sheetId, { expression, purpose, channel, campaignId, customChannelId }) {
-  const { data } = await client.post(`/character-sheets/${sheetId}/rolls`, { expression, purpose, channel, campaignId, customChannelId });
+export async function rollDice(sheetId, { expression, purpose, channel, campaignId, customChannelId, advantage, separate }) {
+  const { data } = await client.post(`/character-sheets/${sheetId}/rolls`, { expression, purpose, channel, campaignId, customChannelId, advantage, separate });
   return data;
 }
 

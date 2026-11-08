@@ -14,14 +14,17 @@ import com.tatakai.manager.timeskip.dto.request.CreateTimeSkipRequest;
 import com.tatakai.manager.timeskip.dto.response.TimeSkipResponse;
 import com.tatakai.manager.timeskip.entity.Booking;
 import com.tatakai.manager.timeskip.entity.TimeSkip;
+import com.tatakai.manager.timeskip.entity.SubmissionStatus;
 import com.tatakai.manager.timeskip.entity.TimeSkipDay;
 import com.tatakai.manager.timeskip.entity.TimeSkipStatus;
 import com.tatakai.manager.timeskip.exception.ActiveTimeSkipExistsException;
 import com.tatakai.manager.timeskip.exception.InvalidTimeSkipException;
+import com.tatakai.manager.timeskip.exception.SubmissionPendingException;
 import com.tatakai.manager.timeskip.exception.TimeSkipClosedException;
 import com.tatakai.manager.timeskip.exception.TimeSkipNotFoundException;
 import com.tatakai.manager.timeskip.repository.BookingRepository;
 import com.tatakai.manager.timeskip.repository.TimeSkipRepository;
+import com.tatakai.manager.timeskip.repository.TimeSkipSubmissionRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
@@ -44,6 +47,7 @@ public class TimeSkipService {
     private final com.tatakai.manager.sheet.repository.CharacterSheetRepository sheetRepository;
 
     private final ApplicationEventPublisher events;
+    private final TimeSkipSubmissionRepository submissionRepository;
 
     public TimeSkipService(TimeSkipRepository timeSkipRepository,
                            CampaignRepository campaignRepository,
@@ -52,7 +56,9 @@ public class TimeSkipService {
                            InteractionLogRepository logRepository,
                            TrainingService trainingService,
                            com.tatakai.manager.sheet.repository.CharacterSheetRepository sheetRepository,
-                           ApplicationEventPublisher events) {
+                           ApplicationEventPublisher events,
+                           TimeSkipSubmissionRepository submissionRepository) {
+        this.submissionRepository = submissionRepository;
         this.events = events;
         this.sheetRepository = sheetRepository;
         this.trainingService = trainingService;
@@ -97,6 +103,13 @@ public class TimeSkipService {
             throw new TimeSkipClosedException();
         }
 
+        // Em TIMESKIP, envios aguardando aprovação bloqueiam o encerramento (quem nunca enviou segue normal)
+        if (timeSkip.getMode() != com.tatakai.manager.timeskip.entity.TimeSkipMode.IDLE_PERIOD
+                && !submissionRepository.findByTimeSkipIdInAndStatus(
+                        List.of(timeSkipId), SubmissionStatus.PENDING).isEmpty()) {
+            throw new SubmissionPendingException("Há agendamentos aguardando aprovação");
+        }
+
         // Consolida tudo que ainda não foi processado (em TIMESKIP, é o único momento: §51.2)
         if (timeSkip.getProcessedDay() == null) timeSkip.setProcessedDay((short) 0);
         trainingService.processUpTo(timeSkip, (short) (timeSkip.getTotalDays() + 1));
@@ -121,6 +134,7 @@ public class TimeSkipService {
             logRepository.deleteByBookingIn(bookings);
             bookingRepository.deleteAll(bookings);
         }
+        submissionRepository.deleteAll(submissionRepository.findByTimeSkipId(timeSkipId));
         timeSkipRepository.delete(timeSkip);
         events.publishEvent(new CampaignUpdateMessage(timeSkip.getCampaign().getId(), "TIMESKIP", timeSkipId));
     }

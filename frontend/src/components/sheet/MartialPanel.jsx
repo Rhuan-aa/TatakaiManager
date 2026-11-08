@@ -7,6 +7,7 @@ import { ART_CATEGORIES, GRADS, lab } from '../catalog/artLabels';
 import { KEIKEN } from './sheetRules';
 import RichText from '../ui/RichText';
 import Icon from '../ui/Icon';
+import { LooseCatalog, MoveBuilder, TeachPicker } from './LooseMoves';
 
 const STATES = { REQUESTED: 'Pedida', IN_TRAINING: 'Em treino', ACTIVE: 'Ativa', STORED: 'Guardada' };
 const MASTERY = [
@@ -41,7 +42,7 @@ const MASTERY_COLOR = {
 const colorTag = (color) => ({ borderColor: color, color });
 
 /** Técnica/base: recolhida mostra tipo, graduação, estado e maestria; aberta, números, ações e bonificações. */
-function MoveRow({ t, isMaster, canAct, run }) {
+function MoveRow({ t, isMaster, canAct, run, teach }) {
   const [open, setOpen] = useState(false);
   const [bonus, setBonus] = useState('');
   const learned = t.state === 'ACTIVE' || t.state === 'STORED';
@@ -56,6 +57,8 @@ function MoveRow({ t, isMaster, canAct, run }) {
             <span className="tag" style={colorTag('var(--stat-complexity)')}>Complexidade {t.complexity}</span>
             <span className="tag" style={colorTag('var(--stat-training)')}>Pontos de treino {t.trainingPoints}</span>
             {t.borrowedFrom && <span className="tag">Emprestada · {t.borrowedFrom}</span>}
+            {t.assembled && <span className="tag">Montada</span>}
+            {t.taughtBy && <span className="tag">Ensinada por {t.taughtBy}</span>}
           </span>
         </span>
         <span className="tag">{t.kind === 'BASE' ? 'Base' : 'Técnica'}</span>
@@ -105,6 +108,9 @@ function MoveRow({ t, isMaster, canAct, run }) {
                   <span className="text-fine ml-1">para o próximo nível</span>
                 </span>
               </span>
+            )}
+            {teach && canAct && t.state !== 'REQUESTED' && (
+              <TeachPicker campaignId={teach.campaignId} sheetId={teach.sheetId} onTeach={(target) => run(api.teachLoose, t.id, target)} />
             )}
             {canAct && learned && (
               <button type="button" className="btn-secondary px-2 text-xs"
@@ -302,12 +308,87 @@ function ArtCard({ ca, moves, isMaster, canAct, run }) {
   );
 }
 
+/** Técnica/base avulsa: escolhe a arte do catálogo e o item (cópia, treino externo etc.); jogador pede, Mestre concede. */
+function LooseAdder({ catalog, isMaster, run, campaignId }) {
+  const [mode, setMode] = useState('catalog'); // catalog | art | build | free
+  const [artId, setArtId] = useState('');
+  const [art, setArt] = useState(null);
+  const [pick, setPick] = useState('');
+  const [free, setFree] = useState({ kind: 'TECHNIQUE', name: '', graduation: 'GENERIC', complexity: 1 });
+  useEffect(() => {
+    let active = true;
+    setArt(null); setPick('');
+    if (artId) getArt(artId).then((a) => active && setArt(a)).catch(() => {});
+    return () => { active = false; };
+  }, [artId]);
+  const options = art ? [
+    ...(art.bases ?? []).map((b) => ['BASE', b.name]),
+    ...(art.techniques ?? []).map((t) => ['TECHNIQUE', t.name]),
+  ] : [];
+  const set = (k) => (e) => setFree((f) => ({ ...f, [k]: e.target.value }));
+  const MODES = [['catalog', 'Do catálogo de avulsas'], ['build', 'Montar na hora'], ['art', 'De uma arte'], ['free', 'Livre (só nome)']];
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-1" role="group" aria-label="Como adicionar">
+        {MODES.map(([k, l]) => (
+          <button key={k} type="button" aria-pressed={mode === k} onClick={() => setMode(k)}
+            className={`border-2 border-[var(--line)] px-2 py-0.5 text-xs font-bold uppercase ${mode === k ? 'bg-[var(--accent)] text-white' : 'bg-[var(--panel-bg)]'}`}>{l}</button>
+        ))}
+      </div>
+      {mode === 'catalog' && (
+        <LooseCatalog campaignId={campaignId} isMaster={isMaster} canPick
+          onPick={(m) => run(api.learnLoose, { kind: m.kind, name: m.name, ...(m.kind === 'BASE' ? { base: m.base } : { technique: m.technique }) })} />
+      )}
+      {mode === 'build' && (
+        <MoveBuilder submitLabel={isMaster ? 'Adicionar à ficha' : 'Pedir ao Mestre'} onCancel={() => setMode('catalog')}
+          onSave={(body) => { run(api.learnLoose, body); setMode('catalog'); }} />
+      )}
+      {(mode === 'art' || mode === 'free') && (
+    <div className="flex flex-wrap gap-2">
+      {mode === 'art' && <select className="field m-0 flex-1" aria-label="Arte de origem" value={artId} onChange={(e) => setArtId(e.target.value)}>
+        <option value="">Escolha a arte…</option>
+        {catalog.map((a) => <option key={a.id} value={a.id}>{a.name}{a.status && a.status !== 'APPROVED' ? ' (criada, não aprovada)' : ''}</option>)}
+      </select>}
+      {mode === 'art' ? (
+        <>
+          <select className="field m-0 flex-1" aria-label="Técnica ou base" value={pick} disabled={!art} onChange={(e) => setPick(e.target.value)}>
+            <option value="">{!art ? 'Carregando…' : 'Escolha a técnica ou base…'}</option>
+            {options.map(([k, n]) => <option key={`${k}:${n}`} value={`${k}:${n}`}>{k === 'BASE' ? 'Base' : 'Técnica'} · {n}</option>)}
+          </select>
+          <button type="button" className="btn-secondary" disabled={!pick}
+            onClick={() => { const [kind, ...rest] = pick.split(':'); run(api.learnLoose, { artId, kind, name: rest.join(':') }); setPick(''); }}>
+            {isMaster ? 'Adicionar avulsa' : 'Pedir avulsa'}
+          </button>
+        </>
+      ) : (
+        <>
+          <select className="field m-0" aria-label="Tipo" value={free.kind} onChange={set('kind')}>
+            <option value="TECHNIQUE">Técnica</option><option value="BASE">Base</option>
+          </select>
+          <input className="field m-0 flex-1" aria-label="Nome" placeholder="Nome" maxLength={100} value={free.name} onChange={set('name')} />
+          <select className="field m-0" aria-label="Graduação" value={free.graduation} onChange={set('graduation')}>
+            {GRADS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+          </select>
+          <input className="field m-0 w-24" type="number" min="0" max="99" aria-label="Complexidade" title="Complexidade" value={free.complexity} onChange={set('complexity')} />
+          <button type="button" className="btn-secondary" disabled={!free.name.trim()}
+            onClick={() => { run(api.learnLoose, { ...free, complexity: Number(free.complexity) }); setFree((f) => ({ ...f, name: '' })); }}>
+            {isMaster ? 'Adicionar avulsa' : 'Pedir avulsa'}
+          </button>
+        </>
+      )}
+    </div>
+      )}
+    </div>
+  );
+}
+
 /** Artes, técnicas e bases da ficha (F3b): jogador pede, Mestre aprova, lança treino e maestria. */
 export default function MartialPanel({ sheetId, campaignId, isMaster, isOwner, refreshKey }) {
   const toast = useToast();
   const [data, setData] = useState(null);
   const [catalog, setCatalog] = useState([]);
   const [artChoice, setArtChoice] = useState('');
+  const [looseOpen, setLooseOpen] = useState(false); // minimizada até clicar
   const canAct = isOwner || isMaster;
 
   const load = useCallback(async () => {
@@ -316,7 +397,7 @@ export default function MartialPanel({ sheetId, campaignId, isMaster, isOwner, r
   useEffect(() => { load(); }, [load, refreshKey]);
   useEffect(() => {
     let active = true;
-    listArts(campaignId).then((a) => active && setCatalog(a.filter((x) => !x.status || x.status === 'APPROVED'))).catch(() => {});
+    listArts(campaignId).then((a) => active && setCatalog(a)).catch(() => {});
     return () => { active = false; };
   }, [campaignId]);
 
@@ -327,6 +408,7 @@ export default function MartialPanel({ sheetId, campaignId, isMaster, isOwner, r
   if (!data) return <div className="skeleton h-16 w-full" />;
   const ownedArts = new Set(data.arts.map((a) => a.artId));
   const loose = data.techniques.filter((t) => !t.characterArtId);
+  const teach = { campaignId, sheetId };
   return (
     <div className="flex flex-col gap-6">
       {data.arts.length === 0 && <p className="text-sm">Nenhuma arte marcial.</p>}
@@ -334,19 +416,32 @@ export default function MartialPanel({ sheetId, campaignId, isMaster, isOwner, r
         <ArtCard key={ca.id} ca={ca} moves={data.techniques.filter((t) => t.characterArtId === ca.id)}
           isMaster={isMaster} canAct={canAct} run={run} />
       ))}
-      {loose.length > 0 && (
-        <section className="flex flex-col gap-2 py-2">
-          <h4 className="panel-title text-2xl">Avulsas</h4>
-          <p className="text-fine">Vindas da Forja; não ocupam espaços de arte.</p>
-          <MoveList title="Bases" moves={loose.filter((m) => m.kind === 'BASE')} isMaster={isMaster} canAct={canAct} run={run} />
-          <MoveList title="Técnicas" moves={loose.filter((m) => m.kind === 'TECHNIQUE')} isMaster={isMaster} canAct={canAct} run={run} />
-        </section>
-      )}
+      <section id="sheet-loose-moves" className="flex flex-col gap-2 py-2" aria-label="Técnicas e bases avulsas">
+        <button type="button" className="flex items-center gap-2 text-left" aria-expanded={looseOpen} onClick={() => setLooseOpen((o) => !o)}>
+          <span aria-hidden="true" className="text-xs">{looseOpen ? '▲' : '▼'}</span>
+          <h4 className="panel-title text-2xl">Técnicas e bases avulsas</h4>
+          <span className="tag">{loose.length}</span>
+        </button>
+        {looseOpen && (
+          <>
+            <p className="text-fine">Sem arte: vindas da Forja, do catálogo de avulsas, desenvolvidas ou ensinadas por outro personagem; não ocupam espaços de arte.</p>
+            {loose.length === 0 ? (
+              <p className="card-round text-sm">Nenhuma técnica ou base avulsa ainda.</p>
+            ) : (
+              <>
+                <MoveList title="Bases" moves={loose.filter((m) => m.kind === 'BASE')} isMaster={isMaster} canAct={canAct} run={run} teach={teach} />
+                <MoveList title="Técnicas" moves={loose.filter((m) => m.kind === 'TECHNIQUE')} isMaster={isMaster} canAct={canAct} run={run} teach={teach} />
+              </>
+            )}
+            {canAct && <LooseAdder catalog={catalog} isMaster={isMaster} run={run} campaignId={campaignId} />}
+          </>
+        )}
+      </section>
       {canAct && (
         <div className="flex flex-wrap gap-2">
           <select className="field m-0 flex-1" aria-label="Arte do catálogo" value={artChoice} onChange={(e) => setArtChoice(e.target.value)}>
             <option value="">Escolha uma arte do catálogo…</option>
-            {catalog.filter((a) => !ownedArts.has(a.id)).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            {catalog.filter((a) => (!a.status || a.status === 'APPROVED') && !ownedArts.has(a.id)).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           <button type="button" className="btn-secondary" disabled={!artChoice}
             onClick={() => { run(api.requestArt, artChoice); setArtChoice(''); }}>{isMaster ? 'Adicionar arte' : 'Pedir arte'}</button>

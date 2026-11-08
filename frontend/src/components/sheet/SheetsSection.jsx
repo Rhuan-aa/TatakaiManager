@@ -5,7 +5,6 @@ import { startBuild } from '../../api/characterBuild';
 import BuildWizard from '../build/BuildWizard';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
-import { useAuth } from '../../contexts/AuthContext';
 import { useCampaignTopic } from '../../hooks/useWebSocket';
 import { EmptyState } from '../layout/AppShell';
 import CharacterSheetForm from './CharacterSheetForm';
@@ -16,15 +15,21 @@ import GmSheets from './GmSheets';
 
 const STATUS = { DRAFT: 'Rascunho', PENDING_APPROVAL: 'Aguardando aprovação', COMPLETED: 'Aprovada', IN_BUILD: 'Em construção' };
 
-export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npcs = [], setNpcs }) {
-  const { user } = useAuth();
+export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npcs = [], setNpcs, onSheetOpen, focusSheetId, focusSection }) {
   const toast = useToast();
   const [warnings, setWarnings] = useState([]);
   const [sheets, setSheets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [openId, setOpenId] = useState(null);
+  const [openId, setOpenId] = useState(focusSheetId ?? null);
+  useEffect(() => { if (focusSheetId) setOpenId(focusSheetId); }, [focusSheetId]);
   const [open, setOpen] = useState(null);
+  // o botão de voltar mora fora do card, no CampaignDetail
+  const showBack = Boolean(openId) && open?.buildStatus !== 'IN_BUILD';
+  useEffect(() => {
+    onSheetOpen?.(showBack ? () => () => setOpenId(null) : null);
+    return () => onSheetOpen?.(null);
+  }, [showBack, onSheetOpen]);
   const [creating, setCreating] = useState(false);
   const [free, setFree] = useState(false);
   const [newName, setNewName] = useState('');
@@ -106,8 +111,6 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npc
     }
   }
 
-  const mine = sheets.find((s) => s.ownerUserId === user?.userId);
-
   if (loading) return <div className="skeleton h-32 w-full" />;
 
   if (building) {
@@ -161,8 +164,8 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npc
         isMaster={isMaster}
         campaignId={campaignId}
         refreshKey={tick}
+        focusSection={focusSection}
         onChange={(s) => { setOpen(s); reload(); }}
-        onBack={() => setOpenId(null)}
       />
     ) : <div className="skeleton h-32 w-full" />;
   }
@@ -178,10 +181,10 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npc
             <button type="button" className={tab === 'fight' ? 'btn-primary' : 'btn-secondary'} onClick={() => setTab('fight')}>Fechar luta</button>
           </>
         )}
-        {!isMaster && !mine && (
+        {!isMaster && (
           <button type="button" className="btn-primary" onClick={() => setCreating(true)}>Criar minha ficha</button>
         )}
-        {!isMaster && !mine && (
+        {!isMaster && (
           <label className="btn-secondary cursor-pointer">
             Importar ficha (.tatakai.json)
             <input type="file" accept=".json,application/json" className="sr-only" onChange={onImport} />

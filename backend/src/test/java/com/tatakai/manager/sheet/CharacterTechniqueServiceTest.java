@@ -16,6 +16,7 @@ import com.tatakai.manager.catalog.entity.MoveKind;
 import com.tatakai.manager.catalog.repository.MartialArtRepository;
 import com.tatakai.manager.martial.dto.request.CharacterArtRequest;
 import com.tatakai.manager.martial.dto.request.GraduateRequest;
+import com.tatakai.manager.martial.dto.request.LearnLooseRequest;
 import com.tatakai.manager.martial.dto.request.LearnMoveRequest;
 import com.tatakai.manager.martial.dto.request.LevelUpRequest;
 import com.tatakai.manager.martial.dto.request.MasteryRequest;
@@ -180,6 +181,53 @@ class CharacterTechniqueServiceTest {
         assertThat(done.state()).isEqualTo(TechniqueState.ACTIVE);
         assertThat(done.trainingProgress()).isEqualTo(7);
         assertThat(done.mastery()).isEqualTo(Mastery.STANDARD);
+    }
+
+    @Test
+    @DisplayName("avulsa: técnica do catálogo sem a arte na ficha; jogador pede, Mestre concede direto; duplicata -> 400")
+    void learnLoose() {
+        CharacterTechniqueResponse asked = only(service.learnLoose(sheet.getId(),
+                new LearnLooseRequest(karate.getId(), MoveKind.TECHNIQUE, "Mae Geri"), player.getId()));
+        assertThat(asked.state()).isEqualTo(TechniqueState.REQUESTED);
+        assertThat(asked.characterArtId()).isNull();
+
+        assertThatThrownBy(() -> service.learnLoose(sheet.getId(),
+                new LearnLooseRequest(karate.getId(), MoveKind.TECHNIQUE, "Mae Geri"), master.getId()))
+                .isInstanceOf(InvalidCharacterSheetException.class);
+        service.reviewTechnique(sheet.getId(), asked.id(), new ReviewArtRequest(true, null), master.getId());
+
+        CharacterTechniqueResponse granted = only(service.learnLoose(sheet.getId(),
+                new LearnLooseRequest(karate.getId(), MoveKind.TECHNIQUE, "Shuto Uke"), master.getId()));
+        assertThat(granted.state()).isEqualTo(TechniqueState.IN_TRAINING);
+    }
+
+    @Test
+    @DisplayName("avulsa montada na hora: montagem de outro tipo -> 400")
+    void learnLooseAssembledRejected() {
+        assertThatThrownBy(() -> service.learnLoose(sheet.getId(),
+                new LearnLooseRequest(null, MoveKind.TECHNIQUE, "Golpe Meu", null, null, null, null, new com.tatakai.manager.catalog.entity.ArtBase()), master.getId()))
+                .isInstanceOf(InvalidCharacterSheetException.class);
+        assertThatThrownBy(() -> service.learnLoose(sheet.getId(),
+                new LearnLooseRequest(null, MoveKind.BASE, "Base Minha", null, null, null, new ArtTechnique(), null), master.getId()))
+                .isInstanceOf(InvalidCharacterSheetException.class);
+    }
+
+    @Test
+    @DisplayName("ensinar: jogador cria pedido na ficha de outro; só avulsa; ficha de origem e destino diferentes")
+    void teachLoose() {
+        UUID id = only(service.learnLoose(sheet.getId(), new LearnLooseRequest(null, MoveKind.TECHNIQUE, "Golpe Meu",
+                null, 1, 3, null, null), master.getId())).id();
+        CampaignMember om = memberRepository.findByCampaignIdAndUserId(campaign.getId(), other.getId()).orElseThrow();
+        CharacterSheet target = CharacterSheet.builder().id(UUID.randomUUID()).campaignMember(om).name("Bia").tal(10).build();
+        lenient().when(sheetRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        lenient().when(techniqueRepository.findBySheetIdOrderByCreatedAt(target.getId())).thenReturn(List.of());
+        service.teach(sheet.getId(), id, target.getId(), player.getId());
+        CharacterTechnique copy = techniques.get(techniques.size() - 1);
+        assertThat(copy.getSheet().getId()).isEqualTo(target.getId());
+        assertThat(copy.getState()).isEqualTo(TechniqueState.REQUESTED);
+        assertThat(copy.getTaughtBy()).isNotBlank();
+        assertThatThrownBy(() -> service.teach(sheet.getId(), id, sheet.getId(), player.getId()))
+                .isInstanceOf(InvalidCharacterSheetException.class);
     }
 
     @Test

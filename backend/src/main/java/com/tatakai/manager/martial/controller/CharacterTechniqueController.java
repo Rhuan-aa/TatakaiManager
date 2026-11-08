@@ -4,6 +4,8 @@ import com.tatakai.manager.catalog.dto.request.ReviewArtRequest;
 import com.tatakai.manager.martial.dto.request.CharacterArtRequest;
 import com.tatakai.manager.martial.dto.request.GraduateRequest;
 import com.tatakai.manager.martial.dto.request.GraduationRequest;
+import com.tatakai.manager.martial.dto.request.LearnLooseRequest;
+import com.tatakai.manager.martial.dto.request.LearnLooseRequest;
 import com.tatakai.manager.martial.dto.request.LearnMoveRequest;
 import com.tatakai.manager.martial.dto.request.LevelUpRequest;
 import com.tatakai.manager.martial.dto.request.MasteryRequest;
@@ -85,6 +87,20 @@ public class CharacterTechniqueController {
     public ResponseEntity<SheetMartialResponse> learn(@PathVariable UUID sheetId,
                                                       @Valid @RequestBody LearnMoveRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.learn(sheetId, request, AuthenticatedUser.id()));
+    }
+
+    /** Técnica/base avulsa: do catálogo, sem exigir a arte na ficha (jogador pede, Mestre concede direto). */
+    @PostMapping("/techniques/loose")
+    public ResponseEntity<SheetMartialResponse> learnLoose(@PathVariable UUID sheetId,
+                                                           @Valid @RequestBody LearnLooseRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.learnLoose(sheetId, request, AuthenticatedUser.id()));
+    }
+
+    /** Ensina uma avulsa a outra ficha da campanha (jogador: vira pedido; Mestre: entra em treino). */
+    @PostMapping("/techniques/{techniqueId}/teach")
+    public ResponseEntity<SheetMartialResponse> teach(@PathVariable UUID sheetId, @PathVariable UUID techniqueId,
+                                                      @Valid @RequestBody com.tatakai.manager.martial.dto.request.TeachRequest request) {
+        return ResponseEntity.ok(service.teach(sheetId, techniqueId, request.targetSheetId(), AuthenticatedUser.id()));
     }
 
     @PostMapping("/techniques/{techniqueId}/review")

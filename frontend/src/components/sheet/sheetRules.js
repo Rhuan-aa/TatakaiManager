@@ -95,7 +95,9 @@ export function fatigueBand(points) {
   return 'COLLAPSE';
 }
 
-export const DICE_REGEX = /^\d{1,2}d(2|3|4|6|8|10|12|20|100)([+-]\d{1,3})?$/;
+// Vários termos: 2d6+1d4-1d8+3 (até 10 termos, 30 dados; o servidor valida de novo)
+export const DICE_REGEX = /^\d{1,2}d\d{1,3}([+-](\d{1,2}d\d{1,3}|\d{1,3})){0,9}$/;
+export const diceOk = (text) => DICE_REGEX.test(text.replace(/\s+/g, ''));
 
 /** Patentes Keiken (RN-PROG-08). */
 export const KEIKEN = {

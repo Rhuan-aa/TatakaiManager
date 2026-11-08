@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { listLogs, createLog, updateLog, deleteLog } from '../../api/logs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { listLogs, createLog, updateLog, deleteLog, reviewLog } from '../../api/logs';
+import { useCampaignTopic } from '../../hooks/useWebSocket';
 import { listTimeSkips } from '../../api/timeskips';
 import { listBookings } from '../../api/bookings';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
 import { EmptyState } from '../../components/layout/AppShell';
 import { useToast } from '../../contexts/ToastContext';
-import Icon from '../ui/Icon';
 
 function LogSkeleton() {
   return (
@@ -37,6 +37,9 @@ function formatTime(iso) {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+// valor da opção "sem agendamento" no select do jogador (vira um pedido de aprovação)
+const NO_BOOKING = '__none__';
+
 const EMPTY_FILTERS = { text: '', author: '', npc: '', type: '', day: '' };
 
 function bookingLabel(booking, npcs) {
@@ -49,7 +52,7 @@ const textareaClass = 'field';
 
 const selectClass = 'field';
 
-export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
+export default function LogPanel({ campaignId, isMaster, npcs = [], focusLogId = null }) {
   const { user } = useAuth();
   const toast = useToast();
   const [logs, setLogs] = useState([]);
@@ -57,7 +60,6 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
   const [error, setError] = useState('');
 
   const [myBookings, setMyBookings] = useState([]);
-  const [hasActiveTs, setHasActiveTs] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
 
   const [narrative, setNarrative] = useState('');
@@ -73,6 +75,17 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  const [reviewingId, setReviewingId] = useState(null);
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [highlightId, setHighlightId] = useState(null);
+  const [tick, setTick] = useState(0);
+
+  // outro cliente criou/aprovou/recusou/apagou um log: recarrega a lista
+  const onCampaign = useCallback((msg) => { if (msg?.type === 'LOGS') setTick((t) => t + 1); }, []);
+  useCampaignTopic(campaignId, 'campaign', onCampaign);
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const setFilter = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
@@ -100,6 +113,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
       if (filters.npc && log.npcName !== filters.npc) continue;
       if (filters.type === 'livre' && log.bookingId) continue;
       if (filters.type === 'agendamento' && !log.bookingId) continue;
+      if (filters.type === 'pendentes' && log.status !== 'PENDING') continue;
       if (filters.day && String(log.dayNumber) !== filters.day) continue;
       const label = formatDay(log.createdAt);
       const last = out[out.length - 1];
@@ -124,7 +138,18 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
     return () => {
       active = false;
     };
-  }, [campaignId]);
+  }, [campaignId, tick]);
+
+  // rola até o log pedido (vindo da aba Aprovações) e o destaca por 2,5 s
+  useEffect(() => {
+    if (!focusLogId || loading) return undefined;
+    const el = document.getElementById(`log-${focusLogId}`);
+    if (!el) return undefined;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightId(focusLogId);
+    const t = setTimeout(() => setHighlightId(null), 2500);
+    return () => clearTimeout(t);
+  }, [focusLogId, loading, logs.length]);
 
   useEffect(() => {
     if (isMaster) return;
@@ -135,11 +160,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
         const timeskips = await listTimeSkips(campaignId);
         const activeTs = timeskips.find((t) => t.status === 'ACTIVE');
         if (!active) return;
-        if (!activeTs) {
-          setHasActiveTs(false);
-          return;
-        }
-        setHasActiveTs(true);
+        if (!activeTs) return;
         const all = await listBookings(campaignId, activeTs.id);
         if (active) setMyBookings(all.filter((b) => b.userId === user?.userId));
       } catch {
@@ -159,12 +180,13 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
     setSubmitting(true);
     try {
       const payload = { narrative };
-      if (!isMaster && selectedBookingId) payload.bookingId = selectedBookingId;
+      const isRequest = !isMaster && selectedBookingId === NO_BOOKING;
+      if (!isMaster && selectedBookingId && !isRequest) payload.bookingId = selectedBookingId;
       const created = await createLog(campaignId, payload);
       setLogs((prev) => [created, ...prev]);
       setNarrative('');
       setSelectedBookingId('');
-      toast('Log publicado.');
+      toast(isRequest ? 'Pedido enviado ao Mestre.' : 'Log publicado.');
     } catch (err) {
       setSubmitError(parseApiError(err).message);
     } finally {
@@ -201,6 +223,22 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
       setEditError(parseApiError(err).message);
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+  async function handleReview(logId, approved) {
+    setReviewError('');
+    setReviewBusy(true);
+    try {
+      const updated = await reviewLog(campaignId, logId, { approved, note: reviewNote.trim() || null });
+      setLogs((prev) => prev.map((l) => (l.id === logId ? updated : l)));
+      setReviewingId(null);
+      setReviewNote('');
+      toast(approved ? 'Log aprovado.' : 'Log recusado.');
+    } catch (err) {
+      setReviewError(parseApiError(err).message);
+    } finally {
+      setReviewBusy(false);
     }
   }
 
@@ -257,22 +295,6 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
       return <p className="text-sm opacity-70">Carregando agendamentos...</p>;
     }
 
-    if (!hasActiveTs) {
-      return (
-        <p className="text-sm opacity-70">
-          Não há TimeSkip ativo no momento para registrar um log.
-        </p>
-      );
-    }
-
-    if (myBookings.length === 0) {
-      return (
-        <p className="text-sm opacity-70">
-          Você não tem agendamentos no TimeSkip ativo para registrar um log.
-        </p>
-      );
-    }
-
     return (
       <form
         onSubmit={handleSubmit}
@@ -291,6 +313,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
             className={selectClass}
           >
             <option value="">Selecione um agendamento...</option>
+            <option value={NO_BOOKING}>Sem agendamento — pedir aprovação ao Mestre</option>
             {myBookings.map((b) => (
               <option key={b.id} value={b.id}>
                 {bookingLabel(b, npcs)}
@@ -319,7 +342,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
             disabled={submitting || !canSubmit}
             className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
           >
-            {submitting ? 'Publicando...' : 'Publicar log'}
+            {submitting ? 'Enviando...' : selectedBookingId === NO_BOOKING ? 'Pedir aprovação' : 'Publicar log'}
           </button>
         </div>
       </form>
@@ -352,6 +375,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
             <option value="">Todos os tipos</option>
             <option value="livre">Log livre do Mestre</option>
             <option value="agendamento">Log de agendamento</option>
+            <option value="pendentes">Pendentes</option>
           </select>
           <select aria-label="Dia" value={filters.day} onChange={setFilter('day')} className="field">
             <option value="">Todos os dias</option>
@@ -394,8 +418,15 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
             // Logs vinculados a agendamento = ação de jogador; sem vínculo = narração
             // livre (Mestre), que ganha um accent lateral vermelho para se destacar.
             const isNarration = !log.bookingId;
+            const pending = log.status === 'PENDING';
+            const rejected = log.status === 'REJECTED';
+            const mine = log.authorId === user?.userId;
             return (
-              <div key={log.id}>
+              <div
+                key={log.id}
+                id={`log-${log.id}`}
+                style={highlightId === String(log.id) ? { outline: '4px solid var(--accent)', outlineOffset: '4px' } : undefined}
+              >
                 <div className="flex items-center gap-3">
                   <span className="grid h-8 w-8 shrink-0 place-items-center border-2 border-[color:var(--line)] bg-[color:var(--highlight)] text-xs font-bold text-[color:var(--ink)]">
                     {log.authorName?.charAt(0)?.toUpperCase() ?? '?'}
@@ -415,6 +446,35 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
                       </span>
                     </div>
                   </div>
+                  {pending && isMaster && reviewingId !== log.id && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleReview(log.id, true)}
+                        disabled={reviewBusy}
+                        className="btn-primary px-2 py-1 text-xs disabled:opacity-50"
+                      >
+                        Aprovar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setReviewingId(log.id); setReviewNote(''); setReviewError(''); }}
+                        className="btn-ghost text-xs text-[color:var(--accent)]"
+                      >
+                        Recusar
+                      </button>
+                    </div>
+                  )}
+                  {!isMaster && mine && log.status && log.status !== 'PUBLISHED' && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(log.id)}
+                      disabled={deleting}
+                      className="btn-ghost shrink-0 text-xs text-[color:var(--accent)] disabled:opacity-50"
+                    >
+                      Cancelar pedido
+                    </button>
+                  )}
                   {isMaster && editingLogId !== log.id && (
                     <div className="flex shrink-0 items-center gap-2">
                       <button type="button" onClick={() => startEdit(log)} className="btn-ghost text-xs">
@@ -454,6 +514,46 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
                     </div>
                   )}
                 </div>
+                {(pending || rejected) && (
+                  <p className="mt-2 inline-block border-2 border-[color:var(--line)] px-2 py-0.5 text-xs font-bold uppercase tracking-wide">
+                    {pending
+                      ? 'Aguardando o Mestre'
+                      : `Recusado${log.reviewNote ? `: ${log.reviewNote}` : ''}`}
+                  </p>
+                )}
+                {!isMaster && mine && deleteError && (pending || rejected) && (
+                  <p className="mt-1.5 text-xs font-bold text-[color:var(--accent)]">{deleteError}</p>
+                )}
+                {reviewingId === log.id && (
+                  <div className="panel mt-2.5 p-3">
+                    <label htmlFor={`review-note-${log.id}`} className="block text-xs font-bold uppercase tracking-wide">
+                      Motivo da recusa (opcional)
+                    </label>
+                    <input
+                      id={`review-note-${log.id}`}
+                      type="text"
+                      value={reviewNote}
+                      onChange={(e) => setReviewNote(e.target.value)}
+                      className="field"
+                    />
+                    {reviewError && (
+                      <p className="mt-1 text-xs font-bold text-[color:var(--accent)]">{reviewError}</p>
+                    )}
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button type="button" onClick={() => setReviewingId(null)} className="btn-ghost px-3 py-1.5 text-sm">
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReview(log.id, false)}
+                        disabled={reviewBusy}
+                        className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50"
+                      >
+                        {reviewBusy ? 'Recusando...' : 'Confirmar recusa'}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {confirmDeleteId === log.id && deleteError && (
                   <p className="mt-1.5 text-xs font-bold text-[color:var(--accent)]">{deleteError}</p>
                 )}
@@ -483,11 +583,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [] }) {
                     </div>
                   </div>
                 ) : (
-                  <p
-                    className={`${
-                      isNarration ? 'caption' : 'bubble'
-                    } mt-3 max-w-prose whitespace-pre-wrap text-sm leading-7`}
-                  >
+                  <p className={`log-text mt-3 ${isNarration ? 'log-text--narration' : ''}`}>
                     {log.narrative}
                   </p>
                 )}

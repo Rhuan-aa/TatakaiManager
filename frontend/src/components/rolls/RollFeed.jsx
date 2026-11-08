@@ -6,7 +6,8 @@ import { listMembers } from '../../api/campaigns';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 import { useCampaignTopic, useStompDestination } from '../../hooks/useWebSocket';
-import { DICE_REGEX } from '../sheet/sheetRules';
+import { diceOk } from '../sheet/sheetRules';
+import DiceOptions from './DiceOptions';
 import { RollRow } from './RollCard';
 import RollReveal from './RollReveal';
 
@@ -17,7 +18,9 @@ function GmRollForm({ campaignId, tab }) {
   const [expression, setExpression] = useState('1d20');
   const [purpose, setPurpose] = useState('');
   const [busy, setBusy] = useState(false);
-  const ok = DICE_REGEX.test(expression.trim()) && purpose.trim() && !busy;
+  const [adv, setAdv] = useState(0);
+  const [separate, setSeparate] = useState(false);
+  const ok = diceOk(expression) && purpose.trim() && !busy;
   const channel = tab === 'PUBLIC' || tab === 'GM_PRIVATE' ? tab : 'CUSTOM';
 
   async function submit(e) {
@@ -25,7 +28,7 @@ function GmRollForm({ campaignId, tab }) {
     setBusy(true);
     try {
       await gmRoll(campaignId, {
-        expression: expression.trim(), purpose: purpose.trim(), channel,
+        expression: expression.trim(), purpose: purpose.trim(), channel, advantage: adv, separate,
         customChannelId: channel === 'CUSTOM' ? tab : undefined,
       });
     } catch (err) {
@@ -37,7 +40,7 @@ function GmRollForm({ campaignId, tab }) {
   }
 
   return (
-    <form onSubmit={submit} className="panel grid gap-2 p-3 sm:grid-cols-[7rem_1fr_auto] sm:items-end">
+    <form onSubmit={submit} className="panel grid gap-2 p-3 sm:grid-cols-[10rem_1fr_auto] sm:items-end">
       <label className="label">Expressão
         <input className="field mt-1 w-full" value={expression} onChange={(e) => setExpression(e.target.value)} />
       </label>
@@ -45,6 +48,7 @@ function GmRollForm({ campaignId, tab }) {
         <input className="field mt-1 w-full" value={purpose} maxLength={200} onChange={(e) => setPurpose(e.target.value)} />
       </label>
       <button type="submit" className="btn-primary" disabled={!ok}>{busy ? 'Rolando…' : 'Rolar'}</button>
+      <div className="sm:col-span-3"><DiceOptions adv={adv} onAdv={setAdv} separate={separate} onSeparate={setSeparate} /></div>
     </form>
   );
 }

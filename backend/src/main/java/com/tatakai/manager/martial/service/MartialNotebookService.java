@@ -208,6 +208,7 @@ public class MartialNotebookService {
                     .graduation(d.getGraduation()).complexity(check.finalComplexity())
                     .trainingPoints(check.trainingPoints()).trainingProgress(check.trainingPoints())
                     .state(TechniqueState.ACTIVE).mastery(Mastery.SKETCH).masteryPoints(0)
+                    .techniqueAssembly(d.getTechnique()).baseAssembly(d.getBase()) // a forjada guarda a montagem
                     .bonuses(new ArrayList<>()).build());
             draftRepository.delete(d);
         }
