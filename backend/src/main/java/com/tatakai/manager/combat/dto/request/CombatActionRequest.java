@@ -28,31 +28,51 @@ public record CombatActionRequest(
         /** Sacar/guardar, recarregar, engatilhar, destravar, trocar modo: o item do inventário (§42) */
         UUID itemId,
         /** Sacar arma de Empunhadura Variável com as duas mãos */
-        Boolean twoHanded) {
+        Boolean twoHanded,
+        /** Ação genérica (Maior, Menor, Livre) com custo de PA customizado, 0..9 */
+        @Min(0) @Max(9) Integer paCost,
+        /** Ação genérica que pede rolagem: expressão NdM+K, validada e rolada no servidor */
+        @Size(max = 40) String rollExpression,
+        /** Teste de Vontade: dificuldade (ND) 1..40; padrão 12 */
+        @Min(1) @Max(40) Integer nd) {
+
+    public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
+                               UUID targetParticipantId, Guard guard, UUID baseId, Boolean medical, UUID techniqueId,
+                               String variation, UUID itemId, Boolean twoHanded) {
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, medical, techniqueId,
+                variation, itemId, twoHanded, null, null, null);
+    }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId, Guard guard, UUID baseId, Boolean medical, UUID techniqueId,
                                String variation) {
         this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, medical, techniqueId,
-                variation, null, null);
+                variation, null, null, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId, Guard guard, UUID baseId, Boolean medical) {
-        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, medical, null, null, null, null);
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, medical, null, null, null, null, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId, Guard guard, UUID baseId) {
-        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, null, null, null, null, null);
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, null, null, null, null, null, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
                                UUID targetParticipantId) {
-        this(participantId, action, spCost, slow, label, targetParticipantId, null, null, null, null, null, null, null);
+        this(participantId, action, spCost, slow, label, targetParticipantId, null, null, null, null, null, null, null, null, null, null);
     }
 
     public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label) {
         this(participantId, action, spCost, slow, label, null, null, null);
+    }
+
+    public CombatActionRequest(UUID participantId, CombatAction action, Integer spCost, Boolean slow, String label,
+                               UUID targetParticipantId, Guard guard, UUID baseId, Boolean medical, UUID techniqueId,
+                               String variation, UUID itemId, Boolean twoHanded, Integer paCost, String rollExpression) {
+        this(participantId, action, spCost, slow, label, targetParticipantId, guard, baseId, medical, techniqueId,
+                variation, itemId, twoHanded, paCost, rollExpression, null);
     }
 }

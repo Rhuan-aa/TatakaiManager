@@ -89,7 +89,7 @@ public class CombatController {
 
     @PostMapping("/encounters/{eid}/participants")
     public ResponseEntity<EncounterResponse> addParticipant(@PathVariable UUID eid, @Valid @RequestBody AddParticipantRequest r) {
-        return ResponseEntity.status(201).body(combat.addParticipant(eid, r.sheetId(), AuthenticatedUser.id()));
+        return ResponseEntity.status(201).body(combat.addParticipant(eid, r.sheetId(), r.team(), AuthenticatedUser.id()));
     }
 
     @DeleteMapping("/encounters/{eid}/participants/{pid}")

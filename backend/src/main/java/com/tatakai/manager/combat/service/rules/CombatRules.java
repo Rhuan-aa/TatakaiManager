@@ -64,7 +64,7 @@ public final class CombatRules {
             case STANCH -> 3;
             case MOVE -> 1;
             case MINOR_OFFENSIVE, DISENGAGE, STAND_UP -> 2;
-            case FREE -> 0;
+            case FREE, WILL_TEST -> 0;
         };
     }
 
@@ -77,6 +77,7 @@ public final class CombatRules {
     public static int spCost(CombatAction a, Integer requested) {
         return switch (a) {
             case MAJOR, PREPARED, MINOR_OFFENSIVE -> requested == null ? 1 : Math.max(0, requested);
+            case MINOR, FREE -> requested == null ? 0 : Math.max(0, requested); // ação genérica: SP só se informado
             default -> 0;
         };
     }

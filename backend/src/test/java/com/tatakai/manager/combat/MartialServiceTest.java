@@ -1,5 +1,7 @@
 package com.tatakai.manager.combat;
 
+import com.tatakai.manager.catalog.entity.MartialArt;
+import com.tatakai.manager.catalog.entity.MoveKind;
 import com.tatakai.manager.catalog.repository.MartialArtRepository;
 import com.tatakai.manager.catalog.service.ArtCounterCatalog;
 import com.tatakai.manager.combat.entity.CombatCounter;
@@ -12,6 +14,9 @@ import com.tatakai.manager.combat.repository.CombatEventRepository;
 import com.tatakai.manager.combat.service.MartialService;
 import com.tatakai.manager.martial.entity.CharacterArt;
 import com.tatakai.manager.martial.entity.CharacterArtStatus;
+import com.tatakai.manager.martial.entity.CharacterTechnique;
+import com.tatakai.manager.martial.entity.TechniqueState;
+import com.tatakai.manager.catalog.entity.MartialType;
 import com.tatakai.manager.martial.repository.CharacterArtRepository;
 import com.tatakai.manager.martial.repository.CharacterTechniqueRepository;
 import com.tatakai.manager.progression.repository.RivalRepository;
@@ -27,6 +32,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -182,5 +188,76 @@ class MartialServiceTest {
         assertThat(c.getValue()).isEqualTo(4);
         assertThatThrownBy(() -> service.set(enc, p, c, 6)).isInstanceOf(InvalidCombatException.class);
         assertThat(c.getValue()).isEqualTo(4);
+    }
+
+    // ---------- tipo marcial pela base ativa ----------
+
+    private CharacterArt learnTyped(String art, String martialType, CharacterArtStatus status) {
+        CharacterArt a = CharacterArt.builder().id(UUID.randomUUID()).sheet(sheet).artId(UUID.randomUUID()).artName(art)
+                .status(status).build();
+        charArts.add(a);
+        MartialArt m = new MartialArt();
+        m.setMartialType(martialType);
+        lenient().when(catalog.findById(a.getArtId())).thenReturn(Optional.of(m));
+        return a;
+    }
+
+    private void activeBase(CharacterArt art) {
+        CharacterTechnique b = CharacterTechnique.builder().id(UUID.randomUUID()).sheet(sheet).characterArt(art)
+                .kind(MoveKind.BASE).state(TechniqueState.ACTIVE).name("Base").build();
+        p.setActiveBaseId(b.getId());
+        lenient().when(techniques.findById(b.getId())).thenReturn(Optional.of(b));
+    }
+
+    @Test
+    @DisplayName("Tipo do lutador = tipo da arte da base ativa (não o da arte principal)")
+    void tipoDaBase() {
+        CharacterArt main = learnTyped("Boxe", "Trocação", CharacterArtStatus.ACTIVE);
+        CharacterArt judo = learnTyped("Judô", "Derrubada", CharacterArtStatus.ACTIVE);
+        p.setMainArtId(main.getId());
+        activeBase(judo);
+        assertThat(service.fighter(p, sheet).type()).isEqualTo(MartialType.TAKEDOWN);
+    }
+
+    @Test
+    @DisplayName("Sem base ativa, o tipo é o da arte principal")
+    void semBaseUsaPrincipal() {
+        CharacterArt main = learnTyped("Boxe", "Trocação", CharacterArtStatus.ACTIVE);
+        learnTyped("Judô", "Derrubada", CharacterArtStatus.ACTIVE);
+        p.setMainArtId(main.getId());
+        assertThat(service.fighter(p, sheet).type()).isEqualTo(MartialType.STRIKING);
+    }
+
+    @Test
+    @DisplayName("Base avulsa (Forja, sem arte) cai para a arte principal")
+    void baseAvulsaUsaPrincipal() {
+        CharacterArt main = learnTyped("Boxe", "Trocação", CharacterArtStatus.ACTIVE);
+        p.setMainArtId(main.getId());
+        activeBase(null);
+        assertThat(service.fighter(p, sheet).type()).isEqualTo(MartialType.STRIKING);
+    }
+
+    @Test
+    @DisplayName("Base de arte que não está ACTIVE cai para a arte principal")
+    void baseDeArteInativaUsaPrincipal() {
+        CharacterArt main = learnTyped("Boxe", "Trocação", CharacterArtStatus.ACTIVE);
+        CharacterArt pending = learnTyped("Judô", "Derrubada", CharacterArtStatus.REQUESTED);
+        p.setMainArtId(main.getId());
+        activeBase(pending);
+        assertThat(service.fighter(p, sheet).type()).isEqualTo(MartialType.STRIKING);
+    }
+
+    @Test
+    @DisplayName("Técnica mantém o tipo da sua própria arte, mesmo com base de outra arte ativa")
+    void tecnicaMantemTipoDaArte() {
+        CharacterArt main = learnTyped("Boxe", "Trocação", CharacterArtStatus.ACTIVE);
+        CharacterArt judo = learnTyped("Judô", "Derrubada", CharacterArtStatus.ACTIVE);
+        p.setMainArtId(main.getId());
+        activeBase(judo);
+        CharacterTechnique tech = CharacterTechnique.builder().id(UUID.randomUUID()).sheet(sheet).characterArt(main)
+                .kind(MoveKind.TECHNIQUE).state(TechniqueState.ACTIVE).build();
+        MartialService.Fighter f = service.fighter(p, sheet);
+        assertThat(service.attackType(f, tech)).isEqualTo(MartialType.STRIKING);
+        assertThat(service.attackType(f, null)).isEqualTo(MartialType.TAKEDOWN); // básico usa a base
     }
 }

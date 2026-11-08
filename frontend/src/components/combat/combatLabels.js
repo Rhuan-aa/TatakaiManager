@@ -1,3 +1,6 @@
+/** Regiões de Ataque Localizado conhecidas pelo sistema; a redução é informada pelo Mestre e digitada pelo jogador. */
+export const LOCALIZED_REGIONS = ['Olhos', 'Ouvido', 'Garganta', 'Queixo', 'Têmpora', 'Nuca', 'Diafragma', 'Fígado', 'Genitais', 'Joelho'];
+
 export const EXPIRES_LABEL = {
   START_OF_TARGET_TURN: 'até o início do próximo turno',
   END_OF_TARGET_TURN: 'até o fim do turno',
@@ -91,6 +94,10 @@ export const BASIC_HINT = {
   PISAO: 'Só contra alvo Derrubado · + mod. de Peso no dano · +1 PQ na cabeça',
 };
 export const FLOOR_LABEL = { SOFT: 'Macio', STANDARD: 'Padrão', HARD: 'Duro' };
+export const FLOOR_COLOR = { SOFT: 'var(--floor-soft)', STANDARD: 'var(--floor-standard)', HARD: 'var(--floor-hard)' };
+// Cor de identificação do time (faixa na fila de turnos e cabeçalho do grupo no rastreador)
+const TEAM_COLORS = ['var(--accent)', 'var(--highlight)', 'var(--meter-sp)', 'var(--meter-kp)', 'var(--meter-hp)'];
+export const teamColor = (team) => TEAM_COLORS[Math.abs(Number(team) || 0) % TEAM_COLORS.length];
 
 export const CONDITION_LABEL = {
   AREA_EM_CHAMAS: 'Área em chamas',

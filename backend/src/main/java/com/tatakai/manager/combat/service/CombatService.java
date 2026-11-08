@@ -320,6 +320,10 @@ public class CombatService {
     }
 
     public EncounterResponse addParticipant(UUID encounterId, UUID sheetId, UUID userId) {
+        return addParticipant(encounterId, sheetId, null, userId);
+    }
+
+    public EncounterResponse addParticipant(UUID encounterId, UUID sheetId, Integer team, UUID userId) {
         Encounter e = loadAsMaster(encounterId, userId);
         requireNotEnded(e);
         CharacterSheet s = sheets.findById(sheetId).orElseThrow(CharacterSheetNotFoundException::new);
@@ -342,7 +346,7 @@ public class CombatService {
         int next = participants.findByEncounterIdOrderByOrderIndex(e.getId()).size();
         EncounterParticipant np = participants.save(EncounterParticipant.builder().encounterId(e.getId())
                 .sheetId(s.getId()).name(s.getName()).npc(s.isNpcSheet()).orderIndex(next)
-                .classification(e.getDefaultClassification()).team(s.isNpcSheet() ? 2 : 1).build());
+                .classification(e.getDefaultClassification()).team(team != null ? team : s.isNpcSheet() ? 2 : 1).build());
         if (e.getStatus() == EncounterStatus.ACTIVE) vital.syncDissociation(e, np, s);
         ensureCounters(e);
         return done(e, "PARTICIPANT_ADDED", userId, true);
@@ -479,6 +483,11 @@ public class CombatService {
 
     // ---------- ações e turnos ----------
 
+    /** Ações sem regra própria de custo: o jogador/Mestre pode informar o PA (Ação Livre que vale por outra ação). */
+    private static final java.util.Set<CombatAction> PA_CUSTOM = java.util.EnumSet.of(CombatAction.MAJOR, CombatAction.MINOR,
+            CombatAction.FREE, CombatAction.MOVE, CombatAction.STAND_UP, CombatAction.DISENGAGE, CombatAction.SHOVE,
+            CombatAction.MINOR_OFFENSIVE, CombatAction.BREATHE);
+
     public EncounterResponse act(UUID encounterId, CombatActionRequest req, UUID userId) {
         Encounter e = load(encounterId);
         Role role = requireMembership(e.getCampaignId(), userId);
@@ -506,6 +515,12 @@ public class CombatService {
             throw new InvalidCombatException("Dissociado: Ações Menores estão bloqueadas");
         }
         int pa = CombatRules.paCost(action, Boolean.TRUE.equals(req.slow()));
+        if (req.paCost() != null && PA_CUSTOM.contains(action)) {
+            pa = req.paCost(); // ação genérica customizada pelo jogador
+        }
+        String rollExpression = req.rollExpression() == null || req.rollExpression().isBlank()
+                ? null : req.rollExpression().trim();
+        if (rollExpression != null) RollService.parseFull(rollExpression); // inválida: 400 antes de gastar qualquer coisa
         MartialService.Fighter fighter = martial.fighter(p, s);
         if (action == CombatAction.CHANGE_GUARD && (s.getDominance() == Dominance.AMBIDEXTROUS
                 || fighter.hasArtNamed("Taekwondo")) && p.getGuardChangesThisTurn() == 0) {
@@ -636,6 +651,11 @@ public class CombatService {
             text.append(", ").append(sp).append(" SP");
         }
         text.append(")");
+        if (rollExpression != null) {
+            String why = (req.label() == null || req.label().isBlank() ? action.label() : req.label().trim()) + ": " + p.getName();
+            text.append(" — rolou ").append(rollExpression).append(" = ")
+                    .append(rolls.rollInternal(s, rollExpression, why, userId, actor).getTotal());
+        }
         switch (action) {
             case BREATHE -> {
                 int before = s.getCurrentSp();
@@ -664,6 +684,11 @@ public class CombatService {
             case STAND_UP -> {
                 conditions.deleteAll(down);
                 log(e, p.getId(), CombatEventType.CONDITION_REMOVED, p.getName() + " não está mais Derrubado");
+            }
+            case WILL_TEST -> {
+                int nd = req.nd() == null ? 12 : req.nd();
+                boolean ok = vital.willTest(e, p, s, nd, "Teste manual", ctx);
+                text.append(" — ND ").append(nd).append(ok ? ": sucesso" : ": falha");
             }
             case STANCH -> vital.stanch(e, p, stanchTarget, sheetOf(stanchTarget), ctx);
             case EXTINGUISH -> vital.extinguish(e, p, s, ctx);

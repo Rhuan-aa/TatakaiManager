@@ -230,7 +230,7 @@ class AttackServiceTest {
                 .state(TechniqueState.ACTIVE).name("Jab").build();
         lenient().when(techniques.findById(tech.getId())).thenReturn(Optional.of(tech));
         lenient().when(profiles.technique(any(), any(), any(), any())).thenAnswer(i -> calc(RollSourceType.TECHNIQUE, "Jab", techSp));
-        lenient().when(profiles.basic(any(), any(), any())).thenAnswer(i -> calc(RollSourceType.BASIC_ATTACK, "Soco", 0));
+        lenient().when(profiles.basic(any(), any(), any())).thenAnswer(i -> calc(RollSourceType.BASIC_ATTACK, "Soco", 1));
         lenient().when(profiles.hasModule(any(), any(), any(), anyString())).thenAnswer(i -> modules.contains((String) i.getArgument(3)));
         lenient().when(profiles.items(any(), any(), any())).thenAnswer(i -> techItems);
         lenient().when(rolls.rollCalc(any(), any(), any(), anyInt(), anyString(), any(), any())).thenAnswer(i -> {
@@ -342,6 +342,21 @@ class AttackServiceTest {
     }
 
     @Test
+    @DisplayName("Ataque básico custa 1 SP: declarar debita 1 (uma vez só); com SP 0 -> 400 sem debitar")
+    void basicCostsOneSp() {
+        sheetA.setCurrentSp(5);
+        AttackResponse r = service.declare(enc.getId(), basic(AttackActionKind.MAJOR, pB), player.getId());
+        assertThat(r.reservedSp()).isEqualTo(1);
+        assertThat(sheetA.getCurrentSp()).isEqualTo(4);
+        sheetA.setCurrentSp(0);
+        pA.setPaCurrent(5);
+        assertThatThrownBy(() -> service.declare(enc.getId(), basic(AttackActionKind.MAJOR, pB), player.getId()))
+                .isInstanceOf(InvalidCombatException.class).hasMessageContaining("SP");
+        assertThat(pA.getPaCurrent()).isEqualTo(5);
+        assertThat(sheetA.getCurrentSp()).isZero();
+    }
+
+    @Test
     @DisplayName("Alvo Furtivo ou o próprio atacante -> 400")
     void invalidTargets() {
         cond(pN, "FURTIVO");
@@ -376,6 +391,21 @@ class AttackServiceTest {
         assertThat(t.damage()).isEqualTo(7);
         assertThat(npcSheet.getCurrentHp()).isEqualTo(23);
         assertThat(rollCalcs).hasSize(1); // só o ataque rola
+    }
+
+    @Test
+    @DisplayName("Detalhes do ataque entram no motivo da rolagem (histórico); região improvisada com penalidade é aceita")
+    void attackDetailsInRollPurpose() {
+        cond(pN, "VULNERAVEL");
+        queue.add(msg(15, 10, 7));
+        CreateAttackRequest base = technique(AttackActionKind.MAJOR, pN);
+        CreateAttackRequest req = new CreateAttackRequest(base.attackerId(), base.sourceType(), base.sourceId(), null,
+                null, base.actionKind(), base.targetIds(), "Costelas", -3, null, null, null, null, null, null, null,
+                "Mirei sob o braço dele");
+        service.declare(enc.getId(), req, player.getId());
+        org.mockito.ArgumentCaptor<String> purpose = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(rolls).rollCalc(any(), any(), any(), anyInt(), purpose.capture(), any(), any());
+        assertThat(purpose.getValue()).startsWith("Ataque: ").endsWith("— Mirei sob o braço dele");
     }
 
     // ---------- responder / cancelar ----------
@@ -753,7 +783,7 @@ class AttackServiceTest {
 
     private void stubBasicWithDes() {
         lenient().when(profiles.basic(any(), any(), any())).thenAnswer(i -> new Calc(RollSourceType.BASIC_ATTACK, null, "Soco",
-                null, BasicAttack.SOCO, 0, 20, 0, new ArrayList<>(List.of(new RollPart("HIT", "DES", 3, null, false))),
+                null, BasicAttack.SOCO, 1, 20, 0, new ArrayList<>(List.of(new RollPart("HIT", "DES", 3, null, false))),
                 new RollRules.Dice(1, 3), List.of()));
     }
 
@@ -935,7 +965,7 @@ class AttackServiceTest {
     @DisplayName("F6d: lado do golpe não vale para Cabeçada/Agarrão; vale para técnica quando informado")
     void guardScope() {
         lenient().when(profiles.basic(any(), any(), any())).thenAnswer(i -> new Calc(RollSourceType.BASIC_ATTACK, null, "Cabeçada",
-                null, BasicAttack.CABECADA, 0, 20, 0, new ArrayList<>(), new RollRules.Dice(1, 4), List.of()));
+                null, BasicAttack.CABECADA, 1, 20, 0, new ArrayList<>(), new RollRules.Dice(1, 4), List.of()));
         fight(new CreateAttackRequest(pA.getId(), RollSourceType.BASIC_ATTACK, null, null, BasicAttack.CABECADA,
                 AttackActionKind.MAJOR, List.of(pN.getId()), null, null, StrikeSide.FRONT), ReactionType.NONE, msg(15, 10, 5), null);
         assertThat(hasPart(rollCalcs.get(0), "Guarda: frente +1")).isFalse();
@@ -1065,6 +1095,7 @@ class AttackServiceTest {
         assertThat(t.lateCounter()).isEqualTo(LateCounter.SUCCESS);
         assertThat(t.lateCounterDamage()).isEqualTo(6);
         assertThat(t.canLateCounter()).isFalse();
+        assertThat(t.lateCounterRoll()).isNotNull();
         assertThat(sheetA.getCurrentHp()).isEqualTo(44);
         assertThat(npcSheet.getCurrentSp()).isEqualTo(4);
         assertThat(pN.getPaCurrent()).isEqualTo(pa);
@@ -1511,7 +1542,7 @@ class AttackServiceTest {
 
     private CreateAttackRequest basicOn(BasicAttack b, AttackActionKind kind, String region, EncounterParticipant t) {
         lenient().when(profiles.basic(any(), any(), any())).thenAnswer(i -> new Calc(RollSourceType.BASIC_ATTACK, null,
-                b.label, null, b, 0, 20, 0, new ArrayList<>(),
+                b.label, null, b, 1, 20, 0, new ArrayList<>(),
                 b.dealsDamage() ? new RollRules.Dice(b.count, b.sides) : null, new ArrayList<>()));
         lenient().when(profiles.attribute(any(), any())).thenAnswer(x -> calc(RollSourceType.ATTRIBUTE_TEST, "Teste", 0));
         return new CreateAttackRequest(pA.getId(), RollSourceType.BASIC_ATTACK, null, null, b, kind,
@@ -1767,7 +1798,7 @@ class AttackServiceTest {
                 .weaponKey(key).location(ItemLocation.HAND).loaded(loaded).build();
         sheetA.getInventory().add(i);
         lenient().when(profiles.weaponOf(any(), any(), any(), any())).thenAnswer(x -> new Calc(RollSourceType.BASIC_ATTACK,
-                i.getId(), w.name(), null, BasicAttack.ARMA, 0, 20, 0, new ArrayList<>(),
+                i.getId(), w.name(), null, BasicAttack.ARMA, 1, 20, 0, new ArrayList<>(),
                 com.tatakai.manager.roll.service.rules.RollRules.Dice.parse(w.dice()), new ArrayList<>(), w));
         return i;
     }

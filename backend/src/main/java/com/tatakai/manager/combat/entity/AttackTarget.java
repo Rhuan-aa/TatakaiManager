@@ -79,4 +79,8 @@ public class AttackTarget {
     /** SUCCESS: dano no atacante; FAIL: dano extra no alvo. */
     @Column(name = "late_counter_damage")
     private Integer lateCounterDamage;
+
+    /** Rolagem do Contra-Ataque Tardio (para o front animar); null = não usado. */
+    @Column(name = "late_counter_roll_id")
+    private UUID lateCounterRollId;
 }

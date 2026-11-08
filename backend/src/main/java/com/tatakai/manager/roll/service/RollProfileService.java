@@ -88,6 +88,9 @@ public class RollProfileService {
         }
     }
 
+    /** Todo ataque básico (desarmado ou com arma) custa 1 SP; técnicas têm custo próprio. */
+    public static final int BASIC_SP_COST = 1;
+
     /** Catálogo estático de armas (só leitura do classpath). */
     private final WeaponCatalog weapons = new WeaponCatalog();
     private final CharacterTechniqueRepository techniqueRepository;
@@ -352,7 +355,7 @@ public class RollProfileService {
         hit.addAll(localized(o));
         hit.addAll(fatigueParts(sheet, physical(sheet)));
         if (!b.dealsDamage()) {
-            return new Calc(RollSourceType.BASIC_ATTACK, null, b.label, null, b, 0, RollRules.CRIT_MARGIN, 0, hit,
+            return new Calc(RollSourceType.BASIC_ATTACK, null, b.label, null, b, BASIC_SP_COST, RollRules.CRIT_MARGIN, 0, hit,
                     null, List.of());
         }
         List<RollPart> damage = new ArrayList<>();
@@ -362,7 +365,7 @@ public class RollProfileService {
         if (b == BasicAttack.SOCO) damage.addAll(augment(sheet)); // soqueira/tufa endurecem o punho
         damage.addAll(baseDamage(base, o));
         int e = b.noStrength() ? 0 : RollRules.strengthExtra(sheet.getStr(), false);
-        return new Calc(RollSourceType.BASIC_ATTACK, null, b.label, null, b, 0, RollRules.CRIT_MARGIN, 0, hit,
+        return new Calc(RollSourceType.BASIC_ATTACK, null, b.label, null, b, BASIC_SP_COST, RollRules.CRIT_MARGIN, 0, hit,
                 new RollRules.Dice(b.count * (1 + e), b.sides), damage);
     }
 
@@ -491,7 +494,7 @@ public class RollProfileService {
         List<RollPart> damage = new ArrayList<>(weaponAttribute(sheet, w, quick));
         String name = item.getName() + (thrown ? " (arremesso)" : quick ? " (Golpe Rápido)" : "");
         return new Calc(RollSourceType.BASIC_ATTACK, item.getId(), name, thrown ? "THROWN" : quick ? "QUICK" : null,
-                BasicAttack.ARMA, 0, RollRules.CRIT_MARGIN, adv, hit, weaponDice(sheet, item, w), damage, w);
+                BasicAttack.ARMA, BASIC_SP_COST, RollRules.CRIT_MARGIN, adv, hit, weaponDice(sheet, item, w), damage, w);
     }
 
     /** Ataque com o item em mãos `itemId`; variação "THROWN" (arremesso) ou "QUICK" (Golpe Rápido). */
@@ -554,6 +557,9 @@ public class RollProfileService {
                         && x.getState() == TechniqueState.ACTIVE)
                 .orElseThrow(() -> new InvalidRollException("Base não encontrada ou inativa"));
         List<AssemblyItem> items = List.of();
+        if (b.getCharacterArt() == null && b.getBaseAssembly() != null && b.getBaseAssembly().getItems() != null) {
+            items = b.getBaseAssembly().getItems(); // avulsa montada
+        }
         if (b.getCharacterArt() != null) {
             MartialArt art = martialArtRepository.findById(b.getCharacterArt().getArtId()).orElse(null);
             if (art != null && art.getBases() != null) {
@@ -582,7 +588,7 @@ public class RollProfileService {
     }
 
     private ArtTechnique catalog(CharacterSheet sheet, CharacterTechnique t) {
-        if (t.getCharacterArt() == null) return null;
+        if (t.getCharacterArt() == null) return t.getTechniqueAssembly(); // avulsa montada (ou null)
         List<MartialArt> pool = new ArrayList<>();
         if (t.getBorrowedFrom() != null) {
             pool.addAll(martialArtRepository.findByCampaignIdIsNull());

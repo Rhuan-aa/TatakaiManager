@@ -423,6 +423,48 @@ class CombatServiceTest {
     }
 
     @Test
+    @DisplayName("Adicionar participante com time escolhido (mais de 2 times); sem time: jogador 1, NPC 2")
+    void addParticipantWithTeam() {
+        lenient().when(campaignNpcs.existsByCampaignIdAndNpcId(cid, npcSheet.getNpcId())).thenReturn(true);
+        service.addParticipant(enc.getId(), npcSheet.getId(), 3, master.getId());
+        assertThat(pList.get(pList.size() - 1).getTeam()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("Ação livre que vale por Movimento: PA informado substitui o padrão")
+    void freeActionAsMove() {
+        EncounterParticipant[] p = started();
+        int pa0 = p[0].getPaCurrent();
+        service.act(enc.getId(), new CombatActionRequest(p[0].getId(), CombatAction.MOVE, null, false, "Passo da spec",
+                null, null, null, null, null, null, null, null, 0, null), player.getId());
+        assertThat(p[0].getPaCurrent()).isEqualTo(pa0);
+    }
+
+    @Test
+    @DisplayName("Ação genérica customizada: PA e SP informados pelo jogador; expressão de dados é rolada pelo servidor")
+    void customGenericAction() {
+        EncounterParticipant[] p = started();
+        int pa0 = p[0].getPaCurrent();
+        service.act(enc.getId(), new CombatActionRequest(p[0].getId(), CombatAction.MINOR, 1, false, "Ajustar armadura",
+                null, null, null, null, null, null, null, null, 2, "1d20+3"), player.getId());
+        assertThat(p[0].getPaCurrent()).isEqualTo(pa0 - 2);
+        assertThat(sheetA.getCurrentSp()).isEqualTo(9);
+        verify(rolls).rollInternal(eq(sheetA), eq("1d20+3"), anyString(), any(), any());
+        assertThat(eventList.get(eventList.size() - 1).getText()).contains("Ajustar armadura").contains("2 PA").contains("1d20+3");
+    }
+
+    @Test
+    @DisplayName("Ação genérica com expressão inválida -> 400 sem debitar PA")
+    void invalidRollExpressionBlocksAction() {
+        EncounterParticipant[] p = started();
+        int pa0 = p[0].getPaCurrent();
+        assertThatThrownBy(() -> service.act(enc.getId(), new CombatActionRequest(p[0].getId(), CombatAction.MINOR, null,
+                false, "X", null, null, null, null, null, null, null, null, null, "abc"), player.getId()))
+                .isInstanceOf(com.tatakai.manager.roll.exception.InvalidRollException.class);
+        assertThat(p[0].getPaCurrent()).isEqualTo(pa0);
+    }
+
+    @Test
     @DisplayName("Ação maior lenta custa 4 PA; PA ou SP insuficientes -> 400 sem debitar nada")
     void insufficientResources() {
         EncounterParticipant[] p = started();

@@ -138,7 +138,8 @@ public class RollService {
         RollChannel channel = channelOf(req.channel(), a.master());
 
         UUID customId = customChannelOf(channel, req.customChannelId(), a.campaignId(), a.master(), requesterId);
-        Roll roll = execute(sheetId, a.campaignId(), req.expression(), req.purpose(), requesterId, channel, customId);
+        Roll roll = execute(sheetId, a.campaignId(), req.expression(), req.purpose(), requesterId, channel, customId,
+                req.advantage() == null ? 0 : req.advantage(), Boolean.TRUE.equals(req.separate()));
         ActorRole role = a.master() ? ActorRole.MASTER : ActorRole.PLAYER;
         activityLog.record(a.sheet(), requesterId, role, ActivityCategory.ROLL, "ROLL", null, null,
                 req.expression() + " = " + roll.getTotal(), roll.getId(), req.purpose());
@@ -300,7 +301,8 @@ public class RollService {
         User actor = requireMaster(campaignId, requesterId);
         RollChannel channel = req.channel() == null ? RollChannel.PUBLIC : req.channel();
         UUID customId = customChannelOf(channel, req.customChannelId(), campaignId, true, requesterId);
-        Roll roll = execute(null, campaignId, req.expression(), req.purpose(), requesterId, channel, customId);
+        Roll roll = execute(null, campaignId, req.expression(), req.purpose(), requesterId, channel, customId,
+                req.advantage() == null ? 0 : req.advantage(), Boolean.TRUE.equals(req.separate()));
         RollMessage msg = toMessage(roll, actor.getName(), null);
         events.publishEvent(msg);
         return msg;
@@ -411,16 +413,55 @@ public class RollService {
 
     private Roll execute(UUID sheetId, UUID campaignId, String expression, String purpose, UUID actorId,
                          RollChannel channel, UUID customChannelId) {
-        DiceExpression expr = parse(expression);
+        return execute(sheetId, campaignId, expression, purpose, actorId, channel, customChannelId, 0, false);
+    }
+
+    /**
+     * Rolagem livre. `advantage` +1/-1: rola em dobro e fica com o melhor/pior (a expressão inteira, ou cada dado
+     * em modo `separate`). `separate`: cada dado vira uma microrolagem (com o modificador) no mesmo cartão.
+     */
+    private Roll execute(UUID sheetId, UUID campaignId, String expression, String purpose, UUID actorId,
+                         RollChannel channel, UUID customChannelId, int advantage, boolean separate) {
+        Parsed expr = parseFull(expression);
+        int adv = Integer.compare(advantage, 0);
+        List<RollPart> parts = new ArrayList<>();
         List<Integer> dice = new ArrayList<>();
-        int sum = 0;
-        for (int i = 0; i < expr.count(); i++) {
-            int d = die(expr.sides());
-            dice.add(d);
-            sum += d;
+        int total;
+        if (separate) {
+            total = 0;
+            for (Term t : expr.terms()) {
+                for (int i = 0; i < t.count(); i++) {
+                    int d = die(t.sides());
+                    String src = "1d" + t.sides();
+                    if (adv != 0) {
+                        int other = die(t.sides());
+                        int keep = adv > 0 ? Math.max(d, other) : Math.min(d, other);
+                        src += " · descartado " + (keep == d ? other : d);
+                        d = keep;
+                    }
+                    int value = t.sign() * d + expr.modifier();
+                    dice.add(d);
+                    total += value;
+                    parts.add(new RollPart("MICRO", src, value, List.of(d), false));
+                }
+            }
+        } else {
+            Pass kept = pass(expr);
+            if (adv != 0) {
+                Pass other = pass(expr);
+                boolean swap = adv > 0 ? other.total() > kept.total() : other.total() < kept.total();
+                if (swap) { Pass tmp = kept; kept = other; other = tmp; }
+                parts.addAll(kept.parts());
+                parts.add(new RollPart("DISCARDED", expr.text(), other.total(), other.dice(), false));
+            } else {
+                parts.addAll(kept.parts());
+            }
+            dice = kept.dice();
+            total = kept.total();
         }
-        int total = sum + expr.modifier();
-        Integer natural = expr.count() == 1 && expr.sides() == 20 ? dice.get(0) : null;
+        boolean single = expr.terms().size() == 1 && expr.terms().get(0).count() == 1
+                && expr.terms().get(0).sides() == 20 && expr.terms().get(0).sign() > 0;
+        Integer natural = single ? dice.get(0) : null;
 
         return rollRepository.save(Roll.builder()
                 .campaignId(campaignId)
@@ -433,10 +474,61 @@ public class RollService {
                 .naturalD20(natural)
                 .purpose(purpose)
                 .channel(channel).customChannelId(customChannelId).mode(RollMode.FREE).sourceType(RollSourceType.CUSTOM)
-                .advantage(0)
+                .advantage(adv)
                 .critical(natural != null && natural == 20).fumble(natural != null && natural == 1)
+                .breakdown(parts)
                 .revealed(false)
                 .build());
+    }
+
+    private record Pass(int total, List<Integer> dice, List<RollPart> parts) {}
+
+    /** Uma rolagem completa da expressão: soma dos termos (com sinal) + modificador. */
+    private static Pass pass(Parsed expr) {
+        List<RollPart> parts = new ArrayList<>();
+        List<Integer> all = new ArrayList<>();
+        int total = expr.modifier();
+        for (Term t : expr.terms()) {
+            List<Integer> ds = new ArrayList<>();
+            int sum = 0;
+            for (int i = 0; i < t.count(); i++) { int d = die(t.sides()); ds.add(d); sum += d; }
+            all.addAll(ds);
+            total += t.sign() * sum;
+            parts.add(new RollPart("DICE", (t.sign() < 0 ? "−" : "") + t.count() + "d" + t.sides(), t.sign() * sum, ds, false));
+        }
+        if (expr.modifier() != 0) parts.add(new RollPart("DICE", "Modificador", expr.modifier(), null, false));
+        return new Pass(total, all, parts);
+    }
+
+    public record Term(int sign, int count, int sides) {}
+
+    /** Expressão completa: termos de dados (com sinal) + constante somada. */
+    public record Parsed(List<Term> terms, int modifier, String text) {}
+
+    private static final Pattern FULL = Pattern.compile("^\\d{1,2}d\\d{1,3}([+-](\\d{1,2}d\\d{1,3}|\\d{1,3})){0,9}$");
+    private static final Pattern TOKEN = Pattern.compile("([+-]?)(?:(\\d{1,2})d(\\d{1,3})|(\\d{1,3}))");
+
+    /** Interpreta "2d6+1d4-1d8+3": até 10 termos, 1..20 dados de 2+ lados por termo, no máximo 30 dados. */
+    public static Parsed parseFull(String expression) {
+        String text = expression == null ? "" : expression.replaceAll("\\s+", "");
+        if (!FULL.matcher(text).matches()) throw new InvalidRollException("Expressão de dados inválida");
+        List<Term> terms = new ArrayList<>();
+        int modifier = 0;
+        int count = 0;
+        Matcher m = TOKEN.matcher(text);
+        while (m.find()) {
+            int sign = "-".equals(m.group(1)) ? -1 : 1;
+            if (m.group(4) != null) { modifier += sign * Integer.parseInt(m.group(4)); continue; }
+            int n = Integer.parseInt(m.group(2));
+            int sides = Integer.parseInt(m.group(3));
+            if (n < 1 || n > 20 || sides < 2) {
+                throw new InvalidRollException("Expressão de dados inválida: use de 1 a 20 dados de 2+ lados");
+            }
+            count += n;
+            terms.add(new Term(sign, n, sides));
+        }
+        if (count > 30) throw new InvalidRollException("Expressão de dados inválida: no máximo 30 dados");
+        return new Parsed(terms, modifier, text);
     }
 
     /** Interpreta "NdM+K"; N entre 1 e 20, M >= 2. */

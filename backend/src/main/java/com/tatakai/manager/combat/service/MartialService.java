@@ -105,11 +105,17 @@ public class MartialService {
         }
         CharacterArt main = active.stream().filter(a -> a.getId().equals(p.getMainArtId())).findFirst()
                 .orElseGet(() -> MartialRules.defaultMainArt(active));
-        return new Fighter(active, main, main == null ? null : types.get(main.getId()),
+        // Tipo do lutador (alvo/defensor e golpe básico/avulso) = arte da base ativa, se ela estiver ACTIVE; senão a principal.
+        // ponytail: busca extra da base por chamada (activeBase = 1 findById), cachear no Ctx se pesar.
+        CharacterTechnique base = activeBase(s, p.getActiveBaseId());
+        CharacterArt baseArt = base == null ? null : base.getCharacterArt();
+        MartialType baseType = baseArt == null ? null : types.get(baseArt.getId());
+        MartialType type = baseType != null ? baseType : main == null ? null : types.get(main.getId());
+        return new Fighter(active, main, type,
                 MartialRules.attackSpecs(atk), MartialRules.reactionSpecs(rea), types);
     }
 
-    /** Tipo efetivo do golpe: arte da técnica (emprestada = a que a hospeda); avulsa ou básico = arte principal. */
+    /** Tipo efetivo do golpe: arte da técnica (emprestada = a que a hospeda); avulsa ou básico = tipo do lutador (arte da base ativa; senão a principal). */
     public MartialType attackType(Fighter f, CharacterTechnique t) {
         if (t != null && t.getCharacterArt() != null && f.typeByArt().containsKey(t.getCharacterArt().getId())) {
             return f.typeByArt().get(t.getCharacterArt().getId());

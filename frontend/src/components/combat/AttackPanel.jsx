@@ -62,7 +62,7 @@ function ChainPicker({ sheetId, currentName, onPick, onClose }) {
   );
 }
 
-function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
+function Resolved({ a, fresh, freshRolls, targetSheetId, onLateCounter }) {
   const [picking, setPicking] = useState(null);
 
   return (
@@ -89,6 +89,9 @@ function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
                 onPick={(body) => { onLateCounter(a.id, t.id, body); setPicking(null); }} />
             : <button type="button" className="btn-secondary px-3 py-1 text-xs" onClick={() => setPicking(t.id)}>Contra-ataque tardio</button>)}
           {t.reactionRoll && <RollReveal roll={t.reactionRoll} fresh={fresh} />}
+          {t.lateCounterRoll && (
+            <RollReveal roll={t.lateCounterRoll} fresh={freshRolls.has(t.lateCounterRoll.id)} damage={t.lateCounterDamage > 0} />
+          )}
         </div>
       ))}
     </div>
@@ -96,7 +99,7 @@ function Resolved({ a, fresh, targetSheetId, onLateCounter }) {
 }
 
 export default function AttackPanel({ pending, resolved, canCancel, onReact, onCancel, onLateCounter, targetSheetId,
-  attackerSheetId, onChain, freshIds }) {
+  attackerSheetId, onChain, freshIds, freshRolls = new Set() }) {
   const [chaining, setChaining] = useState(null);
   return (
     <div className="space-y-3">
@@ -106,6 +109,9 @@ export default function AttackPanel({ pending, resolved, canCancel, onReact, onC
           <div className="text-sm">
             <strong>{a.attackerName}</strong> ataca com {a.sourceName}{a.region ? ` (${a.region})` : ''}
             <span className="tag ml-2">{a.reservedPa} PA · {a.reservedSp} SP</span>
+            {a.targets.some((t) => !t.reaction) && (
+              <span className="caption mt-1 block">Aguardando: {a.targets.filter((t) => !t.reaction).map((t) => t.targetName).join(', ')}</span>
+            )}
           </div>
           {a.targets.map((t) => (
             <div key={t.id} className="flex flex-wrap items-center gap-2 text-sm">
@@ -147,11 +153,11 @@ export default function AttackPanel({ pending, resolved, canCancel, onReact, onC
       ))}
       {/* O último ataque fica sempre visível (as rolagens não podem nascer escondidas); os anteriores recolhem. */}
       {resolved.length > 0 && <h3 className="panel-title text-lg">Último ataque</h3>}
-      {resolved.slice(0, 1).map((a) => <Resolved key={a.id} a={a} fresh={freshIds.has(a.id)} targetSheetId={targetSheetId} onLateCounter={onLateCounter} />)}
+      {resolved.slice(0, 1).map((a) => <Resolved key={a.id} a={a} fresh={freshIds.has(a.id)} freshRolls={freshRolls} targetSheetId={targetSheetId} onLateCounter={onLateCounter} />)}
       {resolved.length > 1 && (
         <details>
           <summary className="caption cursor-pointer">Ataques anteriores ({resolved.length - 1})</summary>
-          <div className="mt-2 space-y-2">{resolved.slice(1).map((a) => <Resolved key={a.id} a={a} fresh={false} targetSheetId={targetSheetId} onLateCounter={onLateCounter} />)}</div>
+          <div className="mt-2 space-y-2">{resolved.slice(1).map((a) => <Resolved key={a.id} a={a} fresh={false} freshRolls={freshRolls} targetSheetId={targetSheetId} onLateCounter={onLateCounter} />)}</div>
         </details>
       )}
     </div>

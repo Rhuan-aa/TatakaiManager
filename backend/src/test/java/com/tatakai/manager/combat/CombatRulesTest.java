@@ -65,7 +65,9 @@ class CombatRulesTest {
         assertThat(CombatRules.spCost(CombatAction.MAJOR, null)).isEqualTo(1);
         assertThat(CombatRules.spCost(CombatAction.MAJOR, 4)).isEqualTo(4);
         assertThat(CombatRules.spCost(CombatAction.MINOR_OFFENSIVE, null)).isEqualTo(1);
-        assertThat(CombatRules.spCost(CombatAction.MINOR, 5)).isEqualTo(0);
+        assertThat(CombatRules.spCost(CombatAction.MINOR, 5)).isEqualTo(5);    // genérica: SP informado
+        assertThat(CombatRules.spCost(CombatAction.MINOR, null)).isEqualTo(0);
+        assertThat(CombatRules.spCost(CombatAction.MOVE, 5)).isEqualTo(0);
     }
 
     @Test

@@ -57,6 +57,10 @@ public class PendingAttack {
     @Column(length = 40)
     private String region;
 
+    /** Como foi o ataque, escrito pelo jogador antes da rolagem (aparece no histórico). */
+    @Column(length = 300)
+    private String details;
+
     @Column(name = "region_penalty", nullable = false)
     private int regionPenalty;
 

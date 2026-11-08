@@ -21,7 +21,7 @@ public record AttackResponse(UUID id, UUID encounterId, UUID attackerId, String 
             AttackOutcome outcome, Integer mitigationPct, Integer damage, Integer counterDamage,
             LateCounter lateCounter, Integer lateCounterDamage, boolean canLateCounter,
             UUID defenderId, String defenderName, List<Guardian> guardians, List<TechOption> techniques,
-            String reactionTechniqueName) {}
+            String reactionTechniqueName, RollMessage lateCounterRoll) {}
 
     /** Técnica de núcleo Reação disponível ao alvo (§38): substitui a reação do tipo dela. */
     public record TechOption(UUID techniqueId, String variation, String name, ReactionType reaction, boolean available,

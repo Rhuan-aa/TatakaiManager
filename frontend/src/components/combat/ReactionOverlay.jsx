@@ -4,7 +4,7 @@ import { REACTION_HINT, REACTION_LABEL } from './combatLabels';
 const signed = (n) => (n >= 0 ? `+${n}` : `${n}`);
 
 /** Tela de reação em destaque: aparece quando um ataque pendente espera a resposta de quem está vendo. */
-export default function ReactionOverlay({ attack: a, target: t, onReact, onMinimize }) {
+export default function ReactionOverlay({ attack: a, target: t, onReact, onMinimize, position = 1, total = 1 }) {
   const first = useRef(null);
   useEffect(() => {
     first.current?.focus();
@@ -18,6 +18,7 @@ export default function ReactionOverlay({ attack: a, target: t, onReact, onMinim
       <div className="relative w-full max-w-2xl">
         <span className="reaction-burst" aria-hidden="true">Ataque!</span>
         <div className="reaction-card">
+        {total > 1 && <span className="tag mt-2" aria-label={`Reação ${position} de ${total}`}>{position} de {total}</span>}
         <h2 id="reaction-title" className="panel-title mt-2 text-2xl">
           {a.attackerName} ataca {t.targetName}
         </h2>

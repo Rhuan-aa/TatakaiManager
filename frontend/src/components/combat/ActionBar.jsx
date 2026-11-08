@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useConsumables, useWeapons } from '../ui/useCatalog';
 import { ITEM_LOCATION, gearStatus } from '../ui/gear';
-import { ACTIONS, ACTION_CATEGORIES, ACTION_STANCH, GUARD_LABEL, GRIP_LABEL, HOLD_KEYS, STRANGLE_LABEL, hasCondition } from './combatLabels';
+import { StanchMenu, ActionConfigMenu, GuardMenu, BaseMenu } from './ActionMenus';
+import { ACTIONS, ACTION_CATEGORIES, ACTION_STANCH, GRIP_LABEL, HOLD_KEYS, STRANGLE_LABEL, hasCondition } from './combatLabels';
 
 /** Botão de ação do HUD: rótulo, custo e, se indisponível, o motivo visível embaixo. */
 function ActButton({ label, cost, reason, onClick, title }) {
@@ -40,7 +41,7 @@ function GrappleGroup({ p, participants, paReason, onGrapple }) {
   const tangled = p.conditions.find((c) => c.key === 'AGARRADO' && c.note === 'ENREDAR' && !c.sourceParticipantId);
   if (!hold && !tangled && victims.length === 0) return null;
   return (
-    <section className="act-group space-y-1.5" style={{ '--act': 'var(--act-major)' }}>
+    <section className="act-group break-inside-avoid space-y-1.5" style={{ '--act': 'var(--act-major)' }}>
       <h4 className="act-group-title text-sm">Agarre</h4>
       {tangled && !hold && (
         <>
@@ -127,7 +128,7 @@ function GearGroup({ p, paReason, onAct }) {
   if (items.length === 0) return null;
   const send = (action, i, extra = {}) => onAct({ participantId: p.id, action, itemId: i.id, ...extra });
   return (
-    <section className="act-group space-y-1.5" style={{ '--act': 'var(--act-minor)' }}>
+    <section className="act-group break-inside-avoid space-y-1.5" style={{ '--act': 'var(--highlight)' }}>
       <h4 className="act-group-title text-sm">Armas</h4>
       {items.map((i) => {
         const w = weapons[i.weaponKey];
@@ -170,7 +171,7 @@ function ConsumableGroup({ p, participants, paReason, onAct }) {
     && catalog[i.consumableKey] && catalog[i.consumableKey].use !== 'NONE');
   if (items.length === 0) return null;
   return (
-    <section className="act-group space-y-1.5" style={{ '--act': 'var(--act-free)' }}>
+    <section className="act-group break-inside-avoid space-y-1.5" style={{ '--act': 'var(--act-free)' }}>
       <h4 className="act-group-title text-sm">Consumíveis</h4>
       {items.map((i) => {
         const c = catalog[i.consumableKey];
@@ -199,16 +200,14 @@ function ConsumableGroup({ p, participants, paReason, onAct }) {
   );
 }
 
-export default function ActionBar({ participant: p, participants = [], canAct, onAct, onAttack, onGrapple }) {
-  const [spCost, setSpCost] = useState(1);
-  const [label, setLabel] = useState('');
-  const [slow, setSlow] = useState(false);
-  const [target, setTarget] = useState('');
-  const [guard, setGuard] = useState('');
-  const [base, setBase] = useState('');
+// Ações que abrem um menu de configuração em vez de disparar direto
+const CONFIG_KINDS = ['MAJOR', 'PREPARED', 'MINOR', 'FREE'];
+
+export default function ActionBar({ participant: p, participants = [], canAct, onAct, onAttack, onGrapple, bare = false, active = true }) {
+  const [menu, setMenu] = useState(null); // null | 'STANCH' | 'GUARD' | 'BASE' | 'MAJOR' | 'PREPARED' | 'MINOR' | 'FREE'
   const [dyingTarget, setDyingTarget] = useState('');
   const [medical, setMedical] = useState(false);
-  const basePa = p.activeBaseId && base && base !== '__none' ? 2 : 1;
+  const [nd, setNd] = useState(12);
   const sp = p.resources?.currentSp;
   const dissociated = hasCondition(p, 'DISSOCIADO');
   const exhausted = p.exhausted || hasCondition(p, 'EXAUSTO');
@@ -216,47 +215,56 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
   const allies = participants.filter((x) => x.id !== p.id && x.team === p.team);
   const dying = allies.filter((x) => hasCondition(x, 'BEIRA_DA_MORTE'));
   const stabilizeId = dyingTarget || dying[0]?.id;
-  // custo exibido: Fluxo/Ápice -1 (mín. 0); Dissociado dobra técnicas (Ação maior/Preparada)
-  const effSp = (a) => {
-    const v = Math.max(0, spCost - (flow ? 1 : 0));
-    return dissociated && (a.action === 'MAJOR' || a.action === 'PREPARED') ? v * 2 : v;
-  };
+  // ataque básico custa 1 SP (Fluxo/Ápice reduzem 1)
+  const basicSp = Math.max(0, 1 - (flow ? 1 : 0));
+  const basicSpReason = sp != null && sp < basicSp ? `SP insuficiente (${sp}/${basicSp})` : null;
   const paralyzed = hasCondition(p, 'PARALISADO');
   const paReason = (pa) => (!canAct ? 'Não é o seu turno' : paralyzed ? 'Paralisado: nenhuma ação'
     : p.paCurrent < pa ? `PA insuficiente (${p.paCurrent}/${pa})` : null);
+  const ctx = { p, allies, paReason, sp, flow, dissociated, exhausted };
 
   function disabledReason(a) {
-    const pa = a.action === 'MAJOR' && slow ? 4 : a.pa;
-    const r = paReason(pa);
+    const r = paReason(a.pa);
     if (r) return r;
     if (dissociated && (a.action === 'MINOR' || a.action === 'MINOR_OFFENSIVE')) return 'Dissociado: sem Ações Menores';
-    if (a.sp && exhausted && effSp(a) > 0) return 'Exausto: sem ações com custo de SP';
-    if (a.sp && sp != null && sp < effSp(a)) return `SP insuficiente (${sp}/${effSp(a)})`;
+    // ações com menu conferem o SP no próprio menu (o custo é escolhido lá)
+    if (a.sp && !CONFIG_KINDS.includes(a.action)) {
+      const eff = Math.max(0, 1 - (flow ? 1 : 0));
+      if (exhausted && eff > 0) return 'Exausto: sem ações com custo de SP';
+      if (sp != null && sp < eff) return `SP insuficiente (${sp}/${eff})`;
+    }
     return null;
   }
 
   const stanchReason = paReason(3)
     ?? ((hasCondition(p, 'AGARRADO') || hasCondition(p, 'IMOBILIZADO')) ? 'Agarrado/Imobilizado' : null);
 
-  const act = (a) => onAct({
-    participantId: p.id, action: a.action,
-    ...(a.sp ? { spCost } : {}),
-    ...(a.action === 'MAJOR' && slow ? { slow: true } : {}),
-    ...(label.trim() ? { label: label.trim() } : {}),
-  });
+  const send = (body) => { onAct({ participantId: p.id, ...body }); setMenu(null); };
+  const costLabel = (a) => (a.action === 'MAJOR' ? '3–4 PA · SP' : a.action === 'PREPARED' ? '3 PA · SP'
+    : `${a.pa} PA${a.sp ? ' · 1 SP' : ''}`);
 
   // ações situacionais (ex.: Apagar chamas) só aparecem quando a condição está presente
-  const actionButtons = (cat) => ACTIONS.filter((a) => a.cat === cat && (!a.needs || hasCondition(p, a.needs))).map((a) => {
-    const pa = a.action === 'MAJOR' && slow ? 4 : a.pa;
-    return <ActButton key={a.action} label={a.label} reason={disabledReason(a)} onClick={() => act(a)}
-      cost={`${pa} PA${a.sp ? ` · ${effSp(a)} SP` : ''}`} />;
-  });
+  const actionButtons = (cat) => ACTIONS.filter((a) => a.cat === cat && (!a.needs || hasCondition(p, a.needs))).map((a) => (
+    <ActButton key={a.action} label={a.label} reason={disabledReason(a)} cost={costLabel(a)}
+      title={CONFIG_KINDS.includes(a.action) ? 'Abre o menu da ação' : undefined}
+      onClick={() => (CONFIG_KINDS.includes(a.action) ? setMenu(a.action) : send({ action: a.action }))} />
+  ));
 
   // extras de cada grupo além das ações simples
   const extras = {
+    FREE: (
+      <div className="flex items-center gap-2">
+        <ActButton label="Teste de Vontade" cost="0 PA" reason={paReason(0)}
+          title="1d20 + MEN − Desgaste Mental (Calma da base, Muralha, Estimulante e Fluxo entram sozinhos) contra o ND"
+          onClick={() => onAct({ participantId: p.id, action: 'WILL_TEST', nd: Math.min(40, Math.max(1, Number(nd) || 12)) })} />
+        <label className="flex items-center gap-1 text-xs">ND
+          <input type="number" min={1} max={40} className="field !mt-0 !w-16 !py-0.5" value={nd} onChange={(e) => setNd(e.target.value)} />
+        </label>
+      </div>
+    ),
     MAJOR: (
       <>
-        <ActButton label="Atacar" cost="3 PA" reason={paReason(3)} onClick={() => onAttack('MAJOR')} />
+        <ActButton label="Atacar" cost={`3 PA · ${basicSp} SP`} reason={paReason(3) ?? basicSpReason} onClick={() => onAttack('MAJOR')} />
         {(p.preparations ?? []).map((t) => (
           <ActButton key={`${t.techniqueId}:${t.variation ?? ''}`} label={`${t.name} (Preparação)`} cost={`3 PA · ${t.spCost} SP`}
             title="Prepara o corpo até o início do próximo turno"
@@ -264,15 +272,7 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
             onClick={() => onAct({ participantId: p.id, action: 'PREPARED', techniqueId: t.techniqueId, variation: t.variation })} />
         ))}
         <ActButton label={ACTION_STANCH.label} cost={`${ACTION_STANCH.pa} PA`} reason={stanchReason}
-          onClick={() => onAct({ participantId: p.id, action: 'STANCH', ...(target ? { targetParticipantId: target } : {}) })} />
-        {allies.length > 0 && (
-          <label className="flex items-center gap-1 text-xs">Estancar em
-            <select className="field !mt-0 !w-auto !py-0.5" value={target} onChange={(e) => setTarget(e.target.value)}>
-              <option value="">Si mesmo</option>
-              {allies.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-            </select>
-          </label>
-        )}
+          title="Escolha quem estancar" onClick={() => setMenu('STANCH')} />
         {dying.length > 0 && (
           <>
             <ActButton label="Estabilizar" cost="3 PA" title="INT vs ND 12 (+3 a cada falha); vantagem com kit médico"
@@ -292,64 +292,50 @@ export default function ActionBar({ participant: p, participants = [], canAct, o
             </div>
           </>
         )}
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <label className="flex items-center gap-1">Custo SP
-            <input type="number" min={0} className="field !mt-0 !w-14 !py-0.5" value={spCost}
-              onChange={(e) => setSpCost(Math.max(0, Number(e.target.value)))} />
-          </label>
-          <label className="flex items-center gap-1">
-            <input type="checkbox" checked={slow} onChange={(e) => setSlow(e.target.checked)} /> Lenta (4 PA)
-          </label>
-        </div>
       </>
     ),
     MINOR: (
       <>
-        <ActButton label="Golpe rápido" cost="2 PA" title="Ataque como Ação Menor ofensiva (Técnica Rápida, Soco, Mordida ou Empurrão)"
-          reason={paReason(2) ?? (dissociated ? 'Dissociado: sem Ações Menores' : null)} onClick={() => onAttack('MINOR_OFFENSIVE')} />
-        <select className="field !mt-0 !py-0.5 text-xs" aria-label="Nova guarda" value={guard} onChange={(e) => setGuard(e.target.value)}>
-          <option value="">Guarda… (atual: {GUARD_LABEL[p.guard] ?? '—'})</option>
-          {Object.entries(GUARD_LABEL).filter(([k]) => k !== p.guard).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-        </select>
-        <ActButton label="Trocar guarda" cost="1 PA" title="Reinicia o Timing (ambidestro: 1ª troca do turno custa 0)"
-          reason={paReason(1) ?? (!guard ? 'Escolha a guarda' : null)}
-          onClick={() => { onAct({ participantId: p.id, action: 'CHANGE_GUARD', guard }); setGuard(''); }} />
-        {p.bases?.length > 0 && (
-          <>
-            <select className="field !mt-0 !py-0.5 text-xs" aria-label="Nova base" value={base} onChange={(e) => setBase(e.target.value)}>
-              <option value="">Base… (atual: {p.activeBaseName ?? 'nenhuma'})</option>
-              {p.activeBaseId && <option value="__none">(sair da base)</option>}
-              {p.bases.filter((b) => b.id !== p.activeBaseId).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-            <ActButton label={!p.activeBaseId ? 'Entrar na base' : base === '__none' ? 'Sair da base' : 'Trocar base'}
-              cost={`${basePa} PA`} title="Entrar ou sair: 1 PA · trocar de base: 2 PA"
-              reason={paReason(basePa) ?? (!base ? 'Escolha a base' : null)}
-              onClick={() => { onAct({ participantId: p.id, action: 'CHANGE_BASE', baseId: base === '__none' ? null : base }); setBase(''); }} />
-          </>
-        )}
+        <ActButton label="Golpe rápido" cost={`2 PA · ${basicSp} SP`} title="Ataque como Ação Menor ofensiva (Técnica Rápida, Soco, Mordida ou Empurrão)"
+          reason={paReason(2) ?? (dissociated ? 'Dissociado: sem Ações Menores' : null) ?? basicSpReason}
+          onClick={() => onAttack('MINOR_OFFENSIVE')} />
+        <ActButton label="Trocar guarda" cost="1 PA" title="Abre a lista de guardas (reinicia o Timing; ambidestro: 1ª troca do turno custa 0)"
+          reason={paReason(1)} onClick={() => setMenu('GUARD')} />
+        <ActButton label={p.activeBaseId ? 'Trocar / sair da base' : 'Entrar na base'} cost="1–2 PA"
+          title="Entrar ou sair: 1 PA · trocar de base: 2 PA"
+          reason={paReason(1) ?? (!p.bases?.length ? 'Sem bases na ficha' : null)} onClick={() => setMenu('BASE')} />
       </>
     ),
   };
 
+  const color = (key) => ACTION_CATEGORIES.find((c) => c.key === key)?.color;
+  const menuColor = { STANCH: color('MAJOR'), MAJOR: color('MAJOR'), PREPARED: color('MAJOR'), MINOR: color('MINOR'),
+    GUARD: color('MINOR'), BASE: color('MINOR'), FREE: color('FREE') };
+
   return (
-    <div className="panel space-y-4 p-3">
-      <div>
-        <span className="panel-title text-base">Ações de {p.name}</span>
-        <label className="mt-1 block text-xs">Descrição (opcional)
-          <input className="field !mt-0.5 !py-0.5" maxLength={100} value={label} placeholder="Técnica X"
-            onChange={(e) => setLabel(e.target.value)} />
-        </label>
+    <div className={bare ? '' : 'panel p-3'}>
+      <span className="panel-title block text-base">Ações de {p.name}</span>
+      {/* bare (pop-up): duas colunas CSS — o próximo grupo começa logo abaixo do anterior, sem linhas altas de grid */}
+      <div className={bare ? 'mt-3 columns-1 gap-4 sm:columns-2 [&>section]:mb-4' : 'mt-3 space-y-4'}>
+        {onGrapple && <GrappleGroup p={p} participants={participants} paReason={paReason} onGrapple={onGrapple} />}
+        <GearGroup p={p} paReason={paReason} onAct={onAct} />
+        <ConsumableGroup p={p} participants={participants} paReason={paReason} onAct={onAct} />
+        {ACTION_CATEGORIES.map((c) => (
+          <section key={c.key} className="act-group break-inside-avoid space-y-1.5" style={{ '--act': c.color }}>
+            <h4 className="act-group-title text-sm">{c.label}</h4>
+            {extras[c.key]}
+            {actionButtons(c.key)}
+          </section>
+        ))}
       </div>
-      {onGrapple && <GrappleGroup p={p} participants={participants} paReason={paReason} onGrapple={onGrapple} />}
-      <GearGroup p={p} paReason={paReason} onAct={onAct} />
-      <ConsumableGroup p={p} participants={participants} paReason={paReason} onAct={onAct} />
-      {ACTION_CATEGORIES.map((c) => (
-        <section key={c.key} className="act-group space-y-1.5" style={{ '--act': c.color }}>
-          <h4 className="act-group-title text-sm">{c.label}</h4>
-          {extras[c.key]}
-          {actionButtons(c.key)}
-        </section>
-      ))}
+      {active && menu === 'STANCH' && (
+        <StanchMenu ctx={ctx} reason={stanchReason} color={menuColor.STANCH} onCancel={() => setMenu(null)} onSubmit={send} />
+      )}
+      {active && CONFIG_KINDS.includes(menu) && (
+        <ActionConfigMenu ctx={ctx} kind={menu} color={menuColor[menu]} onCancel={() => setMenu(null)} onSubmit={send} />
+      )}
+      {active && menu === 'GUARD' && <GuardMenu ctx={ctx} color={menuColor.GUARD} onCancel={() => setMenu(null)} onSubmit={send} />}
+      {active && menu === 'BASE' && <BaseMenu ctx={ctx} color={menuColor.BASE} onCancel={() => setMenu(null)} onSubmit={send} />}
     </div>
   );
 }

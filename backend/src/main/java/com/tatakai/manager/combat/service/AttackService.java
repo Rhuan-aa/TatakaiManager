@@ -253,7 +253,7 @@ public class AttackService {
         }
         PendingAttack a = PendingAttack.builder().encounterId(e.getId()).attackerId(att.getId())
                 .sourceType(req.sourceType()).sourceId(req.sourceId()).variation(req.variation())
-                .basicAttack(req.basicAttack()).actionKind(req.actionKind()).region(req.region())
+                .basicAttack(req.basicAttack()).actionKind(req.actionKind()).region(req.region()).details(req.details())
                 .regionPenalty(req.regionPenalty() == null ? 0 : req.regionPenalty()).strikeSide(req.strikeSide())
                 .grip(req.basicAttack() == BasicAttack.AGARRAO ? (req.grip() == null ? GrappleRules.Grip.ARM : req.grip()) : null)
                 .squeeze(Boolean.TRUE.equals(req.squeeze()))
@@ -324,9 +324,7 @@ public class AttackService {
             throw new InvalidCombatException("Ação Menor Ofensiva exige Técnica Rápida, Soco, Mordida, Empurrão ou Golpe Rápido de arma Leve");
         }
         int pa = AttackRules.paCost(a.getActionKind(), slow);
-        int sp = a.getSourceType() == RollSourceType.BASIC_ATTACK
-                ? VitalRules.adjustSp(1, VitalRules.tier(att.getAdrenaline()), ctx.has(att.getId(), "DISSOCIADO"))
-                : calc.spCost();
+        int sp = calc.spCost(); // já ajustado por Fluxo/Dissociação em withAdrenaline (básico custa 1 SP no perfil)
         if (a.getActionKind() == AttackActionKind.MAJOR) sp += EquipmentRules.majorSp(armorWeight(s)); // Proteção Pesada
         BaseRules.Profile ownBase = profiles.baseProfile(s, att.getActiveBaseId());
         if (a.getSourceType() == RollSourceType.TECHNIQUE && ownBase != null && ownBase.economy(attackTypeOf(a, att, s))) {
@@ -372,7 +370,8 @@ public class AttackService {
 
         List<AttackTarget> ts = openTargets(a, targetIds, splashIds, att, ctx);
         log(e, att.getId(), att.getName() + " declara " + a.getSourceName() + " contra "
-                + names(ctx, ts) + " (" + pa + " PA" + (sp > 0 ? ", " + sp + " SP" : "") + ")");
+                + names(ctx, ts) + " (" + pa + " PA" + (sp > 0 ? ", " + sp + " SP" : "") + ")"
+                + (a.getDetails() == null || a.getDetails().isBlank() ? "" : " — " + a.getDetails().strip()));
         if (ts.stream().allMatch(t -> t.getReaction() != null)) resolve(e, a, ts, ctx, userId, role);
         return done(e, a, ts, ctx, userId, master);
     }
@@ -560,7 +559,7 @@ public class AttackService {
         List<UUID> targetIds = targets.findByAttackIdIn(List.of(a.getId())).stream().map(AttackTarget::getTargetId).toList();
         PendingAttack n = PendingAttack.builder().encounterId(e.getId()).attackerId(att.getId())
                 .sourceType(RollSourceType.TECHNIQUE).sourceId(next.getId()).variation(variation)
-                .actionKind(a.getActionKind()).region(a.getRegion()).regionPenalty(a.getRegionPenalty())
+                .actionKind(a.getActionKind()).region(a.getRegion()).details(a.getDetails()).regionPenalty(a.getRegionPenalty())
                 .strikeSide(a.getStrikeSide()).runMeters(a.getRunMeters()).surface(a.isSurface())
                 .status(AttackStatus.AWAITING_REACTIONS).round(e.getRound()).sourceName("").build();
         Calc calc = calcFor(s, n, ctx.has(att.getId(), KNOCKED_DOWN), att, s);
@@ -659,7 +658,8 @@ public class AttackService {
                     t.getReactionRollId() == null ? null : rolls.message(t.getReactionRollId()), t.getOutcome(),
                     t.getMitigationPct(), t.getDamage(), t.getCounterDamage(), t.getLateCounter(),
                     t.getLateCounterDamage(), canLateCounter(a, t, ctx, tsh, userId, master),
-                    t.getDefenderId(), dp == null ? null : dp.getName(), guards, techs, used == null ? null : used.name()));
+                    t.getDefenderId(), dp == null ? null : dp.getName(), guards, techs, used == null ? null : used.name(),
+                    t.getLateCounterRollId() == null ? null : rolls.message(t.getLateCounterRollId())));
         }
         return new AttackResponse(a.getId(), a.getEncounterId(), a.getAttackerId(), att == null ? null : att.getName(),
                 a.getSourceName(), a.getActionKind(), a.getRegion(), a.getReservedPa(), a.getReservedSp(), a.getStatus(),
@@ -768,7 +768,7 @@ public class AttackService {
                 + rangeAdvantage(a, weapon, weapon != null && extendedShot(attSheet, a), thrownTech);
         String targetNames = names(ctx, ts);
         RollMessage atk = rolls.rollCalc(attSheet, e.getCampaignId(), calc, adv,
-                "Ataque: " + att.getName() + " → " + targetNames, userId, role);
+                attackPurpose("Ataque: " + att.getName() + " → " + targetNames, a), userId, role);
         a.setAttackRollId(atk.id());
         if (weapon != null && weapon.heavyStr() != null) { // o peso que terminou o arco ainda puxa o corpo
             vital.addEffectCondition(e, att, ARC_WEIGHT, ConditionExpiry.START_OF_TARGET_TURN, weapon.name(), null);
@@ -1355,6 +1355,15 @@ public class AttackService {
         return a.getSourceType() == RollSourceType.BASIC_ATTACK ? a.getBasicAttack() : null;
     }
 
+    /** Alvo empurrado contra parede/obstáculo (flag `surface` do ataque): dano de Impacto 1d4+3 (sem perda de PQ). */
+    private void wallImpact(Encounter e, EncounterParticipant src, CharacterSheet srcSheet, EncounterParticipant tp,
+                            CharacterSheet tsh, VitalService.Ctx vctx, UUID userId, ActorRole role) {
+        int d = rolls.rollInternal(srcSheet, ModuleRules.CRUSH_DAMAGE, "Impacto na parede: " + src.getName() + " → "
+                + tp.getName(), userId, role).getTotal() + ModuleRules.CRUSH_FLAT;
+        log(e, tp.getId(), tp.getName() + " bate contra a parede/obstáculo: " + d + " de dano de Impacto");
+        vital.applyHp(e, tp, tsh, -d, vctx.withCritical(false));
+    }
+
     /**
      * Ataques Básicos que acertaram (§40): Mordida faz quem agarra o mordedor testar Mental ND 12 ou soltar; Empurrão
      * (FOR do alvo contra o acerto) empurra 1,5 m (3 m no crítico) e desfaz o Clinch; Encontrão (melhor de FOR/DES
@@ -1377,6 +1386,7 @@ public class AttackService {
                 if (!resists(e, tp, tsh, fx, "Empurrar", atk.total(), tpBase, userId, role)) {
                     releasePair(att, tp);
                     log(e, tp.getId(), tp.getName() + " é empurrado " + (atk.critical() ? "3" : "1,5") + " m por " + att.getName());
+                    if (a.isSurface()) wallImpact(e, att, attSheet, tp, tsh, vctx, userId, role);
                 }
             }
             case ENCONTRAO -> {
@@ -1498,6 +1508,7 @@ public class AttackService {
             }
             if (fx.resist() != null && !implacable && resists(e, tp, tsh, fx, label, nd, db, moveArt, finisher, userId, role)) continue;
             applyEffect(e, fx, it, control, att, attSheet, tp, tsh, vctx, userId, role);
+            if (fx.kind() == EffectRules.Kind.PUSH && a.isSurface()) wallImpact(e, att, attSheet, tp, tsh, vctx, userId, role);
             applied.add(label);
             if (fx.kind() == EffectRules.Kind.TAKEDOWN && ModuleRules.has(all, "Arremesso")) {
                 throwDamage(e, att, attSheet, tp, tsh, ModuleRules.has(all, "Cravar"), vctx, userId, role);
@@ -1856,8 +1867,8 @@ public class AttackService {
         String artName = techArtName(tech);
         boolean basic = a.getSourceType() == RollSourceType.BASIC_ATTACK && a.getBasicAttack() != null
                 && a.getBasicAttack().unarmed(); // a especialização é dos golpes do corpo
-        if (basic && !downed && (!fa.hasArt() || !fa.attack().contains(MartialRules.family(a.getBasicAttack())))) {
-            halve(hit, "DES", "Fora da especialização: DES/2");
+        if (basic && (!fa.hasArt() || !fa.attack().contains(MartialRules.family(a.getBasicAttack())))) {
+            halve(hit, "Fora da especialização" + (downed ? " + derrubado" : "") + ": DES/" + (downed ? 4 : 2)); // derrubado já veio pela metade do perfil
         }
         if (!downed && fa.hasArtNamed("Jiu-Jitsu Brasileiro")
                 && (a.getBasicAttack() == BasicAttack.SOCO || a.getBasicAttack() == BasicAttack.CHUTE)) {
@@ -1931,9 +1942,9 @@ public class AttackService {
     }
 
     /** Troca a parcela `source` pela metade do valor (RN-ATR-04: só se > 0). */
-    private static void halve(List<RollPart> hit, String source, String label) {
+    private static void halve(List<RollPart> hit, String label) {
         for (int i = 0; i < hit.size(); i++) {
-            if (source.equals(hit.get(i).source())) {
+            if (hit.get(i).source().startsWith("DES")) {
                 hit.set(i, new RollPart("HIT", label, SheetRules.half(hit.get(i).value()), null, false));
                 return;
             }
@@ -2061,9 +2072,7 @@ public class AttackService {
         Calc calc = calcFor(tsh, probe, downed, tp, tsh);
         CharacterTechnique tech = req.sourceType() == RollSourceType.TECHNIQUE ? technique(tsh, probe) : null;
         calc = withMartial(e, calc, probe, tp, tsh, downed, martial.fighter(tp, tsh), tech, Inter.NONE);
-        int sp = req.sourceType() == RollSourceType.BASIC_ATTACK
-                ? VitalRules.adjustSp(1, VitalRules.tier(tp.getAdrenaline()), ctx.has(tp.getId(), "DISSOCIADO"))
-                : calc.spCost();
+        int sp = calc.spCost(); // já ajustado por Fluxo/Dissociação em withAdrenaline
         if (sp > 0 && ctx.has(tp.getId(), "EXAUSTO")) {
             throw new InvalidCombatException("Exausto: sem técnicas nem ações com custo de SP");
         }
@@ -2076,6 +2085,7 @@ public class AttackService {
         int lateAdv = (ctx.has(tp.getId(), "DISSOCIADO") ? -1 : 0) + (lateSmoke ? -1 : 0);
         RollMessage msg = rolls.rollCalc(tsh, e.getCampaignId(), calc, lateAdv,
                 "Contra-ataque tardio: " + tp.getName() + " → " + att.getName(), userId, role);
+        t.setLateCounterRollId(msg.id());
         if (msg.total() > original.total()) {
             int raw = msg.damageTotal() == null ? 0 : msg.damageTotal();
             int dmg = raw <= 0 ? 0 : AttackRules.damage(raw, 0, profiles.calejo(attSheet, att.getActiveBaseId()));
@@ -2181,7 +2191,17 @@ public class AttackService {
         if (ct == null) return null;
         var o = new RollProfileService.Opts(martial.validBase(rsh, rp.getActiveBaseId()), knocked(ctx, rp), null, null,
                 martial.attackType(martial.fighter(rp, rsh), ct.technique()));
-        return withAdrenaline(profiles.technique(rsh, ct.technique(), ct.variation(), o), rp, rsh);
+        var fighter = martial.fighter(rp, rsh);
+        Calc c = profiles.technique(rsh, ct.technique(), ct.variation(), o);
+        if (!fighter.hasArt() || !fighter.reaction().contains(ReactionType.COUNTER)) { // sem treino em Contra-ataque: metade do atributo
+            List<RollPart> hit = new ArrayList<>(c.hit());
+            if (!hit.isEmpty()) {
+                RollPart f = hit.get(0);
+                hit.set(0, new RollPart("HIT", "Fora da especialização: " + f.source() + "/2", SheetRules.half(f.value()), null, false));
+                c = c.with(c.spCost(), c.critMargin(), c.advantage(), hit, c.damage());
+            }
+        }
+        return withAdrenaline(c, rp, rsh);
     }
 
     /** Técnica de Reação escolhida para este alvo (null = reação comum). */
@@ -2378,8 +2398,7 @@ public class AttackService {
         if (h == Hysteria.LIGHTNING) hit.add(new RollPart("HIT", "Relâmpago", 2, null, false));
         if (tier != VitalRules.Tier.NONE) hit.add(new RollPart("HIT", "Adrenalina: Fluxo −1 SP", 0, null, false));
         if (dissociated) hit.add(new RollPart("HIT", "Dissociação: SP ×2, −1 vantagem", 0, null, false));
-        int sp = c.type() == RollSourceType.BASIC_ATTACK ? c.spCost()
-                : VitalRules.adjustSp(c.spCost(), tier, dissociated);
+        int sp = VitalRules.adjustSp(c.spCost(), tier, dissociated); // único ponto de ajuste de SP (técnica e básico)
         return c.with(sp, VitalRules.critMargin(tier), c.advantage(), hit, damage);
     }
 
@@ -2441,6 +2460,13 @@ public class AttackService {
     private static int countAttackers(EncounterParticipant tp, UUID attackerId) {
         List<UUID> l = tp.getAttackersThisRound() == null ? List.of() : tp.getAttackersThisRound();
         return l.size() + (l.contains(attackerId) ? 0 : 1);
+    }
+
+    /** Motivo da rolagem do ataque + detalhes escritos pelo jogador (limite de 200 caracteres do histórico). */
+    private static String attackPurpose(String base, PendingAttack a) {
+        String d = a.getDetails();
+        String full = d == null || d.isBlank() ? base : base + " — " + d.strip();
+        return full.length() <= 200 ? full : full.substring(0, 197) + "...";
     }
 
     private static String names(Ctx ctx, List<AttackTarget> ts) {

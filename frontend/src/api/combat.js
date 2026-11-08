@@ -12,7 +12,7 @@ export const setHysteria = async (eid, pid, hysteria) =>
 export const adjustVitals = (eid, pid, body) => post(`/encounters/${eid}/participants/${pid}/vitals`, body);
 export const getEncounter = (eid) => get(`/encounters/${eid}`);
 export const getEncounterEvents = (eid) => get(`/encounters/${eid}/events`);
-export const addParticipant = (eid, sheetId) => post(`/encounters/${eid}/participants`, { sheetId });
+export const addParticipant = (eid, sheetId, team) => post(`/encounters/${eid}/participants`, { sheetId, ...(team ? { team } : {}) });
 export const removeParticipant = (eid, pid) => client.delete(`/encounters/${eid}/participants/${pid}`);
 export const startEncounter = (eid) => post(`/encounters/${eid}/start`);
 export const endEncounter = (eid) => post(`/encounters/${eid}/end`);

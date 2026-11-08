@@ -1,5 +1,7 @@
+import BleedEdge from '../ui/BleedEdge';
 import { useState } from 'react';
-import { expiresLabel, CLASS_LABEL, HYSTERIA, hasCondition, conditionNote, MARTIAL_TYPE_LABEL, GUARD_LABEL, LEAD_FOOT_LABEL, CLASS_COLOR } from './combatLabels';
+import { expiresLabel, CLASS_LABEL, HYSTERIA, hasCondition, conditionNote, MARTIAL_TYPE_LABEL, GUARD_LABEL, LEAD_FOOT_LABEL, CLASS_COLOR, teamColor } from './combatLabels';
+import ConditionPicker from './ConditionPicker';
 
 function Bar({ name, value, max, color }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
@@ -78,170 +80,178 @@ function NumberAdjust({ label, value, onSave }) {
   );
 }
 
-export default function InitiativeTracker({ enc, isMaster, canControl = () => false, onHysteria, onVitals, onAdjust, onReroll, onRemove, onRemoveCondition, onPickCondition, onCounter }) {
+export default function InitiativeTracker({ enc, isMaster, canControl = () => false, onHysteria, onVitals, onAdjust, onReroll, onRemove, onRemoveCondition, onPickCondition, pickFor, onSubmitCondition, onCancelCondition, onCounter }) {
   const setup = enc.status === 'SETUP';
-  return (
-    <ol className="space-y-3">
-      {enc.participants.map((p) => {
-        const current = p.id === enc.currentParticipantId && enc.status === 'ACTIVE';
-        const r = p.resources;
-        return (
-          <li key={p.id} data-participant-id={p.id} className="panel p-3"
-            style={current ? { outline: '4px solid var(--accent)', outlineOffset: 2 } : undefined}
-            aria-current={current ? 'step' : undefined}>
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <span className="panel-title text-base">{p.name}</span>
-                {p.npc && <span className="tag ml-2">NPC</span>}
-                {current && <span className="tag tag-accent ml-2">Turno atual</span>}
-              </div>
-              <span className="tag shrink-0" title="Iniciativa">Ini {p.initiative ?? '—'}</span>
-            </div>
+  // agrupa por time mantendo a ordem de iniciativa dentro de cada grupo
+  const teams = [...new Set(enc.participants.map((p) => p.team ?? 0))].sort((a, b) => a - b);
 
-            <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px]">
-              {isMaster ? (
-                <select className="field !w-auto !py-0 text-[11px] font-bold" aria-label={`Classificação de ${p.name}`} value={p.classification ?? 'REAL'}
-                  style={{ color: CLASS_COLOR[p.classification ?? 'REAL'], borderColor: CLASS_COLOR[p.classification ?? 'REAL'] }}
-                  onChange={(e) => onAdjust(p.id, { classification: e.target.value })}>
-                  {Object.entries(CLASS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-                </select>
-              ) : p.classification && (
-                <span className="tag" style={{ color: CLASS_COLOR[p.classification], borderColor: CLASS_COLOR[p.classification] }}>
-                  {CLASS_LABEL[p.classification]}
-                </span>
-              )}
-              <span className="tag" title="Time">Time {p.team ?? '—'}</span>
-              {p.openWounds > 0 && <span className="tag tag-accent" title="Feridas abertas (sangramento)">Feridas {p.openWounds}</span>}
-              {hasCondition(p, 'MORTO') && <span className="tag tag-accent">Morto</span>}
-              {hasCondition(p, 'INCONSCIENTE') && (
-                <span className="tag tag-accent">Inconsciente{conditionNote(p, 'INCONSCIENTE') ? ` (${conditionNote(p, 'INCONSCIENTE')})` : ''}</span>
-              )}
-              {(p.exhausted || hasCondition(p, 'EXAUSTO')) && <span className="tag tag-accent">Exausto</span>}
-              {hasCondition(p, 'DISSOCIADO') && <span className="tag tag-accent">Dissociado</span>}
-              {hasCondition(p, 'BEIRA_DA_MORTE') && (
-                <>
-                  <span className="tag tag-accent">Beira da Morte</span>
-                  <Dots label="Sucessos" n={p.deathSuccesses ?? 0} />
-                  <Dots label="Falhas" n={p.deathFailures ?? 0} />
-                </>
-              )}
-            </div>
+  const card = (p) => {
+    const current = p.id === enc.currentParticipantId && enc.status === 'ACTIVE';
+    const r = p.resources;
+    const style = p.martialType || p.guard || p.mainArtName || p.counters?.length > 0 || p.arts?.length > 0;
+    return (
+      <li key={p.id} data-participant-id={p.id} className={`panel relative space-y-2 p-2${current ? ' turn-active' : ''}`}
+        aria-current={current ? 'step' : undefined}>
+        <BleedEdge wounds={p.openWounds} />
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <span className="panel-title text-base">{p.name}</span>
+            {p.npc && <span className="tag ml-2">NPC</span>}
+            {current && <span className="tag tag-accent ml-2">Turno atual</span>}
+          </div>
+          <span className="tag shrink-0" title="Iniciativa">Ini {p.initiative ?? '—'}</span>
+        </div>
 
-            {!setup && p.adrenaline != null && (
-              <div className="mt-2 space-y-1">
-                <AdrenalineMeter value={p.adrenaline} />
-                {p.adrenalineTier === 'APEX' && (
-                  <label className="flex flex-wrap items-center gap-1 text-[11px]">Histeria
-                    {canControl(p) ? (
-                      <select className="field !w-auto !py-0 text-[11px]" value={p.hysteria ?? ''}
-                        onChange={(e) => e.target.value && onHysteria(p.id, e.target.value)}>
-                        <option value="">Escolha…</option>
-                        {Object.entries(HYSTERIA).map(([k, h]) => <option key={k} value={k}>{h.label} — {h.text}</option>)}
-                      </select>
-                    ) : <span className="tag">{p.hysteria ? HYSTERIA[p.hysteria].label : 'não escolhida'}</span>}
-                    {p.hysteria && <span className="opacity-80">{HYSTERIA[p.hysteria].text}</span>}
-                  </label>
+        <div className="flex flex-wrap items-center gap-1 text-[11px]">
+          {p.classification && (
+            <span className="tag" style={{ color: CLASS_COLOR[p.classification], borderColor: CLASS_COLOR[p.classification] }}>
+              {CLASS_LABEL[p.classification]}
+            </span>
+          )}
+          {p.openWounds > 0 && <span className="tag tag-accent" title="Feridas abertas (sangramento)">Feridas {p.openWounds}</span>}
+          {hasCondition(p, 'MORTO') && <span className="tag tag-accent">Morto</span>}
+          {hasCondition(p, 'INCONSCIENTE') && (
+            <span className="tag tag-accent">Inconsciente{conditionNote(p, 'INCONSCIENTE') ? ` (${conditionNote(p, 'INCONSCIENTE')})` : ''}</span>
+          )}
+          {(p.exhausted || hasCondition(p, 'EXAUSTO')) && <span className="tag tag-accent">Exausto</span>}
+          {hasCondition(p, 'DISSOCIADO') && <span className="tag tag-accent">Dissociado</span>}
+          {hasCondition(p, 'BEIRA_DA_MORTE') && (
+            <>
+              <span className="tag tag-accent">Beira da Morte</span>
+              <Dots label="Sucessos" n={p.deathSuccesses ?? 0} />
+              <Dots label="Falhas" n={p.deathFailures ?? 0} />
+            </>
+          )}
+        </div>
+
+        {!setup && p.adrenaline != null && (
+          <div className="space-y-1">
+            <AdrenalineMeter value={p.adrenaline} />
+            {p.adrenalineTier === 'APEX' && (
+              <label className="flex flex-wrap items-center gap-1 text-[11px]">Histeria
+                {canControl(p) ? (
+                  <select className="field !w-auto !py-0 text-[11px]" value={p.hysteria ?? ''}
+                    onChange={(e) => e.target.value && onHysteria(p.id, e.target.value)}>
+                    <option value="">Escolha…</option>
+                    {Object.entries(HYSTERIA).map(([k, h]) => <option key={k} value={k}>{h.label} — {h.text}</option>)}
+                  </select>
+                ) : <span className="tag">{p.hysteria ? HYSTERIA[p.hysteria].label : 'não escolhida'}</span>}
+                {p.hysteria && <span className="opacity-80">{HYSTERIA[p.hysteria].text}</span>}
+              </label>
+            )}
+          </div>
+        )}
+
+        {r && (
+          <div className="space-y-1">
+            <Bar name="HP" value={r.currentHp} max={r.hpMax} color="var(--meter-hp)" />
+            <Bar name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" />
+            <Bar name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" />
+            {(r.physicalFatigue != null || r.mentalFatigue != null) && (
+              <div className="text-[11px]">Desgaste: Físico {r.physicalFatigue ?? 0} · Mental {r.mentalFatigue ?? 0}</div>
+            )}
+          </div>
+        )}
+
+        {p.conditions.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {p.conditions.map((c) => (
+              <span key={c.id} className="tag tag-accent" title={c.note || undefined}>
+                {c.name}{c.intensity ? ` ${c.intensity}` : ''} · {expiresLabel(c)}
+                {isMaster && (
+                  <button type="button" className="ml-1 font-bold" title="Remover condição" aria-label={`Remover ${c.name}`}
+                    onClick={() => onRemoveCondition(c.id)}>×</button>
                 )}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {style && (
+          <details>
+            <summary className="caption cursor-pointer">
+              Estilo{p.martialType ? ` · ${MARTIAL_TYPE_LABEL[p.martialType]}` : ''}
+            </summary>
+            <div className="mt-1 space-y-1 text-[11px]">
+              <div className="flex flex-wrap items-center gap-1">
+                {p.martialType && <span className="tag tag-accent" title="Tipo marcial">{MARTIAL_TYPE_LABEL[p.martialType]}</span>}
+                {p.arts?.length > 0
+                  ? p.arts.map((x) => (
+                    <span key={x.id} className={x.id === p.mainArtId ? 'tag tag-accent' : 'tag'}
+                      title={x.id === p.mainArtId ? 'Arte principal' : 'Arte ativa'}>{x.name}</span>))
+                  : p.mainArtName && <span className="tag">{p.mainArtName}</span>}
+                {p.guard && <span className="tag">Guarda {GUARD_LABEL[p.guard]}</span>}
+                {p.leadFoot && <span className="tag">{LEAD_FOOT_LABEL[p.leadFoot]}</span>}
+                {p.activeBaseName && <span className="tag">Base: {p.activeBaseName}</span>}
               </div>
-            )}
-
-            {!setup && (
-              <div className="mt-2 flex items-center gap-1" aria-label={`PA ${p.paCurrent}`}>
-                <span className="mr-1 text-[11px]">PA</span>
-                {Array.from({ length: Math.max(5, p.paCurrent) }, (_, i) => (
-                  <span key={i} className="inline-block h-3 w-3 border-2 border-[var(--line)]"
-                    style={{ background: i < p.paCurrent ? 'var(--accent)' : 'transparent' }} />
-                ))}
-                <span className="ml-1 text-[11px]">{p.paCurrent}</span>
-              </div>
-            )}
-
-            {r && (
-              <div className="mt-2 space-y-1">
-                <Bar name="HP" value={r.currentHp} max={r.hpMax} color="var(--meter-hp)" />
-                <Bar name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" />
-                <Bar name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" />
-                {(r.physicalFatigue != null || r.mentalFatigue != null) && (
-                  <div className="text-[11px]">Desgaste: Físico {r.physicalFatigue ?? 0} · Mental {r.mentalFatigue ?? 0}</div>
-                )}
-              </div>
-            )}
-
-            {(p.martialType || p.guard || p.mainArtName || p.counters?.length > 0) && (
-              <details className="mt-2" open={p.counters?.length > 0}>
-                <summary className="caption cursor-pointer">
-                  Estilo{p.martialType ? ` · ${MARTIAL_TYPE_LABEL[p.martialType]}` : ''}
-                </summary>
-                <div className="mt-1 space-y-1 text-[11px]">
-                  <div className="flex flex-wrap items-center gap-1">
-                    {p.martialType && <span className="tag tag-accent" title="Tipo marcial">{MARTIAL_TYPE_LABEL[p.martialType]}</span>}
-                    {p.arts ? (
-                      <select className="field !w-auto !py-0 text-[11px]" aria-label={`Arte principal de ${p.name}`} value={p.mainArtId ?? ''}
-                        onChange={(e) => e.target.value && onAdjust(p.id, { mainArtId: e.target.value })}>
-                        <option value="">Arte principal…</option>
-                        {p.arts.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                      </select>
-                    ) : p.mainArtName && <span className="tag">{p.mainArtName}</span>}
-                    {p.guard && <span className="tag">Guarda {GUARD_LABEL[p.guard]}</span>}
-                    {p.leadFoot && <span className="tag">{LEAD_FOOT_LABEL[p.leadFoot]}</span>}
-                    {p.activeBaseName && <span className="tag">Base: {p.activeBaseName}</span>}
-                  </div>
-                  {p.counters?.map((c) => {
-                    const tgt = enc.participants.find((x) => x.id === c.targetParticipantId);
-                    return (
-                      <div key={c.id} className="flex items-center gap-1">
-                        <div className="flex-1"><Bar name={c.name + (tgt ? ` (${tgt.name})` : '')} value={c.value} max={c.max} color="var(--highlight)" /></div>
-                        {canControl(p) && (
-                          <>
-                            <button type="button" className="btn-ghost px-1 text-xs" aria-label={`Diminuir ${c.name}`}
-                              disabled={c.value <= c.min} onClick={() => onCounter(c.id, c.value - 1)}>−</button>
-                            <button type="button" className="btn-ghost px-1 text-xs" aria-label={`Aumentar ${c.name}`}
-                              disabled={c.value >= c.max} onClick={() => onCounter(c.id, c.value + 1)}>+</button>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </details>
-            )}
-
-            {p.conditions.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {p.conditions.map((c) => (
-                  <span key={c.id} className="tag tag-accent" title={c.note || undefined}>
-                    {c.name}{c.intensity ? ` ${c.intensity}` : ''} · {expiresLabel(c)}
-                    {isMaster && (
-                      <button type="button" className="ml-1 font-bold" aria-label={`Remover ${c.name}`}
-                        onClick={() => onRemoveCondition(c.id)}>×</button>
+              {p.counters?.map((c) => {
+                const tgt = enc.participants.find((x) => x.id === c.targetParticipantId);
+                return (
+                  <div key={c.id} className="flex items-center gap-1">
+                    <div className="flex-1"><Bar name={c.name + (tgt ? ` (${tgt.name})` : '')} value={c.value} max={c.max} color="var(--highlight)" /></div>
+                    {canControl(p) && (
+                      <>
+                        <button type="button" className="btn-ghost px-1 text-xs" aria-label={`Diminuir ${c.name}`}
+                          disabled={c.value <= c.min} onClick={() => onCounter(c.id, c.value - 1)}>−</button>
+                        <button type="button" className="btn-ghost px-1 text-xs" aria-label={`Aumentar ${c.name}`}
+                          disabled={c.value >= c.max} onClick={() => onCounter(c.id, c.value + 1)}>+</button>
+                      </>
                     )}
-                  </span>
-                ))}
-              </div>
-            )}
+                  </div>
+                );
+              })}
+            </div>
+          </details>
+        )}
 
-            {isMaster && enc.status !== 'ENDED' && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 border-t-2 border-[var(--line)] pt-2">
-                <NumberAdjust key={`i${p.initiative}`} label="Ini" value={p.initiative}
-                  onSave={(v) => onAdjust(p.id, { initiative: v })} />
-                <NumberAdjust key={`t${p.team}`} label="Time" value={p.team} onSave={(v) => onAdjust(p.id, { team: v })} />
-                {!setup && p.adrenaline != null && (
-                  <NumberAdjust key={`a${p.adrenaline}`} label="Adr" value={p.adrenaline}
-                    onSave={(v) => onAdjust(p.id, { adrenaline: Math.max(0, Math.min(10, v)) })} />
-                )}
-                {!setup && (
-                  <NumberAdjust key={`p${p.paCurrent}`} label="PA" value={p.paCurrent}
-                    onSave={(v) => onAdjust(p.id, { paCurrent: v })} />
-                )}
-                <button type="button" className="btn-ghost text-xs" onClick={() => onReroll(p.id)}>Rerrolar</button>
-                <button type="button" className="btn-ghost text-xs" onClick={() => onPickCondition(p)}>+ Condição</button>
-                <button type="button" className="btn-ghost text-xs" onClick={() => onRemove(p.id)}>Remover</button>
-                {!setup && r && <VitalsAdjust onSubmit={(b) => onVitals(p.id, b)} />}
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+        {pickFor?.id === p.id && (
+          <ConditionPicker participant={p} participants={enc.participants} onCancel={onCancelCondition} onSubmit={onSubmitCondition} />
+        )}
+
+        {isMaster && enc.status !== 'ENDED' && (
+          <details>
+            <summary className="caption cursor-pointer">Ajustes do Mestre</summary>
+            <div className="mt-1 flex flex-wrap items-center gap-2 border-t-2 border-[var(--line)] pt-2">
+              <select className="field !w-auto !py-0 text-[11px] font-bold" aria-label={`Classificação de ${p.name}`} value={p.classification ?? 'REAL'}
+                style={{ color: CLASS_COLOR[p.classification ?? 'REAL'], borderColor: CLASS_COLOR[p.classification ?? 'REAL'] }}
+                onChange={(e) => onAdjust(p.id, { classification: e.target.value })}>
+                {Object.entries(CLASS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+              <NumberAdjust key={`i${p.initiative}`} label="Ini" value={p.initiative}
+                onSave={(v) => onAdjust(p.id, { initiative: v })} />
+              <NumberAdjust key={`t${p.team}`} label="Time" value={p.team} onSave={(v) => onAdjust(p.id, { team: v })} />
+              {!setup && p.adrenaline != null && (
+                <NumberAdjust key={`a${p.adrenaline}`} label="Adr" value={p.adrenaline}
+                  onSave={(v) => onAdjust(p.id, { adrenaline: Math.max(0, Math.min(10, v)) })} />
+              )}
+              {!setup && (
+                <NumberAdjust key={`p${p.paCurrent}`} label="PA" value={p.paCurrent}
+                  onSave={(v) => onAdjust(p.id, { paCurrent: v })} />
+              )}
+              <button type="button" className="btn-ghost text-xs" onClick={() => onReroll(p.id)}>Rerrolar</button>
+              <button type="button" className="btn-ghost text-xs" onClick={() => onPickCondition(p)}>+ Condição</button>
+              <button type="button" className="btn-ghost text-xs" onClick={() => onRemove(p.id)}>Remover</button>
+              {!setup && r && <VitalsAdjust onSubmit={(b) => onVitals(p.id, b)} />}
+            </div>
+          </details>
+        )}
+      </li>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {teams.map((t) => (
+        <section key={t} aria-label={`Time ${t}`}>
+          <h4 className="mb-1 flex items-center gap-2 text-xs font-bold uppercase">
+            <span className="inline-block h-3 w-3 border-2 border-[var(--line)]" style={{ background: teamColor(t) }} aria-hidden="true" />
+            Time {t}
+          </h4>
+          <ol className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-3">
+            {enc.participants.filter((p) => (p.team ?? 0) === t).map(card)}
+          </ol>
+        </section>
+      ))}
+    </div>
   );
 }
