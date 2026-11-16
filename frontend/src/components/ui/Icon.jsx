@@ -30,6 +30,7 @@ const ICONS = {
       <circle cx="10" cy="9" r="1" fill="currentColor" />
     </>
   ),
+  lock: svg(<path d="M6 11h12v9H6ZM8.500 11V8a3.500 3.500 0 0 1 7 0v3" />),
   plus: svg(<path d="M12 5v14M5 12h14" />),
   back: svg(<path d="M19 12H5M12 19l-7-7 7-7" />),
   users: svg(

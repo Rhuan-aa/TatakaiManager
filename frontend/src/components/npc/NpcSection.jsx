@@ -12,6 +12,7 @@ import {
 import { parseApiError } from '../../api/parseApiError';
 import { EmptyState } from '../../components/layout/AppShell';
 import { useToast } from '../../contexts/ToastContext';
+import Icon from '../ui/Icon';
 import CreateNpcForm from './CreateNpcForm';
 import EditNpcForm from './EditNpcForm';
 import NpcSheetPanel from '../sheet/NpcSheetPanel';
@@ -67,32 +68,17 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
     <button
       type="button"
       onClick={() => onOpen(npc)}
-      className="panel group relative overflow-hidden text-left transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-[3px] focus-visible:outline-[var(--accent)]"
+      className={`panel npc-card group relative overflow-hidden text-left transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-[3px] focus-visible:outline-[var(--accent)] ${hidden ? 'is-locked' : ''}`}
     >
-      <div className="relative aspect-[3/4] w-full overflow-hidden">
-        <div className={hidden ? 'h-full w-full opacity-40 grayscale' : 'h-full w-full'}>
-          <NpcPortrait
-            campaignId={campaignId}
-            npcId={npc.id}
-            hasImage={npc.hasImage}
-            name={npc.name}
-            className="transition-transform duration-300 group-hover:scale-105"
-          />
-        </div>
-
-        {/* Gradiente + nome */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t-[length:var(--border-w)] border-[var(--line)] bg-[var(--ink)] p-2">
-          {/* Nome sobre overlay escuro da imagem — sempre branco (independe do tema) */}
-          <p className="truncate text-sm font-semibold text-white">{npc.name}</p>
-          {npc.combatReady && <span className="tag mt-1">Pronto p/ combate</span>}
-          {npc.bookable === false && <span className="tag mt-1">Só combate</span>}
-          {npc.interactions?.length > 0 && (
-            <p className="truncate text-[11px] text-white opacity-70">
-              {npc.interactions.length} interaç{npc.interactions.length === 1 ? 'ão' : 'ões'}
-            </p>
-          )}
-        </div>
-
+      <div className="npc-card-img">
+        <NpcPortrait
+          campaignId={campaignId}
+          npcId={npc.id}
+          hasImage={npc.hasImage}
+          name={npc.name}
+          className="transition-transform duration-300 group-hover:scale-105"
+        />
+        {hidden && <span className="npc-card-lock" aria-hidden="true"><Icon name="lock" size={26} /></span>}
         {/* Selo de visibilidade (Mestre) */}
         {isMaster && (
           <span
@@ -116,6 +102,15 @@ function NpcCard({ npc, campaignId, isMaster, onOpen, onToggleVisibility }) {
           >
             {npc.visible ? 'Visível' : 'Oculto'}
           </span>
+        )}
+      </div>
+      <p className="npc-card-name">{npc.name}</p>
+      <div className="flex flex-wrap gap-1 p-2">
+        {hidden && <span className="tag">Oculto dos jogadores</span>}
+        {npc.combatReady && <span className="tag">Pronto p/ combate</span>}
+        {npc.bookable === false && <span className="tag">Só combate</span>}
+        {npc.interactions?.length > 0 && (
+          <span className="tag">{npc.interactions.length} interaç{npc.interactions.length === 1 ? 'ão' : 'ões'}</span>
         )}
       </div>
     </button>

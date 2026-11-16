@@ -12,7 +12,7 @@ const itemBase =
 function NavItem({ item }) {
   const cls = `${itemBase} ${
     item.active
-      ? 'border-[var(--line)] bg-[var(--accent)] text-white shadow-[3px_3px_0_var(--line)]'
+      ? 'border-[var(--line)] bg-[var(--accent)] font-[family-name:var(--font-display)] text-white shadow-[3px_3px_0_var(--line)]'
       : 'text-[var(--text)] hover:border-[var(--line)] hover:bg-[var(--bg)]'
   }`;
   const inner = (

@@ -413,14 +413,14 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs, focusTimeSki
         />
       ) : (
         <div className="panel mt-4 p-4">
-          <div className="mb-4 pb-3 border-b-2 border-black/15 flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <div className="page-hero page-hero-compact halftone-bg">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`caption ${selected.mode === 'IDLE_PERIOD' ? '' : 'bg-[var(--ink)] text-[var(--paper)]'}`}
               >
                 {selected.mode === 'IDLE_PERIOD' ? 'Período Ocioso' : 'TimeSkip'}
               </span>
-              <h2 className="text-base font-black uppercase tracking-wide text-[var(--text)]">
+              <h2 className="title-stamp text-2xl">
                 {selected.name}
               </h2>
               {selected.status === 'CLOSED' && (

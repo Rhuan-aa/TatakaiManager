@@ -697,8 +697,8 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
       {actionError && <p className="mt-2 text-sm text-[var(--accent)]">{actionError}</p>}
 
       {/* Desktop: tabela (NPCs + linha de ação solo) */}
-      <div className="mt-4 hidden overflow-x-auto md:block">
-        <table className="w-full border-separate text-sm" style={{ borderSpacing: 8 }}>
+      <div className={`mt-4 hidden overflow-x-auto md:block ${day === timeSkip.currentDay ? 'is-today' : ''}`}>
+        <table className="slot-table w-full border-separate text-sm" style={{ borderSpacing: 8 }}>
           <thead>
             <tr>
               <th className="panel-title p-2 text-left text-xs">
@@ -707,7 +707,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
               {COLUMNS.map((slot) => (
                 <th
                   key={slot}
-                  className={`panel-title p-2 text-center text-xs ${slot === EXTRA_SLOT ? 'caption' : ''}`}
+                  className={`slot-th ${slot === EXTRA_SLOT ? 'is-extra' : ''}`}
                   title={slot === EXTRA_SLOT ? 'Slot extra: uma ação de custo zero por dia' : undefined}
                 >
                   {slotLabel(slot)}
@@ -728,7 +728,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
               {COLUMNS.map((slot) => (
                 <td
                   key={slot}
-                  className="border-2 border-[var(--line)] p-2 text-center align-top"
+                  className="slot-td"
                   style={slot === EXTRA_SLOT ? { background: 'color-mix(in srgb, var(--highlight) 18%, var(--bg))' } : undefined}
                 >
                   {renderSoloSlot(slot)}
@@ -748,7 +748,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                 {COLUMNS.map((slot) => (
                   <td
                   key={slot}
-                  className="border-2 border-[var(--line)] p-2 text-center align-top"
+                  className="slot-td"
                   style={slot === EXTRA_SLOT ? { background: 'color-mix(in srgb, var(--highlight) 18%, var(--bg))' } : undefined}
                 >
                     {renderSlot(npc, slot)}

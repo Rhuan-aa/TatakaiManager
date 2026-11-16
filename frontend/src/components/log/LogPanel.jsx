@@ -425,6 +425,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [], focusLogId =
               <div
                 key={log.id}
                 id={`log-${log.id}`}
+                className="panel p-3 sm:p-4"
                 style={highlightId === String(log.id) ? { outline: '4px solid var(--accent)', outlineOffset: '4px' } : undefined}
               >
                 <div className="flex items-center gap-3">
@@ -433,7 +434,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [], focusLogId =
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="min-w-0 truncate text-xs">
+                      <span className="caption min-w-0 truncate">
                         <b className="uppercase tracking-wide">{log.authorName}</b>
                         {log.bookingId &&
                           ` · ${log.npcName} · Dia ${log.dayNumber} · Slot ${log.slotNumber} · ${log.interactionName}${
@@ -515,7 +516,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [], focusLogId =
                   )}
                 </div>
                 {(pending || rejected) && (
-                  <p className="mt-2 inline-block border-2 border-[color:var(--line)] px-2 py-0.5 text-xs font-bold uppercase tracking-wide">
+                  <p className="tag tag-accent mt-2">
                     {pending
                       ? 'Aguardando o Mestre'
                       : `Recusado${log.reviewNote ? `: ${log.reviewNote}` : ''}`}
@@ -583,7 +584,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [], focusLogId =
                     </div>
                   </div>
                 ) : (
-                  <p className={`log-text mt-3 ${isNarration ? 'log-text--narration' : ''}`}>
+                  <p className={`bubble log-body log-text mt-3 ${isNarration ? 'log-text--narration' : ''}`}>
                     {log.narrative}
                   </p>
                 )}
