@@ -693,7 +693,7 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
   livre), em `InjuryPayload`/`InjuryResponse` e no export/import. `CharacterSheet.missingParts` (jsonb) + `GmAction.SET_MISSING_PART`
   (`{bodyPart, missing, reason}`; sem `bodyPart` → 400): **só marcação visual, sem efeito mecânico**. `missingParts` vem `null` com INJURIES oculta.
 - **Front:** `SheetCarousel` (substitui a grade em `SheetsSection`; ficha de outro jogador aparece "bloqueada" mas abre em leitura, com as seções
-  filtradas pelo backend) + `FighterPlaceholder`; `CharacterSheetView` em abas (`SheetTabs`: Visão Geral, Atributos e Traços, Artes Marciais,
+  filtradas pelo backend) + `FighterPlaceholder`; `CharacterSheetView` em abas (`SheetTabs`: Visão Geral — que inclui Atributos e Traços —, Artes Marciais,
   Inventário, Progressão, Rolagens, Mestre; aba ativa em `sessionStorage`; `focusSection` abre a aba; na impressão todas saem empilhadas) e em
   largura total (`CampaignDetail` passa `maxWidth` largo ao `AppShell` com ficha aberta); `SheetImagePicker`; `LimiterRadar` (SVG puro: 6 atributos
   + HP/SP/PQ máximos contra os limitadores, vértice acima do limitador destacado; TAL fora); `BodyMap` + `InjuryBoard` (Mestre adiciona/trata/remove

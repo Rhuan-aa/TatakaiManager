@@ -372,6 +372,42 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
     { key: 'kp', label: 'PQ', value: r.kpMax, limit: d.kpLimiter },
   ] : null;
 
+  const attrBlock = (
+      <Block title="Atributos">
+        {!sheet.attributes ? <Hidden name="atributos" /> : (
+          <div className="sheet-attrs">
+            {ATTRS.map((a) => (
+              <AttributeCard key={a.key} a={a} v={sheet.attributes[a.enumName]} m={d?.mods?.[a.enumName]} lim={d?.limiters?.[a.enumName]}
+                bandKey={d?.bands?.[a.enumName]} gains={gainsFor(sheet, a.enumName)} />
+            ))}
+          </div>
+        )}
+      </Block>
+  );
+  const traitsBlock = (
+      <Block title="Traços e clãs">
+        {!sheet.traits || !sheet.clans ? <Hidden name="traços e clãs" /> : (
+          <div className="flex flex-col gap-3">
+            {sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
+              <ul className="sheet-traits">
+                {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} />)}
+              </ul>
+            )}
+            {sheet.clans.map((c) => (
+              <div key={c.id} className="bubble p-2 text-sm">
+                <strong>Clã {c.name}</strong>
+                {c.heritage?.length > 0 && (
+                  <ul className="mt-1 list-disc pl-5">
+                    {c.heritage.map((h) => <li key={h}><RichText text={h} /></li>)}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Block>
+  );
+
   const overview = (
     <div className="sheet-overview">
       <div className="sheet-col">
@@ -468,43 +504,8 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             <InjuryBoard sheet={sheet} isMaster={isMaster} onChange={onChange} />
           )}
         </Block>
+        {attrBlock}
       </div>
-    </div>
-  );
-
-  const attributes = (
-    <div className="flex flex-col gap-4">
-      <Block title="Atributos">
-        {!sheet.attributes ? <Hidden name="atributos" /> : (
-          <div className="sheet-attrs">
-            {ATTRS.map((a) => (
-              <AttributeCard key={a.key} a={a} v={sheet.attributes[a.enumName]} m={d?.mods?.[a.enumName]} lim={d?.limiters?.[a.enumName]}
-                bandKey={d?.bands?.[a.enumName]} gains={gainsFor(sheet, a.enumName)} />
-            ))}
-          </div>
-        )}
-      </Block>
-      <Block title="Traços e clãs">
-        {!sheet.traits || !sheet.clans ? <Hidden name="traços e clãs" /> : (
-          <div className="flex flex-col gap-3">
-            {sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
-              <ul className="sheet-traits">
-                {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} />)}
-              </ul>
-            )}
-            {sheet.clans.map((c) => (
-              <div key={c.id} className="bubble p-2 text-sm">
-                <strong>Clã {c.name}</strong>
-                {c.heritage?.length > 0 && (
-                  <ul className="mt-1 list-disc pl-5">
-                    {c.heritage.map((h) => <li key={h}><RichText text={h} /></li>)}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Block>
     </div>
   );
 
@@ -586,8 +587,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   );
 
   const tabs = [
-    { id: 'overview', label: 'Visão Geral', node: overview },
-    { id: 'attributes', label: 'Atributos e Traços', node: attributes },
+    { id: 'overview', label: 'Visão Geral', node: <div className="flex flex-col gap-4">{overview}{traitsBlock}</div> },
     seesPrivate && { id: 'martial', label: 'Artes Marciais', node: martial },
     { id: 'inventory', label: 'Inventário', node: inventory },
     hasProgress && { id: 'progress', label: 'Progressão', node: progress },
