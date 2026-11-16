@@ -10,11 +10,13 @@ const Lock = () => (
   </svg>
 );
 const Arrow = ({ dir }) => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d={dir < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'} />
   </svg>
 );
+const pad = (n) => String(n).padStart(2, '0');
 
+/** Seleção de fichas no estilo "seleção de personagem": arte grande ao centro, nome carimbado à direita, recortes inclinados embaixo. */
 export default function SheetCarousel({ sheets, userId, isMaster, onOpen }) {
   const [sel, setSel] = useState(() => Math.max(0, sheets.findIndex((s) => s.ownerUserId === userId)));
   const [urls, setUrls] = useState({});
@@ -46,10 +48,20 @@ export default function SheetCarousel({ sheets, userId, isMaster, onOpen }) {
     return () => { c.forEach((u) => u && URL.revokeObjectURL(u)); c.clear(); };
   }, []);
 
+  // centraliza o recorte no trilho sem rolar a página
+  function center(n, behavior) {
+    const r = rail.current;
+    const el = r?.children[n];
+    if (!el) return;
+    const left = el.getBoundingClientRect().left - r.getBoundingClientRect().left + r.scrollLeft;
+    r.scrollTo({ left: left - (r.clientWidth - el.offsetWidth) / 2, behavior });
+  }
+  useEffect(() => { center(idx, 'auto'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function go(i) {
     const n = Math.max(0, Math.min(sheets.length - 1, i));
     setSel(n);
-    rail.current?.children[n]?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    center(n, 'smooth');
   }
   function onKey(e) {
     if (e.key === 'ArrowRight') { e.preventDefault(); go(idx + 1); }
@@ -58,52 +70,77 @@ export default function SheetCarousel({ sheets, userId, isMaster, onOpen }) {
   if (!cur) return null;
   const lk = locked(cur);
   const img = (s) => urls[s.id];
+  const next = sheets[idx + 1];
+  // o nome encolhe pela maior palavra para caber na coluna
+  const chars = Math.max(4, ...cur.name.split(/\s+/).map((w) => w.length));
+  const vitals = cur.effectiveHpMax == null ? [] : [
+    ['HP', cur.currentHp, cur.effectiveHpMax], ['SP', cur.currentSp, cur.spMax], ['PQ', cur.currentKp, cur.kpMax],
+  ];
 
   return (
-    <section className="sc" aria-label="Fichas da campanha">
-      <div className={`sc-stage panel${lk ? ' is-locked' : ''}`}>
-        <div className="sc-art">
-          {img(cur) ? <img src={img(cur)} alt="" /> : <FighterPlaceholder className="sc-ph" />}
-          {lk && <span className="sc-lock" aria-hidden="true"><Lock /></span>}
-        </div>
-        <div className="sc-info">
-          <div className="sc-name">{cur.name}</div>
-          <div className="sc-owner">{cur.ownerName}</div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <span className="tag">{STATUS[cur.buildStatus]}</span>
-            {cur.criticalState && <span className="tag-accent tag">Crítico</span>}
-            {lk && <span className="tag">Bloqueada</span>}
-          </div>
-          {cur.effectiveHpMax != null && (
-            <div className="mt-2 text-sm">HP {cur.currentHp}/{cur.effectiveHpMax} · SP {cur.currentSp}/{cur.spMax} · PQ {cur.currentKp}/{cur.kpMax}</div>
-          )}
-          <button type="button" className="btn-primary mt-4 sc-open" onClick={() => onOpen(cur.id)}>
-            {lk ? 'Ver ficha (somente leitura)' : 'Abrir ficha'}
-          </button>
+    <section className={`sc${lk ? ' is-locked' : ''}`} aria-label="Fichas da campanha">
+      <div className="sc-burst" aria-hidden="true" />
+      <div className="sc-art" key={cur.id}>
+        {img(cur) ? <img src={img(cur)} alt="" /> : <FighterPlaceholder className="sc-ph" />}
+      </div>
+
+      <div className="sc-info" aria-live="polite">
+        <p className="sc-eyebrow">Lutadores <strong>— {pad(idx + 1)} / {pad(sheets.length)}</strong></p>
+        <h3 className="sc-name" style={{ '--chars': chars }}>{cur.name}</h3>
+        {vitals.length > 0 && (
+          <ul className="sc-chips" aria-label="Recursos">
+            {vitals.map(([k, v, m]) => (
+              <li key={k} className="sc-chip"><b>{k}</b><span>{v}/{m}</span></li>
+            ))}
+          </ul>
+        )}
+        <p className="sc-owner">Jogador · {cur.ownerName}</p>
+        <div className="sc-tags">
+          <span className="tag">{STATUS[cur.buildStatus]}</span>
+          {cur.criticalState && <span className="tag-accent tag">Crítico</span>}
+          {lk && <span className="tag">Bloqueada</span>}
         </div>
       </div>
 
-      <div className="sc-bar">
-        <button type="button" className="btn-secondary sc-arrow" aria-label="Ficha anterior" disabled={idx === 0} onClick={() => go(idx - 1)}><Arrow dir={-1} /></button>
-        <ul className="sc-rail" ref={rail} onKeyDown={onKey}>
-          {sheets.map((s, i) => {
-            const l = locked(s);
-            return (
-              <li key={s.id}>
-                <button type="button" onClick={() => go(i)} aria-current={i === idx ? 'true' : undefined}
-                  aria-label={`${s.name} — ${s.ownerName}${l ? ' (bloqueada)' : ''}`}
-                  className={`sc-card${i === idx ? ' is-sel' : ''}${l ? ' is-locked' : ''}`}>
-                  <span className="sc-thumb">
-                    {img(s) ? <img src={img(s)} alt="" /> : <FighterPlaceholder className="sc-ph" />}
-                    {l && <span className="sc-lock sc-lock-sm" aria-hidden="true"><Lock /></span>}
-                  </span>
-                  <span className="sc-cap">{s.name}</span>
+      <ul className="sc-rail" ref={rail} onKeyDown={onKey}>
+        {sheets.map((s, i) => {
+          const l = locked(s);
+          const on = i === idx;
+          return (
+            <li key={s.id} className={on ? 'is-sel' : undefined}>
+              <button type="button" onClick={() => go(i)} aria-current={on ? 'true' : undefined}
+                aria-label={`${s.name} — ${s.ownerName}${l ? ' (bloqueada)' : ''}`}
+                className={`sc-card${l ? ' is-locked' : ''}`}>
+                <span className="sc-thumb">
+                  {img(s) ? <img src={img(s)} alt="" /> : <FighterPlaceholder className="sc-ph" />}
+                </span>
+                {l && <span className="sc-lock" aria-hidden="true"><Lock /></span>}
+                <span className="sc-cap">{s.name}</span>
+              </button>
+              {on && (
+                <button type="button" className="sc-open" onClick={() => onOpen(s.id)}>
+                  {l ? 'Ver ficha' : 'Abrir ficha'}
                 </button>
-              </li>
-            );
-          })}
-        </ul>
-        <button type="button" className="btn-secondary sc-arrow" aria-label="Próxima ficha" disabled={idx === sheets.length - 1} onClick={() => go(idx + 1)}><Arrow dir={1} /></button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {lk && <p className="sc-note">Somente leitura: você vê apenas as seções liberadas.</p>}
+
+      <div className="sc-nav">
+        <div className="sc-arrows">
+          <button type="button" className="sc-arrow" aria-label="Ficha anterior" disabled={idx === 0} onClick={() => go(idx - 1)}><Arrow dir={-1} /></button>
+          <button type="button" className="sc-arrow sc-arrow-next" aria-label="Próxima ficha" disabled={!next} onClick={() => go(idx + 1)}><Arrow dir={1} /></button>
+        </div>
+        {next && (
+          <div className="sc-next" aria-hidden="true">
+            <span className="sc-thumb">
+              {img(next) ? <img src={img(next)} alt="" /> : <FighterPlaceholder className="sc-ph" />}
+            </span>
+            <span className="sc-next-cap">A seguir · {next.name}</span>
+          </div>
+        )}
       </div>
     </section>
   );
