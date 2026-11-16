@@ -260,6 +260,21 @@ function TraitItem({ t, campaignId }) {
   );
 }
 
+/** Imagem autenticada da ficha como blob; revoga o object URL ao trocar/desmontar. */
+function useSheetImage(sheet, kind, has) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    if (!has) return undefined;
+    let active = true;
+    let u = null;
+    getSheetImageUrl(sheet.id, kind).then((x) => {
+      if (active) { u = x; setUrl(x); } else URL.revokeObjectURL(x);
+    }).catch(() => {});
+    return () => { active = false; if (u) URL.revokeObjectURL(u); setUrl(null); };
+  }, [sheet.id, sheet.version, kind, has]);
+  return url;
+}
+
 export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, campaignId, refreshKey = 0, onChange, onBack, focusSection }) {
   const { user } = useAuth();
   const toast = useToast();
@@ -302,17 +317,8 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusSection]);
 
-  // Retrato: imagem autenticada como blob; revoga o object URL ao trocar/desmontar.
-  const [portraitUrl, setPortraitUrl] = useState(null);
-  useEffect(() => {
-    if (!sheet.hasPortrait) return undefined;
-    let active = true;
-    let url = null;
-    getSheetImageUrl(sheet.id, 'PORTRAIT').then((u) => {
-      if (active) { url = u; setPortraitUrl(u); } else URL.revokeObjectURL(u);
-    }).catch(() => {});
-    return () => { active = false; if (url) URL.revokeObjectURL(url); setPortraitUrl(null); };
-  }, [sheet.id, sheet.hasPortrait, sheet.version]);
+  const portraitUrl = useSheetImage(sheet, 'PORTRAIT', sheet.hasPortrait);
+  const bodyUrl = useSheetImage(sheet, 'FULL_BODY', sheet.hasFullBody);
 
   const [reopenReason, setReopenReason] = useState('');
   async function reopen(e) {
@@ -530,7 +536,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const inventory = (
     <Block title="Inventário">
       {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : (
-        <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} />
+        <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} artUrl={bodyUrl ?? portraitUrl} />
       )}
     </Block>
   );

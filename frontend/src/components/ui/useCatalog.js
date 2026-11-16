@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listConsumables, listWeapons } from '../../api/catalog';
+import { listConsumables, listEquipment, listWeapons } from '../../api/catalog';
 
 const cache = {}; // catálogos estáticos: carregam uma vez por sessão
 
@@ -18,3 +18,5 @@ function useCatalog(name, loader) {
 export const useWeapons = () => useCatalog('weapons', listWeapons);
 /** Catálogo de consumíveis (§44), indexado pela chave. */
 export const useConsumables = () => useCatalog('consumables', listConsumables);
+/** Catálogo de proteções e equipamentos (§43), indexado pela chave. */
+export const useEquipment = () => useCatalog('equipment', listEquipment);

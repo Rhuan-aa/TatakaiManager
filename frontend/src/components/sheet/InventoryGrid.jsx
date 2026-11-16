@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import Icon from '../ui/Icon';
 import { ITEM_LOCATION } from '../ui/gear';
-import { useWeapons } from '../ui/useCatalog';
+import { useConsumables, useEquipment, useWeapons } from '../ui/useCatalog';
+import FighterPlaceholder from './FighterPlaceholder';
 
 const kg = (v) => (Math.round((v ?? 0) * 10) / 10).toString().replace('.', ',');
 // Carga (capítulo de Condições): efeitos de cada estado acima da Carga
@@ -11,90 +12,166 @@ const LOAD_HINT = {
   LIMIT: 'Só pode erguer ou arrastar (Ação Maior + teste de Força).',
   IMPOSSIBLE: 'O peso não se move.',
 };
-const ORDER = ['HAND', 'QUICK', 'WORN', 'PACK', 'DROPPED'];
-const ALWAYS = ['HAND', 'QUICK'];
 const DAMAGE = { BLUNT: 'Contundente', SLASH: 'Cortante', PIERCE: 'Perfurante', FIRE: 'Flamejante' };
+const REACH = { CURTO: 'Curto', MEDIO: 'Médio', LONGO: 'Longo', ARREMESSO: 'Arremesso', DISPARO: 'Disparo' };
+const ARMOR = { LIGHT: 'Leve', MEDIUM: 'Média', HEAVY: 'Pesada' };
+const REGION = { CABECA: 'Cabeça', TRONCO: 'Tronco', BRACOS: 'Braços', PERNAS: 'Pernas' };
+const USE = { SELF: 'Em si', ALLY: 'Em aliado', OFFENSIVE: 'Ofensivo' };
 
-const kindOf = (i) => (i.weaponKey ? ['swords', 'Arma'] : i.equipmentKey ? ['circle', 'Proteção/equipamento']
-  : i.consumableKey ? ['bandage', 'Consumível'] : ['pack', 'Item']);
+const KINDS = [
+  { id: 'all', label: 'Tudo', icon: 'grid' },
+  { id: 'weapon', label: 'Armas', icon: 'swords', one: 'Arma' },
+  { id: 'equipment', label: 'Proteções', icon: 'circle', one: 'Proteção / equipamento' },
+  { id: 'consumable', label: 'Consumíveis', icon: 'bandage', one: 'Consumível' },
+  { id: 'other', label: 'Outros', icon: 'pack', one: 'Item' },
+];
+const kindOf = (i) => KINDS.find((k) => k.id === (i.weaponKey ? 'weapon' : i.equipmentKey ? 'equipment' : i.consumableKey ? 'consumable' : 'other'));
 const locOf = (i) => i.location ?? 'PACK';
 const states = (i) => [i.broken && 'quebrada', i.jammed && 'travada', i.damaged && !i.broken && 'danificada', i.cocked && 'engatilhada'].filter(Boolean);
+// lados do boneco: [local, mínimo de espaços desenhados (só visual, sem limite de regra)]
+const SIDES = [[['HAND', 2], ['QUICK', 2]], [['WORN', 4]]];
 
-export default function InventoryGrid({ items, money, derived }) {
+/** Linhas [rótulo, valor] do catálogo para o item (armas, proteções, consumíveis). */
+function catalogRows(i, w, e, c) {
+  if (w) return [
+    ['Dado', w.diceTwoHands ? `${w.dice} / ${w.diceTwoHands} (2 mãos)` : w.dice],
+    ['Dano', DAMAGE[w.damageType] ?? w.damageType],
+    ['Alcance', (REACH[w.reach] ?? w.reach) + (w.rangeM ? ` · ${w.rangeM} m` : '')],
+    ['Classe', w.weaponClass],
+    ['Munição', w.capacity && `${i.loaded} / ${w.capacity}`],
+  ];
+  if (e) return [
+    ['Categoria', ARMOR[e.category] ?? e.category],
+    ...Object.entries(e.protection ?? {}).map(([t, v]) => [`Redução ${(DAMAGE[t] ?? t).toLowerCase()}`, v]),
+    ['Cobre', e.cover?.map((r) => REGION[r] ?? r).join(', ')],
+  ];
+  if (c) return [['Uso', USE[c.use] ?? c.use], ['Dose', c.dose && 'Sim']];
+  return [];
+}
+
+function Slot({ item, on, onSelect }) {
+  if (!item) return <li className="inv-slot inv-empty" aria-label="Espaço vazio"><span aria-hidden="true">Vazio</span></li>;
+  const k = kindOf(item);
+  const s = states(item);
+  return (
+    <li>
+      <button type="button" className="inv-slot" aria-pressed={on} onClick={() => onSelect(item.id)}
+        aria-label={`${item.name}, ${ITEM_LOCATION[locOf(item)]}${s.length ? `, ${s.join(', ')}` : ''}`}>
+        <Icon name={k.icon} size={26} />
+        <span className="inv-slot-name">{item.name}</span>
+        {item.quantity > 1 && <span className="inv-qty">×{item.quantity}</span>}
+        {s.length > 0 && <span className="inv-flag" title={s.join(', ')} />}
+      </button>
+    </li>
+  );
+}
+
+/** Inventário: boneco com o que está equipado, lista por tipo e ficha do item selecionado. */
+export default function InventoryGrid({ items, money, derived, artUrl }) {
   const weapons = useWeapons();
+  const equipment = useEquipment();
+  const consumables = useConsumables();
   const [sel, setSel] = useState(null);
-  const current = items.find((i) => i.id === sel) ?? items[0];
+  const [kind, setKind] = useState('all');
   const d = derived;
   const pct = d?.carryKg > 0 ? Math.min(100, Math.round((d.carriedKg / d.carryKg) * 100)) : 0;
-  const state = d?.loadState ?? 'FREE';
-  const w = current?.weaponKey ? weapons[current.weaponKey] : null;
-  const st = current ? states(current) : [];
+  const load = d?.loadState ?? 'FREE';
+  const listed = items.filter((i) => kind === 'all' || kindOf(i).id === kind);
+  const cur = items.find((i) => i.id === sel) ?? listed[0] ?? items[0];
+  const curKind = KINDS.find((k) => k.id === kind);
+
+  const w = cur?.weaponKey && weapons[cur.weaponKey];
+  const e = cur?.equipmentKey && equipment[cur.equipmentKey];
+  const c = cur?.consumableKey && consumables[cur.consumableKey];
+  const st = cur ? states(cur) : [];
+  const rows = cur ? catalogRows(cur, w, e, c).filter(([, v]) => v != null && v !== false && v !== '') : [];
+  const text = cur && [cur.description, e?.text, c?.text].filter(Boolean);
 
   return (
     <div className="inv">
       <div className="inv-head">
-        {money != null && <span className="tag" style={{ borderColor: 'var(--chip-el)', color: 'var(--chip-el)' }}>Diárias {money}</span>}
+        {money != null && <span className="inv-money"><b>{money}</b> Diárias</span>}
         {d && (
           <div className="inv-load">
+            <span className="caption">Carga {kg(d.carriedKg)} / {kg(d.carryKg)} kg</span>
             <div className="inv-bar" role="meter" aria-valuemin={0} aria-valuemax={d.carryKg} aria-valuenow={d.carriedKg}
               aria-label={`Carga ${kg(d.carriedKg)} de ${kg(d.carryKg)} kg`}>
-              <span className={`inv-fill ${state !== 'FREE' ? 'inv-fill-over' : ''}`} style={{ width: `${pct}%` }} />
+              <span className={`inv-fill ${load !== 'FREE' ? 'inv-fill-over' : ''}`} style={{ width: `${pct}%` }} />
             </div>
-            <span className="caption">Carga {kg(d.carriedKg)} / {kg(d.carryKg)} kg</span>
-            <span className={state === 'FREE' ? 'tag' : 'tag tag-accent'}>{LOAD_LABEL[state]}</span>
-            {LOAD_HINT[state] && <span className="hint">{LOAD_HINT[state]}</span>}
+            <span className={load === 'FREE' ? 'tag' : 'tag tag-accent'}>{LOAD_LABEL[load]}</span>
+            {LOAD_HINT[load] && <span className="hint">{LOAD_HINT[load]}</span>}
           </div>
         )}
       </div>
-      {items.length === 0 ? <p className="text-sm">Inventário vazio.</p> : (
-        <div className="inv-body">
-          <div className="inv-groups">
-            {ORDER.map((loc) => {
-              const list = items.filter((i) => locOf(i) === loc);
-              if (list.length === 0 && !ALWAYS.includes(loc)) return null;
-              return (
-                <section key={loc} aria-label={ITEM_LOCATION[loc]}>
-                  <h4 className="ribbon">{ITEM_LOCATION[loc]}</h4>
-                  <div className="inv-slots">
-                    {list.length === 0 && <div className="inv-slot inv-empty">Vazio</div>}
-                    {list.map((i, n) => {
-                      const [icon, kind] = kindOf(i);
-                      const s = states(i);
-                      return (
-                        <button key={i.id} type="button" aria-pressed={i.id === current.id}
-                          aria-label={`${i.quantity}× ${i.name}, ${ITEM_LOCATION[loc]}, ${kg(i.weightKg)} kg${s.length ? `, ${s.join(', ')}` : ''}`}
-                          className={`inv-slot ${n % 2 ? 'inv-odd' : ''}`} onClick={() => setSel(i.id)}>
-                          <Icon name={icon} size={22} />
-                          <span className="inv-name">{i.name}</span>
-                          <span className="sr-only">{kind}</span>
-                          {i.quantity > 1 && <span className="tag inv-qty">×{i.quantity}</span>}
-                          {s.length > 0 && <span className="tag tag-accent inv-state">{s[0]}</span>}
-                        </button>
-                      );
-                    })}
+
+      <div className="inv-stage">
+        <section className="inv-doll" aria-label="Equipado">
+          <div className="inv-figure" aria-hidden="true">{artUrl ? <img src={artUrl} alt="" /> : <FighterPlaceholder className="inv-ph" />}</div>
+          {SIDES.map((side, n) => (
+            <div key={n} className={`inv-side inv-side-${n}`}>
+              {side.map(([loc, min]) => {
+                const list = items.filter((i) => locOf(i) === loc);
+                const slots = [...list, ...Array(Math.max(0, min - list.length)).fill(null)];
+                return (
+                  <div key={loc}>
+                    <h4 className="inv-loc">{ITEM_LOCATION[loc]}</h4>
+                    <ul className="inv-slots">
+                      {slots.map((i, x) => <Slot key={i?.id ?? x} item={i} on={i?.id === cur?.id} onSelect={setSel} />)}
+                    </ul>
                   </div>
-                </section>
-              );
-            })}
+                );
+              })}
+            </div>
+          ))}
+        </section>
+
+        <section className="inv-bag" aria-label="Itens">
+          <div className="inv-kinds" role="group" aria-label="Filtrar por tipo">
+            {KINDS.map((k) => (
+              <button key={k.id} type="button" className="inv-kind" aria-pressed={k.id === kind} aria-label={k.label} title={k.label}
+                onClick={() => { setKind(k.id); setSel(null); }}>
+                {k.id === kind && <span className="inv-kind-label" aria-hidden="true">{k.label}</span>}
+                <Icon name={k.icon} size={22} />
+              </button>
+            ))}
           </div>
-          <aside className="inv-detail panel" aria-live="polite">
-            <h3 className="inv-title">{current.name}</h3>
-            <p className="caption">{kindOf(current)[1]} · {ITEM_LOCATION[locOf(current)]}</p>
-            <p className="text-sm">
-              Quantidade {current.quantity} · {kg(current.weightKg)} kg cada · {kg(current.weightKg * current.quantity)} kg no total
-            </p>
-            {st.length > 0 && <p>{st.map((s) => <span key={s} className="tag tag-accent mr-1">{s}</span>)}</p>}
-            {current.twoHanded && <p className="text-sm">Empunhada com duas mãos.</p>}
-            {w && (
-              <p className="text-sm">
-                {[w.dice && `Dado ${w.dice}`, w.damageType && (DAMAGE[w.damageType] ?? w.damageType), w.capacity && `Munição ${current.loaded}/${w.capacity}`,
-                  w.rangeM && `Alcance ${w.rangeM} m`].filter(Boolean).join(' · ')}
-              </p>
-            )}
-            {current.description && <p className="text-sm">{current.description}</p>}
+          {listed.length === 0 ? (
+            <p className="inv-list inv-none">{items.length === 0 ? 'Inventário vazio.' : `Nada em ${curKind.label.toLowerCase()}.`}</p>
+          ) : (
+            <ul className="inv-list">
+              {listed.map((i) => (
+                <li key={i.id}>
+                  <button type="button" className="inv-row" aria-pressed={i.id === cur.id} onClick={() => setSel(i.id)}>
+                    <Icon name={kindOf(i).icon} size={22} />
+                    <span className="inv-row-name">{i.name}</span>
+                    {i.quantity > 1 && <span className="inv-row-qty">×{i.quantity}</span>}
+                    <span className="inv-row-loc">{ITEM_LOCATION[locOf(i)]}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {cur && (
+          <aside className="inv-detail" aria-live="polite">
+            <h3 className="inv-title">{cur.name}</h3>
+            <p className="inv-sub">{kindOf(cur).one} · {ITEM_LOCATION[locOf(cur)]}</p>
+            <div className="inv-art" aria-hidden="true"><Icon name={kindOf(cur).icon} size={96} /></div>
+            <dl className="inv-stats">
+              {rows.length > 0 && <dt className="inv-sec">Catálogo</dt>}
+              {rows.map(([k, v]) => <div key={k} className="inv-stat"><dt>{k}</dt><dd>{v}</dd></div>)}
+              <dt className="inv-sec">Carga</dt>
+              <div className="inv-stat"><dt>Quantidade</dt><dd>{cur.quantity}</dd></div>
+              <div className="inv-stat"><dt>Peso</dt><dd>{kg(cur.weightKg)} kg</dd></div>
+              {cur.quantity > 1 && <div className="inv-stat"><dt>Peso total</dt><dd>{kg(cur.weightKg * cur.quantity)} kg</dd></div>}
+              {cur.twoHanded && <div className="inv-stat"><dt>Empunhadura</dt><dd>Duas mãos</dd></div>}
+            </dl>
+            {st.length > 0 && <p className="flex flex-wrap gap-1">{st.map((s) => <span key={s} className="tag tag-accent">{s}</span>)}</p>}
+            {text.map((t) => <p key={t} className="text-sm">{t}</p>)}
           </aside>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

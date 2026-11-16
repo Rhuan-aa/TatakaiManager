@@ -697,7 +697,7 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
   Inventário, Progressão, Rolagens, Mestre; aba ativa em `sessionStorage`; `focusSection` abre a aba; na impressão todas saem empilhadas) e em
   largura total (`CampaignDetail` passa `maxWidth` largo ao `AppShell` com ficha aberta); `SheetImagePicker`; `LimiterRadar` (SVG puro: 6 atributos
   + HP/SP/PQ máximos contra os limitadores, vértice acima do limitador destacado; TAL fora); `BodyMap` + `InjuryBoard` (Mestre adiciona/trata/remove
-  ferimento e marca parte perdida pelo boneco); `InventoryGrid` (slots por local, detalhe ao lado; estatísticas de catálogo só para armas).
+  ferimento e marca parte perdida pelo boneco); `InventoryGrid` (boneco com Em mãos/Acesso Rápido/Vestido dos lados, abas por tipo + lista, ficha do item com números dos catálogos de armas, equipamentos e consumíveis).
 - **Estilo do site:** utilitários `.halftone-bg`, `.slash-band`, `.title-stamp`, `.page-hero` (bloco `site revamp` no fim do `index.css`);
   `components/auth/AuthLayout` (capa em ≥1024px). Sem Three.js: tudo 2D (SVG/CSS).
 - **Bancos com `validate`:** criar `sheet_images`; `ALTER TABLE permanent_injuries ADD COLUMN body_part varchar(20)`;
