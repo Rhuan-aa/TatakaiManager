@@ -10,13 +10,12 @@ import CharacterSheetForm from './CharacterSheetForm';
 import CharacterSheetView from './CharacterSheetView';
 import MartialPanel from './MartialPanel';
 
+// Seções da ficha de NPC liberáveis aos jogadores (espelha SheetSection.NPC_SECTIONS)
 const SECTIONS = [
-  { section: 'ATTRIBUTES', label: 'Atributos' },
-  { section: 'RESOURCES', label: 'Recursos' },
-  { section: 'INJURIES', label: 'Ferimentos' },
-  { section: 'INVENTORY', label: 'Inventário' },
-  { section: 'TRAITS', label: 'Traços e clãs' },
-];
+  ['HP', 'HP'], ['SP', 'SP'], ['KP', 'PQ'], ['FATIGUE', 'Cansaço'], ['ATTRIBUTES', 'Atributos'], ['TRAITS', 'Traços'],
+  ['CLANS', 'Clãs'], ['INJURIES', 'Ferimentos'], ['INTERACTIONS', 'Interações'], ['INVENTORY', 'Itens'], ['ARTS', 'Artes'],
+  ['BASES', 'Bases'], ['TECHNIQUES', 'Técnicas'], ['RADAR', 'Gráfico de limitadores'], ['BODY_MAP', 'Boneco'], ['IMAGE', 'Imagem'],
+].map(([section, label]) => ({ section, label }));
 
 // Ficha leve: os atributos crus (se houver) pré-preenchem o formulário de ficha completa.
 const PREFILL = (a) => (a ? {

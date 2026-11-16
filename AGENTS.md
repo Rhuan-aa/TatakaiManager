@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 888 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 921 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -547,7 +547,7 @@ no canal `campaign` e recarregam.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 888 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 921 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -702,6 +702,24 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
   `components/auth/AuthLayout` (capa em ≥1024px). Sem Three.js: tudo 2D (SVG/CSS).
 - **Bancos com `validate`:** criar `sheet_images`; `ALTER TABLE permanent_injuries ADD COLUMN body_part varchar(20)`;
   `ALTER TABLE character_sheets ADD COLUMN missing_parts jsonb DEFAULT '[]'`. Nenhum CHECK a dropar.
+
+## 12c. Imagem de item, visibilidade do NPC por seção e slots do TimeSkip (`feat/sheet-npc-wounds`, fase 1)
+
+- **Imagem de item do catálogo:** tabela `catalog_item_images` (`CatalogItemImage`: `kind` = `WEAPON|EQUIPMENT|CONSUMABLE`, `item_key`, `campaign_id`
+  nulo = global, bytes + miniatura PNG de até 256 px via `ImageThumbs`/`ImageIO`; formato ilegível guarda o original como miniatura).
+  `CatalogItemImageService`/`Controller`: `POST|DELETE|GET /catalog/{weapons|equipment|consumables}/{key}/image[/thumb]` (escrita: editores do
+  catálogo global) e `/campaigns/{cid}/catalog/...` (escrita: Mestre da campanha; leitura: membros; cai na imagem global se a campanha não tiver).
+  `GET /catalog/item-images` e `GET /campaigns/{cid}/catalog/item-images` listam quem tem imagem (`scope` `CAMPAIGN|GLOBAL`); o JSON do catálogo
+  não mudou. Front: só `api/catalogItemImages.js` por enquanto. A unicidade da imagem global é garantida pelo upsert do service (NULL em unique).
+- **Visibilidade da ficha de NPC:** `SheetSection.NPC_SECTIONS` (16: `HP, SP, KP, FATIGUE, ATTRIBUTES, TRAITS, CLANS, INJURIES, INTERACTIONS,
+  INVENTORY, ARTS, BASES, TECHNIQUES, RADAR, BODY_MAP, IMAGE`), regras puras em `NpcVisibilityRules`. `GET /campaigns/{cid}/npcs/{nid}/sheet`
+  **omite** para o jogador o que estiver oculto (recurso oculto = campos `null`; `resources`/`derived.*Limiter`/`criticalState` viraram anuláveis;
+  `clans` separado de `TRAITS` só no NPC; `missingParts` exige INJURIES e BODY_MAP) e ganhou `interactions` e `visibleSections`. A seção antiga
+  `RESOURCES` visível ainda vale por HP+SP+PQ. Config (só Mestre): `GET|PATCH /sheet/visibility` e `PUT` em lote `{"sections": {"HP": true}}`
+  (avisa `NPCS` no canal `campaign`). `GET .../sheet/martial` devolve artes/bases/técnicas filtradas (ARTS oculta: técnica sem `characterArtId`
+  nem `borrowedFrom`). RADAR, BODY_MAP e IMAGE são só sinalizadores para o front.
+- **Slots do TimeSkip:** `slotsPerDay` 1..12; `TimeSkip.extraSlotNumber()` = 5 até 4 slots (compatível com o que já existe), senão `slotsPerDay + 1`;
+  `TimeSkipResponse.extraSlot`; `SlotGrid` monta as colunas pelo TimeSkip. Bancos antigos: trocar o CHECK de `bookings.slot_number` para 1..13.
 
 ## 13. Construção Inicial, catálogo e regras (F2)
 
