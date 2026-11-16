@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 793 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 888 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -547,7 +547,7 @@ no canal `campaign` e recarregam.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 781 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 888 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -682,6 +682,26 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
 - **Visual:** design system quadrinhos/brutalismo em `index.css` (tokens `--ink`,
   `--paper`, `--line`, `--accent`, `--highlight`; classes `.panel`, `.bubble`,
   `.caption`, `.meter`, `.onomatopoeia`…). Fonte display: Anton.
+
+## 12b. Ficha em abas, carrossel, imagens e boneco de ferimentos (`feat/sheet-ui-revamp`)
+
+- **Imagens da ficha:** tabela `sheet_images` (`SheetImage`, unique `(sheet_id, kind)`, `kind` = `PORTRAIT|FULL_BODY`, bytes em `bytea`);
+  `SheetImageService` + `SheetImageController`: `POST|DELETE|GET /character-sheets/{sid}/images/{kind}` (multipart `file`, `image/*`, ≤ 5 MB → 400).
+  Enviar/remover: dono ou Mestre (outro membro 403); ver: qualquer membro da campanha. Ficha de NPC: só o dono do NPC (outros 404).
+  `CharacterSheetSummaryResponse`/`CharacterSheetResponse` ganharam `hasPortrait`/`hasFullBody`. Não há limpeza ao apagar ficha (não existe esse fluxo).
+- **Parte do corpo:** enum `BodyPart` (HEAD, TORSO, LEFT/RIGHT_ARM, _HAND, _LEG, _FOOT); `PermanentInjury.bodyPart` (opcional; `region` continua texto
+  livre), em `InjuryPayload`/`InjuryResponse` e no export/import. `CharacterSheet.missingParts` (jsonb) + `GmAction.SET_MISSING_PART`
+  (`{bodyPart, missing, reason}`; sem `bodyPart` → 400): **só marcação visual, sem efeito mecânico**. `missingParts` vem `null` com INJURIES oculta.
+- **Front:** `SheetCarousel` (substitui a grade em `SheetsSection`; ficha de outro jogador aparece "bloqueada" mas abre em leitura, com as seções
+  filtradas pelo backend) + `FighterPlaceholder`; `CharacterSheetView` em abas (`SheetTabs`: Visão Geral, Atributos e Traços, Artes Marciais,
+  Inventário, Progressão, Rolagens, Mestre; aba ativa em `sessionStorage`; `focusSection` abre a aba; na impressão todas saem empilhadas) e em
+  largura total (`CampaignDetail` passa `maxWidth` largo ao `AppShell` com ficha aberta); `SheetImagePicker`; `LimiterRadar` (SVG puro: 6 atributos
+  + HP/SP/PQ máximos contra os limitadores, vértice acima do limitador destacado; TAL fora); `BodyMap` + `InjuryBoard` (Mestre adiciona/trata/remove
+  ferimento e marca parte perdida pelo boneco); `InventoryGrid` (slots por local, detalhe ao lado; estatísticas de catálogo só para armas).
+- **Estilo do site:** utilitários `.halftone-bg`, `.slash-band`, `.title-stamp`, `.page-hero` (bloco `site revamp` no fim do `index.css`);
+  `components/auth/AuthLayout` (capa em ≥1024px). Sem Three.js: tudo 2D (SVG/CSS).
+- **Bancos com `validate`:** criar `sheet_images`; `ALTER TABLE permanent_injuries ADD COLUMN body_part varchar(20)`;
+  `ALTER TABLE character_sheets ADD COLUMN missing_parts jsonb DEFAULT '[]'`. Nenhum CHECK a dropar.
 
 ## 13. Construção Inicial, catálogo e regras (F2)
 
