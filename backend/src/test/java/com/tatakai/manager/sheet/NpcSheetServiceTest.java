@@ -164,7 +164,7 @@ class NpcSheetServiceTest {
         assertThat(link.getValue().isVisible()).isTrue();
         assertThat(link.getValue().isBookable()).isFalse();
         assertThat(link.getValue().getNpcId()).isEqualTo(r.npcId());
-        verify(npcVisibilityRepository, times(5)).save(any(NpcSheetVisibility.class));
+        verify(npcVisibilityRepository, times(SheetSection.NPC_SECTIONS.size())).save(any(NpcSheetVisibility.class));
     }
 
     @Test
@@ -400,7 +400,7 @@ class NpcSheetServiceTest {
         List<NpcSectionVisibilityResponse> r = service.listNpcSheetVisibility(campaign.getId(), npc.getId(), owner.getId());
 
         assertThat(r).extracting(NpcSectionVisibilityResponse::section).containsExactlyInAnyOrder(
-                SheetSection.ATTRIBUTES, SheetSection.RESOURCES, SheetSection.INJURIES, SheetSection.INVENTORY, SheetSection.TRAITS);
+                SheetSection.NPC_SECTIONS.toArray(new SheetSection[0]));
         assertThat(r).noneMatch(NpcSectionVisibilityResponse::visible);
     }
 
@@ -409,18 +409,18 @@ class NpcSheetServiceTest {
     void setVisibility_upsertsAndPublishes() {
         linkCampaignNpc();
         member(owner, Role.MASTER);
-        when(npcVisibilityRepository.findByCampaignNpcIdAndSection(cn.getId(), SheetSection.RESOURCES))
+        when(npcVisibilityRepository.findByCampaignNpcIdAndSection(cn.getId(), SheetSection.HP))
                 .thenReturn(Optional.empty());
 
         NpcSectionVisibilityResponse r = service.setNpcSheetVisibility(campaign.getId(), npc.getId(),
-                new SetNpcSectionVisibilityRequest(SheetSection.RESOURCES, true), owner.getId());
+                new SetNpcSectionVisibilityRequest(SheetSection.HP, true), owner.getId());
 
-        assertThat(r.section()).isEqualTo(SheetSection.RESOURCES);
+        assertThat(r.section()).isEqualTo(SheetSection.HP);
         assertThat(r.visible()).isTrue();
         ArgumentCaptor<NpcSheetVisibility> row = ArgumentCaptor.forClass(NpcSheetVisibility.class);
         verify(npcVisibilityRepository).save(row.capture());
         assertThat(row.getValue().isVisible()).isTrue();
-        assertThat(row.getValue().getSection()).isEqualTo(SheetSection.RESOURCES);
+        assertThat(row.getValue().getSection()).isEqualTo(SheetSection.HP);
         ArgumentCaptor<SheetUpdateMessage> ev = ArgumentCaptor.forClass(SheetUpdateMessage.class);
         verify(events).publishEvent(ev.capture());
         assertThat(ev.getValue().event()).isEqualTo(SheetUpdateMessage.SheetEvent.SHEET_UPDATED);
@@ -435,7 +435,7 @@ class NpcSheetServiceTest {
         member(playerUser, Role.PLAYER);
 
         assertThatThrownBy(() -> service.setNpcSheetVisibility(campaign.getId(), npc.getId(),
-                new SetNpcSectionVisibilityRequest(SheetSection.RESOURCES, true), playerUser.getId()))
+                new SetNpcSectionVisibilityRequest(SheetSection.HP, true), playerUser.getId()))
                 .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> service.setNpcSheetVisibility(campaign.getId(), npc.getId(),
                 new SetNpcSectionVisibilityRequest(SheetSection.LOGS, true), owner.getId()))

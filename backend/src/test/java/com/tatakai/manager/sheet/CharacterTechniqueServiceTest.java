@@ -73,6 +73,7 @@ class CharacterTechniqueServiceTest {
     @Mock private SheetActivityLogService activityLog;
     @Mock private ApplicationEventPublisher events;
 
+    @Mock private com.tatakai.manager.sheet.repository.NpcSheetVisibilityRepository npcVisibilityRepository;
     private CharacterTechniqueService service;
     private final List<CharacterArt> arts = new ArrayList<>();
     private final List<CharacterTechnique> techniques = new ArrayList<>();
@@ -86,7 +87,7 @@ class CharacterTechniqueServiceTest {
     @BeforeEach
     void setUp() {
         service = new CharacterTechniqueService(sheetRepository, memberRepository, campaignNpcRepository,
-                characterArtRepository, techniqueRepository, martialArtRepository, activityLog, events);
+                characterArtRepository, techniqueRepository, martialArtRepository, activityLog, events, npcVisibilityRepository);
         campaign = Campaign.builder().id(UUID.randomUUID()).build();
         master = user("Mestre", Role.MASTER);
         player = user("Ana", Role.PLAYER);

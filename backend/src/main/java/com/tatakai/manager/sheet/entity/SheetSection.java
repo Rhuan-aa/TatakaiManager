@@ -13,5 +13,22 @@ public enum SheetSection {
     RESOURCES,
     INJURIES,
     INVENTORY,
-    ACTIVITY
+    ACTIVITY,
+    HP,
+    SP,
+    KP,
+    FATIGUE,
+    CLANS,
+    INTERACTIONS,
+    ARTS,
+    BASES,
+    TECHNIQUES,
+    RADAR,
+    BODY_MAP,
+    IMAGE;
+
+    /** Seções que o Mestre configura na ficha de NPC, na ordem de exibição. */
+    public static final java.util.List<SheetSection> NPC_SECTIONS = java.util.List.of(
+            HP, SP, KP, FATIGUE, ATTRIBUTES, TRAITS, CLANS, INJURIES, INTERACTIONS, INVENTORY,
+            ARTS, BASES, TECHNIQUES, RADAR, BODY_MAP, IMAGE);
 }

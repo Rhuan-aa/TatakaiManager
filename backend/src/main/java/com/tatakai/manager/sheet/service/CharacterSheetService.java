@@ -63,6 +63,9 @@ import com.tatakai.manager.sheet.entity.NpcSheetVisibility;
 import com.tatakai.manager.sheet.entity.PermanentInjury;
 import com.tatakai.manager.sheet.entity.ResourceType;
 import com.tatakai.manager.sheet.entity.SheetSection;
+import com.tatakai.manager.sheet.service.rules.NpcVisibilityRules;
+import com.tatakai.manager.npc.dto.request.NpcInteractionDto;
+import com.tatakai.manager.sheet.dto.request.UpdateNpcSheetVisibilityRequest;
 import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
 import com.tatakai.manager.sheet.exception.NpcSheetAlreadyExistsException;
@@ -104,9 +107,7 @@ public class CharacterSheetService {
     private final CharacterBuildRepository buildRepository;
 
     /** Seções da ficha de NPC que o Mestre pode liberar aos jogadores. */
-    private static final List<SheetSection> NPC_SHEET_SECTIONS = List.of(
-            SheetSection.ATTRIBUTES, SheetSection.RESOURCES, SheetSection.INJURIES, SheetSection.INVENTORY,
-            SheetSection.TRAITS);
+    private static final List<SheetSection> NPC_SHEET_SECTIONS = SheetSection.NPC_SECTIONS;
 
     /** Quem age sobre a ficha: papel efetivo, nome (para eventos) e flags de acesso. */
     private record Access(UUID actorId, String actorName, ActorRole role,
@@ -748,18 +749,27 @@ public class CharacterSheetService {
         boolean master = member.getRole() == Role.MASTER;
         if (!master && !cn.isVisible()) throw new NpcNotFoundException();
         CharacterSheet sheet = sheetRepository.findByNpcId(npcId).orElseThrow(CharacterSheetNotFoundException::new);
-        if (master) return toResponse(sheet, true, Set.of());
-
-        Set<SheetSection> hidden = EnumSet.copyOf(NPC_SHEET_SECTIONS);
-        for (NpcSheetVisibility v : npcVisibilityRepository.findByCampaignNpcId(cn.getId())) {
-            if (v.isVisible()) hidden.remove(v.getSection());
+        Set<SheetSection> visible = master ? EnumSet.copyOf(SheetSection.NPC_SECTIONS)
+                : NpcVisibilityRules.visible(npcVisibilityRepository.findByCampaignNpcId(cn.getId()));
+        CharacterSheetResponse base = master ? toResponse(sheet, true, Set.of())
+                : toResponse(sheet, false, NpcVisibilityRules.hidden(visible));
+        List<NpcInteractionDto> interactions = null;
+        if (visible.contains(SheetSection.INTERACTIONS)) {
+            interactions = npcRepository.findById(npcId).map(n -> n.getInteractions().stream()
+                    .map(i -> new NpcInteractionDto(i.getType(), i.getName(), i.getDescription(), i.getIdlePointCost()))
+                    .toList()).orElse(List.of());
         }
-        return toResponse(sheet, false, hidden);
+        List<SheetSection> ordered = SheetSection.NPC_SECTIONS.stream().filter(visible::contains).toList();
+        return base.withNpcView(interactions, ordered);
     }
 
     @Transactional(readOnly = true)
     public List<NpcSectionVisibilityResponse> listNpcSheetVisibility(UUID campaignId, UUID npcId, UUID requesterId) {
         CampaignNpc cn = masterCampaignNpc(campaignId, npcId, requesterId).cn();
+        return npcVisibilityList(cn);
+    }
+
+    private List<NpcSectionVisibilityResponse> npcVisibilityList(CampaignNpc cn) {
         Set<SheetSection> visible = EnumSet.noneOf(SheetSection.class);
         for (NpcSheetVisibility v : npcVisibilityRepository.findByCampaignNpcId(cn.getId())) {
             if (v.isVisible()) visible.add(v.getSection());
@@ -789,6 +799,25 @@ public class CharacterSheetService {
         return new NpcSectionVisibilityResponse(req.section(), visible);
     }
 
+    @Transactional
+    public List<NpcSectionVisibilityResponse> updateNpcSheetVisibility(UUID campaignId, UUID npcId,
+                                                                       UpdateNpcSheetVisibilityRequest req, UUID requesterId) {
+        var ctx = masterCampaignNpc(campaignId, npcId, requesterId);
+        for (SheetSection sec : req.sections().keySet()) {
+            if (!NPC_SHEET_SECTIONS.contains(sec)) {
+                throw new InvalidCharacterSheetException("Seção inválida para ficha de NPC: " + sec);
+            }
+        }
+        req.sections().forEach((sec, visible) -> {
+            NpcSheetVisibility row = npcVisibilityRepository.findByCampaignNpcIdAndSection(ctx.cn().getId(), sec)
+                    .orElseGet(() -> NpcSheetVisibility.builder().campaignNpc(ctx.cn()).section(sec).build());
+            row.setVisible(Boolean.TRUE.equals(visible));
+            npcVisibilityRepository.save(row);
+        });
+        events.publishEvent(new com.tatakai.manager.campaign.dto.response.CampaignUpdateMessage(campaignId, "NPCS", npcId));
+        return npcVisibilityList(ctx.cn());
+    }
+
     private record MasterCtx(CampaignNpc cn, CampaignMember member) {}
 
     private MasterCtx masterCampaignNpc(UUID campaignId, UUID npcId, UUID requesterId) {
@@ -806,7 +835,12 @@ public class CharacterSheetService {
     private CharacterSheetResponse toResponse(CharacterSheet s, boolean privileged, Set<SheetSection> hidden) {
         boolean showAttr = !hidden.contains(SheetSection.ATTRIBUTES);
         // ficha leve (§51.8): só os atributos crus (pré-preenchimento); nada derivado nem recursos
-        boolean showRes = !hidden.contains(SheetSection.RESOURCES) && s.isCombatReady();
+        boolean resOff = hidden.contains(SheetSection.RESOURCES) || !s.isCombatReady();
+        boolean showHp = !resOff && !hidden.contains(SheetSection.HP);
+        boolean showSp = !resOff && !hidden.contains(SheetSection.SP);
+        boolean showKp = !resOff && !hidden.contains(SheetSection.KP);
+        boolean showFatigue = !resOff && !hidden.contains(SheetSection.FATIGUE);
+        boolean showRadar = !hidden.contains(SheetSection.RADAR);
         boolean showInj = !hidden.contains(SheetSection.INJURIES);
         boolean showInv = !hidden.contains(SheetSection.INVENTORY);
         CampaignMember m = s.getCampaignMember(); // null em ficha de NPC
@@ -829,19 +863,19 @@ public class CharacterSheetService {
                 bands.put(a, SheetRules.band(v));
                 if (a != Attribute.TAL) {
                     int red = SheetRules.injuryLimiter(s.getInjuries(), a);
-                    limiters.put(a, SheetRules.attributeLimiter(a, s.getTal(), s.getBodyType(), red,
+                    if (showRadar) limiters.put(a, SheetRules.attributeLimiter(a, s.getTal(), s.getBodyType(), red,
                             adj.getOrDefault(a.name(), 0)));
                 }
             }
-            if (s.isCombatReady()) derived = new SheetDerived(mods, bands, limiters,
-                    SheetRules.statusLimiter(ResourceType.HP, s.getTal(), s.getBodyType(),
+            if (s.isCombatReady()) derived = new SheetDerived(mods, bands, showRadar ? limiters : null,
+                    !showRadar || !showHp ? null : SheetRules.statusLimiter(ResourceType.HP, s.getTal(), s.getBodyType(),
                             adj.getOrDefault("HP", 0) - SheetRules.injuryHp(s.getInjuries())),
-                    SheetRules.statusLimiter(ResourceType.SP, s.getTal(), s.getBodyType(),
+                    !showRadar || !showSp ? null : SheetRules.statusLimiter(ResourceType.SP, s.getTal(), s.getBodyType(),
                             adj.getOrDefault("SP", 0) - SheetRules.injurySpLimiter(s.getInjuries())),
-                    SheetRules.statusLimiter(ResourceType.KP, s.getTal(), s.getBodyType(),
+                    !showRadar || !showKp ? null : SheetRules.statusLimiter(ResourceType.KP, s.getTal(), s.getBodyType(),
                             adj.getOrDefault("KP", 0)),
                     SheetRules.weightMod(s.getWeightKg()), SheetRules.carryKg(s.getStr()),
-                    criticalState(s, effMax),
+                    showHp ? criticalState(s, effMax) : null,
                     SheetRules.carriedKg(s.getInventory()),
                     SheetRules.loadState(SheetRules.carriedKg(s.getInventory()), SheetRules.carryKg(s.getStr())));
         }
@@ -849,11 +883,17 @@ public class CharacterSheetService {
         SheetResources resources = null;
         SheetFatigue fatigue = null;
         SheetProgress progress = null;
-        if (showRes) {
-            resources = new SheetResources(s.getHpMax(), effMax, s.getSpMax(), s.getKpMax(),
-                    s.getCurrentHp(), s.getCurrentSp(), s.getCurrentKp(), s.getOpenWounds());
+        if (showHp || showSp || showKp) {
+            resources = new SheetResources(showHp ? s.getHpMax() : null, showHp ? effMax : null,
+                    showSp ? s.getSpMax() : null, showKp ? s.getKpMax() : null,
+                    showHp ? s.getCurrentHp() : null, showSp ? s.getCurrentSp() : null,
+                    showKp ? s.getCurrentKp() : null, showHp ? s.getOpenWounds() : null);
+        }
+        if (showFatigue) {
             fatigue = new SheetFatigue(s.getPhysicalFatigue(), SheetRules.fatigueBand(s.getPhysicalFatigue()),
                     s.getMentalFatigue(), SheetRules.fatigueBand(s.getMentalFatigue()));
+        }
+        if (showHp && showSp && showKp) {
             int el = s.getFightExperience();
             progress = new SheetProgress(el, s.getPendingOvercomePoints(), ProgressionRules.keiken(el),
                     ProgressionRules.nextKeikenAt(el), s.getSparringExperience(), ProgressionRules.sparringCap(el),
@@ -876,7 +916,8 @@ public class CharacterSheetService {
                         t.getRarity(), t.getCategory(), t.getDescription(), t.getAcquiredIn(), t.isGainsApplied(),
                         t.isGainsApplied() ? t.getBuildGains() : null))
                 .toList() : null;
-        List<CharacterClanResponse> clans = showTraits ? s.getClans().stream()
+        boolean showClans = npc ? !hidden.contains(SheetSection.CLANS) : showTraits;
+        List<CharacterClanResponse> clans = showClans ? s.getClans().stream()
                 .map(c -> new CharacterClanResponse(c.getId(), c.getClanId(), c.getName(),
                         catalogService.findClan(c.getClanId()).map(Clan::getHeritage).orElse(List.of()), c.getBuildGains()))
                 .toList() : null;
@@ -890,7 +931,9 @@ public class CharacterSheetService {
                 showInv ? s.getMoney() : null, injuries, inventory,
                 s.getVersion() == null ? 0L : s.getVersion(), s.getNpcId(), traits, clans, s.isCombatReady(),
                 imgs.contains(SheetImageKind.PORTRAIT), imgs.contains(SheetImageKind.FULL_BODY),
-                showInj ? List.copyOf(s.getMissingParts() == null ? List.of() : s.getMissingParts()) : null);
+                showInj && !hidden.contains(SheetSection.BODY_MAP)
+                        ? List.copyOf(s.getMissingParts() == null ? List.of() : s.getMissingParts()) : null,
+                null, null);
     }
 
     /** Tipos de imagem por ficha, numa consulta só e sem carregar os bytes. */

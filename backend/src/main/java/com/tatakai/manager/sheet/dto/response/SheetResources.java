@@ -1,4 +1,5 @@
 package com.tatakai.manager.sheet.dto.response;
 
-public record SheetResources(int hpMax, int effectiveHpMax, int spMax, int kpMax,
-        int currentHp, int currentSp, int currentKp, int openWounds) {}
+/** Campos nulos = recurso (HP, SP ou PQ) oculto para quem consulta. */
+public record SheetResources(Integer hpMax, Integer effectiveHpMax, Integer spMax, Integer kpMax,
+        Integer currentHp, Integer currentSp, Integer currentKp, Integer openWounds) {}

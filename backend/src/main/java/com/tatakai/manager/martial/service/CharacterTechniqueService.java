@@ -70,6 +70,7 @@ public class CharacterTechniqueService {
     private final MartialArtRepository martialArtRepository;
     private final SheetActivityLogService activityLog;
     private final ApplicationEventPublisher events;
+    private final com.tatakai.manager.sheet.repository.NpcSheetVisibilityRepository npcVisibilityRepository;
 
     private record Ctx(CharacterSheet sheet, UUID actorId, String actorName, boolean master) {
         ActorRole role() {
@@ -84,7 +85,9 @@ public class CharacterTechniqueService {
                                      CharacterTechniqueRepository techniqueRepository,
                                      MartialArtRepository martialArtRepository,
                                      SheetActivityLogService activityLog,
-                                     ApplicationEventPublisher events) {
+                                     ApplicationEventPublisher events,
+                                     com.tatakai.manager.sheet.repository.NpcSheetVisibilityRepository npcVisibilityRepository) {
+        this.npcVisibilityRepository = npcVisibilityRepository;
         this.sheetRepository = sheetRepository;
         this.memberRepository = memberRepository;
         this.campaignNpcRepository = campaignNpcRepository;
@@ -98,6 +101,37 @@ public class CharacterTechniqueService {
     @Transactional(readOnly = true)
     public SheetMartialResponse get(UUID sheetId, UUID requesterId) {
         return response(load(sheetId, requesterId).sheet());
+    }
+
+    /**
+     * Leitura marcial da ficha de NPC por quem está na campanha. Mestre vê tudo; jogador só o que o Mestre liberou
+     * (ARTS/BASES/TECHNIQUES). Sem ARTS, as técnicas/bases liberadas saem sem a arte (characterArtId e borrowedFrom nulos).
+     * Ficha leve (combatReady=false) devolve vazio.
+     */
+    @Transactional(readOnly = true)
+    public SheetMartialResponse getNpcMartialInCampaign(UUID campaignId, UUID npcId, UUID requesterId) {
+        CampaignMember member = memberRepository.findByCampaignIdAndUserId(campaignId, requesterId)
+                .orElseThrow(() -> new AccessDeniedException("Você não pertence a esta campanha"));
+        CampaignNpc cn = campaignNpcRepository.findByCampaignIdAndNpcId(campaignId, npcId)
+                .orElseThrow(com.tatakai.manager.npc.exception.NpcNotFoundException::new);
+        boolean master = member.getRole() == Role.MASTER;
+        if (!master && !cn.isVisible()) throw new com.tatakai.manager.npc.exception.NpcNotFoundException();
+        CharacterSheet sheet = sheetRepository.findByNpcId(npcId).orElseThrow(CharacterSheetNotFoundException::new);
+        if (!sheet.isCombatReady()) return new SheetMartialResponse(List.of(), List.of());
+        SheetMartialResponse full = response(sheet);
+        if (master) return full;
+        var visible = com.tatakai.manager.sheet.service.rules.NpcVisibilityRules.visible(
+                npcVisibilityRepository.findByCampaignNpcId(cn.getId()));
+        boolean arts = visible.contains(com.tatakai.manager.sheet.entity.SheetSection.ARTS);
+        boolean bases = visible.contains(com.tatakai.manager.sheet.entity.SheetSection.BASES);
+        boolean techs = visible.contains(com.tatakai.manager.sheet.entity.SheetSection.TECHNIQUES);
+        List<CharacterTechniqueResponse> moves = full.techniques().stream()
+                .filter(t -> t.kind() == MoveKind.BASE ? bases : techs)
+                .map(t -> arts ? t : new CharacterTechniqueResponse(t.id(), null, t.kind(), t.name(), t.graduation(),
+                        t.complexity(), t.trainingPoints(), t.trainingProgress(), t.state(), t.mastery(),
+                        t.masteryPoints(), t.nextLevelCost(), t.bonuses(), null, t.assembled(), t.taughtBy()))
+                .toList();
+        return new SheetMartialResponse(arts ? full.arts() : List.of(), moves);
     }
 
     // ---------------------------------------------------------------- artes

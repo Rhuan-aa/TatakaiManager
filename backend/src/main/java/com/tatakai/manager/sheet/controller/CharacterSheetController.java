@@ -32,9 +32,12 @@ public class CharacterSheetController {
     private final CharacterSheetService sheetService;
     private final RollService rollService;
     private final com.tatakai.manager.sheet.service.RandomSheetService randomSheetService;
+    private final com.tatakai.manager.martial.service.CharacterTechniqueService techniqueService;
 
     public CharacterSheetController(CharacterSheetService sheetService, RollService rollService,
-                                    com.tatakai.manager.sheet.service.RandomSheetService randomSheetService) {
+                                    com.tatakai.manager.sheet.service.RandomSheetService randomSheetService,
+                                    com.tatakai.manager.martial.service.CharacterTechniqueService techniqueService) {
+        this.techniqueService = techniqueService;
         this.randomSheetService = randomSheetService;
         this.sheetService = sheetService;
         this.rollService = rollService;
@@ -149,5 +152,18 @@ public class CharacterSheetController {
                                                                               @PathVariable UUID npcId,
                                                                               @Valid @RequestBody SetNpcSectionVisibilityRequest request) {
         return ResponseEntity.ok(sheetService.setNpcSheetVisibility(campaignId, npcId, request, AuthenticatedUser.id()));
+    }
+
+    @GetMapping("/campaigns/{campaignId}/npcs/{npcId}/sheet/martial")
+    public ResponseEntity<com.tatakai.manager.martial.dto.response.SheetMartialResponse> getNpcMartial(
+            @PathVariable UUID campaignId, @PathVariable UUID npcId) {
+        return ResponseEntity.ok(techniqueService.getNpcMartialInCampaign(campaignId, npcId, AuthenticatedUser.id()));
+    }
+
+    @PutMapping("/campaigns/{campaignId}/npcs/{npcId}/sheet/visibility")
+    public ResponseEntity<List<NpcSectionVisibilityResponse>> updateNpcSheetVisibility(@PathVariable UUID campaignId,
+                                                                                      @PathVariable UUID npcId,
+                                                                                      @Valid @RequestBody com.tatakai.manager.sheet.dto.request.UpdateNpcSheetVisibilityRequest request) {
+        return ResponseEntity.ok(sheetService.updateNpcSheetVisibility(campaignId, npcId, request, AuthenticatedUser.id()));
     }
 }

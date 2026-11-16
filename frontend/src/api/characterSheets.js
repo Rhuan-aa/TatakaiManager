@@ -95,6 +95,16 @@ export async function setNpcSheetVisibility(campaignId, npcId, { section, visibl
   return data;
 }
 
+export async function updateNpcSheetVisibility(campaignId, npcId, sections) {
+  const { data } = await client.put(`/campaigns/${campaignId}/npcs/${npcId}/sheet/visibility`, { sections });
+  return data;
+}
+
+export async function getNpcSheetMartial(campaignId, npcId) {
+  const { data } = await client.get(`/campaigns/${campaignId}/npcs/${npcId}/sheet/martial`);
+  return data;
+}
+
 export async function exportSheet(sheetId, fallbackName = 'ficha') {
   const res = await client.get(`/character-sheets/${sheetId}/export`, { responseType: 'blob' });
   const cd = res.headers['content-disposition'] ?? '';
