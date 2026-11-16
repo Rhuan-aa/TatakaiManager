@@ -24,7 +24,7 @@ import NotebookPanel from './NotebookPanel';
 import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, KEIKEN, KEIKEN_MIN, label } from './sheetRules';
 import { RARITY, rarityTagStyle } from '../ui/rarity';
 import RichText from '../ui/RichText';
-import { ITEM_LOCATION } from '../ui/gear';
+import InventoryGrid from './InventoryGrid';
 import Icon from '../ui/Icon';
 import BleedEdge from '../ui/BleedEdge';
 import ConditionFx from '../ui/ConditionFx';
@@ -32,13 +32,6 @@ import useSheetConditions from './useSheetConditions';
 import { themeFor } from '../combat/conditionThemes';
 
 const kg = (v) => (Math.round((v ?? 0) * 10) / 10).toString().replace('.', ',');
-// Carga (capítulo de Condições): efeitos de cada estado acima da Carga
-const LOAD_LABEL = { OVERLOADED: 'Sobrecarregado', LIMIT: 'Limite', IMPOSSIBLE: 'Impossível' };
-const LOAD_HINT = {
-  OVERLOADED: 'Movimentação pela metade; desvantagem em Destreza e Esquivas.',
-  LIMIT: 'Só pode erguer ou arrastar (Ação Maior + teste de Força).',
-  IMPOSSIBLE: 'O peso não se move.',
-};
 
 const STATUS = { DRAFT: 'Rascunho', PENDING_APPROVAL: 'Aguardando aprovação', COMPLETED: 'Aprovada', IN_BUILD: 'Em construção' };
 const SEVERITY = { MINOR: 'Leve', MODERATE: 'Moderado', SEVERE: 'Grave', LETHAL: 'Letal' };
@@ -552,25 +545,9 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   );
 
   const inventory = (
-    <Block title="Inventário" aside={sheet.money != null && (
-      <span className="tag" style={{ borderColor: 'var(--chip-el)', color: 'var(--chip-el)' }}>Diárias {sheet.money}</span>
-    )}>
-      {d && d.loadState !== 'FREE' && (
-        <p className="mb-2 text-sm"><span className="tag tag-accent">{LOAD_LABEL[d.loadState]}</span> {LOAD_HINT[d.loadState]}</p>
-      )}
-      {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : sheet.inventory.length === 0 ? (
-        <p className="text-sm">Inventário vazio.</p>
-      ) : (
-        <ul className="flex flex-col gap-1 text-sm">
-          {sheet.inventory.map((i) => (
-            <li key={i.id}>
-              {i.quantity}× <strong>{i.name}</strong>{i.weightKg > 0 && ` · ${kg(i.weightKg * i.quantity)} kg`}
-              {i.location && i.location !== 'PACK' && <span className="tag ml-1">{ITEM_LOCATION[i.location]}</span>}
-              {(i.jammed || i.broken || i.damaged) && <span className="tag tag-accent ml-1">{i.broken ? 'quebrada' : i.jammed ? 'travada' : 'danificada'}</span>}
-              {i.description && ` — ${i.description}`}
-            </li>
-          ))}
-        </ul>
+    <Block title="Inventário">
+      {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : (
+        <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} />
       )}
     </Block>
   );
