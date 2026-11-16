@@ -79,6 +79,7 @@ public class GlobalExceptionHandler {
             BookingNotFoundException.class, MemberNotFoundException.class,
             TimeSkipActivityNotFoundException.class, LogNotFoundException.class,
             CharacterSheetNotFoundException.class, SheetEntryNotFoundException.class,
+            com.tatakai.manager.catalog.exception.CatalogItemNotFoundException.class,
             RollNotFoundException.class, EncounterNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

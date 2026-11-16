@@ -276,3 +276,16 @@ CREATE TABLE character_builds (
     version     BIGINT NOT NULL DEFAULT 0,
     updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Imagem opcional de itens do catálogo estático; campaign_id nulo = global.
+CREATE TABLE catalog_item_images (
+    id                 UUID PRIMARY KEY,
+    kind               VARCHAR(20) NOT NULL,
+    item_key           VARCHAR(40) NOT NULL,
+    campaign_id        UUID,
+    content_type       VARCHAR(100) NOT NULL,
+    data               BYTEA NOT NULL,
+    thumb_content_type VARCHAR(100) NOT NULL,
+    thumb              BYTEA NOT NULL,
+    UNIQUE NULLS NOT DISTINCT (kind, item_key, campaign_id)
+);

@@ -496,7 +496,7 @@ public class CatalogService {
                 ? clanRepository.findByCampaignIdIsNull() : clanRepository.findByCampaignId(campaignIdOrNull));
     }
 
-    private boolean isGlobalEditor(UUID userId) {
+    public boolean isGlobalEditor(UUID userId) {
         return !editors.isEmpty() && userRepository.findById(userId)
                 .map(u -> u.getEmail() != null && editors.contains(u.getEmail().trim().toLowerCase()))
                 .orElse(false);
