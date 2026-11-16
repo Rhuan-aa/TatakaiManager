@@ -88,6 +88,7 @@ class NpcSheetServiceTest {
     @Mock private com.tatakai.manager.campaign.service.CampaignRuleService ruleService;
     @Mock private com.tatakai.manager.catalog.service.CatalogService catalogService;
     @Mock private com.tatakai.manager.build.repository.CharacterBuildRepository buildRepository;
+    @Mock private com.tatakai.manager.sheet.repository.SheetImageRepository imageRepository;
 
     private CharacterSheetService service;
     private User owner;
@@ -102,7 +103,7 @@ class NpcSheetServiceTest {
     void setUp() {
         service = new CharacterSheetService(sheetRepository, memberRepository, visibilityRepository,
                 activityLog, events, campaignNpcRepository, npcVisibilityRepository, npcRepository, userRepository,
-                ruleService, catalogService, buildRepository);
+                ruleService, catalogService, buildRepository, imageRepository);
         owner = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         stranger = User.builder().id(UUID.randomUUID()).name("Intruso").build();
         playerUser = User.builder().id(UUID.randomUUID()).name("Ana").build();

@@ -25,5 +25,6 @@ public record CharacterSheetResponse(
         UUID npcId,                               // null em ficha de jogador
         List<CharacterTraitResponse> traits,      // null se TRAITS oculta
         List<CharacterClanResponse> clans,        // null se TRAITS oculta
-        boolean combatReady                       // false = ficha leve de NPC (sem atributos/recursos)
+        boolean combatReady,                      // false = ficha leve de NPC (sem atributos/recursos)
+        boolean hasPortrait, boolean hasFullBody
 ) {}

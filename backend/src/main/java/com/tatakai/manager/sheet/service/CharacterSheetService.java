@@ -77,6 +77,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tatakai.manager.sheet.entity.SheetImageKind;
+import com.tatakai.manager.sheet.repository.SheetImageRepository;
+
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -110,6 +113,7 @@ public class CharacterSheetService {
                           boolean master, boolean owner, boolean privileged) {}
 
     /** Catálogo estático (só leitura do classpath): instanciado aqui para não mexer no construtor. */
+    private final SheetImageRepository imageRepository;
     private final WeaponCatalog weaponCatalog = new WeaponCatalog();
     private final EquipmentCatalog equipmentCatalog = new EquipmentCatalog();
     private final ConsumableCatalog consumableCatalog = new ConsumableCatalog();
@@ -125,7 +129,8 @@ public class CharacterSheetService {
                                  UserRepository userRepository,
                                  CampaignRuleService ruleService,
                                  CatalogService catalogService,
-                                 CharacterBuildRepository buildRepository) {
+                                 CharacterBuildRepository buildRepository,
+                                 SheetImageRepository imageRepository) {
         this.sheetRepository = sheetRepository;
         this.memberRepository = memberRepository;
         this.visibilityRepository = visibilityRepository;
@@ -138,6 +143,7 @@ public class CharacterSheetService {
         this.ruleService = ruleService;
         this.catalogService = catalogService;
         this.buildRepository = buildRepository;
+        this.imageRepository = imageRepository;
     }
 
     @Transactional
@@ -168,10 +174,13 @@ public class CharacterSheetService {
     public List<CharacterSheetSummaryResponse> listForCampaign(UUID campaignId, UUID requesterId) {
         CampaignMember requester = requireMembership(campaignId, requesterId);
         boolean master = requester.getRole() == Role.MASTER;
-        return sheetRepository.findByCampaignMemberCampaignId(campaignId).stream()
+        List<CharacterSheet> sheets = sheetRepository.findByCampaignMemberCampaignId(campaignId);
+        Map<UUID, Set<SheetImageKind>> images = imageKinds(sheets.stream().map(CharacterSheet::getId).toList());
+        return sheets.stream()
                 .map(s -> {
                     boolean privileged = master || s.getCampaignMember().getUser().getId().equals(requesterId);
-                    return toSummary(s, hiddenSections(s, privileged));
+                    return toSummary(s, hiddenSections(s, privileged),
+                            images.getOrDefault(s.getId(), Set.of()));
                 })
                 .toList();
     }
@@ -862,15 +871,29 @@ public class CharacterSheetService {
                         catalogService.findClan(c.getClanId()).map(Clan::getHeritage).orElse(List.of()), c.getBuildGains()))
                 .toList() : null;
 
+        Set<SheetImageKind> imgs = s.getId() == null ? Set.of()
+                : imageKinds(List.of(s.getId())).getOrDefault(s.getId(), Set.of());
         return new CharacterSheetResponse(s.getId(), npc ? null : m.getCampaign().getId(),
                 npc ? s.getNpcOwnerId() : m.getUser().getId(),
                 npc ? null : m.getUser().getName(), s.getName(), s.getBuildStatus(), s.getBodyType(), s.getDominance(),
                 s.getHeightM(), s.getWeightKg(), attributes, derived, resources, fatigue, progress,
                 showInv ? s.getMoney() : null, injuries, inventory,
-                s.getVersion() == null ? 0L : s.getVersion(), s.getNpcId(), traits, clans, s.isCombatReady());
+                s.getVersion() == null ? 0L : s.getVersion(), s.getNpcId(), traits, clans, s.isCombatReady(),
+                imgs.contains(SheetImageKind.PORTRAIT), imgs.contains(SheetImageKind.FULL_BODY));
     }
 
-    private CharacterSheetSummaryResponse toSummary(CharacterSheet s, Set<SheetSection> hidden) {
+    /** Tipos de imagem por ficha, numa consulta só e sem carregar os bytes. */
+    private Map<UUID, Set<SheetImageKind>> imageKinds(java.util.Collection<UUID> sheetIds) {
+        Map<UUID, Set<SheetImageKind>> out = new java.util.HashMap<>();
+        if (sheetIds.isEmpty()) return out;
+        for (SheetImageRepository.Key k : imageRepository.findKeys(sheetIds)) {
+            out.computeIfAbsent(k.sheetId(), x -> EnumSet.noneOf(SheetImageKind.class)).add(k.kind());
+        }
+        return out;
+    }
+
+    private CharacterSheetSummaryResponse toSummary(CharacterSheet s, Set<SheetSection> hidden,
+                                                    Set<SheetImageKind> images) {
         boolean showRes = !hidden.contains(SheetSection.RESOURCES);
         CampaignMember m = s.getCampaignMember();
         int effMax = SheetRules.effectiveHpMax(s.getHpMax(), s.getInjuries());
@@ -879,7 +902,8 @@ public class CharacterSheetService {
                 showRes ? s.getCurrentHp() : null, showRes ? effMax : null,
                 showRes ? s.getCurrentSp() : null, showRes ? s.getSpMax() : null,
                 showRes ? s.getCurrentKp() : null, showRes ? s.getKpMax() : null,
-                showRes ? criticalState(s, effMax) : null);
+                showRes ? criticalState(s, effMax) : null,
+                images.contains(SheetImageKind.PORTRAIT), images.contains(SheetImageKind.FULL_BODY));
     }
 
     private boolean criticalState(CharacterSheet s, int effMax) {
