@@ -457,7 +457,7 @@ class CharacterSheetServiceTest {
     @DisplayName("ADD_INJURY reduz o HP máximo efetivo e limita o HP atual")
     void gm_addInjury_reducesEffectiveHp() {
         GmAdjustmentRequest req = new GmAdjustmentRequest(GmAction.ADD_INJURY, null, null, "golpe",
-                new InjuryPayload(InjuryType.CUTTING, "braço", InjurySeverity.SEVERE, null, null), null, null);
+                new InjuryPayload(InjuryType.CUTTING, "braço", InjurySeverity.SEVERE, null, null, null), null, null);
 
         CharacterSheetResponse r = service.applyGmAdjustment(sheet.getId(), req, masterUser.getId());
 
@@ -467,6 +467,51 @@ class CharacterSheetServiceTest {
         assertThat(sheet.getCurrentHp()).isEqualTo(13);
         assertThat(r.injuries()).hasSize(1);
         assertPublishedAndLogged(ActivityCategory.GM_ADJUSTMENT, "ADD_INJURY");
+    }
+
+    @Test
+    @DisplayName("ADD_INJURY grava a parte do corpo")
+    void gm_addInjury_bodyPart() {
+        GmAdjustmentRequest req = new GmAdjustmentRequest(GmAction.ADD_INJURY, null, null, "golpe",
+                new InjuryPayload(InjuryType.CUTTING, "antebraço", InjurySeverity.SEVERE, null, null,
+                        com.tatakai.manager.sheet.entity.BodyPart.LEFT_ARM), null, null);
+
+        CharacterSheetResponse r = service.applyGmAdjustment(sheet.getId(), req, masterUser.getId());
+
+        assertThat(sheet.getInjuries().get(0).getBodyPart()).isEqualTo(com.tatakai.manager.sheet.entity.BodyPart.LEFT_ARM);
+        assertThat(r.injuries().get(0).bodyPart()).isEqualTo(com.tatakai.manager.sheet.entity.BodyPart.LEFT_ARM);
+    }
+
+    private GmAdjustmentRequest missingReq(com.tatakai.manager.sheet.entity.BodyPart part, Boolean missing) {
+        return new GmAdjustmentRequest(GmAction.SET_MISSING_PART, null, null, "perdeu", null, null, null, part, missing);
+    }
+
+    @Test
+    @DisplayName("SET_MISSING_PART marca e desmarca sem mexer em HP")
+    void gm_setMissingPart() {
+        var hand = com.tatakai.manager.sheet.entity.BodyPart.RIGHT_HAND;
+        CharacterSheetResponse r = service.applyGmAdjustment(sheet.getId(), missingReq(hand, true), masterUser.getId());
+        assertThat(r.missingParts()).containsExactly(hand);
+        assertThat(sheet.getCurrentHp()).isEqualTo(22);
+        assertPublishedAndLogged(ActivityCategory.GM_ADJUSTMENT, "SET_MISSING_PART");
+
+        r = service.applyGmAdjustment(sheet.getId(), missingReq(hand, false), masterUser.getId());
+        assertThat(r.missingParts()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("SET_MISSING_PART sem parte do corpo é inválido")
+    void gm_setMissingPart_noPart() {
+        assertThatThrownBy(() -> service.applyGmAdjustment(sheet.getId(), missingReq(null, true), masterUser.getId()))
+                .isInstanceOf(com.tatakai.manager.sheet.exception.InvalidCharacterSheetException.class);
+    }
+
+    @Test
+    @DisplayName("missingParts é null com INJURIES oculta para outro jogador")
+    void get_missingParts_hidden() {
+        when(visibilityRepository.findByCampaignMemberId(playerMember.getId()))
+                .thenReturn(List.of(hidden(SheetSection.INJURIES)));
+        assertThat(service.get(sheet.getId(), otherUser.getId()).missingParts()).isNull();
     }
 
     @Test

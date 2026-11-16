@@ -3,6 +3,7 @@ package com.tatakai.manager.sheet.dto.response;
 import com.tatakai.manager.build.entity.BuildStatus;
 import com.tatakai.manager.progression.dto.response.SheetProgress;
 import com.tatakai.manager.sheet.entity.Attribute;
+import com.tatakai.manager.sheet.entity.BodyPart;
 import com.tatakai.manager.sheet.entity.BodyType;
 import com.tatakai.manager.sheet.entity.Dominance;
 
@@ -26,5 +27,6 @@ public record CharacterSheetResponse(
         List<CharacterTraitResponse> traits,      // null se TRAITS oculta
         List<CharacterClanResponse> clans,        // null se TRAITS oculta
         boolean combatReady,                      // false = ficha leve de NPC (sem atributos/recursos)
-        boolean hasPortrait, boolean hasFullBody
+        boolean hasPortrait, boolean hasFullBody,
+        List<BodyPart> missingParts               // null se INJURIES oculta
 ) {}

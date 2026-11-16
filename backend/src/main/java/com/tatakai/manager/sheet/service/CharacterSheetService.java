@@ -417,6 +417,7 @@ public class CharacterSheetService {
                         .sheet(s)
                         .type(p.type())
                         .region(p.region())
+                        .bodyPart(p.bodyPart())
                         .severity(p.severity())
                         .hpMaxReduction(SheetRules.injuryHpReduction(p.severity(), p.type(), s.getHpMax(), p.damage()))
                         .limiterReduction(SheetRules.injuryLimiterReduction(p.severity()))
@@ -426,6 +427,15 @@ public class CharacterSheetService {
                 s.setCurrentHp(Math.min(s.getCurrentHp(), SheetRules.effectiveHpMax(s.getHpMax(), s.getInjuries())));
                 return new Change(gm, "injury", null,
                         p.type() + "/" + p.severity() + "/" + p.region() + " (-" + injury.getHpMaxReduction() + " HP)");
+            }
+            case SET_MISSING_PART -> {
+                if (req.bodyPart() == null) throw new InvalidCharacterSheetException("Informe a parte do corpo");
+                if (s.getMissingParts() == null) s.setMissingParts(new java.util.ArrayList<>());
+                boolean before = s.getMissingParts().contains(req.bodyPart());
+                boolean after = Boolean.TRUE.equals(req.missing());
+                if (after && !before) s.getMissingParts().add(req.bodyPart());
+                if (!after) s.getMissingParts().remove(req.bodyPart());
+                return new Change(gm, "missingPart:" + req.bodyPart(), before, after);
             }
             case TREAT_INJURY -> {
                 PermanentInjury injury = findInjury(s, req.targetId());
@@ -853,7 +863,7 @@ public class CharacterSheetService {
         List<InjuryResponse> injuries = showInj ? s.getInjuries().stream()
                 .map(i -> new InjuryResponse(i.getId(), i.getType(), i.getRegion(), i.getSeverity(),
                         i.getHpMaxReduction(), i.getLimiterReduction(), i.getAffectedAttribute(),
-                        i.isTreated(), i.getCreatedAt()))
+                        i.isTreated(), i.getCreatedAt(), i.getBodyPart()))
                 .toList() : null;
         List<InventoryItemResponse> inventory = showInv ? s.getInventory().stream()
                 .map(InventoryItemResponse::of)
@@ -879,7 +889,8 @@ public class CharacterSheetService {
                 s.getHeightM(), s.getWeightKg(), attributes, derived, resources, fatigue, progress,
                 showInv ? s.getMoney() : null, injuries, inventory,
                 s.getVersion() == null ? 0L : s.getVersion(), s.getNpcId(), traits, clans, s.isCombatReady(),
-                imgs.contains(SheetImageKind.PORTRAIT), imgs.contains(SheetImageKind.FULL_BODY));
+                imgs.contains(SheetImageKind.PORTRAIT), imgs.contains(SheetImageKind.FULL_BODY),
+                showInj ? List.copyOf(s.getMissingParts() == null ? List.of() : s.getMissingParts()) : null);
     }
 
     /** Tipos de imagem por ficha, numa consulta só e sem carregar os bytes. */

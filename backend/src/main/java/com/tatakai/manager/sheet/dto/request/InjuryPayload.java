@@ -1,6 +1,7 @@
 package com.tatakai.manager.sheet.dto.request;
 
 import com.tatakai.manager.sheet.entity.Attribute;
+import com.tatakai.manager.sheet.entity.BodyPart;
 import com.tatakai.manager.sheet.entity.InjurySeverity;
 import com.tatakai.manager.sheet.entity.InjuryType;
 
@@ -16,5 +17,6 @@ public record InjuryPayload(
         @NotNull InjurySeverity severity,
         /** usado só em BLUNT */
         @Min(0) Integer damage,
-        Attribute affectedAttribute
+        Attribute affectedAttribute,
+        BodyPart bodyPart
 ) {}

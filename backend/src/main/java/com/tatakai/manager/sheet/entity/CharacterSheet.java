@@ -143,6 +143,12 @@ public class CharacterSheet {
     @Builder.Default
     private List<CharacterClan> clans = new ArrayList<>();
 
+    /** Partes do corpo perdidas: só marcação visual, sem efeito mecânico. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "missing_parts", columnDefinition = "jsonb default '[]'")
+    @Builder.Default
+    private List<BodyPart> missingParts = new ArrayList<>();
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

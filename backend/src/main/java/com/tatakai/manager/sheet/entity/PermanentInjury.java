@@ -35,6 +35,11 @@ public class PermanentInjury {
     @Column(nullable = false, length = 20)
     private InjurySeverity severity;
 
+    /** Parte do corpo atingida (opcional; {@code region} segue como texto livre). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "body_part", length = 20)
+    private BodyPart bodyPart;
+
     private int hpMaxReduction;
     private int limiterReduction;
 

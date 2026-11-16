@@ -176,7 +176,7 @@ public class SheetExportService {
                                 i.getWeaponKey(), i.getEquipmentKey(), i.getConsumableKey())).toList() : null,
                 inj ? s.getInjuries().stream()
                         .map(i -> new InjuryData(i.getType(), i.getRegion(), i.getSeverity(), i.getHpMaxReduction(),
-                                i.getLimiterReduction(), i.getAffectedAttribute(), i.isTreated())).toList() : null);
+                                i.getLimiterReduction(), i.getAffectedAttribute(), i.isTreated(), i.getBodyPart())).toList() : null);
 
         List<CharacterTechnique> techs = techniqueRepository.findBySheetIdOrderByCreatedAt(s.getId());
         List<ArtData> arts = artRepository.findBySheetIdOrderByCreatedAt(s.getId()).stream()
@@ -262,7 +262,7 @@ public class SheetExportService {
                 s.getInjuries().add(PermanentInjury.builder().sheet(s).type(i.type()).region(i.region())
                         .severity(i.severity()).hpMaxReduction(i.hpMaxReduction())
                         .limiterReduction(i.limiterReduction()).affectedAttribute(i.affectedAttribute())
-                        .treated(i.treated()).build());
+                        .treated(i.treated()).bodyPart(i.bodyPart()).build());
             }
         }
         // recursos atuais: ausentes = cheios; acima do máximo = cortados (aviso)

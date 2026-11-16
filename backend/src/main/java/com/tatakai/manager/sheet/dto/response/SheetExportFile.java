@@ -66,7 +66,13 @@ public record SheetExportFile(
     }
 
     public record InjuryData(InjuryType type, String region, InjurySeverity severity, int hpMaxReduction,
-                             int limiterReduction, Attribute affectedAttribute, boolean treated) {}
+                             int limiterReduction, Attribute affectedAttribute, boolean treated,
+                             com.tatakai.manager.sheet.entity.BodyPart bodyPart) {
+        public InjuryData(InjuryType type, String region, InjurySeverity severity, int hpMaxReduction,
+                          int limiterReduction, Attribute affectedAttribute, boolean treated) {
+            this(type, region, severity, hpMaxReduction, limiterReduction, affectedAttribute, treated, null);
+        }
+    }
 
     public record TraitData(UUID traitId, int traitVersion, String name, TraitRarity rarity, TraitCategory category,
                             String description, BuildGains buildGains, TraitAcquisition acquiredIn,
