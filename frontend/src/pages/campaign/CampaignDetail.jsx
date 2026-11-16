@@ -106,7 +106,7 @@ export default function CampaignDetail() {
   const meta = TAB_META[activeTab] ?? TAB_META.NPCs;
 
   return (
-    <AppShell items={sidebarItems}
+    <AppShell items={sidebarItems} maxWidth={activeTab === 'Fichas' && sheetBack ? 'max-w-[1800px]' : undefined}
       backAction={activeTab === 'Fichas' && sheetBack ? { label: 'Fichas', onClick: sheetBack } : undefined}>
       {loading && (
         <div className="space-y-6">

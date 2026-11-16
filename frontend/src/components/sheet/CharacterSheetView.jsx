@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
+import SheetTabs from './SheetTabs';
+import SheetImagePicker from './SheetImagePicker';
+import LimiterRadar from './LimiterRadar';
+import BodyMap, { BODY_PART_LABELS } from './BodyMap';
+import FighterPlaceholder from './FighterPlaceholder';
 import SheetVisibilityPanel from './SheetVisibilityPanel';
-import { exportSheet } from '../../api/characterSheets';
+import { exportSheet, getSheetImageUrl } from '../../api/characterSheets';
 import { listTraits } from '../../api/catalog';
 import { Effects, Variations } from '../catalog/CatalogManager';
 import { approveSheet, updateResources } from '../../api/characterSheets';
@@ -275,14 +280,47 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const isMaster = isNpc ? isOwner : isCampaignMaster;
   const draft = isNpc || sheet.buildStatus === 'DRAFT';
 
-  // Âncora vinda da aba Aprovações: rola até o bloco ao montar (e de novo quando os painéis assíncronos mudam a altura).
+  const FOCUS_TAB = { martial: 'martial', notebook: 'martial', progress: 'progress' };
+  const tabKey = `sheetTab:${sheet.id}`;
+  const [tab, setTab] = useState(() => {
+    if (FOCUS_TAB[focusSection]) return FOCUS_TAB[focusSection];
+    try { return sessionStorage.getItem(tabKey) || 'overview'; } catch { return 'overview'; }
+  });
+  const [printing, setPrinting] = useState(false);
+  function selectTab(id) {
+    setTab(id);
+    try { sessionStorage.setItem(tabKey, id); } catch { /* sem storage */ }
+  }
+  useEffect(() => {
+    const on = () => setPrinting(true);
+    const off = () => setPrinting(false);
+    window.addEventListener('beforeprint', on);
+    window.addEventListener('afterprint', off);
+    return () => { window.removeEventListener('beforeprint', on); window.removeEventListener('afterprint', off); };
+  }, []);
+
+  // Âncora vinda da aba Aprovações: abre a aba certa e rola até o bloco (de novo quando os painéis assíncronos mudam a altura).
   useEffect(() => {
     if (!focusSection) return undefined;
+    if (FOCUS_TAB[focusSection]) setTab(FOCUS_TAB[focusSection]);
     const go = () => document.getElementById(`sheet-${focusSection}`)?.scrollIntoView({ block: 'start' });
-    go();
+    const t0 = setTimeout(go, 50);
     const t = setTimeout(go, 600);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t0); clearTimeout(t); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusSection]);
+
+  // Retrato: imagem autenticada como blob; revoga o object URL ao trocar/desmontar.
+  const [portraitUrl, setPortraitUrl] = useState(null);
+  useEffect(() => {
+    if (!sheet.hasPortrait) return undefined;
+    let active = true;
+    let url = null;
+    getSheetImageUrl(sheet.id, 'PORTRAIT').then((u) => {
+      if (active) { url = u; setPortraitUrl(u); } else URL.revokeObjectURL(u);
+    }).catch(() => {});
+    return () => { active = false; if (url) URL.revokeObjectURL(url); setPortraitUrl(null); };
+  }, [sheet.id, sheet.hasPortrait, sheet.version]);
 
   const [reopenReason, setReopenReason] = useState('');
   async function reopen(e) {
@@ -333,27 +371,66 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
     }
   } : undefined;
 
-  return (
-    <div className="page-gutter flex flex-col">
-      {r && <BleedEdge wounds={r.openWounds} page />}
-      <ConditionFx entries={[...(r?.openWounds > 0 ? [{ id: `w${r.openWounds}`, anchorId: null, key: 'FERIDA', name: `Feridas abertas ${r.openWounds}` }] : []), ...condFx]} />
-      <div className="flex flex-wrap items-center gap-3">
-        {onBack && <button type="button" className="btn-ghost" onClick={onBack}><Icon name="back" size={18} /> Fichas</button>}
-        <h2 className="panel-title flex-1 text-2xl">{sheet.name}</h2>
-        {!isNpc && <span className="tag-accent tag">{STATUS[sheet.buildStatus]}</span>}
-        {d?.criticalState && <span className="tag">Estado crítico</span>}
-        <button type="button" className="btn-secondary no-print" onClick={async () => {
-          try { await exportSheet(sheet.id, sheet.name); } catch (err) { toast(parseApiError(err).message, 'error'); }
-        }}>Exportar JSON</button>
-        <button type="button" className="btn-secondary no-print" onClick={() => {
-          // abre os traços antes para dar tempo de carregar efeitos/variações
-          window.dispatchEvent(new Event('beforeprint'));
-          setTimeout(() => window.print(), 600);
-        }}>Imprimir / PDF</button>
+  const rev = refreshKey + sheet.version;
+  const seesPrivate = isOwner || isMaster;
+  const radarAxes = sheet.attributes && r && d?.limiters ? [
+    ...ATTRS.filter((a) => a.key !== 'tal').map((a) => ({ key: a.key, label: a.label, value: sheet.attributes[a.enumName], limit: d.limiters[a.enumName] })),
+    { key: 'hp', label: 'HP', value: r.hpMax, limit: d.hpLimiter },
+    { key: 'sp', label: 'SP', value: r.spMax, limit: d.spLimiter },
+    { key: 'kp', label: 'PQ', value: r.kpMax, limit: d.kpLimiter },
+  ] : null;
+
+  const overview = (
+    <div className="sheet-overview">
+      <div className="sheet-col">
+        <div className="portrait-frame">
+          {portraitUrl
+            ? <img src={portraitUrl} alt={`Retrato de ${sheet.name}`} />
+            : <FighterPlaceholder className="portrait-ph" />}
+        </div>
+        <div className="panel hero-card p-3">
+          <div className="grid grid-cols-2 gap-2" aria-label="Identidade">
+            <IdentityChip icon={ICON.ruler} title="Altura" value={`${sheet.heightM} m`} />
+            <IdentityChip icon={<BodyIcon type={sheet.bodyType} />} title="Tipo corporal" value={label(BODY_TYPES, sheet.bodyType)} />
+            <IdentityChip icon={ICON.hand} title="Dominância" value={label(DOMINANCES, sheet.dominance)} />
+            <IdentityChip icon={ICON.scale} title="Peso" value={`${sheet.weightKg} kg`} corner={d?.weightMod} />
+            {d && <IdentityChip icon={ICON.pack} title="Carga" value={`${kg(d.carriedKg)} / ${d.carryKg} kg`} />}
+            {p && <IdentityChip icon={ICON.belt} title="Keiken" value={KEIKEN[p.keiken]} color="var(--keiken)" />}
+          </div>
+        </div>
+        {seesPrivate && (
+          <Block title="Imagens do lutador" collapsible>
+            <SheetImagePicker sheet={sheet} onChange={onChange} />
+          </Block>
+        )}
       </div>
-      {!isNpc && <p className="caption self-start">Jogador · {sheet.ownerName}</p>}
-      <div className="sheet-layout">
-        <aside className="sheet-rail" aria-label="Resumo da ficha">
+
+      <div className="sheet-col">
+        {condFx.length > 0 && (
+          <div className="panel flex flex-wrap items-center gap-2 p-2" aria-label="Condições em combate">
+            <span className="caption">Em combate</span>
+            {condFx.map((c) => {
+              const t = themeFor(c.key, c.name);
+              return (
+                <span key={c.id} className="cond-chip" style={{ '--fx-color': t.color }}>
+                  <Icon name={t.icon} size={16} />{t.word} {c.name}
+                </span>
+              );
+            })}
+          </div>
+        )}
+        {!isNpc && isMaster && sheet.buildStatus === 'PENDING_APPROVAL' && (
+          <Block title="Aprovação">
+            <label className="label">
+              Motivo (opcional)
+              <input className="field mt-1 w-full" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+            </label>
+            <div className="mt-3 flex gap-2">
+              <button type="button" className="btn-primary" onClick={() => decide(true)}>Aprovar</button>
+              <button type="button" className="btn-secondary" onClick={() => decide(false)}>Devolver</button>
+            </div>
+          </Block>
+        )}
         <Block title="Recursos">
           {!r ? <Hidden name="recursos" /> : (
             <>
@@ -383,195 +460,220 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             </>
           )}
         </Block>
-
-        <Block title="Atributos">
-          {!sheet.attributes ? <Hidden name="atributos" /> : (
-            <div className="grid grid-cols-2 gap-3">
-              {ATTRS.map((a) => {
-                const v = sheet.attributes[a.enumName];
-                const m = d?.mods?.[a.enumName];
-                const lim = d?.limiters?.[a.enumName];
-                // 7º atributo (TAL) sozinho na última linha: centralizado
-                const lone = a.key === 'tal' ? 'col-span-2 mx-auto w-1/2 min-w-[8rem]' : '';
-                return <div key={a.key} className={lone}><AttributeCard a={a} v={v} m={m} lim={lim} bandKey={d?.bands?.[a.enumName]} gains={gainsFor(sheet, a.enumName)} /></div>;
-              })}
+        <Block title="Limitadores">
+          {!radarAxes ? <Hidden name="atributos ou recursos" /> : (
+            <div className="flex flex-col items-center gap-2">
+              <LimiterRadar axes={radarAxes} />
+              <p className="hint">O anel externo é o limitador. Vértice destacado = acima do limitador.</p>
             </div>
           )}
         </Block>
+      </div>
 
-          <div className="panel hero-card p-3">
-        <div className="grid grid-cols-2 gap-2" aria-label="Identidade">
-          <IdentityChip icon={ICON.ruler} title="Altura" value={`${sheet.heightM} m`} />
-          <IdentityChip icon={<BodyIcon type={sheet.bodyType} />} title="Tipo corporal" value={label(BODY_TYPES, sheet.bodyType)} />
-          <IdentityChip icon={ICON.hand} title="Dominância" value={label(DOMINANCES, sheet.dominance)} />
-          <IdentityChip icon={ICON.scale} title="Peso" value={`${sheet.weightKg} kg`} corner={d?.weightMod} />
-          {d && <IdentityChip icon={ICON.pack} title="Carga" value={`${kg(d.carriedKg)} / ${d.carryKg} kg`} />}
-          {p && <IdentityChip icon={ICON.belt} title="Keiken" value={KEIKEN[p.keiken]} color="var(--keiken)" />}
-        </div>
-
-          </div>
-        {isOwner && draft && (
-          <button type="button" className="btn-secondary self-start" onClick={() => setEditing(true)}>Editar ficha</button>
-        )}
-
-        </aside>
-        <div className="sheet-main">
-          {condFx.length > 0 && (
-            <div className="panel flex flex-wrap items-center gap-2 p-2" aria-label="Condições em combate">
-              <span className="caption">Em combate</span>
-              {condFx.map((c) => {
-                const t = themeFor(c.key, c.name);
-                return (
-                  <span key={c.id} className="cond-chip" style={{ '--fx-color': t.color }}>
-                    <Icon name={t.icon} size={16} />{t.word} {c.name}
-                  </span>
-                );
-              })}
+      <div className="sheet-col">
+        <Block title="Ferimentos">
+          {!sheet.injuries ? <Hidden name="ferimentos" /> : (
+            <div className="flex flex-col gap-3">
+              <div className="mx-auto w-full max-w-[220px]">
+                <BodyMap injuries={sheet.injuries} missingParts={sheet.missingParts ?? []} />
+              </div>
+              {sheet.injuries.length === 0 ? <p className="text-sm">Nenhum ferimento.</p> : (
+                <ul className="flex flex-col gap-2 text-sm">
+                  {sheet.injuries.map((i) => (
+                    <li key={i.id}>
+                      <span className="tag mr-2">{SEVERITY[i.severity] ?? i.severity}</span>
+                      {i.bodyPart && <strong>{BODY_PART_LABELS[i.bodyPart] ?? i.bodyPart} · </strong>}
+                      {i.region} — HP máx. −{i.hpMaxReduction}
+                      {i.affectedAttribute && `, limitador ${i.affectedAttribute} −${i.limiterReduction}`}
+                      {i.treated && ' (tratado)'}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
-        {!isNpc && isMaster && sheet.buildStatus === 'PENDING_APPROVAL' && (
-          <Block title="Aprovação">
-            <label className="label">
-              Motivo (opcional)
-              <input className="field mt-1 w-full" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
-            </label>
-            <div className="mt-3 flex gap-2">
-              <button type="button" className="btn-primary" onClick={() => decide(true)}>Aprovar</button>
-              <button type="button" className="btn-secondary" onClick={() => decide(false)}>Devolver</button>
-            </div>
-          </Block>
-        )}
+        </Block>
+      </div>
+    </div>
+  );
 
-        {(isOwner || isMaster) && !isNpc && p && (
-          <Block id="sheet-progress" title="Progresso">
-            <ProgressPanel sheetId={sheet.id} progress={p} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
-              refreshKey={refreshKey + sheet.version} />
-          </Block>
+  const attributes = (
+    <div className="flex flex-col gap-4">
+      <Block title="Atributos">
+        {!sheet.attributes ? <Hidden name="atributos" /> : (
+          <div className="sheet-attrs">
+            {ATTRS.map((a) => (
+              <AttributeCard key={a.key} a={a} v={sheet.attributes[a.enumName]} m={d?.mods?.[a.enumName]} lim={d?.limiters?.[a.enumName]}
+                bandKey={d?.bands?.[a.enumName]} gains={gainsFor(sheet, a.enumName)} />
+            ))}
+          </div>
         )}
-
-        {(isOwner || isMaster) && (
-          <Block id="sheet-martial" title="Artes marciais">
-            <MartialPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
-              refreshKey={refreshKey + sheet.version} />
-          </Block>
-        )}
-
-        {(isOwner || isMaster) && !isNpc && (
-          <Block id="sheet-notebook" title="Caderno Marcial e Forja">
-            <NotebookPanel sheetId={sheet.id} isMaster={isMaster} isOwner={isOwner} refreshKey={refreshKey + sheet.version} />
-          </Block>
-        )}
-
-        {(isOwner || isMaster) && !isNpc && (
-          <Block title="Treinos" collapsible defaultOpen>
-            <TrainingPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
-          </Block>
-        )}
-
-          <div className="sheet-pair">
-            <div className="sheet-col">
-          <Block title="Traços e clãs">
-            {!sheet.traits || !sheet.clans ? <Hidden name="traços e clãs" /> : (
-              <div className="flex flex-col gap-3">
-                {sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
-                  <ul className="flex flex-col gap-2">
-                    {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} />)}
+      </Block>
+      <Block title="Traços e clãs">
+        {!sheet.traits || !sheet.clans ? <Hidden name="traços e clãs" /> : (
+          <div className="flex flex-col gap-3">
+            {sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
+              <ul className="sheet-traits">
+                {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} />)}
+              </ul>
+            )}
+            {sheet.clans.map((c) => (
+              <div key={c.id} className="bubble p-2 text-sm">
+                <strong>Clã {c.name}</strong>
+                {c.heritage?.length > 0 && (
+                  <ul className="mt-1 list-disc pl-5">
+                    {c.heritage.map((h) => <li key={h}><RichText text={h} /></li>)}
                   </ul>
                 )}
-                {sheet.clans.map((c) => (
-                  <div key={c.id} className="bubble p-2 text-sm">
-                    <strong>Clã {c.name}</strong>
-                    {c.heritage?.length > 0 && (
-                      <ul className="mt-1 list-disc pl-5">
-                        {c.heritage.map((h) => <li key={h}><RichText text={h} /></li>)}
-                      </ul>
-                    )}
-                  </div>
-                ))}
               </div>
-            )}
-          </Block>
-
-            </div>
-            <div className="sheet-col">
-          <Block title="Ferimentos">
-            {!sheet.injuries ? <Hidden name="ferimentos" /> : sheet.injuries.length === 0 ? (
-              <p className="text-sm">Nenhum ferimento.</p>
-            ) : (
-              <ul className="flex flex-col gap-2 text-sm">
-                {sheet.injuries.map((i) => (
-                  <li key={i.id}>
-                    <span className="tag mr-2">{SEVERITY[i.severity] ?? i.severity}</span>
-                    {i.region} — HP máx. −{i.hpMaxReduction}
-                    {i.affectedAttribute && `, limitador ${i.affectedAttribute} −${i.limiterReduction}`}
-                    {i.treated && ' (tratado)'}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Block>
-
-          <Block title="Inventário" aside={sheet.money != null && (
-            <span className="tag" style={{ borderColor: 'var(--chip-el)', color: 'var(--chip-el)' }}>Diárias {sheet.money}</span>
-          )}>
-            {d && d.loadState !== 'FREE' && (
-              <p className="mb-2 text-sm"><span className="tag tag-accent">{LOAD_LABEL[d.loadState]}</span> {LOAD_HINT[d.loadState]}</p>
-            )}
-            {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : sheet.inventory.length === 0 ? (
-              <p className="text-sm">Inventário vazio.</p>
-            ) : (
-              <ul className="flex flex-col gap-1 text-sm">
-                {sheet.inventory.map((i) => (
-                  <li key={i.id}>
-                    {i.quantity}× <strong>{i.name}</strong>{i.weightKg > 0 && ` · ${kg(i.weightKg * i.quantity)} kg`}
-                    {i.location && i.location !== 'PACK' && <span className="tag ml-1">{ITEM_LOCATION[i.location]}</span>}
-                    {(i.jammed || i.broken || i.damaged) && <span className="tag tag-accent ml-1">{i.broken ? 'quebrada' : i.jammed ? 'travada' : 'danificada'}</span>}
-                    {i.description && ` — ${i.description}`}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Block>
-
-            </div>
+            ))}
           </div>
-        {(isOwner || isMaster) && (
-          <>
-            <Block title="Rolagens">
-              <RollsPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isNpc={isNpc}
-                refreshKey={refreshKey + sheet.version} />
-            </Block>
-            <Block title="Atividade da ficha" collapsible>
-              <ActivityLogPanel sheetId={sheet.id} refreshKey={refreshKey + sheet.version} />
-            </Block>
-          </>
         )}
+      </Block>
+    </div>
+  );
 
-        {!isNpc && (isOwner || isMaster) && sheet.campaignId && sheet.ownerUserId && (
-          <Block title="Visível para os outros jogadores" collapsible>
-            <SheetVisibilityPanel campaignId={sheet.campaignId} ownerUserId={sheet.ownerUserId} isMaster={isMaster} />
+  const martial = seesPrivate && (
+    <div className="flex flex-col gap-4">
+      <Block id="sheet-martial" title="Artes marciais">
+        <MartialPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner} refreshKey={rev} />
+      </Block>
+      {!isNpc && (
+        <>
+          <Block id="sheet-notebook" title="Caderno Marcial e Forja">
+            <NotebookPanel sheetId={sheet.id} isMaster={isMaster} isOwner={isOwner} refreshKey={rev} />
           </Block>
-        )}
+          <Block title="Treinos" collapsible defaultOpen>
+            <TrainingPanel sheetId={sheet.id} refreshKey={rev} />
+          </Block>
+        </>
+      )}
+    </div>
+  );
 
-        {!isNpc && isMaster && ['COMPLETED', 'PENDING_APPROVAL'].includes(sheet.buildStatus) && (
-          <Block title="Reabrir construção">
-            <form onSubmit={reopen} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              <label className="flex-1 text-xs uppercase">
-                Motivo (obrigatório)
-                <input required maxLength={500} className="field mt-1 w-full" value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} />
-              </label>
-              <button type="submit" className="btn-secondary" disabled={!reopenReason.trim()}>Reabrir construção</button>
-            </form>
-          </Block>
-        )}
+  const inventory = (
+    <Block title="Inventário" aside={sheet.money != null && (
+      <span className="tag" style={{ borderColor: 'var(--chip-el)', color: 'var(--chip-el)' }}>Diárias {sheet.money}</span>
+    )}>
+      {d && d.loadState !== 'FREE' && (
+        <p className="mb-2 text-sm"><span className="tag tag-accent">{LOAD_LABEL[d.loadState]}</span> {LOAD_HINT[d.loadState]}</p>
+      )}
+      {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : sheet.inventory.length === 0 ? (
+        <p className="text-sm">Inventário vazio.</p>
+      ) : (
+        <ul className="flex flex-col gap-1 text-sm">
+          {sheet.inventory.map((i) => (
+            <li key={i.id}>
+              {i.quantity}× <strong>{i.name}</strong>{i.weightKg > 0 && ` · ${kg(i.weightKg * i.quantity)} kg`}
+              {i.location && i.location !== 'PACK' && <span className="tag ml-1">{ITEM_LOCATION[i.location]}</span>}
+              {(i.jammed || i.broken || i.damaged) && <span className="tag tag-accent ml-1">{i.broken ? 'quebrada' : i.jammed ? 'travada' : 'danificada'}</span>}
+              {i.description && ` — ${i.description}`}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Block>
+  );
 
-        {isMaster && (
-          <Block title="Ajustes do Mestre">
-            <GmAdjustmentPanel sheet={sheet} campaignId={campaignId} onDone={onChange} />
-          </Block>
-        )}
-        </div>
+  const hasProgress = seesPrivate && !isNpc && p;
+  const progress = hasProgress && (
+    <Block id="sheet-progress" title="Progresso">
+      <ProgressPanel sheetId={sheet.id} progress={p} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner} refreshKey={rev} />
+    </Block>
+  );
+
+  const rolls = seesPrivate && (
+    <Block title="Rolagens">
+      <RollsPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isNpc={isNpc} refreshKey={rev} />
+    </Block>
+  );
+
+  const canEditDraft = isOwner && draft;
+  const showVisibility = !isNpc && seesPrivate && sheet.campaignId && sheet.ownerUserId;
+  const showReopen = !isNpc && isMaster && ['COMPLETED', 'PENDING_APPROVAL'].includes(sheet.buildStatus);
+  const hasGm = canEditDraft || seesPrivate || isMaster;
+  const gm = hasGm && (
+    <div className="flex flex-col gap-4">
+      {canEditDraft && (
+        <button type="button" className="btn-secondary self-start" onClick={() => setEditing(true)}>Editar ficha</button>
+      )}
+      {isMaster && (
+        <Block title="Ajustes do Mestre">
+          <GmAdjustmentPanel sheet={sheet} campaignId={campaignId} onDone={onChange} />
+        </Block>
+      )}
+      {showReopen && (
+        <Block title="Reabrir construção">
+          <form onSubmit={reopen} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="flex-1 text-xs uppercase">
+              Motivo (obrigatório)
+              <input required maxLength={500} className="field mt-1 w-full" value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} />
+            </label>
+            <button type="submit" className="btn-secondary" disabled={!reopenReason.trim()}>Reabrir construção</button>
+          </form>
+        </Block>
+      )}
+      {showVisibility && (
+        <Block title="Visível para os outros jogadores" collapsible>
+          <SheetVisibilityPanel campaignId={sheet.campaignId} ownerUserId={sheet.ownerUserId} isMaster={isMaster} />
+        </Block>
+      )}
+      {seesPrivate && (
+        <Block title="Atividade da ficha" collapsible>
+          <ActivityLogPanel sheetId={sheet.id} refreshKey={rev} />
+        </Block>
+      )}
+    </div>
+  );
+
+  const tabs = [
+    { id: 'overview', label: 'Visão Geral', node: overview },
+    { id: 'attributes', label: 'Atributos e Traços', node: attributes },
+    seesPrivate && { id: 'martial', label: 'Artes Marciais', node: martial },
+    { id: 'inventory', label: 'Inventário', node: inventory },
+    hasProgress && { id: 'progress', label: 'Progressão', node: progress },
+    seesPrivate && { id: 'rolls', label: 'Rolagens', node: rolls },
+    hasGm && { id: 'gm', label: 'Mestre', node: gm },
+  ].filter(Boolean);
+  const current = tabs.find((t) => t.id === tab) ?? tabs[0];
+
+  return (
+    <div className="page-gutter flex flex-col">
+      {r && <BleedEdge wounds={r.openWounds} page />}
+      <ConditionFx entries={[...(r?.openWounds > 0 ? [{ id: `w${r.openWounds}`, anchorId: null, key: 'FERIDA', name: `Feridas abertas ${r.openWounds}` }] : []), ...condFx]} />
+      <div className="flex flex-wrap items-center gap-3">
+        {onBack && <button type="button" className="btn-ghost" onClick={onBack}><Icon name="back" size={18} /> Fichas</button>}
+        <h2 className="panel-title flex-1 text-2xl">{sheet.name}</h2>
+        {!isNpc && <span className="tag-accent tag">{STATUS[sheet.buildStatus]}</span>}
+        {d?.criticalState && <span className="tag">Estado crítico</span>}
+        <button type="button" className="btn-secondary no-print" onClick={async () => {
+          try { await exportSheet(sheet.id, sheet.name); } catch (err) { toast(parseApiError(err).message, 'error'); }
+        }}>Exportar JSON</button>
+        <button type="button" className="btn-secondary no-print" onClick={() => {
+          // abre os traços antes para dar tempo de carregar efeitos/variações
+          window.dispatchEvent(new Event('beforeprint'));
+          setTimeout(() => window.print(), 600);
+        }}>Imprimir / PDF</button>
       </div>
+      {!isNpc && <p className="caption self-start">Jogador · {sheet.ownerName}</p>}
+      {printing ? (
+        <div className="flex flex-col gap-6">
+          {tabs.map((t) => (
+            <section key={t.id} className="flex flex-col gap-3">
+              <h2 className="panel-title text-xl">{t.label}</h2>
+              {t.node}
+            </section>
+          ))}
+        </div>
+      ) : (
+        <>
+          <SheetTabs tabs={tabs} active={current.id} onChange={selectTab} idBase={`sheet-${sheet.id}`} />
+          <div role="tabpanel" id={`sheet-${sheet.id}-panel`} aria-labelledby={`sheet-${sheet.id}-tab-${current.id}`}
+            tabIndex={0} className="sheet-tabpanel">
+            {current.node}
+          </div>
+        </>
+      )}
     </div>
   );
 }
