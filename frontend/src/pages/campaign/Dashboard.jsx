@@ -30,20 +30,18 @@ function CampaignCard({ campaign }) {
   return (
     <Link
       to={`/campaigns/${campaign.id}`}
-      className="panel group flex flex-col p-5 transition-transform duration-150 hover:-translate-y-1"
+      className="panel campaign-card group flex flex-col overflow-hidden"
     >
-      <div className="flex items-start justify-between gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center border-2 border-[var(--line)] text-lg">
-          <Icon name="swords" size={22} />
-        </span>
+      <div className="flex items-center justify-between gap-3 border-b-[length:var(--border-w)] border-[var(--line)] bg-[var(--ink)] px-4 py-2 text-[var(--paper)]">
+        <Icon name="swords" size={22} />
         <RoleBadge role={campaign.currentUserRole} />
       </div>
-      <h3 className="panel-title mt-3 truncate text-xl group-hover:text-[var(--accent)]">
-        {campaign.name}
-      </h3>
-      <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm opacity-80">
-        {campaign.description || 'Sem descrição.'}
-      </p>
+      <div className="p-4">
+        <h3 className="title-stamp break-words text-2xl">{campaign.name}</h3>
+        <p className="line-clamp-3 mt-3 min-h-[3.75rem] text-sm opacity-85">
+          {campaign.description || 'Sem descrição.'}
+        </p>
+      </div>
     </Link>
   );
 }

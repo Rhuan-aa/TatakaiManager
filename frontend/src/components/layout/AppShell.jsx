@@ -24,15 +24,12 @@ export function Surface({ as: Tag = 'section', className = '', children }) {
 /** Cabeçalho de página com barra de acento, título display e ações à direita. */
 export function PageHeader({ title, subtitle, actions }) {
   return (
-    <div className="page-gutter mb-6 flex flex-wrap items-end justify-between border-b-[length:var(--border-w)] border-[var(--line)] pb-3">
-      <div className="flex items-start gap-3">
-        <span aria-hidden className="mt-1 h-8 w-3 shrink-0 border-2 border-[var(--line)] bg-[var(--accent)]" />
-        <div className="min-w-0">
-          <h1 className="panel-title text-3xl text-[var(--text)] sm:text-4xl">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-[var(--text)] opacity-80">{subtitle}</p>}
-        </div>
+    <div className="page-hero halftone-bg">
+      <div className="min-w-0">
+        <h1 className="title-stamp text-3xl sm:text-5xl">{title}</h1>
+        {subtitle && <p className="caption mt-3 max-w-full normal-case">{subtitle}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="page-hero-actions">{actions}</div>}
     </div>
   );
 }

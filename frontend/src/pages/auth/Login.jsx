@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import client from '../../api/client';
 import { parseApiError } from '../../api/parseApiError';
+import AuthLayout from '../../components/auth/AuthLayout';
 import { useAuth } from '../../contexts/AuthContext';
 
 const inputClass = 'field';
@@ -34,27 +35,7 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--bg)] px-4">
-      {/* Fundo decorativo (sem texto por cima) */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="halftone halftone-fade absolute inset-0" style={{ '--fade-from': 'top center' }} />
-        <div
-          className="speed-lines absolute inset-0 opacity-25"
-          style={{ '--burst-clear': '38%', maskImage: 'radial-gradient(circle at 50% 50%, transparent 0 38%, #000 50%)', WebkitMaskImage: 'radial-gradient(circle at 50% 50%, transparent 0 38%, #000 50%)' }}
-        />
-      </div>
-
-      <div className="relative w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <span className="panel grid h-14 w-14 place-items-center bg-[var(--accent)] text-2xl font-black text-white">
-            武
-          </span>
-          <div className="mt-4 flex items-baseline gap-1.5">
-            <span className="panel-title text-4xl text-[var(--accent)]">TATAKAI</span>
-          </div>
-          <p className="caption mt-2 inline-block">Manager</p>
-        </div>
-
+    <AuthLayout>
         <div className="panel p-8">
           <h1 className="panel-title text-2xl">Entrar</h1>
           <p className="mt-1 text-sm opacity-80">Acesse sua conta.</p>
@@ -106,7 +87,6 @@ export default function Login() {
             Cadastre-se
           </Link>
         </p>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }
