@@ -5,12 +5,13 @@ import { gmAdjust } from '../../api/characterSheets';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 import { ATTRS } from './sheetRules';
+import { BODY_PART_LABELS } from './BodyMap';
 import { RARITY, compareTraits } from '../ui/rarity';
 
 const RESOURCES = ['HP', 'SP', 'KP'];
 const FATIGUES = [['PHYSICAL', 'Física'], ['MENTAL', 'Mental']];
-const SEVERITIES = [['MINOR', 'Leve'], ['MODERATE', 'Moderado'], ['SEVERE', 'Grave'], ['LETHAL', 'Letal']];
-const INJURY_TYPES = [['CUTTING', 'Corte'], ['PIERCING', 'Perfuração'], ['BLUNT', 'Contusão']];
+export const SEVERITIES = [['MINOR', 'Leve'], ['MODERATE', 'Moderado'], ['SEVERE', 'Grave'], ['LETHAL', 'Letal']];
+export const INJURY_TYPES = [['CUTTING', 'Corte'], ['PIERCING', 'Perfuração'], ['BLUNT', 'Contusão']];
 
 // kind: number (value), select (field), injury, item, target (targetId)
 const ACTIONS = {
@@ -39,7 +40,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
   const [value, setValue] = useState('');
   const [targetId, setTargetId] = useState('');
   const [reason, setReason] = useState('');
-  const [injury, setInjury] = useState({ type: 'CUTTING', region: '', severity: 'MINOR', damage: '', affectedAttribute: '' });
+  const [injury, setInjury] = useState({ type: 'CUTTING', region: '', severity: 'MINOR', damage: '', affectedAttribute: '', bodyPart: '' });
   const [item, setItem] = useState({ name: '', quantity: 1, description: '', weightKg: '', weaponKey: '', equipmentKey: '', consumableKey: '', location: '' });
   const [weapons, setWeapons] = useState([]);
   const [equipment, setEquipment] = useState([]);
@@ -82,6 +83,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
         severity: injury.severity,
         damage: injury.damage === '' ? null : Number(injury.damage),
         affectedAttribute: injury.affectedAttribute || null,
+        bodyPart: injury.bodyPart || null,
       };
     }
     if (cfg.item) body.item = { ...item, quantity: Number(item.quantity), description: item.description || null,
@@ -169,6 +171,8 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
         <div className="grid gap-2 sm:grid-cols-2">
           <Sel lbl="Tipo" val={injury.type} set={(v) => setInjury({ ...injury, type: v })} opts={INJURY_TYPES} />
           <Sel lbl="Gravidade" val={injury.severity} set={(v) => setInjury({ ...injury, severity: v })} opts={SEVERITIES} />
+          <Sel lbl="Parte do corpo" blank val={injury.bodyPart}
+            set={(v) => setInjury({ ...injury, bodyPart: v })} opts={Object.entries(BODY_PART_LABELS)} />
           <label className="label">
             Região
             <input required maxLength={100} className="field mt-1 w-full" value={injury.region}

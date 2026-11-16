@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import SheetTabs from './SheetTabs';
 import SheetImagePicker from './SheetImagePicker';
 import LimiterRadar from './LimiterRadar';
-import BodyMap, { BODY_PART_LABELS } from './BodyMap';
+import InjuryBoard from './InjuryBoard';
 import FighterPlaceholder from './FighterPlaceholder';
 import SheetVisibilityPanel from './SheetVisibilityPanel';
 import { exportSheet, getSheetImageUrl } from '../../api/characterSheets';
@@ -34,7 +34,6 @@ import { themeFor } from '../combat/conditionThemes';
 const kg = (v) => (Math.round((v ?? 0) * 10) / 10).toString().replace('.', ',');
 
 const STATUS = { DRAFT: 'Rascunho', PENDING_APPROVAL: 'Aguardando aprovação', COMPLETED: 'Aprovada', IN_BUILD: 'Em construção' };
-const SEVERITY = { MINOR: 'Leve', MODERATE: 'Moderado', SEVERE: 'Grave', LETHAL: 'Letal' };
 
 const Hidden = ({ name }) => (
   <p className="caption inline-block">Seção oculta{name ? `: ${name}` : ''}</p>
@@ -466,24 +465,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
       <div className="sheet-col">
         <Block title="Ferimentos">
           {!sheet.injuries ? <Hidden name="ferimentos" /> : (
-            <div className="flex flex-col gap-3">
-              <div className="mx-auto w-full max-w-[220px]">
-                <BodyMap injuries={sheet.injuries} missingParts={sheet.missingParts ?? []} />
-              </div>
-              {sheet.injuries.length === 0 ? <p className="text-sm">Nenhum ferimento.</p> : (
-                <ul className="flex flex-col gap-2 text-sm">
-                  {sheet.injuries.map((i) => (
-                    <li key={i.id}>
-                      <span className="tag mr-2">{SEVERITY[i.severity] ?? i.severity}</span>
-                      {i.bodyPart && <strong>{BODY_PART_LABELS[i.bodyPart] ?? i.bodyPart} · </strong>}
-                      {i.region} — HP máx. −{i.hpMaxReduction}
-                      {i.affectedAttribute && `, limitador ${i.affectedAttribute} −${i.limiterReduction}`}
-                      {i.treated && ' (tratado)'}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <InjuryBoard sheet={sheet} isMaster={isMaster} onChange={onChange} />
           )}
         </Block>
       </div>
