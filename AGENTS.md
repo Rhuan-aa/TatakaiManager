@@ -721,6 +721,8 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
 - **Slots do TimeSkip:** `slotsPerDay` 1..12; `TimeSkip.extraSlotNumber()` = 5 até 4 slots (compatível com o que já existe), senão `slotsPerDay + 1`;
   `TimeSkipResponse.extraSlot`; `SlotGrid` monta as colunas pelo TimeSkip. Bancos antigos: trocar o CHECK de `bookings.slot_number` para 1..13.
 
+**Continuidade:** o que falta deste ciclo (Fases 2 e 3, decisões já tomadas e verificações devidas) está em `PLANO_FICHA_DIGITAL.md` §53.
+
 ## 13. Construção Inicial, catálogo e regras (F2)
 
 - **Regras da campanha:** `campaign_rule_settings` + `CampaignRuleService` (padrão sem linha:

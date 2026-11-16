@@ -2622,3 +2622,71 @@ Ordem: **51.1 → 51.2 → 51.3 (bloco TimeSkip, máxima prioridade)**, depois 5
   - **Bloco D** — consumíveis de TimeSkip (Analgésico, Termogênico, Energético, Ração, Suplemento Proteico, Hipercalórico, Corda de Pular), Kit de Cutman (5 usos), Regra de Dose + Colaterais adiados (itens 22, 24, 25).
   - Após Bloco D e E: Bombas e Ciclos (item 27), Grid/Posicionamento (item 3), Limitações em texto (item 4), Loja/Diárias (item 19), Vestir proteção (item 23).
 ---
+
+## 53. Ficha de NPC, boneco de ferimentos e efeitos — continuidade (`feat/sheet-npc-wounds`, parado em 16/11/2026)
+
+Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sheet-ui-revamp` (ficha em abas, carrossel, inventário; AGENTS.md
+§12b) → `feat/sheet-npc-wounds` (este ciclo; AGENTS.md §12c). Nenhuma das duas foi mesclada nem enviada ao remoto.
+
+### 53.1 Feito (Fase 1 — dados e permissões)
+- `5e60067` TimeSkip com 1..12 slots por dia; extra = 5 até 4 slots, senão slots + 1 (`TimeSkip.extraSlotNumber()`, `TimeSkipResponse.extraSlot`).
+- `96f2cb8` Imagem opcional nos itens do catálogo (global: editores; campanha: Mestre; miniatura 256 px). Só API + `api/catalogItemImages.js`.
+- `d3bca81` Visibilidade da ficha de NPC em 16 seções, aplicada no servidor; `interactions` e `visibleSections` na resposta; `PUT` em lote;
+  `GET .../sheet/martial`.
+- 921 testes passando. **Nada disso foi conferido na tela nem contra banco real.**
+
+### 53.2 Decisões do dono (já respondidas — não perguntar de novo)
+1. Regiões do boneco seguem a tabela de **Ataque Localizado** (`contexto/sistema/SISTEMA/Combate*.md`, "ATAQUES LOCALIZADOS": Olhos, Ouvido,
+   Garganta, Têmpora, Fígado, Diafragma, Genitais, Queixo, Nuca, Mão ou Pulso, Joelho, Coxa) como pontos dentro das partes.
+2. **Dedos individuais** (mãos e pés), mas só aparecem separados quando um deles está ferido ou foi cortado.
+3. Imagem de item: Mestre geral (editor) **e** Mestre da campanha.
+4. Teto de 12 slots por dia.
+5. Ferimento desenhado é **só visual** por padrão; uma **checkbox** ao aplicar faz seguir a regra de Ferimentos Permanentes
+   (`contexto/sistema/SISTEMA/Danos Especiais*.md`: Desmembramento/Perfuração 10/25/45/100 % do HP máx. por faixa de dano; Rompimento = 1/2 do
+   dano e Membro Inútil).
+6. Alternância de **Cansaço e PS** só na ficha de NPC, desligada por padrão.
+7. Ficha de outro jogador abre em leitura; perda de membro é marcação visual; sem Three.js (tudo SVG/CSS).
+
+### 53.3 Falta — Fase 2 (ficha e NPC)
+- **Boneco (`BodyMap`/`InjuryBoard`)**: refazer com silhueta orgânica (inspiração `contexto/imagens/ficha/boneco.png`), partes: cabeça, pescoço,
+  torso, abdômen, pelve, ombro, braço, cotovelo, antebraço, mão, dedos, coxa, joelho, perna, pé, dedos do pé. Ampliar o enum `BodyPart`
+  (hoje: HEAD, TORSO, L/R ARM, HAND, LEG, FOOT) mantendo os valores antigos.
+- **Ferimentos desenhados**: tabela nova (sugestão `wound_marks`: `sheet_id, part, type IMPACT|CUT|SCAR|HOLE, geometry jsonb normalizada 0..1
+  relativa à parte, severity, injury_id opcional, created_at`); `POST/DELETE /character-sheets/{id}/wounds` só Mestre; evento no canal `sheets`;
+  oculto junto com INJURIES/BODY_MAP. Editor por ponteiro: mancha roxa (cor evolui com a gravidade), corte à mão livre, cicatriz (traço claro e
+  fino), furo (máscara SVG que mostra o fundo), membro perdido some. Testes Mockito de permissão e visibilidade.
+- **Ficha de NPC simplificada**: sem radar, sem corpo inteiro, sem boneco; inventário menos estilizado; **Interações como bloco principal da
+  Visão Geral** (já vêm em `interactions`). Botão "Visibilidade" (só Mestre) abrindo pop-up com as 16 seções (`PUT` em lote).
+- **Adaptar o front aos `null`**: `CharacterSheetView`/`NpcSheetPanel` ainda esperam números em `resources` e `derived`; com HP/SP/PQ oculto a
+  tela do jogador pode quebrar. Usar `visibleSections`.
+- **Pop-up de detalhe do NPC** (`NpcSection.jsx`, `Modal`): o dono relatou que está "todo bugado" — reproduzir, achar a causa e corrigir; versão
+  maior e responsiva para radar/boneco/imagem quando liberados (RADAR, BODY_MAP, IMAGE).
+- **Aba "Configurações" da ficha** no lugar de "Mestre" (jogador também usa): imagens (retrato, corpo inteiro), visibilidade, alternância de
+  Cansaço/PS (NPC), e a **aprovação** da ficha (sair da Visão Geral). Vindo da aba Aprovações, abrir nessa aba e fazê-la piscar em vermelho
+  enquanto houver pendência; com `prefers-reduced-motion`, indicador vermelho estático.
+- **Imagem de item na tela**: upload/remoção no `ItemsCatalog` (global e por campanha) e miniatura no `InventoryGrid` (slot, lista e ficha do
+  item) com o ícone atual como fallback.
+
+### 53.4 Falta — Fase 3 (efeitos e telas de campanha)
+- **Efeitos de condição** no card, retrato e boneco (entrada animada + estado contínuo): Queimando, Congelando, Envenenado, Sangramento,
+  Atordoado, Desorientado, Paralisado, Inconsciente, Cego, Sufocando, Derrubado, Agarrado/Imobilizado. Base existente: `ui/ConditionFx.jsx`,
+  `ui/BleedEdge.jsx`, `combat/conditionThemes.js` (nunca conferidos na tela). CSS/SVG/canvas leve; opção "efeitos reduzidos" por usuário.
+- **Visual novo** das abas Configurações da campanha e TimeSkip (`TimeSkipPanel`, `RuleSettings`, `InviteMemberForm`); células agendadas da
+  agenda como recortes (`SlotGrid.renderSlot`/`renderSoloSlot` ficaram no visual antigo).
+
+### 53.5 Verificações devidas (de tudo que já foi feito)
+- Conferir na tela, nos dois temas e no celular: agenda com mais de 4 slots, ficha de NPC vista pelo jogador com seções ocultas, abas da ficha
+  (Artes Marciais, Progressão, Rolagens, Mestre), radar, upload de retrato/corpo inteiro, NPCs, logs, registro.
+- Subir o backend novo: o container de teste `tatakai-revamp-backend` (porta 8090) roda um jar **anterior** à Fase 1. Reempacotar
+  (`cd backend && JAVA_HOME=~/.jdks/jbr-21.0.11 ./mvnw -q package -Dmaven.test.skip=true`) e recriar o container; derrubar com
+  `docker rm -f tatakai-revamp-backend`. Vite de dev: `VITE_API_URL=http://localhost:8090 npx vite --port 5173`.
+- Migração manual (produção com `validate`): criar `sheet_images` e `catalog_item_images`; `permanent_injuries.body_part varchar(20)`;
+  `character_sheets.missing_parts jsonb default '[]'`; trocar o CHECK de `bookings.slot_number` para 1..13 (achar o nome em `pg_constraint`);
+  dropar CHECK de enum em `npc_sheet_visibility.section`/`character_sheet_visibility.section` se o banco tiver (§11.11 do AGENTS.md).
+- Limpeza: worktrees de agente em `.claude/worktrees/` (`git worktree list`; os commits deles já foram trazidos por cherry-pick) e a ficha
+  "Akira" da Mesa de Testes ganhou 7 itens de teste no inventário.
+
+### 53.6 Pendências menores herdadas do ciclo anterior
+Radar pequeno dentro do bloco (escala vai até o limitador); `FighterPlaceholder` simples; `missingParts` fora do export; sem limpeza de imagens
+ao apagar ficha; arte real (PNG transparente) nunca testada no carrossel e no boneco do inventário; títulos `.title-stamp` pequenos nos cards de
+campanha; as alterações não commitadas do dono (peso inicial, RN-ATR-08) seguem fora dos commits.
