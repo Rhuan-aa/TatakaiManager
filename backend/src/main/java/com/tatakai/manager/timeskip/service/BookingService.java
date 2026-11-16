@@ -239,9 +239,9 @@ public class BookingService {
 
     /**
      * Regras de ocupação: uma ação de custo N >= 1 ocupa N slots consecutivos a partir
-     * do selecionado e precisa caber dentro dos {@link TimeSkipDay#SLOTS_PER_DAY} slots
-     * do dia. Ações de custo zero usam exclusivamente o slot extra
-     * ({@link TimeSkipDay#EXTRA_SLOT_NUMBER}), limitado a uma por jogador por dia.
+     * do selecionado e precisa caber dentro dos slots do dia
+     * ({@code TimeSkip.slotsPerDay}, 1..12). Ações de custo zero usam exclusivamente o slot extra
+     * ({@code TimeSkip.extraSlotNumber()}), limitado a uma por jogador por dia.
      * Verificação otimista; a constraint única (dia, npc, slot) segue como garantia
      * final em concorrência para o slot inicial de reservas com NPC.
      */
@@ -249,12 +249,13 @@ public class BookingService {
         short slot = booking.getSlotNumber();
         short cost = booking.getIdlePointCost();
 
-        if (slot == TimeSkipDay.EXTRA_SLOT_NUMBER) {
+        short extra = day.getTimeSkip().extraSlotNumber();
+        if (slot == extra) {
             if (cost != 0) {
                 throw new InvalidBookingException("o slot extra aceita apenas ações de custo zero");
             }
             if (bookingRepository.existsByTimeSkipDayIdAndUserIdAndSlotNumber(
-                    day.getId(), requesterId, TimeSkipDay.EXTRA_SLOT_NUMBER)) {
+                    day.getId(), requesterId, extra)) {
                 throw new InvalidBookingException("você já usou o slot extra deste dia");
             }
         } else {

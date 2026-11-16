@@ -24,7 +24,7 @@ public record CreateTimeSkipRequest(
         TimeSkipMode mode,
 
         @Min(value = 1, message = "mínimo de 1 ponto de ócio por dia")
-        @Max(value = 4, message = "máximo de 4 pontos de ócio por dia")
+        @Max(value = 12, message = "máximo de 12 pontos de ócio por dia")
         Short slotsPerDay
 
 ) {

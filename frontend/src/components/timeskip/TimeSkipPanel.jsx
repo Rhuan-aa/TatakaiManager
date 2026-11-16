@@ -324,12 +324,13 @@ export default function TimeSkipPanel({ campaignId, isMaster, npcs, focusTimeSki
                   id="ts-points"
                   type="number"
                   min={1}
-                  max={4}
+                  max={12}
                   required
                   value={form.slotsPerDay}
                   onChange={(e) => setForm((p) => ({ ...p, slotsPerDay: e.target.value }))}
                   className={inputClass}
                 />
+                <p className="hint mt-1">Padrão 4. Use mais para um TimeSkip em que cada dia vale um período maior. O slot extra (custo 0) continua existindo.</p>
                 {createFields.slotsPerDay && (
                   <p className="mt-1 text-xs text-[var(--accent)]">{createFields.slotsPerDay}</p>
                 )}

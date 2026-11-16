@@ -235,6 +235,7 @@ public class TimeSkipService {
                 ts.getClosedAt(),
                 ts.getVenue(),
                 ts.getMode() != null ? ts.getMode() : com.tatakai.manager.timeskip.entity.TimeSkipMode.TIMESKIP,
-                ts.getSlotsPerDay());
+                ts.getSlotsPerDay(),
+                ts.extraSlotNumber());
     }
 }

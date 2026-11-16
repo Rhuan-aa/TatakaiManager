@@ -78,7 +78,7 @@ CREATE TABLE time_skip_activities (
     UNIQUE (time_skip_id, name)
 );
 
--- Reserva de slot (slot_number: 1 a 4 + slot extra 5). npc_id é UUID solto (NPC vive no Mongo).
+-- Reserva de slot (slot_number: 1..slots_per_day (até 12) + slot extra (5, ou slots_per_day + 1 com 5+ slots)). npc_id é UUID solto (NPC vive no Mongo).
 -- Atividade solo (sem NPC): npc_id/npc_name/interaction_name nulos, e exatamente um dos
 -- dois caminhos preenchido — solo_activity_type (tipo fixo) ou time_skip_activity_id
 -- (customizada, cadastrada no TimeSkip; activity_name é o snapshot do nome).
@@ -88,7 +88,7 @@ CREATE TABLE bookings (
     npc_id                 UUID,
     npc_name               VARCHAR(100),
     user_id                UUID NOT NULL REFERENCES users(id),
-    slot_number            SMALLINT NOT NULL CHECK (slot_number BETWEEN 1 AND 5),
+    slot_number            SMALLINT NOT NULL CHECK (slot_number BETWEEN 1 AND 13),
     interaction_name       VARCHAR(100),
     idle_point_cost        SMALLINT NOT NULL DEFAULT 0,
     solo_activity_type     VARCHAR(20) CHECK (solo_activity_type IN ('TREINO', 'ESTUDO', 'ACAO_GERAL')),

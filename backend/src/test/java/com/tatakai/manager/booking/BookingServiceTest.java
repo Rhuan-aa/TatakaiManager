@@ -725,6 +725,67 @@ class BookingServiceTest {
     }
 
     @Test
+    @DisplayName("TimeSkip personalizado: com 8 slots, custo 2 no slot 7 cabe (7..8) e o slot 5 é comum")
+    void book_customSlots_fitsWithinEight() {
+        activeSkip.setSlotsPerDay((short) 8);
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        mockVisibleAssociation();
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+        when(bookingRepository.findByTimeSkipDayIdAndNpcId(day3.getId(), aldric.getId())).thenReturn(java.util.List.of());
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 7)).slotNumber())
+                .isEqualTo((short) 7);
+        // slot 5 deixa de ser o extra: aceita ação com custo
+        assertThat(service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 5)).slotNumber())
+                .isEqualTo((short) 5);
+    }
+
+    @Test
+    @DisplayName("TimeSkip personalizado: com 8 slots, custo 2 no slot 8 não cabe e o extra (9) recusa custo > 0")
+    void book_customSlots_rejectsOverflowAndPaidExtra() {
+        activeSkip.setSlotsPerDay((short) 8);
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        mockVisibleAssociation();
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 8)))
+                .isInstanceOf(InvalidBookingException.class);
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 9)))
+                .isInstanceOf(InvalidBookingException.class).hasMessageContaining("slot extra");
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TimeSkip personalizado: o slot extra é 5 até 4 slots por dia e slots + 1 a partir de 5")
+    void extraSlotNumber_byslotsPerDay() {
+        for (short[] c : new short[][]{{1, 5}, {3, 5}, {4, 5}, {5, 6}, {8, 9}, {12, 13}}) {
+            activeSkip.setSlotsPerDay(c[0]);
+            assertThat(activeSkip.extraSlotNumber()).isEqualTo(c[1]);
+        }
+    }
+
+    @Test
+    @DisplayName("TimeSkip padrão (4 slots): slot 6 não existe (400)")
+    void book_defaultSlots_slotSixRejected() {
+        mockPlayerMember();
+        when(timeSkipRepository.findById(activeSkip.getId())).thenReturn(Optional.of(activeSkip));
+        when(timeSkipDayRepository.findByTimeSkipIdAndDayNumber(activeSkip.getId(), (short) 3))
+                .thenReturn(Optional.of(day3));
+        mockVisibleAssociation();
+        when(userRepository.findById(player.getId())).thenReturn(Optional.of(player));
+
+        assertThatThrownBy(() -> service.book(campaign.getId(), activeSkip.getId(), player.getId(), req((short) 6)))
+                .isInstanceOf(InvalidBookingException.class);
+    }
+
+    @Test
     @DisplayName("US-14: jogador não pode cancelar agendamento de outro (403)")
     void cancel_byNonOwner_throwsAccessDenied() {
         Booking booking = Booking.builder().id(UUID.randomUUID())

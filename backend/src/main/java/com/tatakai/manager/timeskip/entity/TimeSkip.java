@@ -56,7 +56,7 @@ public class TimeSkip {
     @Builder.Default
     private TimeSkipMode mode = TimeSkipMode.TIMESKIP;
 
-    /** Pontos de ócio (slots) por dia, 1..4; o slot extra (5) é à parte. */
+    /** Pontos de ócio (slots) por dia, 1..12; o slot extra é à parte ({@link #extraSlotNumber()}). */
     @Column(name = "slots_per_day", nullable = false, columnDefinition = "smallint not null default 4")
     @Builder.Default
     private short slotsPerDay = TimeSkipDay.SLOTS_PER_DAY;
@@ -91,5 +91,14 @@ public class TimeSkip {
         for (short d = 1; d <= totalDays; d++) {
             days.add(TimeSkipDay.builder().timeSkip(this).dayNumber(d).build());
         }
+    }
+
+    /**
+     * Número do slot extra (ações de custo zero). TimeSkips de 1..4 slots já gravaram o extra como 5 e
+     * continuam assim, sem migração; com 5 ou mais slots o extra vem logo depois do último.
+     * Não é getter de propósito (AGENTS.md §11.13).
+     */
+    public short extraSlotNumber() {
+        return (short) Math.max(TimeSkipDay.EXTRA_SLOT_NUMBER, slotsPerDay + 1);
     }
 }
