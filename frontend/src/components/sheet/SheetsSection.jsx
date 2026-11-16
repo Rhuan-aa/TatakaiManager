@@ -12,11 +12,12 @@ import CharacterSheetView from './CharacterSheetView';
 import ActivityLogPanel from './ActivityLogPanel';
 import FightClosePanel from './FightClosePanel';
 import GmSheets from './GmSheets';
-
-const STATUS = { DRAFT: 'Rascunho', PENDING_APPROVAL: 'Aguardando aprovação', COMPLETED: 'Aprovada', IN_BUILD: 'Em construção' };
+import SheetCarousel from './SheetCarousel';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npcs = [], setNpcs, onSheetOpen, focusSheetId, focusSection }) {
   const toast = useToast();
+  const { user } = useAuth();
   const [warnings, setWarnings] = useState([]);
   const [sheets, setSheets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -210,22 +211,7 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npc
         </>
       ) : (
         <>
-        <div className="page-gutter grid sm:grid-cols-2 lg:grid-cols-3">
-          {sheets.map((s) => (
-            <button key={s.id} type="button" onClick={() => setOpenId(s.id)}
-              className="panel p-4 text-left focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-[var(--accent)]">
-              <div className="panel-title">{s.name}</div>
-              <div className="text-sm">{s.ownerName}</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span className="tag">{STATUS[s.buildStatus]}</span>
-                {s.criticalState && <span className="tag-accent tag">Crítico</span>}
-              </div>
-              {s.effectiveHpMax != null && (
-                <div className="mt-2 text-xs">HP {s.currentHp}/{s.effectiveHpMax} · SP {s.currentSp}/{s.spMax} · PQ {s.currentKp}/{s.kpMax}</div>
-              )}
-            </button>
-          ))}
-        </div>
+        <SheetCarousel sheets={sheets} userId={user?.userId} isMaster={isMaster} onOpen={setOpenId} />
         <GmSheets campaignId={campaignId} isMaster={isMaster} npcs={npcs} setNpcs={setNpcs} />
         </>
       )}

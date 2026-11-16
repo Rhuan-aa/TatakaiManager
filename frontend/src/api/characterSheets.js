@@ -126,3 +126,21 @@ export async function setSheetVisibility(campaignId, userId, section, hidden) {
   const { data } = await client.patch(`/campaigns/${campaignId}/members/${userId}/sheet/visibility`, { section, hidden });
   return data;
 }
+
+/** kind: 'PORTRAIT' | 'FULL_BODY'. Baixa o blob autenticado e devolve um object URL. */
+export async function getSheetImageUrl(sheetId, kind) {
+  const res = await client.get(`/character-sheets/${sheetId}/images/${kind}`, { responseType: 'blob' });
+  return URL.createObjectURL(res.data);
+}
+
+export async function uploadSheetImage(sheetId, kind, file) {
+  const form = new FormData();
+  form.append('file', file);
+  await client.post(`/character-sheets/${sheetId}/images/${kind}`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+}
+
+export async function deleteSheetImage(sheetId, kind) {
+  await client.delete(`/character-sheets/${sheetId}/images/${kind}`);
+}
