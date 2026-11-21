@@ -511,7 +511,7 @@ export default function CatalogManager({ campaignId, isMaster }) {
       )}
 
       {isProgression && <ProgressionCatalog campaignId={campaignId} kind={tab} refreshKey={artsKey} />}
-      {isItem && <ItemsCatalog />}
+      {isItem && <ItemsCatalog campaignId={campaignId} isMaster={isMaster} globalEditor={globalEditor} />}
       {isArt && <ArtsPanel campaignId={campaignId} isMaster={isMaster} globalEditor={globalEditor} refreshKey={artsKey} />}
 
       {isOwnList && <div className="panel p-3 flex flex-wrap gap-3 items-end" role="search">

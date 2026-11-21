@@ -710,7 +710,7 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
   `CatalogItemImageService`/`Controller`: `POST|DELETE|GET /catalog/{weapons|equipment|consumables}/{key}/image[/thumb]` (escrita: editores do
   catálogo global) e `/campaigns/{cid}/catalog/...` (escrita: Mestre da campanha; leitura: membros; cai na imagem global se a campanha não tiver).
   `GET /catalog/item-images` e `GET /campaigns/{cid}/catalog/item-images` listam quem tem imagem (`scope` `CAMPAIGN|GLOBAL`); o JSON do catálogo
-  não mudou. Front: só `api/catalogItemImages.js` por enquanto. A unicidade da imagem global é garantida pelo upsert do service (NULL em unique).
+  não mudou. Front: `ui/ItemImage` (`useItemImageIndex` + cache de object URLs); upload/remoção em `ItemsCatalog` (escolhe campanha ou sistema conforme a permissão) e miniatura no `InventoryGrid` (slot, lista e ficha do item; ícone do tipo como fallback). A unicidade da imagem global é garantida pelo upsert do service (NULL em unique).
 - **Visibilidade da ficha de NPC:** `SheetSection.NPC_SECTIONS` (16: `HP, SP, KP, FATIGUE, ATTRIBUTES, TRAITS, CLANS, INJURIES, INTERACTIONS,
   INVENTORY, ARTS, BASES, TECHNIQUES, RADAR, BODY_MAP, IMAGE`), regras puras em `NpcVisibilityRules`. `GET /campaigns/{cid}/npcs/{nid}/sheet`
   **omite** para o jogador o que estiver oculto (recurso oculto = campos `null`; `resources`/`derived.*Limiter`/`criticalState` viraram anuláveis;

@@ -598,7 +598,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const inventory = (
     <Block title="Inventário">
       {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : (
-        <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} artUrl={isNpc ? null : bodyUrl ?? portraitUrl} />
+        <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} artUrl={isNpc ? null : bodyUrl ?? portraitUrl} campaignId={campaignId ?? sheet.campaignId} />
       )}
     </Block>
   );

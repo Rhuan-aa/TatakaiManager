@@ -2667,8 +2667,8 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
   `SheetVisibilityPanel`; NPC: botão com pop-up), Cansaço/PS do NPC (`npcTracking`, padrão desligado), editar, ajustes, reabrir e atividade.
   Item `SHEET` da aba Aprovações abre a ficha nessa aba e rola até a aprovação; a aba pisca em vermelho enquanto `PENDING_APPROVAL`
   (estática com `prefers-reduced-motion`).
-- **Imagem de item na tela**: upload/remoção no `ItemsCatalog` (global e por campanha) e miniatura no `InventoryGrid` (slot, lista e ficha do
-  item) com o ícone atual como fallback.
+- ~~**Imagem de item na tela**~~ — **feito (21/11/2026, conferido na tela)**: `ui/ItemImage`, upload/remoção no `ItemsCatalog`,
+  miniatura no slot, na lista e na ficha do item do `InventoryGrid` (ícone como fallback).
 
 ### 53.4 Falta — Fase 3 (efeitos e telas de campanha)
 - **Efeitos de condição** no card, retrato e boneco (entrada animada + estado contínuo): Queimando, Congelando, Envenenado, Sangramento,

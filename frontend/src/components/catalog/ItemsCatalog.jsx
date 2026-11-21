@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { listConsumables, listEquipment, listWeapons } from '../../api/catalog';
+import { deleteCatalogItemImage, uploadCatalogItemImage } from '../../api/catalogItemImages';
+import ItemImage, { useItemImageIndex } from '../ui/ItemImage';
+import Icon from '../ui/Icon';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 import Collapse from '../ui/Collapse';
@@ -12,15 +15,15 @@ const USE ={ SELF: 'Em si', ALLY: 'Em aliado', OFFENSIVE: 'Ofensivo' };
 
 const KINDS = {
   weapon: {
-    label: 'Armas', load: listWeapons, groupBy: 'group',
+    label: 'Armas', img: 'WEAPON', path: 'weapons', icon: 'swords', load: listWeapons, groupBy: 'group',
     groups: { MELEE: 'Corpo a corpo', ACADEMY: 'De academia', IMPROVISED: 'Improvisadas', THROWN: 'De arremesso', RANGED: 'De disparo', FIREARM: 'De fogo', AUGMENT: 'Implementos' },
   },
   consumable: {
-    label: 'Consumíveis', load: listConsumables, groupBy: 'group',
+    label: 'Consumíveis', img: 'CONSUMABLE', path: 'consumables', icon: 'bandage', load: listConsumables, groupBy: 'group',
     groups: { MEDICAL: 'Médicos', STIMULANT: 'Estimulantes', SUPPLEMENT: 'Suplementos', FOOD: 'Comida', TACTICAL: 'Táticos', BOMB: 'Bombas' },
   },
   equipment: {
-    label: 'Equipamentos', load: listEquipment, groupBy: 'kind',
+    label: 'Equipamentos', img: 'EQUIPMENT', path: 'equipment', icon: 'circle', load: listEquipment, groupBy: 'kind',
     groups: { PROTECTION: 'Proteções', COMPETITION: 'De competição', ACADEMY: 'De academia', CLOTHING: 'Roupas', TOOL: 'Ferramentas' },
   },
 };
@@ -83,29 +86,107 @@ const VIEW = {
   equipment: [equipmentTags, equipmentDetails],
 };
 
-function Row({ item, kind }) {
+const SCOPE_LABEL = { CAMPAIGN: 'Imagem da campanha', GLOBAL: 'Imagem do sistema' };
+
+/** Enviar/remover a imagem do item. target: 'campaign' (Mestre) ou 'global' (editor do sistema). */
+function ImageControls({ item, kind, campaignId, targets, scope, onChanged }) {
+  const toast = useToast();
+  const [target, setTarget] = useState(targets[0]);
+  const [busy, setBusy] = useState(false);
+  const cid = target === 'campaign' ? campaignId : undefined;
+  // só remove o que existe no escopo escolhido (na campanha, a global aparece por fallback)
+  const canRemove = scope && (target === 'global' ? scope === 'GLOBAL' || !campaignId : scope === 'CAMPAIGN');
+
+  async function run(fn, ok) {
+    setBusy(true);
+    try {
+      await fn();
+      toast(ok);
+      onChanged();
+    } catch (err) {
+      toast(parseApiError(err).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="well flex flex-wrap items-end gap-2">
+      {targets.length > 1 && (
+        <label className="label">
+          Onde
+          <select className="field mt-1" value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="campaign">Só nesta campanha</option>
+            <option value="global">Sistema (todas)</option>
+          </select>
+        </label>
+      )}
+      <label className="label">
+        {scope ? 'Trocar imagem' : 'Enviar imagem'}
+        <input type="file" accept="image/*" className="field mt-1" disabled={busy}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { toast('Imagem acima de 5 MB.', 'error'); return; }
+            run(() => uploadCatalogItemImage(KINDS[kind].path, item.key, file, cid), 'Imagem enviada.');
+          }} />
+      </label>
+      {canRemove && (
+        <button type="button" className="btn-secondary" disabled={busy}
+          onClick={() => run(() => deleteCatalogItemImage(KINDS[kind].path, item.key, cid), 'Imagem removida.')}>
+          Remover imagem
+        </button>
+      )}
+      <p className="hint w-full">Opcional. Até 5 MB; sem imagem, o inventário usa o ícone do tipo.</p>
+    </div>
+  );
+}
+
+function Row({ item, kind, campaignId, images, targets }) {
   const [open, setOpen] = useState(false);
   const [tags, details] = VIEW[kind];
+  const { img, icon } = KINDS[kind];
+  const scope = images.scopeOf(img, item.key);
+  const pic = (thumb, cls) => (
+    <ItemImage kind={img} itemKey={item.key} campaignId={campaignId} has={!!scope} rev={images.rev} thumb={thumb}
+      className={cls} fallback={thumb ? <Icon name={icon} size={22} /> : null} />
+  );
   return (
     <li className="card-round flex flex-col gap-1 text-sm">
       <button type="button" className="flex flex-wrap items-center gap-2 text-left" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="item-thumb" aria-hidden="true">{pic(true, '')}</span>
         <strong className="panel-title flex-1 text-base">{item.name}</strong>
         {tags(item)}
         <span aria-hidden="true" className="text-xs">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2">
+          {scope && (
+            <figure className="flex flex-col gap-1">
+              <span className="item-full">{pic(false, '')}</span>
+              <figcaption className="text-fine">{SCOPE_LABEL[scope]}</figcaption>
+            </figure>
+          )}
           {details(item) && <p>{details(item)}</p>}
           <p className="text-fine">Preço {item.price} · Acesso {item.access}</p>
+          {targets.length > 0 && (
+            <ImageControls item={item} kind={kind} campaignId={campaignId} targets={targets} scope={scope} onChanged={images.reload} />
+          )}
         </div>
       )}
     </li>
   );
 }
 
-/** Armas, consumíveis e equipamentos — catálogos estáticos do sistema (§42–44), só leitura. */
-export default function ItemsCatalog() {
+/**
+ * Armas, consumíveis e equipamentos — catálogos estáticos do sistema (§42–44), só leitura.
+ * Imagem opcional por item: Mestre na campanha, editores do sistema na global (§53.3).
+ */
+export default function ItemsCatalog({ campaignId, isMaster, globalEditor }) {
   const toast = useToast();
+  const images = useItemImageIndex(campaignId);
+  const targets = [isMaster && campaignId && 'campaign', globalEditor && 'global'].filter(Boolean);
   const [kind, setKind] = useState('weapon');
   const [data, setData] = useState({});
   const [q, setQ] = useState('');
@@ -143,7 +224,7 @@ export default function ItemsCatalog() {
           return list.length > 0 && (
             <Collapse key={g} title={<>{title}<span className="text-fine ml-2 font-sans normal-case opacity-70">{list.length}</span></>}>
               <ul className="flex flex-col gap-2">
-                {list.map((i) => <Row key={i.key} item={i} kind={kind} />)}
+                {list.map((i) => <Row key={i.key} item={i} kind={kind} campaignId={campaignId} images={images} targets={targets} />)}
               </ul>
             </Collapse>
           );

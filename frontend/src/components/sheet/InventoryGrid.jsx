@@ -3,6 +3,7 @@ import Icon from '../ui/Icon';
 import { ITEM_LOCATION } from '../ui/gear';
 import { useConsumables, useEquipment, useWeapons } from '../ui/useCatalog';
 import FighterPlaceholder from './FighterPlaceholder';
+import ItemImage, { itemRef, useItemImageIndex } from '../ui/ItemImage';
 
 const kg = (v) => (Math.round((v ?? 0) * 10) / 10).toString().replace('.', ',');
 // Carga (capítulo de Condições): efeitos de cada estado acima da Carga
@@ -49,15 +50,25 @@ function catalogRows(i, w, e, c) {
   return [];
 }
 
-function Slot({ item, on, onSelect }) {
+/** Imagem do catálogo (se houver) ou o ícone do tipo. */
+function Pic({ item, images, campaignId, size, thumb = true, className = 'inv-pic' }) {
+  const ref = itemRef(item);
+  const icon = <Icon name={kindOf(item).icon} size={size} />;
+  if (!ref) return icon;
+  return (
+    <ItemImage kind={ref[0]} itemKey={ref[1]} campaignId={campaignId} has={!!images.scopeOf(...ref)} rev={images.rev}
+      thumb={thumb} className={className} fallback={icon} />
+  );
+}
+
+function Slot({ item, on, onSelect, images, campaignId }) {
   if (!item) return <li className="inv-slot inv-empty" aria-label="Espaço vazio"><span aria-hidden="true">Vazio</span></li>;
-  const k = kindOf(item);
   const s = states(item);
   return (
     <li>
       <button type="button" className="inv-slot" aria-pressed={on} onClick={() => onSelect(item.id)}
         aria-label={`${item.name}, ${ITEM_LOCATION[locOf(item)]}${s.length ? `, ${s.join(', ')}` : ''}`}>
-        <Icon name={k.icon} size={26} />
+        <Pic item={item} images={images} campaignId={campaignId} size={26} />
         <span className="inv-slot-name">{item.name}</span>
         {item.quantity > 1 && <span className="inv-qty">×{item.quantity}</span>}
         {s.length > 0 && <span className="inv-flag" title={s.join(', ')} />}
@@ -67,7 +78,8 @@ function Slot({ item, on, onSelect }) {
 }
 
 /** Inventário: boneco com o que está equipado, lista por tipo e ficha do item selecionado. */
-export default function InventoryGrid({ items, money, derived, artUrl }) {
+export default function InventoryGrid({ items, money, derived, artUrl, campaignId }) {
+  const images = useItemImageIndex(campaignId);
   const weapons = useWeapons();
   const equipment = useEquipment();
   const consumables = useConsumables();
@@ -116,7 +128,7 @@ export default function InventoryGrid({ items, money, derived, artUrl }) {
                   <div key={loc}>
                     <h4 className="inv-loc">{ITEM_LOCATION[loc]}</h4>
                     <ul className="inv-slots">
-                      {slots.map((i, x) => <Slot key={i?.id ?? x} item={i} on={i?.id === cur?.id} onSelect={setSel} />)}
+                      {slots.map((i, x) => <Slot key={i?.id ?? x} item={i} on={i?.id === cur?.id} onSelect={setSel} images={images} campaignId={campaignId} />)}
                     </ul>
                   </div>
                 );
@@ -142,7 +154,7 @@ export default function InventoryGrid({ items, money, derived, artUrl }) {
               {listed.map((i) => (
                 <li key={i.id}>
                   <button type="button" className="inv-row" aria-pressed={i.id === cur.id} onClick={() => setSel(i.id)}>
-                    <Icon name={kindOf(i).icon} size={22} />
+                    <Pic item={i} images={images} campaignId={campaignId} size={22} />
                     <span className="inv-row-name">{i.name}</span>
                     {i.quantity > 1 && <span className="inv-row-qty">×{i.quantity}</span>}
                     <span className="inv-row-loc">{ITEM_LOCATION[locOf(i)]}</span>
@@ -157,7 +169,9 @@ export default function InventoryGrid({ items, money, derived, artUrl }) {
           <aside className="inv-detail" aria-live="polite">
             <h3 className="inv-title">{cur.name}</h3>
             <p className="inv-sub">{kindOf(cur).one} · {ITEM_LOCATION[locOf(cur)]}</p>
-            <div className="inv-art" aria-hidden="true"><Icon name={kindOf(cur).icon} size={96} /></div>
+            <div className="inv-art" aria-hidden="true">
+              <Pic item={cur} images={images} campaignId={campaignId} size={96} thumb={false} className="inv-art-img" />
+            </div>
             <dl className="inv-stats">
               {rows.length > 0 && <dt className="inv-sec">Catálogo</dt>}
               {rows.map(([k, v]) => <div key={k} className="inv-stat"><dt>{k}</dt><dd>{v}</dd></div>)}
