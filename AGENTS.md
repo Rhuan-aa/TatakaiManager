@@ -1004,8 +1004,6 @@ reducao)` depois da % e antes do mínimo 1.
   Respeita `prefers-reduced-motion`; `pointer-events:none`; `.no-print`. Estado contínuo: `ui/AuraLayers` (`.aura-*` em `.cond-host`: cartão do combate,
   retrato e boneco da ficha). "Efeitos reduzidos": `ui/fxPref` (`html[data-fx=reduced]`, botão na `Sidebar`, localStorage `fx.reduced`).
 
-**Peso inicial (RN-ATR-08):** `BuildState.manualWeightKg` guarda o peso digitado; sem ele, `CharacterBuildService.submit` calcula `SheetRules.initialWeight` com a CON final (antes ficava com CON 0, calculada na Identidade). Depois do envio o peso só varia pela alimentação.
-
 **Impacto na parede:** `CreateAttackRequest.surface` (checkbox "Parede/obstáculo junto do alvo" no `AttackBuilder` para Esmagar, Empurrar e Empurrão) faz o alvo empurrado sem resistir sofrer 1d4+3 (`AttackService.wallImpact`; PQ só no Esmagar).
 
 **Fora da especialização (não treinado):** metade do atributo no ataque básico desarmado (inclusive atacante Derrubado, que já tinha DES/2: fica DES/4),
