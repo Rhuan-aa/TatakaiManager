@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  getNpcSheet, getCampaignNpcSheet, getNpcSheetVisibility, setNpcSheetVisibility,
+  getNpcSheet, getCampaignNpcSheet, getNpcSheetVisibility, updateNpcSheetVisibility,
 } from '../../api/characterSheets';
+import Icon from '../ui/Icon';
 import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -23,41 +24,81 @@ const PREFILL = (a) => (a ? {
   cha: a.CHA || '',
 } : { cha: '' });
 
-function VisibilityToggles({ campaignId, npcId }) {
+/** Botão "Visibilidade" (Mestre dono do NPC): pop-up com as 16 seções, salvas num PUT em lote. */
+function VisibilityButton({ campaignId, npcId }) {
   const toast = useToast();
-  const [vis, setVis] = useState(null);
+  const ref = useRef(null);
+  const [draft, setDraft] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    getNpcSheetVisibility(campaignId, npcId)
-      .then((list) => active && setVis(Object.fromEntries(list.map((x) => [x.section, x.visible]))))
-      .catch((err) => active && toast(parseApiError(err).message, 'error'));
-    return () => { active = false; };
-  }, [campaignId, npcId, toast]);
-
-  async function toggle(section, visible) {
+  async function open() {
+    ref.current.showModal();
     try {
-      await setNpcSheetVisibility(campaignId, npcId, { section, visible });
-      setVis((p) => ({ ...p, [section]: visible }));
+      const list = await getNpcSheetVisibility(campaignId, npcId);
+      setDraft(Object.fromEntries(SECTIONS.map((s) => [s.section, !!list.find((x) => x.section === s.section)?.visible])));
     } catch (err) {
       toast(parseApiError(err).message, 'error');
+      ref.current?.close();
     }
   }
 
+  function close() {
+    ref.current.close();
+    setDraft(null);
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await updateNpcSheetVisibility(campaignId, npcId, draft);
+      toast('Visibilidade salva.');
+      close();
+    } catch (err) {
+      toast(parseApiError(err).message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const all = (v) => setDraft(Object.fromEntries(SECTIONS.map((s) => [s.section, v])));
+
   return (
-    <fieldset className="panel p-4">
-      <legend className="panel-title">Visível para jogadores nesta campanha</legend>
-      {!vis ? <div className="skeleton h-12 w-full" /> : (
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          {SECTIONS.map((s) => (
-            <label key={s.section} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={!!vis[s.section]} onChange={(e) => toggle(s.section, e.target.checked)} />
-              {s.label}
-            </label>
-          ))}
-        </div>
-      )}
-    </fieldset>
+    <>
+      <button type="button" className="btn-secondary self-start" onClick={open}>
+        <Icon name="lock" size={16} /> Visibilidade
+      </button>
+      {/* <dialog> nativo: fica na camada de topo, prende o foco; Esc não fecha o modal do NPC por trás */}
+      <dialog ref={ref} className="panel m-auto w-[min(560px,calc(100vw-32px))] p-0 text-[var(--text)] backdrop:bg-black/70"
+        onCancel={(e) => { e.preventDefault(); close(); }}
+        onKeyDown={(e) => e.key === 'Escape' && e.stopPropagation()}>
+        <form onSubmit={save} className="flex flex-col gap-3 p-4">
+          <h3 className="panel-title text-xl">Visível para os jogadores</h3>
+          <p className="hint">Vale só nesta campanha. Seção desmarcada some da ficha do jogador.</p>
+          {!draft ? <div className="skeleton h-40 w-full" /> : (
+            <>
+              <div className="flex gap-2">
+                <button type="button" className="btn-ghost text-sm" onClick={() => all(true)}>Marcar tudo</button>
+                <button type="button" className="btn-ghost text-sm" onClick={() => all(false)}>Ocultar tudo</button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {SECTIONS.map((s) => (
+                  <label key={s.section} className="flex min-h-[36px] items-center gap-2 text-sm">
+                    <input type="checkbox" checked={draft[s.section]}
+                      onChange={(e) => setDraft((p) => ({ ...p, [s.section]: e.target.checked }))} />
+                    {s.label}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-ghost" onClick={close}>Cancelar</button>
+            <button type="submit" className="btn-primary" disabled={!draft || saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
+          </div>
+        </form>
+      </dialog>
+    </>
   );
 }
 
@@ -129,7 +170,7 @@ export default function NpcSheetPanel({ campaignId, npc, isMaster, onChanged }) 
           </div>
         )}
         <MartialPanel sheetId={sheet.id} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner} refreshKey={tick} />
-        {isOwner && isMaster && <VisibilityToggles campaignId={campaignId} npcId={npc.id} />}
+        {isOwner && isMaster && <VisibilityButton campaignId={campaignId} npcId={npc.id} />}
       </div>
     );
   }
@@ -144,8 +185,10 @@ export default function NpcSheetPanel({ campaignId, npc, isMaster, onChanged }) 
 
   return (
     <div className="flex flex-col gap-4">
-      <CharacterSheetView sheet={sheet} isMaster={isMaster} campaignId={campaignId} onChange={changed} />
-      {isOwner && isMaster && <VisibilityToggles campaignId={campaignId} npcId={npc.id} />}
+      {isOwner && isMaster && <VisibilityButton campaignId={campaignId} npcId={npc.id} />}
+      {/* dono: interações vêm do NPC; jogador: do servidor (null se INTERACTIONS oculta) */}
+      <CharacterSheetView sheet={sheet} isMaster={isMaster} campaignId={campaignId} onChange={changed}
+        interactions={isOwner ? npc.interactions : sheet.interactions} />
     </div>
   );
 }

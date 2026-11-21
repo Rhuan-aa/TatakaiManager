@@ -5,7 +5,8 @@ import LimiterRadar from './LimiterRadar';
 import InjuryBoard from './InjuryBoard';
 import FighterPlaceholder from './FighterPlaceholder';
 import SheetVisibilityPanel from './SheetVisibilityPanel';
-import { exportSheet, getSheetImageUrl } from '../../api/characterSheets';
+import { exportSheet, getSheetImageUrl, getNpcSheetMartial } from '../../api/characterSheets';
+import { GRADS, lab } from '../catalog/artLabels';
 import { listTraits } from '../../api/catalog';
 import { Effects, Variations } from '../catalog/CatalogManager';
 import { approveSheet, updateResources } from '../../api/characterSheets';
@@ -275,7 +276,70 @@ function useSheetImage(sheet, kind, has) {
   return url;
 }
 
-export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, campaignId, refreshKey = 0, onChange, onBack, focusSection }) {
+/** Artes/bases/técnicas do NPC liberadas ao jogador (o servidor já filtra por ARTS/BASES/TECHNIQUES). */
+function NpcMartialView({ campaignId, npcId }) {
+  const [m, setM] = useState(null);
+  useEffect(() => {
+    let active = true;
+    getNpcSheetMartial(campaignId, npcId).then((x) => active && setM(x)).catch(() => active && setM({ arts: [], techniques: [] }));
+    return () => { active = false; };
+  }, [campaignId, npcId]);
+  if (!m) return <div className="skeleton h-24 w-full" />;
+  const list = (kind) => m.techniques.filter((t) => t.kind === kind);
+  const group = (title, items) => items.length > 0 && (
+    <Block title={title}>
+      <ul className="flex flex-wrap gap-2">
+        {items.map((t) => (
+          <li key={t.id} className="bubble p-2 text-sm">
+            <strong className="panel-title">{t.name}</strong> <span className="tag">{lab(GRADS, t.graduation)}</span>
+          </li>
+        ))}
+      </ul>
+    </Block>
+  );
+  const empty = m.arts.length === 0 && m.techniques.length === 0;
+  return (
+    <div className="flex flex-col gap-4">
+      {empty && <p className="text-sm">Nada liberado.</p>}
+      {m.arts.length > 0 && (
+        <Block title="Artes">
+          <ul className="flex flex-wrap gap-2">
+            {m.arts.map((a) => (
+              <li key={a.id} className="bubble p-2 text-sm">
+                <strong className="panel-title">{a.artName}</strong> <span className="tag">{lab(GRADS, a.graduation)}</span>
+              </li>
+            ))}
+          </ul>
+        </Block>
+      )}
+      {group('Bases', list('BASE'))}
+      {group('Técnicas', list('TECHNIQUE'))}
+    </div>
+  );
+}
+
+function InteractionsBlock({ items }) {
+  return (
+    <Block title="Interações">
+      {items.length === 0 ? <p className="text-sm">Nenhuma interação.</p> : (
+        <ul className="flex flex-col gap-2">
+          {items.map((it, i) => (
+            <li key={i} className="bubble p-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <strong className="panel-title">{it.name}</strong>
+                {it.type && <span className="tag">{it.type}</span>}
+                <span className="tag tag-accent">{it.idlePointCost} pts de ócio</span>
+              </div>
+              {it.description && <p className="mt-1 opacity-80">{it.description}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Block>
+  );
+}
+
+export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, campaignId, refreshKey = 0, onChange, onBack, focusSection, interactions }) {
   const { user } = useAuth();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
@@ -371,14 +435,19 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
 
   const rev = refreshKey + sheet.version;
   const seesPrivate = isOwner || isMaster;
-  const radarAxes = sheet.attributes && r && d?.limiters ? [
+  // Jogador vendo ficha de NPC: o servidor manda as seções liberadas e zera o resto; seção oculta some da tela.
+  const npcView = sheet.visibleSections != null;
+  const show = (has) => has || !npcView;
+  // Eixos sem valor (recurso oculto) saem do gráfico; com menos de 3 não há polígono.
+  const axes = sheet.attributes && d?.limiters ? [
     ...ATTRS.filter((a) => a.key !== 'tal').map((a) => ({ key: a.key, label: a.label, value: sheet.attributes[a.enumName], limit: d.limiters[a.enumName] })),
-    { key: 'hp', label: 'HP', value: r.hpMax, limit: d.hpLimiter },
-    { key: 'sp', label: 'SP', value: r.spMax, limit: d.spLimiter },
-    { key: 'kp', label: 'PQ', value: r.kpMax, limit: d.kpLimiter },
-  ] : null;
+    { key: 'hp', label: 'HP', value: r?.hpMax, limit: d.hpLimiter },
+    { key: 'sp', label: 'SP', value: r?.spMax, limit: d.spLimiter },
+    { key: 'kp', label: 'PQ', value: r?.kpMax, limit: d.kpLimiter },
+  ].filter((a) => a.value != null && a.limit != null) : [];
+  const radarAxes = axes.length >= 3 ? axes : null;
 
-  const attrBlock = (
+  const attrBlock = show(sheet.attributes) && (
       <Block title="Atributos">
         {!sheet.attributes ? <Hidden name="atributos" /> : (
           <div className="sheet-attrs">
@@ -390,16 +459,17 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         )}
       </Block>
   );
-  const traitsBlock = (
+  // NPC separa TRAITS de CLANS; no jogador as duas vêm juntas.
+  const traitsBlock = show(sheet.traits || sheet.clans) && (
       <Block title="Traços e clãs">
-        {!sheet.traits || !sheet.clans ? <Hidden name="traços e clãs" /> : (
+        {!sheet.traits && !sheet.clans ? <Hidden name="traços e clãs" /> : (
           <div className="flex flex-col gap-3">
-            {sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
+            {sheet.traits && (sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
               <ul className="sheet-traits">
                 {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} />)}
               </ul>
-            )}
-            {sheet.clans.map((c) => (
+            ))}
+            {(sheet.clans ?? []).map((c) => (
               <div key={c.id} className="bubble p-2 text-sm">
                 <strong>Clã {c.name}</strong>
                 {c.heritage?.length > 0 && (
@@ -417,11 +487,14 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const overview = (
     <div className="sheet-overview">
       <div className="sheet-col">
-        <div className="portrait-frame">
-          {portraitUrl
-            ? <img src={portraitUrl} alt={`Retrato de ${sheet.name}`} />
-            : <FighterPlaceholder className="portrait-ph" />}
-        </div>
+        {/* NPC: o retrato já aparece no detalhe do NPC; a ficha fica enxuta */}
+        {!isNpc && (
+          <div className="portrait-frame">
+            {portraitUrl
+              ? <img src={portraitUrl} alt={`Retrato de ${sheet.name}`} />
+              : <FighterPlaceholder className="portrait-ph" />}
+          </div>
+        )}
         <div className="panel hero-card p-3">
           <div className="grid grid-cols-2 gap-2" aria-label="Identidade">
             <IdentityChip icon={ICON.ruler} title="Altura" value={`${sheet.heightM} m`} />
@@ -440,6 +513,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
       </div>
 
       <div className="sheet-col">
+        {isNpc && interactions && <InteractionsBlock items={interactions} />}
         {condFx.length > 0 && (
           <div className="panel flex flex-wrap items-center gap-2 p-2" aria-label="Condições em combate">
             <span className="caption">Em combate</span>
@@ -465,18 +539,22 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             </div>
           </Block>
         )}
-        <Block title="Recursos">
-          {!r ? <Hidden name="recursos" /> : (
+        {show(r || f) && <Block title="Recursos">
+          {!r && !f ? <Hidden name="recursos" /> : (
             <>
-              <div className="flex flex-col gap-3">
-                <Meter name="HP" value={r.currentHp} max={r.effectiveHpMax} color="var(--meter-hp)" onSave={saveResource('currentHp')} />
-                <Meter name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" onSave={saveResource('currentSp')} />
-                <Meter name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" onSave={saveResource('currentKp')} />
-              </div>
-              <p className="mt-3 text-sm">
-                Feridas abertas: <strong>{r.openWounds}</strong>
-                {r.effectiveHpMax !== r.hpMax && ` · HP máx. base ${r.hpMax}`}
-              </p>
+              {r && (
+                <div className="flex flex-col gap-3">
+                  {r.currentHp != null && <Meter name="HP" value={r.currentHp} max={r.effectiveHpMax} color="var(--meter-hp)" onSave={saveResource('currentHp')} />}
+                  {r.currentSp != null && <Meter name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" onSave={saveResource('currentSp')} />}
+                  {r.currentKp != null && <Meter name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" onSave={saveResource('currentKp')} />}
+                </div>
+              )}
+              {r?.openWounds != null && (
+                <p className="mt-3 text-sm">
+                  Feridas abertas: <strong>{r.openWounds}</strong>
+                  {r.effectiveHpMax !== r.hpMax && ` · HP máx. base ${r.hpMax}`}
+                </p>
+              )}
               {f && (
                 <div className="mt-3 flex flex-col gap-2">
                   <p className="caption">Desgaste (cansaço)</p>
@@ -493,23 +571,23 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
               )}
             </>
           )}
-        </Block>
-        <Block title="Limitadores">
+        </Block>}
+        {show(radarAxes) && <Block title="Limitadores">
           {!radarAxes ? <Hidden name="atributos ou recursos" /> : (
             <div className="flex flex-col items-center gap-2">
               <LimiterRadar axes={radarAxes} />
               <p className="hint">O anel externo é o limitador. Vértice destacado = acima do limitador.</p>
             </div>
           )}
-        </Block>
+        </Block>}
       </div>
 
       <div className="sheet-col">
-        <Block title="Ferimentos">
+        {show(sheet.injuries) && <Block title="Ferimentos">
           {!sheet.injuries ? <Hidden name="ferimentos" /> : (
             <InjuryBoard sheet={sheet} isMaster={isMaster} onChange={onChange} />
           )}
-        </Block>
+        </Block>}
         {attrBlock}
       </div>
     </div>
@@ -536,7 +614,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const inventory = (
     <Block title="Inventário">
       {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : (
-        <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} artUrl={bodyUrl ?? portraitUrl} />
+        <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} artUrl={isNpc ? null : bodyUrl ?? portraitUrl} />
       )}
     </Block>
   );
@@ -595,7 +673,9 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const tabs = [
     { id: 'overview', label: 'Visão Geral', node: <div className="flex flex-col gap-4">{overview}{traitsBlock}</div> },
     seesPrivate && { id: 'martial', label: 'Artes Marciais', node: martial },
-    { id: 'inventory', label: 'Inventário', node: inventory },
+    npcView && ['ARTS', 'BASES', 'TECHNIQUES'].some((s) => sheet.visibleSections.includes(s))
+      && { id: 'martial', label: 'Artes Marciais', node: <NpcMartialView campaignId={campaignId} npcId={sheet.npcId} /> },
+    show(sheet.inventory) && { id: 'inventory', label: 'Inventário', node: inventory },
     hasProgress && { id: 'progress', label: 'Progressão', node: progress },
     seesPrivate && { id: 'rolls', label: 'Rolagens', node: rolls },
     hasGm && { id: 'gm', label: 'Mestre', node: gm },
@@ -611,9 +691,11 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         <h2 className="panel-title flex-1 text-2xl">{sheet.name}</h2>
         {!isNpc && <span className="tag-accent tag">{STATUS[sheet.buildStatus]}</span>}
         {d?.criticalState && <span className="tag">Estado crítico</span>}
-        <button type="button" className="btn-secondary no-print" onClick={async () => {
-          try { await exportSheet(sheet.id, sheet.name); } catch (err) { toast(parseApiError(err).message, 'error'); }
-        }}>Exportar JSON</button>
+        {seesPrivate && (
+          <button type="button" className="btn-secondary no-print" onClick={async () => {
+            try { await exportSheet(sheet.id, sheet.name); } catch (err) { toast(parseApiError(err).message, 'error'); }
+          }}>Exportar JSON</button>
+        )}
         <button type="button" className="btn-secondary no-print" onClick={() => {
           // abre os traços antes para dar tempo de carregar efeitos/variações
           window.dispatchEvent(new Event('beforeprint'));

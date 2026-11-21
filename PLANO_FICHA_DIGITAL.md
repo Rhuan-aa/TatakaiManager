@@ -2655,12 +2655,14 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
   relativa à parte, severity, injury_id opcional, created_at`); `POST/DELETE /character-sheets/{id}/wounds` só Mestre; evento no canal `sheets`;
   oculto junto com INJURIES/BODY_MAP. Editor por ponteiro: mancha roxa (cor evolui com a gravidade), corte à mão livre, cicatriz (traço claro e
   fino), furo (máscara SVG que mostra o fundo), membro perdido some. Testes Mockito de permissão e visibilidade.
-- **Ficha de NPC simplificada**: sem radar, sem corpo inteiro, sem boneco; inventário menos estilizado; **Interações como bloco principal da
-  Visão Geral** (já vêm em `interactions`). Botão "Visibilidade" (só Mestre) abrindo pop-up com as 16 seções (`PUT` em lote).
-- **Adaptar o front aos `null`**: `CharacterSheetView`/`NpcSheetPanel` ainda esperam números em `resources` e `derived`; com HP/SP/PQ oculto a
-  tela do jogador pode quebrar. Usar `visibleSections`.
-- **Pop-up de detalhe do NPC** (`NpcSection.jsx`, `Modal`): o dono relatou que está "todo bugado" — reproduzir, achar a causa e corrigir; versão
-  maior e responsiva para radar/boneco/imagem quando liberados (RADAR, BODY_MAP, IMAGE).
+- ~~**Ficha de NPC simplificada**, **front com `null`** e **pop-up do NPC**~~ — **feito (21/11/2026, conferido na tela como Mestre e
+  jogador, desktop e 390 px)**: ficha de NPC sem retrato grande nem corpo inteiro no inventário; Interações no topo da Visão Geral (dono: do
+  NPC; jogador: `sheet.interactions`); jogador vendo NPC (`visibleSections != null`) não vê bloco/aba de seção oculta, medidor de recurso
+  `null` some, radar descarta eixos sem valor (mín. 3); `missingParts == null` esconde o boneco do `InjuryBoard`; aba "Artes Marciais" de
+  leitura via `GET .../sheet/martial`; botão "Visibilidade" abre `<dialog>` com as 16 seções e salva em lote; modal do NPC largo
+  (`max-w-7xl`) com ficha pronta (a ficha de 3 colunas ficava espremida em `max-w-2xl`); "Exportar JSON" só para quem pode exportar.
+  Causa do 500 ao salvar visibilidade no banco de dev: CHECK de enum antigo em `npc_sheet_visibility.section` (§53.5; dropado localmente).
+  Pendente: imagem do NPC para o jogador continua vindo da imagem do NPC, não da flag IMAGE.
 - **Aba "Configurações" da ficha** no lugar de "Mestre" (jogador também usa): imagens (retrato, corpo inteiro), visibilidade, alternância de
   Cansaço/PS (NPC), e a **aprovação** da ficha (sair da Visão Geral). Vindo da aba Aprovações, abrir nessa aba e fazê-la piscar em vermelho
   enquanto houver pendência; com `prefers-reduced-motion`, indicador vermelho estático.

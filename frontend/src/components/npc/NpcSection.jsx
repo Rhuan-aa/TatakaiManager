@@ -151,7 +151,8 @@ function NpcDetailView({ npc, campaignId }) {
       <div className="min-w-0 flex-1 space-y-4">
         {npc.description && <p className="text-sm text-[var(--text)]">{npc.description}</p>}
 
-        {npc.interactions?.length > 0 && (
+        {/* com ficha pronta, as interações viram o bloco principal da Visão Geral da ficha */}
+        {!npc.combatReady && npc.interactions?.length > 0 && (
           <section className="panel p-4">
             <h3 className="panel-title mb-3">Interações</h3>
             <ul className="flex flex-col gap-2">
@@ -195,7 +196,7 @@ function NpcDetailView({ npc, campaignId }) {
 }
 
 /** Overlay modal responsivo (fecha no backdrop e no Esc). */
-function Modal({ title, onClose, children }) {
+function Modal({ title, onClose, wide, children }) {
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') onClose();
@@ -217,7 +218,7 @@ function Modal({ title, onClose, children }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col panel overflow-hidden animate-[pop-in_160ms_ease-out]"
+        className={`flex max-h-[92vh] w-full ${wide ? 'max-w-7xl' : 'max-w-2xl'} flex-col panel overflow-hidden animate-[pop-in_160ms_ease-out]`}
       >
         <div className="flex items-center justify-between gap-3 border-b-[length:var(--border-w)] border-[var(--line)] px-5 py-3">
           <h3 className="panel-title truncate text-xl">{title}</h3>
@@ -520,7 +521,7 @@ export default function NpcSection({ campaignId, isMaster, npcs, setNpcs }) {
       )}
 
       {selected && (
-        <Modal title={selected.name} onClose={closeModal}>
+        <Modal title={selected.name} onClose={closeModal} wide={!editing && !!selectedDetail?.combatReady}>
           {editing && selectedDetail ? (
             <EditNpcForm
               npc={selectedDetail}

@@ -77,9 +77,12 @@ export default function InjuryBoard({ sheet, isMaster, onChange }) {
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row">
-      <div className="mx-auto w-full max-w-[220px] shrink-0">
-        <BodyMap injuries={all} missingParts={missing} selected={sel} onSelect={choose} />
-      </div>
+      {/* missingParts null = boneco oculto (BODY_MAP do NPC): só a lista */}
+      {sheet.missingParts != null && (
+        <div className="mx-auto w-full max-w-[220px] shrink-0">
+          <BodyMap injuries={all} missingParts={missing} selected={sel} onSelect={choose} />
+        </div>
+      )}
       <div className="flex min-w-0 flex-1 flex-col gap-3" aria-live="polite">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-display text-lg">{sel ? BODY_PART_LABELS[sel] : 'Todos os ferimentos'}</h3>
