@@ -14,7 +14,7 @@ const mx = (s, x) => (s === 'RIGHT' ? x : 200 - x)
 const out = (s) => (s === 'RIGHT' ? -1 : 1) // sentido "para fora do corpo" no eixo x
 
 /** Segmento afilado (cápsula) de a até b, com raios ra e rb. */
-function taper([ax, ay], [bx, by], ra, rb) {
+export function taper([ax, ay], [bx, by], ra, rb) {
   const dx = bx - ax
   const dy = by - ay
   const len = Math.hypot(dx, dy) || 1
@@ -32,7 +32,7 @@ function taper([ax, ay], [bx, by], ra, rb) {
   return { d, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)] }
 }
 
-const circle = ([cx, cy], r) => ({
+export const circle = ([cx, cy], r) => ({
   d: `M${cx - r} ${cy} A${r} ${r} 0 1 0 ${cx + r} ${cy} A${r} ${r} 0 1 0 ${cx - r} ${cy} Z`,
   box: [cx - r, cy - r, 2 * r, 2 * r],
 })

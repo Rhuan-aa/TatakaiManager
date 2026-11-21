@@ -2698,7 +2698,13 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
 - Limpeza: worktrees de agente em `.claude/worktrees/` (`git worktree list`; os commits deles já foram trazidos por cherry-pick) e a ficha
   "Akira" da Mesa de Testes ganhou 7 itens de teste no inventário.
 
-### 53.6 Pendências menores herdadas do ciclo anterior
-Radar pequeno dentro do bloco (escala vai até o limitador); `FighterPlaceholder` simples; `missingParts` fora do export; sem limpeza de imagens
-ao apagar ficha; arte real (PNG transparente) nunca testada no carrossel e no boneco do inventário; títulos `.title-stamp` pequenos nos cards de
-campanha; as alterações não commitadas do dono (peso inicial, RN-ATR-08) seguem fora dos commits.
+### 53.6 Pendências menores herdadas do ciclo anterior — **resolvidas em 21/11/2026**
+- Radar: raio maior (135 de 400) e ampliação automática quando o maior valor está abaixo de 50% do limitador (botão alterna
+  "ajustar aos valores" / "anel = limitador"; legenda diz a escala).
+- `FighterPlaceholder`: lutador em guarda feito dos segmentos do boneco (`taper`/`circle` de `bodyGeometry`), contorno único.
+- Export/import `.tatakai.json`: `sheet.missingParts` e `sheet.wounds` (só com Ferimentos visível; marca inválida no import vira aviso).
+- Arte PNG transparente conferida no carrossel e no inventário; no inventário a figura agora ocupa a altura do boneco atrás dos slots.
+- `.title-stamp` maior nos cards de campanha.
+- Limpeza de imagens ao apagar ficha: **não se aplica** — não existe fluxo de apagar ficha. Se um dia existir, apagar `sheet_images` e
+  `wound_marks` junto (as marcas já saem por `orphanRemoval`).
+- As alterações não commitadas do dono (peso inicial, RN-ATR-08) continuam fora dos commits.

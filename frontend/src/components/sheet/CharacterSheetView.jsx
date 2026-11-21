@@ -562,7 +562,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
           {!radarAxes ? <Hidden name="atributos ou recursos" /> : (
             <div className="flex flex-col items-center gap-2">
               <LimiterRadar axes={radarAxes} />
-              <p className="hint">O anel externo é o limitador. Vértice destacado = acima do limitador.</p>
+              <p className="hint">Vértice destacado = acima do limitador.</p>
             </div>
           )}
         </Block>}

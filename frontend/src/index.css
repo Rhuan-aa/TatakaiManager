@@ -1224,9 +1224,10 @@ select.field {
 .inv-doll { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.75rem; min-height: 26rem; padding: 1rem; border: var(--border-w, 3px) solid var(--line);
   background: radial-gradient(circle, color-mix(in srgb, var(--line) 22%, transparent) 1.2px, transparent 1.6px) 0 0 / 12px 12px, var(--panel-bg); overflow: hidden; }
 .inv-doll::before { content: ''; position: absolute; top: 10%; bottom: 0; left: 50%; width: min(64%, 21rem); translate: -50% 0; background: var(--accent); clip-path: polygon(50% 0, 62% 22%, 92% 12%, 78% 40%, 100% 56%, 76% 66%, 86% 100%, 14% 100%, 24% 66%, 0 56%, 22% 40%, 8% 12%, 38% 22%); opacity: 0.9; }
-.inv-figure { grid-column: 2; grid-row: 1; position: relative; display: grid; place-items: end center; }
-.inv-figure img { max-height: 25rem; max-width: 100%; object-fit: contain; object-position: bottom; }
-.inv-ph { height: 100%; max-height: 24rem; width: auto; max-width: 100%; color: var(--highlight); }
+.inv-figure { grid-column: 1 / -1; grid-row: 1; position: relative; z-index: 0; display: grid; place-items: end center; pointer-events: none; min-height: 0; }
+.inv-figure img { height: 100%; max-height: 25rem; width: auto; max-width: 46%; object-fit: contain; object-position: bottom; }
+.inv-ph { height: 100%; max-height: 24rem; width: auto; max-width: 46%; color: var(--highlight); }
+.inv-side { position: relative; z-index: 1; }
 .inv-side { position: relative; grid-row: 1; display: flex; flex-direction: column; gap: 0.9rem; }
 .inv-side-0 { grid-column: 1; } .inv-side-1 { grid-column: 3; align-items: flex-end; }
 .inv-loc { display: inline-block; margin-bottom: 0.4rem; padding: 0.1rem 0.5rem; background: var(--ink); color: var(--paper); border: 2px solid var(--paper); font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; transform: rotate(-2deg); }

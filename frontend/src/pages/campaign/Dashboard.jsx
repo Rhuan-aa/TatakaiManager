@@ -37,7 +37,7 @@ function CampaignCard({ campaign }) {
         <RoleBadge role={campaign.currentUserRole} />
       </div>
       <div className="p-4">
-        <h3 className="title-stamp break-words text-2xl">{campaign.name}</h3>
+        <h3 className="title-stamp break-words text-3xl leading-none sm:text-4xl">{campaign.name}</h3>
         <p className="line-clamp-3 mt-3 min-h-[3.75rem] text-sm opacity-85">
           {campaign.description || 'Sem descrição.'}
         </p>

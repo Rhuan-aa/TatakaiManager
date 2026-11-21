@@ -1,16 +1,22 @@
-// Radar de limitadores: o anel externo e 100% do limitador; quem passa sai do anel (ate 125%).
+import { useState } from 'react'
+
+// Radar de limitadores: na escala normal o anel grosso é 100% do limitador e quem passa sai do anel (até 125%).
+// Com valores muito abaixo do limitador o gráfico amplia (k > 1) para o polígono não virar um ponto.
 const VB = 400
 const C = VB / 2
-const R = 105
+const R = 135
 const MAX = 1.25
 
-export default function LimiterRadar({ axes = [], size = 320 }) {
+export default function LimiterRadar({ axes = [], size = 460 }) {
   const n = axes.length
+  const maxFrac = Math.max(0.05, ...axes.map((a) => (a.limit > 0 ? Math.max(a.value, 0) / a.limit : 0)))
+  const [fit, setFit] = useState(maxFrac < 0.5)
   if (n < 3) return null
+  const k = fit ? 1 / (maxFrac * 1.15) : 1 // ampliação
   const ang = (i) => -Math.PI / 2 + (2 * Math.PI * i) / n
   const pt = (i, f) => [C + Math.cos(ang(i)) * R * f, C + Math.sin(ang(i)) * R * f]
   const ring = (f) => axes.map((_, i) => pt(i, f).join(',')).join(' ')
-  const frac = (a) => (a.limit > 0 ? Math.min(Math.max(a.value, 0) / a.limit, MAX) : 0)
+  const frac = (a) => (a.limit > 0 ? Math.min((Math.max(a.value, 0) / a.limit) * k, MAX) : 0)
   const over = (a) => a.limit > 0 ? a.value > a.limit : a.value > 0
   const poly = axes.map((a, i) => pt(i, frac(a)).join(',')).join(' ')
   const nOver = axes.filter(over).length
@@ -18,19 +24,20 @@ export default function LimiterRadar({ axes = [], size = 320 }) {
 
   return (
     <div style={{ width: '100%', maxWidth: size }}>
-      <svg viewBox={`0 0 ${VB} ${VB}`} role="img" aria-label={summary} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      <svg viewBox={`-60 -10 ${VB + 120} ${VB + 20}`} role="img" aria-label={summary} style={{ width: '100%', height: 'auto', display: 'block' }}>
         {[0.25, 0.5, 0.75].map((f) => (
           <polygon key={f} points={ring(f)} fill="none" stroke="var(--line)" strokeOpacity="0.3" strokeWidth="1" />
         ))}
         {axes.map((a, i) => {
-          const [x, y] = pt(i, 1)
+          const [x, y] = pt(i, MAX)
           return <line key={a.key} x1={C} y1={C} x2={x} y2={y} stroke="var(--line)" strokeOpacity="0.3" strokeWidth="1" />
         })}
-        <polygon points={ring(1)} fill="none" stroke="var(--line)" strokeWidth="4" strokeLinejoin="round" />
+        {k <= MAX && <polygon points={ring(k)} fill="none" stroke="var(--line)" strokeWidth="4" strokeLinejoin="round" />}
+        {k > 1 && <polygon points={ring(MAX)} fill="none" stroke="var(--line)" strokeWidth="1.5" strokeDasharray="6 5" strokeLinejoin="round" />}
         <polygon points={poly} fill="var(--text)" fillOpacity="0.18" stroke="var(--text)" strokeWidth="3" strokeLinejoin="round" />
         {axes.map((a, i) => {
           if (!over(a)) return null
-          const [x0, y0] = pt(i, 1)
+          const [x0, y0] = pt(i, Math.min(k, MAX))
           const [x1, y1] = pt(i, frac(a))
           return <line key={a.key} x1={x0} y1={y0} x2={x1} y2={y1} stroke="var(--accent)" strokeWidth="5" />
         })}
@@ -59,6 +66,14 @@ export default function LimiterRadar({ axes = [], size = 320 }) {
           )
         })}
       </svg>
+      <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+        <span className="hint">
+          {k > 1 ? `Ampliado: borda tracejada = ${Math.round((MAX / k) * 100)}% do limitador.` : 'Anel grosso = limitador.'}
+        </span>
+        <button type="button" className="btn-ghost text-xs" aria-pressed={fit} onClick={() => setFit((f) => !f)}>
+          {fit ? 'Ver anel = limitador' : 'Ajustar aos valores'}
+        </button>
+      </div>
       <table className="sr-only">
         <thead>
           <tr><th>Eixo</th><th>Valor</th><th>Limitador</th><th>Acima do limitador</th></tr>
