@@ -2677,9 +2677,10 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
 ### 53.5 Verificações devidas (de tudo que já foi feito)
 - Conferir na tela, nos dois temas e no celular: agenda com mais de 4 slots, ficha de NPC vista pelo jogador com seções ocultas, abas da ficha
   (Artes Marciais, Progressão, Rolagens, Mestre), radar, upload de retrato/corpo inteiro, NPCs, logs, registro.
-- Subir o backend novo: o container de teste `tatakai-revamp-backend` (porta 8090) roda um jar **anterior** à Fase 1. Reempacotar
-  (`cd backend && JAVA_HOME=~/.jdks/jbr-21.0.11 ./mvnw -q package -Dmaven.test.skip=true`) e recriar o container; derrubar com
-  `docker rm -f tatakai-revamp-backend`. Vite de dev: `VITE_API_URL=http://localhost:8090 npx vite --port 5173`.
+- Ambiente parado em 21/11/2026: nem o container `tatakai-revamp-backend` (8090) nem o Vite (5173) estão rodando. Para subir: reempacotar
+  (`cd backend && JAVA_HOME=~/.jdks/jbr-21.0.11 ./mvnw -q package -Dmaven.test.skip=true`), `docker compose up -d --no-build postgres mongo` e
+  `docker compose run -d --no-deps --name tatakai-revamp-backend -p 8090:8080 -v $PWD/backend/target/tatakai-manager-0.0.1-SNAPSHOT.jar:/app/app.jar:ro backend`
+  (o `docker compose build` falha pelo helper de credenciais gpg; as portas 8080/8081/8082 estão ocupadas por outro projeto). Vite de dev: `VITE_API_URL=http://localhost:8090 npx vite --port 5173`.
 - Migração manual (produção com `validate`): criar `sheet_images` e `catalog_item_images`; `permanent_injuries.body_part varchar(20)`;
   `character_sheets.missing_parts jsonb default '[]'`; trocar o CHECK de `bookings.slot_number` para 1..13 (achar o nome em `pg_constraint`);
   dropar CHECK de enum em `npc_sheet_visibility.section`/`character_sheet_visibility.section` se o banco tiver (§11.11 do AGENTS.md).
