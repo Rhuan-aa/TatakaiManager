@@ -34,12 +34,13 @@ public record CharacterSheetResponse(
         List<BodyPart> missingParts,              // null se INJURIES ou BODY_MAP oculta
         List<NpcInteractionDto> interactions,     // só ficha de NPC vista na campanha; null se INTERACTIONS oculta
         List<SheetSection> visibleSections,       // só ficha de NPC vista na campanha; null nos demais casos
-        boolean npcTracking                       // ficha de NPC com Cansaço/PS ligados (§53.2-6)
+        boolean npcTracking,                      // ficha de NPC com Cansaço/PS ligados (§53.2-6)
+        List<WoundMarkResponse> wounds            // ferimentos desenhados (§53.3); null como missingParts
 ) {
     public CharacterSheetResponse withNpcView(List<NpcInteractionDto> interactions, List<SheetSection> visibleSections) {
         return new CharacterSheetResponse(id, campaignId, ownerUserId, ownerName, name, buildStatus, bodyType, dominance,
                 heightM, weightKg, attributes, derived, resources, fatigue, progress, money, injuries, inventory,
                 version, npcId, traits, clans, combatReady, hasPortrait, hasFullBody, missingParts,
-                interactions, visibleSections, npcTracking);
+                interactions, visibleSections, npcTracking, wounds);
     }
 }

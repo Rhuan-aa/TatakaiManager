@@ -652,4 +652,75 @@ class CharacterSheetServiceTest {
 
         assertThat(sheet.getTraits()).isEmpty();
     }
+
+    // ------------------------------------------------------------------ §53.3 ferimentos desenhados
+
+    private com.tatakai.manager.sheet.dto.request.AddWoundRequest cut(InjuryPayload injury) {
+        return new com.tatakai.manager.sheet.dto.request.AddWoundRequest(
+                com.tatakai.manager.sheet.entity.BodyPart.LEFT_FOREARM, com.tatakai.manager.sheet.entity.WoundType.CUT,
+                new com.tatakai.manager.sheet.dto.request.WoundGeometry(List.of(List.of(0.1, 0.2), List.of(0.8, 0.7)), null),
+                InjurySeverity.MODERATE, injury);
+    }
+
+    @Test
+    @DisplayName("§53.3: Mestre desenha um corte — só visual, sem mexer em HP nem criar ferimento")
+    void wound_visualOnly() {
+        CharacterSheetResponse r = service.addWound(sheet.getId(), cut(null), masterUser.getId());
+        assertThat(r.wounds()).hasSize(1);
+        assertThat(r.wounds().get(0).part()).isEqualTo(com.tatakai.manager.sheet.entity.BodyPart.LEFT_FOREARM);
+        assertThat(r.wounds().get(0).geometry().points()).hasSize(2);
+        assertThat(sheet.getInjuries()).isEmpty();
+        assertThat(sheet.getCurrentHp()).isEqualTo(22);
+        assertPublishedAndLogged(ActivityCategory.GM_ADJUSTMENT, "ADD_WOUND");
+    }
+
+    @Test
+    @DisplayName("§53.3: com a regra marcada, o corte também vira Ferimento Permanente na mesma parte")
+    void wound_followsRule() {
+        InjuryPayload p = new InjuryPayload(InjuryType.CUTTING, "Antebraço", InjurySeverity.SEVERE, null, null, null);
+        service.addWound(sheet.getId(), cut(p), masterUser.getId());
+        assertThat(sheet.getInjuries()).hasSize(1);
+        assertThat(sheet.getInjuries().get(0).getBodyPart()).isEqualTo(com.tatakai.manager.sheet.entity.BodyPart.LEFT_FOREARM);
+        assertThat(sheet.getInjuries().get(0).getHpMaxReduction()).isPositive();
+    }
+
+    @Test
+    @DisplayName("§53.3: jogador não desenha ferimento (403)")
+    void wound_playerForbidden() {
+        assertThatThrownBy(() -> service.addWound(sheet.getId(), cut(null), playerUser.getId()))
+                .isInstanceOf(com.tatakai.manager.shared.exception.AccessDeniedException.class);
+        verify(sheetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("§53.3: geometria inválida é recusada antes de salvar")
+    void wound_invalidGeometry() {
+        var req = new com.tatakai.manager.sheet.dto.request.AddWoundRequest(
+                com.tatakai.manager.sheet.entity.BodyPart.HEAD, com.tatakai.manager.sheet.entity.WoundType.HOLE,
+                new com.tatakai.manager.sheet.dto.request.WoundGeometry(List.of(List.of(0.5, 0.5)), null), null, null);
+        assertThatThrownBy(() -> service.addWound(sheet.getId(), req, masterUser.getId()))
+                .isInstanceOf(com.tatakai.manager.sheet.exception.InvalidCharacterSheetException.class);
+        verify(sheetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("§53.3: Mestre apaga a marca; id inexistente é 404")
+    void wound_remove() {
+        service.addWound(sheet.getId(), cut(null), masterUser.getId());
+        var mark = sheet.getWounds().get(0);
+        mark.setId(UUID.randomUUID());
+        CharacterSheetResponse r = service.removeWound(sheet.getId(), mark.getId(), masterUser.getId());
+        assertThat(r.wounds()).isEmpty();
+        assertThatThrownBy(() -> service.removeWound(sheet.getId(), UUID.randomUUID(), masterUser.getId()))
+                .isInstanceOf(com.tatakai.manager.sheet.exception.SheetEntryNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("§53.3: marcas somem para outro jogador com INJURIES oculta")
+    void wound_hidden() {
+        service.addWound(sheet.getId(), cut(null), masterUser.getId());
+        when(visibilityRepository.findByCampaignMemberId(playerMember.getId()))
+                .thenReturn(List.of(hidden(SheetSection.INJURIES)));
+        assertThat(service.get(sheet.getId(), otherUser.getId()).wounds()).isNull();
+    }
 }

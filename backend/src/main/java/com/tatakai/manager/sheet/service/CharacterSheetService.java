@@ -1,5 +1,10 @@
 package com.tatakai.manager.sheet.service;
 
+import com.tatakai.manager.sheet.dto.request.AddWoundRequest;
+import com.tatakai.manager.sheet.entity.WoundMark;
+import com.tatakai.manager.sheet.dto.response.WoundMarkResponse;
+import com.tatakai.manager.sheet.service.rules.WoundRules;
+import com.tatakai.manager.sheet.entity.BodyPart;
 import com.tatakai.manager.sheet.dto.response.SheetUpdateMessage.SheetEvent;
 
 import com.tatakai.manager.auth.entity.User;
@@ -322,6 +327,56 @@ public class CharacterSheetService {
         }
     }
 
+    // ---------------------------------------------------------------- ferimentos desenhados (§53.3)
+
+    /** Mestre desenha uma marca no boneco; com {@code injury}, cria também o Ferimento Permanente na mesma parte. */
+    @Transactional
+    public CharacterSheetResponse addWound(UUID sheetId, AddWoundRequest req, UUID requesterId) {
+        CharacterSheet sheet = loadSheet(sheetId);
+        Access a = access(sheet, requesterId);
+        requireMaster(a);
+        WoundRules.validate(req.type(), req.geometry());
+        sheet.getWounds().add(WoundMark.builder().sheet(sheet).part(req.part()).type(req.type())
+                .geometry(req.geometry()).severity(req.severity()).build());
+        if (req.injury() != null) addInjury(sheet, req.injury(), req.part());
+        CharacterSheet saved = sheetRepository.save(sheet);
+        activityLog.record(saved, requesterId, ActorRole.MASTER, ActivityCategory.GM_ADJUSTMENT, "ADD_WOUND",
+                "wound:" + req.part(), null, req.type() + (req.injury() != null ? " + ferimento" : ""), null, null);
+        publish(SheetEvent.SHEET_UPDATED, saved, ActivityCategory.GM_ADJUSTMENT, "ADD_WOUND", a.actorName());
+        return toResponse(saved, true, Set.of());
+    }
+
+    @Transactional
+    public CharacterSheetResponse removeWound(UUID sheetId, UUID woundId, UUID requesterId) {
+        CharacterSheet sheet = loadSheet(sheetId);
+        Access a = access(sheet, requesterId);
+        requireMaster(a);
+        WoundMark w = sheet.getWounds().stream().filter(x -> woundId.equals(x.getId())).findFirst()
+                .orElseThrow(SheetEntryNotFoundException::new);
+        sheet.getWounds().remove(w);
+        CharacterSheet saved = sheetRepository.save(sheet);
+        activityLog.record(saved, requesterId, ActorRole.MASTER, ActivityCategory.GM_ADJUSTMENT, "REMOVE_WOUND",
+                "wound:" + w.getPart(), w.getType(), null, null, null);
+        publish(SheetEvent.SHEET_UPDATED, saved, ActivityCategory.GM_ADJUSTMENT, "REMOVE_WOUND", a.actorName());
+        return toResponse(saved, true, Set.of());
+    }
+
+    private PermanentInjury addInjury(CharacterSheet s, InjuryPayload p, BodyPart part) {
+        PermanentInjury injury = PermanentInjury.builder()
+                .sheet(s)
+                .type(p.type())
+                .region(p.region())
+                .bodyPart(part)
+                .severity(p.severity())
+                .hpMaxReduction(SheetRules.injuryHpReduction(p.severity(), p.type(), s.getHpMax(), p.damage()))
+                .limiterReduction(SheetRules.injuryLimiterReduction(p.severity()))
+                .affectedAttribute(p.affectedAttribute())
+                .build();
+        s.getInjuries().add(injury);
+        s.setCurrentHp(Math.min(s.getCurrentHp(), SheetRules.effectiveHpMax(s.getHpMax(), s.getInjuries())));
+        return injury;
+    }
+
     // ---------------------------------------------------------------- ajustes do Mestre
 
     private record Change(ActivityCategory category, String field, Object before, Object after) {}
@@ -414,18 +469,7 @@ public class CharacterSheetService {
             case ADD_INJURY -> {
                 InjuryPayload p = req.injury();
                 if (p == null) throw new InvalidCharacterSheetException("Informe os dados do ferimento");
-                PermanentInjury injury = PermanentInjury.builder()
-                        .sheet(s)
-                        .type(p.type())
-                        .region(p.region())
-                        .bodyPart(p.bodyPart())
-                        .severity(p.severity())
-                        .hpMaxReduction(SheetRules.injuryHpReduction(p.severity(), p.type(), s.getHpMax(), p.damage()))
-                        .limiterReduction(SheetRules.injuryLimiterReduction(p.severity()))
-                        .affectedAttribute(p.affectedAttribute())
-                        .build();
-                s.getInjuries().add(injury);
-                s.setCurrentHp(Math.min(s.getCurrentHp(), SheetRules.effectiveHpMax(s.getHpMax(), s.getInjuries())));
+                PermanentInjury injury = addInjury(s, p, p.bodyPart());
                 return new Change(gm, "injury", null,
                         p.type() + "/" + p.severity() + "/" + p.region() + " (-" + injury.getHpMaxReduction() + " HP)");
             }
@@ -945,7 +989,9 @@ public class CharacterSheetService {
                 imgs.contains(SheetImageKind.PORTRAIT), imgs.contains(SheetImageKind.FULL_BODY),
                 showInj && !hidden.contains(SheetSection.BODY_MAP)
                         ? List.copyOf(s.getMissingParts() == null ? List.of() : s.getMissingParts()) : null,
-                null, null, s.isNpcTracking());
+                null, null, s.isNpcTracking(),
+                showInj && !hidden.contains(SheetSection.BODY_MAP)
+                        ? s.getWounds().stream().map(WoundMarkResponse::of).toList() : null);
     }
 
     /** Tipos de imagem por ficha, numa consulta só e sem carregar os bytes. */

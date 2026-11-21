@@ -123,6 +123,12 @@ public class CharacterSheet {
     @Builder.Default
     private List<PermanentInjury> injuries = new ArrayList<>();
 
+    /** Ferimentos desenhados no boneco (§53.3), só visuais. */
+    @OneToMany(mappedBy = "sheet", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt")
+    @Builder.Default
+    private List<WoundMark> wounds = new ArrayList<>();
+
     @OneToMany(mappedBy = "sheet", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("name")
     @Builder.Default

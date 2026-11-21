@@ -2648,13 +2648,13 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
 7. Ficha de outro jogador abre em leitura; perda de membro é marcação visual; sem Three.js (tudo SVG/CSS).
 
 ### 53.3 Falta — Fase 2 (ficha e NPC)
-- **Boneco (`BodyMap`/`InjuryBoard`)**: refazer com silhueta orgânica (inspiração `contexto/imagens/ficha/boneco.png`), partes: cabeça, pescoço,
-  torso, abdômen, pelve, ombro, braço, cotovelo, antebraço, mão, dedos, coxa, joelho, perna, pé, dedos do pé. Ampliar o enum `BodyPart`
-  (hoje: HEAD, TORSO, L/R ARM, HAND, LEG, FOOT) mantendo os valores antigos.
-- **Ferimentos desenhados**: tabela nova (sugestão `wound_marks`: `sheet_id, part, type IMPACT|CUT|SCAR|HOLE, geometry jsonb normalizada 0..1
-  relativa à parte, severity, injury_id opcional, created_at`); `POST/DELETE /character-sheets/{id}/wounds` só Mestre; evento no canal `sheets`;
-  oculto junto com INJURIES/BODY_MAP. Editor por ponteiro: mancha roxa (cor evolui com a gravidade), corte à mão livre, cicatriz (traço claro e
-  fino), furo (máscara SVG que mostra o fundo), membro perdido some. Testes Mockito de permissão e visibilidade.
+- ~~**Boneco** e **ferimentos desenhados**~~ — **feito (21/11/2026, conferido na tela nos dois temas)**: `bodyGeometry.js` (manequim de
+  segmentos afilados entre articulações, contorno único; 45 partes; dedos só abrem com ferimento/marca/perda/seleção; perda leva junto as
+  partes seguintes, `PARENT`; 15 pontos do Ataque Localizado com penalidade no `title`, clicáveis para preencher a região). `BodyPart`
+  ampliado (valores antigos mantidos: ARM = braço, LEG = perna, TORSO = tórax). Tabela `wound_marks` (`WoundMark`: parte, tipo
+  `IMPACT|CUT|SCAR|HOLE`, `geometry` jsonb 0..1 na caixa da parte, gravidade), `POST|DELETE /character-sheets/{id}/wounds[/{wid}]` só Mestre
+  (`WoundRules` confere a forma), `CharacterSheetResponse.wounds` (null como `missingParts`). Caixa "seguir a regra" cria o Ferimento
+  Permanente pela mesma conta do `ADD_INJURY`. Furo = máscara SVG (mostra o fundo). Sem link marca↔ferimento (YAGNI); marcas fora do export.
 - ~~**Ficha de NPC simplificada**, **front com `null`** e **pop-up do NPC**~~ — **feito (21/11/2026, conferido na tela como Mestre e
   jogador, desktop e 390 px)**: ficha de NPC sem retrato grande nem corpo inteiro no inventário; Interações no topo da Visão Geral (dono: do
   NPC; jogador: `sheet.interactions`); jogador vendo NPC (`visibleSections != null`) não vê bloco/aba de seção oculta, medidor de recurso
@@ -2684,7 +2684,7 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
   (`cd backend && JAVA_HOME=~/.jdks/jbr-21.0.11 ./mvnw -q package -Dmaven.test.skip=true`), `docker compose up -d --no-build postgres mongo` e
   `docker compose run -d --no-deps --name tatakai-revamp-backend -p 8090:8080 -v $PWD/backend/target/tatakai-manager-0.0.1-SNAPSHOT.jar:/app/app.jar:ro backend`
   (o `docker compose build` falha pelo helper de credenciais gpg; as portas 8080/8081/8082 estão ocupadas por outro projeto). Vite de dev: `VITE_API_URL=http://localhost:8090 npx vite --port 5173`.
-- Migração manual (produção com `validate`): criar `sheet_images` e `catalog_item_images`; `character_sheets.npc_tracking boolean not null default false`; `permanent_injuries.body_part varchar(20)`;
+- Migração manual (produção com `validate`): criar `sheet_images` e `catalog_item_images`; `character_sheets.npc_tracking boolean not null default false`; criar `wound_marks`; dropar CHECK de `permanent_injuries.body_part` se existir (enum ampliado); `permanent_injuries.body_part varchar(20)`;
   `character_sheets.missing_parts jsonb default '[]'`; trocar o CHECK de `bookings.slot_number` para 1..13 (achar o nome em `pg_constraint`);
   dropar CHECK de enum em `npc_sheet_visibility.section`/`character_sheet_visibility.section` se o banco tiver (§11.11 do AGENTS.md).
 - Limpeza: worktrees de agente em `.claude/worktrees/` (`git worktree list`; os commits deles já foram trazidos por cherry-pick) e a ficha

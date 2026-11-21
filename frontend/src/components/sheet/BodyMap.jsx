@@ -1,128 +1,251 @@
-// Boneco de ferimentos: cada parte colorida pela pior gravidade nao tratada.
-export const BODY_PARTS = ['HEAD', 'TORSO', 'LEFT_ARM', 'RIGHT_ARM', 'LEFT_HAND', 'RIGHT_HAND', 'LEFT_LEG', 'RIGHT_LEG', 'LEFT_FOOT', 'RIGHT_FOOT']
+import { useId, useMemo, useRef, useState } from 'react'
+import {
+  VIEW_W, VIEW_H, shapesFor, drawOrder, lostRoot, isDigit, limbOf, LOCALIZED_POINTS, BODY_PART_LABELS, BRUISE,
+} from './bodyGeometry'
 
-export const BODY_PART_LABELS = {
-  HEAD: 'Cabeça', TORSO: 'Tronco',
-  LEFT_ARM: 'Braço esquerdo', RIGHT_ARM: 'Braço direito',
-  LEFT_HAND: 'Mão esquerda', RIGHT_HAND: 'Mão direita',
-  LEFT_LEG: 'Perna esquerda', RIGHT_LEG: 'Perna direita',
-  LEFT_FOOT: 'Pé esquerdo', RIGHT_FOOT: 'Pé direito',
-}
+// Boneco de ferimentos (§53.3): cada parte tingida pela pior gravidade não tratada, marcas desenhadas
+// (mancha, corte, cicatriz, furo), partes perdidas somem (com tudo o que vem depois) e os pontos do
+// Ataque Localizado. Com `tool`, o Mestre desenha arrastando o ponteiro sobre uma parte.
+export { BODY_PART_LABELS, BODY_PARTS, BRUISE } from './bodyGeometry'
 
 const SEV = ['MINOR', 'MODERATE', 'SEVERE', 'LETHAL']
 const SEV_LABEL = { MINOR: 'Leve', MODERATE: 'Moderado', SEVERE: 'Grave', LETHAL: 'Letal' }
-// percentual de --accent misturado ao papel
 const MIX = [22, 45, 72, 100]
 const fillOf = (i) => `color-mix(in srgb, var(--accent) ${MIX[i]}%, var(--paper))`
-
-// Formas (viewBox 200x340). "Esquerdo" do personagem = direita de quem olha (x maior).
-const SHAPES = {
-  HEAD: <ellipse cx="100" cy="30" rx="22" ry="26" />,
-  TORSO: <path d="M68 64 H132 L126 170 H74 Z" />,
-  RIGHT_ARM: <path d="M62 66 L34 70 L26 150 L44 152 L56 92 Z" />,
-  LEFT_ARM: <path d="M138 66 L166 70 L174 150 L156 152 L144 92 Z" />,
-  RIGHT_HAND: <path d="M24 156 H46 L48 192 H22 Z" />,
-  LEFT_HAND: <path d="M154 156 H176 L178 192 H152 Z" />,
-  RIGHT_LEG: <path d="M74 176 H98 L94 262 H70 Z" />,
-  LEFT_LEG: <path d="M102 176 H126 L130 262 H106 Z" />,
-  RIGHT_FOOT: <path d="M68 268 H94 L92 308 H56 Z" />,
-  LEFT_FOOT: <path d="M106 268 H132 L144 308 H108 Z" />,
-}
-const CENTER = {
-  HEAD: [100, 30], TORSO: [100, 118], RIGHT_ARM: [44, 108], LEFT_ARM: [156, 108], RIGHT_HAND: [36, 174], LEFT_HAND: [164, 174],
-  RIGHT_LEG: [84, 220], LEFT_LEG: [116, 220], RIGHT_FOOT: [76, 290], LEFT_FOOT: [124, 290],
-}
-
+const SPOT = new Set(['IMPACT', 'HOLE'])
 const plural = (n) => `${n} ferimento${n === 1 ? '' : 's'}`
 
-export default function BodyMap({ injuries = [], missingParts = [], onSelect, selected }) {
-  const info = {}
-  for (const p of BODY_PARTS) info[p] = { count: 0, worst: -1, untreated: 0 }
-  for (const inj of injuries) {
-    const d = info[inj.bodyPart]
-    if (!d) continue
-    d.count++
-    if (!inj.treated) {
-      d.untreated++
-      d.worst = Math.max(d.worst, SEV.indexOf(inj.severity))
-    }
+const toAbs = (box, [nx, ny]) => [box[0] + nx * box[2], box[1] + ny * box[3]]
+const clamp01 = (v) => Math.min(1, Math.max(0, v))
+const pts = (list) => list.map((p) => p.map((n) => n.toFixed(1)).join(',')).join(' ')
+
+function Mark({ w, box, uid }) {
+  const g = w.geometry
+  if (w.type === 'IMPACT') {
+    const [cx, cy] = toAbs(box, g.points[0])
+    const r = g.r * Math.max(box[2], box[3])
+    return <ellipse cx={cx} cy={cy} rx={r} ry={r * 0.82} fill={`url(#${uid}-bruise-${w.severity ?? 'MODERATE'})`} />
   }
-  const missing = new Set(missingParts)
+  if (w.type === 'HOLE') {
+    const [cx, cy] = toAbs(box, g.points[0])
+    const r = g.r * Math.max(box[2], box[3])
+    return <circle cx={cx} cy={cy} r={r + 1.2} fill="none" stroke="#3a0a0a" strokeWidth="2" />
+  }
+  const line = pts(g.points.map((p) => toAbs(box, p)))
+  if (w.type === 'SCAR') {
+    return <polyline points={line} fill="none" stroke="#f1d7cf" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+  }
+  return (
+    <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points={line} stroke="#5c0000" strokeWidth="3.2" />
+      <polyline points={line} stroke="#c3122b" strokeWidth="1.3" />
+    </g>
+  )
+}
+
+export default function BodyMap({
+  injuries = [], missingParts = [], wounds = [], onSelect, selected, tool = null, severity = 'MODERATE', onDraw, onPoint,
+}) {
+  const uid = useId().replace(/:/g, '')
+  const svgRef = useRef(null)
+  const [draft, setDraft] = useState(null)
+  const missing = useMemo(() => new Set(missingParts), [missingParts])
   const interactive = typeof onSelect === 'function'
 
-  const describe = (p) => {
-    const d = info[p]
-    if (missing.has(p)) return `${BODY_PART_LABELS[p]}: perdido`
-    if (!d.count) return `${BODY_PART_LABELS[p]}: sem ferimentos`
-    const worst = d.worst >= 0 ? `, pior ${SEV_LABEL[SEV[d.worst]]}` : ', todos tratados'
-    return `${BODY_PART_LABELS[p]}: ${plural(d.count)}${worst}`
+  // mãos/pés abrem em dedos só quando algum dedo tem ferimento, marca, foi perdido ou está selecionado
+  const split = {}
+  const touched = [...injuries.map((i) => i.bodyPart), ...wounds.map((w) => w.part), ...missingParts, selected].filter(Boolean)
+  for (const p of touched) if (isDigit(p)) split[limbOf(p)] = true
+  const shapes = shapesFor(split)
+  const order = drawOrder(shapes)
+
+  const info = {}
+  for (const p of order) info[p] = { count: 0, worst: -1 }
+  for (const inj of injuries) {
+    const d = info[inj.bodyPart] ?? info[limbOf(inj.bodyPart ?? '')]
+    if (!d) continue
+    d.count++
+    if (!inj.treated) d.worst = Math.max(d.worst, SEV.indexOf(inj.severity))
   }
-  const summary = `Boneco de ferimentos. ${BODY_PARTS.map(describe).join('; ')}`
+
+  const shown = order.filter((p) => !lostRoot(p, missing))
+  const ghosts = order.filter((p) => lostRoot(p, missing) === p)
+  const marks = wounds.filter((w) => shapes[w.part] && !lostRoot(w.part, missing))
+  const holes = marks.filter((w) => w.type === 'HOLE')
+
+  const describe = (p) => {
+    if (missing.has(p)) return `${BODY_PART_LABELS[p]}: perdido`
+    const d = info[p]
+    const n = wounds.filter((w) => w.part === p).length
+    const extra = n ? `, ${n} marca${n === 1 ? '' : 's'}` : ''
+    if (!d?.count) return `${BODY_PART_LABELS[p]}: sem ferimentos${extra}`
+    const worst = d.worst >= 0 ? `, pior ${SEV_LABEL[SEV[d.worst]]}` : ', todos tratados'
+    return `${BODY_PART_LABELS[p]}: ${plural(d.count)}${worst}${extra}`
+  }
+  const summary = `Boneco de ferimentos. ${order.filter((p) => info[p].count || missing.has(p)).map(describe).join('; ') || 'Sem ferimentos.'}`
+
+  // ---- desenho por ponteiro
+  function svgPoint(e) {
+    const svg = svgRef.current
+    const pt = svg.createSVGPoint()
+    pt.x = e.clientX
+    pt.y = e.clientY
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse())
+    return [p.x, p.y]
+  }
+  function down(e, part) {
+    if (!tool || !onDraw) return
+    e.preventDefault()
+    svgRef.current.setPointerCapture?.(e.pointerId)
+    const p = svgPoint(e)
+    setDraft({ part, pts: [p], r: 0 })
+  }
+  function move(e) {
+    if (!draft) return
+    const p = svgPoint(e)
+    if (SPOT.has(tool)) {
+      setDraft((d) => ({ ...d, r: Math.hypot(p[0] - d.pts[0][0], p[1] - d.pts[0][1]) }))
+    } else {
+      const last = draft.pts[draft.pts.length - 1]
+      if (Math.hypot(p[0] - last[0], p[1] - last[1]) >= 1.5 && draft.pts.length < 200) {
+        setDraft((d) => ({ ...d, pts: [...d.pts, p] }))
+      }
+    }
+  }
+  function up() {
+    if (!draft) return
+    const d = draft
+    setDraft(null)
+    const box = shapes[d.part].box
+    const norm = (p) => [clamp01((p[0] - box[0]) / box[2]), clamp01((p[1] - box[1]) / box[3])]
+    if (SPOT.has(tool)) {
+      const r = Math.min(0.5, Math.max(d.r < 2 ? 6 : d.r, 1.5) / Math.max(box[2], box[3]))
+      onDraw(d.part, tool, { points: [norm(d.pts[0])], r: Number(r.toFixed(3)) })
+    } else if (d.pts.length >= 2) {
+      onDraw(d.part, tool, { points: d.pts.map((p) => norm(p).map((n) => Number(n.toFixed(3)))), r: null })
+    }
+  }
+
+  const hitProps = (p) => (interactive ? {
+    tabIndex: tool ? -1 : 0, role: 'button', 'aria-label': describe(p), 'aria-pressed': selected === p,
+    onClick: () => { if (!tool) onSelect(p) },
+    onPointerDown: (e) => down(e, p),
+    onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(p) } },
+    style: { cursor: tool ? 'crosshair' : 'pointer', outline: 'none' },
+  } : {})
 
   return (
-    <div style={{ width: '100%', maxWidth: 260 }}>
-      <svg viewBox="0 0 200 320" role={interactive ? 'group' : 'img'} aria-label={interactive ? 'Boneco de ferimentos' : summary} style={{ width: '100%', height: 'auto', display: 'block' }}>
+    <div className="body-map">
+      <svg ref={svgRef} viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} role={interactive ? 'group' : 'img'}
+        aria-label={interactive ? 'Boneco de ferimentos' : summary}
+        style={{ width: '100%', height: 'auto', display: 'block', touchAction: tool ? 'none' : 'auto' }}
+        onPointerMove={move} onPointerUp={up} onPointerCancel={() => setDraft(null)}>
         <defs>
           {SEV.map((s, i) => (
-            <pattern key={s} id={`bm-h-${s}`} width={10 - i * 2} height={10 - i * 2} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <line x1="0" y1="0" x2="0" y2={10 - i * 2} stroke="var(--line)" strokeWidth={1 + i * 0.7} strokeOpacity="0.7" />
+            <pattern key={s} id={`${uid}-h-${s}`} width={10 - i * 2} height={10 - i * 2} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2={10 - i * 2} stroke="var(--line)" strokeWidth={0.8 + i * 0.5} strokeOpacity="0.45" />
             </pattern>
           ))}
+          {SEV.map((s) => (
+            <radialGradient key={s} id={`${uid}-bruise-${s}`}>
+              <stop offset="0%" stopColor={BRUISE[s]} stopOpacity="0.95" />
+              <stop offset="55%" stopColor={BRUISE[s]} stopOpacity="0.7" />
+              <stop offset="100%" stopColor={BRUISE[s]} stopOpacity="0" />
+            </radialGradient>
+          ))}
+          {shown.map((p) => <clipPath key={p} id={`${uid}-c-${p}`}><path d={shapes[p].d} /></clipPath>)}
+          <mask id={`${uid}-holes`} maskUnits="userSpaceOnUse" x="0" y="0" width={VIEW_W} height={VIEW_H}>
+            <rect width={VIEW_W} height={VIEW_H} fill="#fff" />
+            {holes.map((w) => {
+              const box = shapes[w.part].box
+              const [cx, cy] = toAbs(box, w.geometry.points[0])
+              return <circle key={w.id} cx={cx} cy={cy} r={w.geometry.r * Math.max(box[2], box[3])} fill="#000" />
+            })}
+          </mask>
         </defs>
-        {BODY_PARTS.map((p) => {
-          const d = info[p]
-          const lost = missing.has(p)
-          const sel = interactive && selected === p
-          const hasOpen = d.worst >= 0
-          const fill = lost ? 'none' : hasOpen ? fillOf(d.worst) : 'var(--paper)'
-          const [cx, cy] = CENTER[p]
-          const shape = SHAPES[p]
-          const props = interactive ? {
-            tabIndex: 0, role: 'button', 'aria-label': describe(p), 'aria-pressed': sel,
-            onClick: () => onSelect(p),
-            onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(p) } },
-            style: { cursor: 'pointer', outline: 'none' },
-          } : {}
+
+        <g mask={`url(#${uid}-holes)`}>
+          {/* contorno único: tudo com traço grosso por baixo, preenchimento por cima */}
+          <g fill="var(--bm-edge)" stroke="var(--bm-edge)" strokeWidth="6" strokeLinejoin="round">
+            {shown.map((p) => <path key={p} d={shapes[p].d} />)}
+          </g>
+          <g stroke="none">
+            {shown.map((p) => {
+              const d = info[p]
+              return <path key={p} d={shapes[p].d} fill={d.worst >= 0 ? fillOf(d.worst) : 'var(--paper)'} />
+            })}
+          </g>
+          <g fill="none" stroke="var(--bm-edge)" strokeWidth="0.9" strokeOpacity="0.4" pointerEvents="none">
+            {shown.map((p) => <path key={p} d={shapes[p].d} />)}
+          </g>
+          <g pointerEvents="none">
+            {shown.filter((p) => info[p].worst >= 0).map((p) => (
+              <path key={p} d={shapes[p].d} fill={`url(#${uid}-h-${SEV[info[p].worst]})`} />
+            ))}
+          </g>
+          <g pointerEvents="none">
+            {marks.map((w) => (
+              <g key={w.id} clipPath={`url(#${uid}-c-${w.part})`}><Mark w={w} box={shapes[w.part].box} uid={uid} /></g>
+            ))}
+          </g>
+        </g>
+
+        {ghosts.map((p) => (
+          <path key={p} d={shapes[p].d} fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="4 3" pointerEvents="none" />
+        ))}
+
+        {LOCALIZED_POINTS.filter((pt) => shapes[pt.part] && !lostRoot(pt.part, missing)).map((pt) => (
+          <g key={pt.id} transform={`translate(${pt.at[0]} ${pt.at[1]})`}
+            className={onPoint && !tool ? 'bm-point is-live' : 'bm-point'}
+            onClick={onPoint && !tool ? () => onPoint(pt) : undefined}>
+            <title>{`${pt.label} (${pt.pen})`}</title>
+            <rect x="-2.1" y="-2.1" width="4.2" height="4.2" transform="rotate(45)" />
+          </g>
+        ))}
+
+        {interactive && (
+          <g>
+            {[...shown, ...ghosts].map((p) => (
+              <path key={p} d={shapes[p].d} fill="transparent" stroke="transparent"
+                strokeWidth={isDigit(p) ? 2 : 8} strokeLinejoin="round" {...hitProps(p)} />
+            ))}
+          </g>
+        )}
+
+        {selected && shapes[selected] && (
+          <path d={shapes[selected].d} fill="none" stroke="var(--highlight)" strokeWidth="3" strokeDasharray="3 2" pointerEvents="none" />
+        )}
+
+        {shown.filter((p) => info[p].count > 0 && !isDigit(p)).map((p) => {
+          const [x, y, w] = shapes[p].box
           return (
-            <g key={p} {...props} className="bm-part">
-              <g fill={fill} stroke={sel ? 'var(--highlight)' : 'var(--line)'} strokeWidth={sel ? 5 : lost || (d.count && !hasOpen) ? 1.5 : 3}
-                strokeDasharray={lost ? '5 4' : d.count && !hasOpen ? '4 3' : undefined} strokeLinejoin="round">
-                {shape}
-              </g>
-              {hasOpen && !lost && (
-                <g fill={`url(#bm-h-${SEV[d.worst]})`} stroke="none" pointerEvents="none">{shape}</g>
-              )}
-              {lost && (
-                <path d={`M${cx - 8} ${cy - 8} L${cx + 8} ${cy + 8} M${cx + 8} ${cy - 8} L${cx - 8} ${cy + 8}`} stroke="var(--accent)" strokeWidth="3" pointerEvents="none" />
-              )}
-              {d.count > 0 && (
-                <g pointerEvents="none">
-                  <circle cx={cx + 12} cy={cy - 12} r="9" fill="var(--ink)" stroke="var(--paper)" strokeWidth="1.5" />
-                  <text x={cx + 12} y={cy - 8} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--paper)">{d.count}</text>
-                </g>
-              )}
-              {sel && <g fill="none" stroke="var(--highlight)" strokeWidth="2" strokeDasharray="2 3" pointerEvents="none" style={{ transform: 'none' }}>{shape}</g>}
-              {/* area de toque generosa */}
-              {interactive && <g fill="transparent" stroke="transparent" strokeWidth="14" strokeLinejoin="round">{shape}</g>}
+            <g key={p} pointerEvents="none">
+              <circle cx={x + w} cy={y + 4} r="7" fill="var(--ink)" stroke="var(--paper)" strokeWidth="1.2" />
+              <text x={x + w} y={y + 7.5} textAnchor="middle" fontSize="9.5" fontWeight="700" fill="var(--paper)">{info[p].count}</text>
             </g>
           )
         })}
+
+        {draft && (SPOT.has(tool)
+          ? <circle cx={draft.pts[0][0]} cy={draft.pts[0][1]} r={Math.max(draft.r, 2)} fill={tool === 'HOLE' ? 'none' : BRUISE[severity]} fillOpacity="0.55"
+              stroke="var(--highlight)" strokeWidth="1" strokeDasharray="2 2" pointerEvents="none" />
+          : <polyline points={pts(draft.pts)} fill="none" stroke={tool === 'SCAR' ? '#f1d7cf' : '#c3122b'} strokeWidth="2" strokeLinecap="round" pointerEvents="none" />)}
       </svg>
-      <ul className="hint" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', listStyle: 'none', padding: 0, margin: '6px 0 0', fontSize: 11 }}>
+
+      <ul className="body-map-legend hint">
         {SEV.map((s, i) => (
-          <li key={s} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <li key={s}>
             <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
               <rect x="1" y="1" width="12" height="12" fill={fillOf(i)} stroke="var(--line)" strokeWidth="1.5" />
-              <rect x="1" y="1" width="12" height="12" fill={`url(#bm-h-${s})`} />
             </svg>
             {SEV_LABEL[s]}
           </li>
         ))}
-        <li style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="1" y="1" width="12" height="12" fill="var(--paper)" stroke="var(--line)" strokeWidth="1.2" strokeDasharray="3 2" /></svg>Tratado
+        <li>
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="1" y="1" width="12" height="12" fill="none" stroke="var(--accent)" strokeWidth="1.2" strokeDasharray="3 2" /></svg>Perdido
         </li>
-        <li style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="1" y="1" width="12" height="12" fill="none" stroke="var(--line)" strokeWidth="1.2" strokeDasharray="3 2" /><path d="M3 3 L11 11 M11 3 L3 11" stroke="var(--accent)" strokeWidth="1.5" /></svg>Perdido
+        <li>
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="4" y="4" width="6" height="6" transform="rotate(45 7 7)" className="bm-point-swatch" /></svg>Ataque localizado
         </li>
       </ul>
     </div>

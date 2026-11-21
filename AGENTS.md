@@ -721,6 +721,13 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
 - **Cansaço e PS do NPC (§53.2-6):** `CharacterSheet.npcTracking` (coluna `npc_tracking`, padrão `false`); desligado, `toResponse` devolve
   `fatigue` e `progress` nulos na ficha de NPC. `PATCH /npcs/{nid}/sheet/tracking {enabled}` (só o dono do NPC, outros 404);
   `CharacterSheetResponse.npcTracking`. Bancos com `validate`: `ALTER TABLE character_sheets ADD COLUMN npc_tracking boolean not null default false`.
+- **Boneco e ferimentos desenhados (§53.3):** `BodyPart` com 45 partes (antigas mantidas; ARM = braço, LEG = perna, TORSO = tórax; dedos
+  `*_FINGER_1..5`/`*_TOE_1..5`, 1 = polegar/dedão). `WoundMark` (tabela `wound_marks`, `@OneToMany` da ficha): `POST /character-sheets/{sid}/wounds`
+  `{part, type IMPACT|CUT|SCAR|HOLE, geometry {points 0..1 na caixa da parte, r}, severity, injury?}` e `DELETE .../wounds/{wid}`, só Mestre;
+  `injury` preenchido cria também o `PermanentInjury` (`addInjury`, mesma conta do ADD_INJURY). `WoundRules.validate` (puro). `wounds` na resposta
+  some junto com `missingParts`. Front: `bodyGeometry.js` (formas, `PARENT`, pontos do Ataque Localizado) + `BodyMap` (contorno único, máscara de
+  furo, desenho por ponteiro) + `InjuryBoard` (ferramentas do Mestre). Bancos com `validate`: criar `wound_marks`; dropar CHECK de
+  `permanent_injuries.body_part` se o banco tiver.
 - **Front da ficha (Fase 2):** aba **Configurações** (antes "Mestre") com aprovação (`#sheet-approval`, foco `approval` vindo da aba Aprovações,
   aba pisca em vermelho com `.sheet-tab.is-alert` enquanto `PENDING_APPROVAL`), imagens, Cansaço/PS e `NpcVisibilityButton` (`<dialog>`, `PUT`
   em lote) no NPC, ajustes, reabrir, visibilidade e atividade. Jogador vendo NPC (`visibleSections != null`): seção oculta some (bloco/aba);

@@ -1295,3 +1295,14 @@ button.inv-slot:hover { transform: translateY(-3px); }
 .inv-slot .inv-pic { width: 40px; height: 40px; }
 .inv-row .inv-pic { width: 26px; height: 26px; flex: none; }
 .inv-art-img { width: 100%; height: 100%; min-height: 0; padding: 6px; object-fit: contain; }
+
+/* Boneco de ferimentos (§53.3) */
+.body-map { width: 100%; max-width: 280px; --bm-edge: var(--ink); }
+.body-map-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; list-style: none; padding: 0; margin: 6px 0 0; font-size: 11px; }
+.body-map-legend li { display: flex; align-items: center; gap: 4px; }
+.bm-point rect, .bm-point-swatch { fill: var(--highlight); stroke: var(--line); stroke-width: 1; }
+.bm-point { pointer-events: none; }
+.bm-point.is-live { pointer-events: auto; cursor: pointer; }
+.bm-point.is-live:hover rect { fill: var(--accent); }
+.wound-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.wound-tools button[aria-pressed='true'] { background: var(--accent); color: #fff; }

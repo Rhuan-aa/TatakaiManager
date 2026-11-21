@@ -160,3 +160,14 @@ export async function setNpcTracking(npcId, enabled) {
   const { data } = await client.patch(`/npcs/${npcId}/sheet/tracking`, { enabled });
   return data;
 }
+
+/** Ferimento desenhado no boneco (§53.3). body: { part, type, geometry, severity, injury? } */
+export async function addWound(sheetId, body) {
+  const { data } = await client.post(`/character-sheets/${sheetId}/wounds`, body);
+  return data;
+}
+
+export async function removeWound(sheetId, woundId) {
+  const { data } = await client.delete(`/character-sheets/${sheetId}/wounds/${woundId}`);
+  return data;
+}

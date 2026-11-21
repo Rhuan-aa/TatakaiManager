@@ -6,6 +6,7 @@ import com.tatakai.manager.roll.dto.response.RollMessage;
 import com.tatakai.manager.roll.dto.response.RollProfileResponse;
 import com.tatakai.manager.roll.service.RollService;
 import com.tatakai.manager.shared.security.AuthenticatedUser;
+import com.tatakai.manager.sheet.dto.request.AddWoundRequest;
 import com.tatakai.manager.sheet.dto.request.ApproveCharacterSheetRequest;
 import com.tatakai.manager.sheet.dto.request.CreateCharacterSheetRequest;
 import com.tatakai.manager.sheet.dto.request.CreateGmSheetRequest;
@@ -134,6 +135,17 @@ public class CharacterSheetController {
     @GetMapping("/npcs/{npcId}/sheet")
     public ResponseEntity<CharacterSheetResponse> getForNpc(@PathVariable UUID npcId) {
         return ResponseEntity.ok(sheetService.getForNpc(npcId, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/character-sheets/{sheetId}/wounds")
+    public ResponseEntity<CharacterSheetResponse> addWound(@PathVariable UUID sheetId,
+                                                           @Valid @RequestBody AddWoundRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(sheetService.addWound(sheetId, request, AuthenticatedUser.id()));
+    }
+
+    @DeleteMapping("/character-sheets/{sheetId}/wounds/{woundId}")
+    public ResponseEntity<CharacterSheetResponse> removeWound(@PathVariable UUID sheetId, @PathVariable UUID woundId) {
+        return ResponseEntity.ok(sheetService.removeWound(sheetId, woundId, AuthenticatedUser.id()));
     }
 
     @PatchMapping("/npcs/{npcId}/sheet/tracking")
