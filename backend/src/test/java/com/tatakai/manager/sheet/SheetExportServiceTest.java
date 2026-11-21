@@ -265,4 +265,43 @@ class SheetExportServiceTest {
                 .isInstanceOf(InvalidCharacterSheetException.class);
         verify(sheetRepository, never()).save(any());
     }
+
+    // ------------------------------------------------------------------ §53.6 partes perdidas e marcas
+
+    @Test
+    @DisplayName("§53.6: export leva partes perdidas e marcas desenhadas; import devolve as duas")
+    void exportImportBodyMarks() throws Exception {
+        var hand = com.tatakai.manager.sheet.entity.BodyPart.LEFT_HAND;
+        sheet.setMissingParts(new ArrayList<>(List.of(hand)));
+        sheet.getWounds().add(com.tatakai.manager.sheet.entity.WoundMark.builder().sheet(sheet)
+                .part(com.tatakai.manager.sheet.entity.BodyPart.TORSO).type(com.tatakai.manager.sheet.entity.WoundType.SCAR)
+                .geometry(new com.tatakai.manager.sheet.dto.request.WoundGeometry(List.of(List.of(0.1, 0.1), List.of(0.5, 0.6)), null))
+                .build());
+
+        SheetExportFile f = service.export(sheet.getId(), playerUser.getId());
+        assertThat(f.sheet().missingParts()).containsExactly(hand);
+        assertThat(f.sheet().wounds()).hasSize(1);
+
+        service.importSheet(campaign.getId(), mapper.writeValueAsBytes(f), "k.json", otherUser.getId());
+        ArgumentCaptor<CharacterSheet> cap = ArgumentCaptor.forClass(CharacterSheet.class);
+        verify(sheetRepository).save(cap.capture());
+        assertThat(cap.getValue().getMissingParts()).containsExactly(hand);
+        assertThat(cap.getValue().getWounds()).singleElement()
+                .satisfies(w -> assertThat(w.getSheet()).isSameAs(cap.getValue()));
+    }
+
+    @Test
+    @DisplayName("§53.6: marca com forma inválida no arquivo é descartada com aviso")
+    void importInvalidWound() {
+        String body = """
+                {"schemaVersion":1,
+                 "sheet":{"name":"Zed","hpMax":20,"spMax":10,"kpMax":3,
+                          "wounds":[{"part":"HEAD","type":"HOLE","geometry":{"points":[[0.5,0.5]]}}]}}
+                """;
+        SheetImportResponse r = service.importSheet(campaign.getId(), json(body), "z.json", otherUser.getId());
+        assertThat(r.warnings()).anyMatch(w -> w.contains("Marca"));
+        ArgumentCaptor<CharacterSheet> cap = ArgumentCaptor.forClass(CharacterSheet.class);
+        verify(sheetRepository).save(cap.capture());
+        assertThat(cap.getValue().getWounds()).isEmpty();
+    }
 }

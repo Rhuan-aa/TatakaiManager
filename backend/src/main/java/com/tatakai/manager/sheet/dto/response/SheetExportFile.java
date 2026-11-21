@@ -55,7 +55,14 @@ public record SheetExportFile(
             Integer barrierOvercomePoints,
             Map<String, Integer> limiterAdjustments, Map<String, Integer> limiterCarry,
             Integer money, List<ItemData> inventory,
-            List<InjuryData> injuries) {}
+            List<InjuryData> injuries,
+            /** §53.6: ausentes em arquivos antigos (null = nada). Só saem com Ferimentos visível. */
+            List<com.tatakai.manager.sheet.entity.BodyPart> missingParts,
+            List<WoundData> wounds) {}
+
+    /** Marca desenhada no boneco (§53.3), validada de novo no import. */
+    public record WoundData(com.tatakai.manager.sheet.entity.BodyPart part, com.tatakai.manager.sheet.entity.WoundType type,
+                            com.tatakai.manager.sheet.dto.request.WoundGeometry geometry, InjurySeverity severity) {}
 
     /** weaponKey/equipmentKey/consumableKey: ligação ao catálogo (§42–§44); ausentes em arquivos antigos. */
     public record ItemData(String name, int quantity, String description, Double weightKg, String weaponKey,

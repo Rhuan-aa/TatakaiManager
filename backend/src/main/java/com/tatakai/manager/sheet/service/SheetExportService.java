@@ -176,7 +176,11 @@ public class SheetExportService {
                                 i.getWeaponKey(), i.getEquipmentKey(), i.getConsumableKey())).toList() : null,
                 inj ? s.getInjuries().stream()
                         .map(i -> new InjuryData(i.getType(), i.getRegion(), i.getSeverity(), i.getHpMaxReduction(),
-                                i.getLimiterReduction(), i.getAffectedAttribute(), i.isTreated(), i.getBodyPart())).toList() : null);
+                                i.getLimiterReduction(), i.getAffectedAttribute(), i.isTreated(), i.getBodyPart())).toList() : null,
+                inj && s.getMissingParts() != null ? List.copyOf(s.getMissingParts()) : null,
+                inj ? s.getWounds().stream()
+                        .map(w -> new SheetExportFile.WoundData(w.getPart(), w.getType(), w.getGeometry(), w.getSeverity()))
+                        .toList() : null);
 
         List<CharacterTechnique> techs = techniqueRepository.findBySheetIdOrderByCreatedAt(s.getId());
         List<ArtData> arts = artRepository.findBySheetIdOrderByCreatedAt(s.getId()).stream()
@@ -263,6 +267,19 @@ public class SheetExportService {
                         .severity(i.severity()).hpMaxReduction(i.hpMaxReduction())
                         .limiterReduction(i.limiterReduction()).affectedAttribute(i.affectedAttribute())
                         .treated(i.treated()).bodyPart(i.bodyPart()).build());
+            }
+        }
+        if (d.missingParts() != null) s.setMissingParts(new java.util.ArrayList<>(new java.util.LinkedHashSet<>(d.missingParts())));
+        if (d.wounds() != null) {
+            for (SheetExportFile.WoundData w : d.wounds()) {
+                try {
+                    if (w.part() == null || w.type() == null) throw new InvalidCharacterSheetException("sem parte ou tipo");
+                    com.tatakai.manager.sheet.service.rules.WoundRules.validate(w.type(), w.geometry());
+                    s.getWounds().add(com.tatakai.manager.sheet.entity.WoundMark.builder().sheet(s).part(w.part())
+                            .type(w.type()).geometry(w.geometry()).severity(w.severity()).build());
+                } catch (InvalidCharacterSheetException e) {
+                    warnings.add("Marca no boneco ignorada (" + e.getMessage() + ")");
+                }
             }
         }
         // recursos atuais: ausentes = cheios; acima do máximo = cortados (aviso)
