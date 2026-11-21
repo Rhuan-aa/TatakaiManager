@@ -1,4 +1,5 @@
 import BleedEdge from '../ui/BleedEdge';
+import AuraLayers from '../ui/AuraLayers';
 import { useState } from 'react';
 import { expiresLabel, CLASS_LABEL, HYSTERIA, hasCondition, conditionNote, MARTIAL_TYPE_LABEL, GUARD_LABEL, LEAD_FOOT_LABEL, CLASS_COLOR, teamColor } from './combatLabels';
 import ConditionPicker from './ConditionPicker';
@@ -90,9 +91,10 @@ export default function InitiativeTracker({ enc, isMaster, canControl = () => fa
     const r = p.resources;
     const style = p.martialType || p.guard || p.mainArtName || p.counters?.length > 0 || p.arts?.length > 0;
     return (
-      <li key={p.id} data-participant-id={p.id} className={`panel relative space-y-2 p-2${current ? ' turn-active' : ''}`}
+      <li key={p.id} data-participant-id={p.id} className={`panel cond-host relative space-y-2 p-2${current ? ' turn-active' : ''}`}
         aria-current={current ? 'step' : undefined}>
         <BleedEdge wounds={p.openWounds} />
+        <AuraLayers keys={(p.conditions ?? []).map((c) => c.key)} />
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <span className="panel-title text-base">{p.name}</span>

@@ -1,3 +1,4 @@
+import { useFxPref } from '../ui/fxPref';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -43,6 +44,7 @@ function NavItem({ item }) {
 export default function Sidebar({ items = [] }) {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
+  const [fxReduced, toggleFx] = useFxPref();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -86,6 +88,16 @@ export default function Sidebar({ items = [] }) {
         >
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
           <span className={label}>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
+        </button>
+        <button
+          type="button"
+          onClick={toggleFx}
+          aria-pressed={fxReduced}
+          className={`${itemBase} text-[var(--text)] hover:border-[var(--line)] hover:bg-[var(--bg)]`}
+          title={fxReduced ? 'Ligar animações de condições e golpes' : 'Reduzir animações de condições e golpes'}
+        >
+          <Icon name={fxReduced ? 'bolt' : 'circle'} />
+          <span className={label}>{fxReduced ? 'Efeitos completos' : 'Efeitos reduzidos'}</span>
         </button>
         <div className="flex items-center gap-3 px-1 py-1">
           <span className="grid h-9 w-9 shrink-0 place-items-center border-2 border-[var(--line)] bg-[var(--bg)] text-sm font-bold text-[var(--text)]">

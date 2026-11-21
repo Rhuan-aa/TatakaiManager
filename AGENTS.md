@@ -1001,7 +1001,10 @@ reducao)` depois da % e antes do mínimo 1.
   `combat/conditionThemes.js` (chave da condição → tema: FOGO, GELO, VENENO, SUFOCO, CHOQUE, TONTURA, QUEDA, DESMAIO, SANGUE,
   AGARRE, FOCO, GENERICO; palavras só em português), tokens `--blood`/`--fx-*`/`--shape-*` e classes `.cfx*`/`.bleed-edge*` em `index.css`.
   Ligados em `CombatPanel` (condições + feridas por participante) e `CharacterSheetView` (só feridas: a ficha não tem condições).
-  Respeita `prefers-reduced-motion`; `pointer-events:none`; `.no-print`. Pendente: conferir visualmente nos dois temas.
+  Respeita `prefers-reduced-motion`; `pointer-events:none`; `.no-print`. Estado contínuo: `ui/AuraLayers` (`.aura-*` em `.cond-host`: cartão do combate,
+  retrato e boneco da ficha). "Efeitos reduzidos": `ui/fxPref` (`html[data-fx=reduced]`, botão na `Sidebar`, localStorage `fx.reduced`).
+
+**Peso inicial (RN-ATR-08):** `BuildState.manualWeightKg` guarda o peso digitado; sem ele, `CharacterBuildService.submit` calcula `SheetRules.initialWeight` com a CON final (antes ficava com CON 0, calculada na Identidade). Depois do envio o peso só varia pela alimentação.
 
 **Impacto na parede:** `CreateAttackRequest.surface` (checkbox "Parede/obstáculo junto do alvo" no `AttackBuilder` para Esmagar, Empurrar e Empurrão) faz o alvo empurrado sem resistir sofrer 1d4+3 (`AttackService.wallImpact`; PQ só no Esmagar).
 

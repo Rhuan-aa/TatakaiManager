@@ -2671,9 +2671,11 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
   miniatura no slot, na lista e na ficha do item do `InventoryGrid` (ícone como fallback).
 
 ### 53.4 Falta — Fase 3 (efeitos e telas de campanha)
-- **Efeitos de condição** no card, retrato e boneco (entrada animada + estado contínuo): Queimando, Congelando, Envenenado, Sangramento,
-  Atordoado, Desorientado, Paralisado, Inconsciente, Cego, Sufocando, Derrubado, Agarrado/Imobilizado. Base existente: `ui/ConditionFx.jsx`,
-  `ui/BleedEdge.jsx`, `combat/conditionThemes.js` (nunca conferidos na tela). CSS/SVG/canvas leve; opção "efeitos reduzidos" por usuário.
+- ~~**Efeitos de condição**~~ — **feito (21/11/2026, conferido no combate)**: estado contínuo em `ui/AuraLayers` (CSS puro nas bordas de
+  `.cond-host`: fogo com brasas, gelo nos cantos, bolhas de veneno, fumaça, choque piscando, estrelas de tontura, cegueira, queda inclinada,
+  desmaio em cinza com "Zz", faixas de agarre, brilho de foco; no máximo 2 por elemento) no cartão do `InitiativeTracker`, no retrato e no
+  boneco da ficha; entrada animada continua no `ConditionFx`. "Efeitos reduzidos" por navegador (`ui/fxPref`, `<html data-fx="reduced">`,
+  botão na barra lateral) desliga auras e onomatopeias; `prefers-reduced-motion` também.
 - **Visual novo** das abas Configurações da campanha e TimeSkip (`TimeSkipPanel`, `RuleSettings`, `InviteMemberForm`); células agendadas da
   agenda como recortes (`SlotGrid.renderSlot`/`renderSoloSlot` ficaram no visual antigo).
 

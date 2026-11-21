@@ -29,6 +29,7 @@ import RichText from '../ui/RichText';
 import InventoryGrid from './InventoryGrid';
 import Icon from '../ui/Icon';
 import BleedEdge from '../ui/BleedEdge';
+import AuraLayers from '../ui/AuraLayers';
 import ConditionFx from '../ui/ConditionFx';
 import useSheetConditions from './useSheetConditions';
 import { themeFor } from '../combat/conditionThemes';
@@ -490,7 +491,8 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
       <div className="sheet-col">
         {/* NPC: o retrato já aparece no detalhe do NPC; a ficha fica enxuta */}
         {!isNpc && (
-          <div className="portrait-frame">
+          <div className="portrait-frame cond-host">
+            <AuraLayers keys={condFx.map((c) => c.key)} />
             {portraitUrl
               ? <img src={portraitUrl} alt={`Retrato de ${sheet.name}`} />
               : <FighterPlaceholder className="portrait-ph" />}
@@ -569,7 +571,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
       <div className="sheet-col">
         {show(sheet.injuries) && <Block title="Ferimentos">
           {!sheet.injuries ? <Hidden name="ferimentos" /> : (
-            <InjuryBoard sheet={sheet} isMaster={isMaster} onChange={onChange} />
+            <InjuryBoard sheet={sheet} isMaster={isMaster} onChange={onChange} conditions={condFx.map((c) => c.key)} />
           )}
         </Block>}
         {attrBlock}

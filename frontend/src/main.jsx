@@ -6,6 +6,9 @@ import '@fontsource/anton'
 import './index.css'
 import App from './App.jsx'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
+import { initFxPref } from './components/ui/fxPref'
+
+initFxPref()
 
 // Impressão/PDF: abre os <details> fechados e fecha de novo depois.
 window.addEventListener('beforeprint', () => {

@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom';
 import Icon from './Icon';
 import { themeFor } from '../combat/conditionThemes';
 import { queueSlot } from '../rolls/revealQueue';
-
-const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+import { fxReduced as reduced } from './fxPref';
 
 function Burst({ b }) {
   const t = themeFor(b.key, b.name);

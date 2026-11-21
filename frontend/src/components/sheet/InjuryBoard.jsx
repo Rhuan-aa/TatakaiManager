@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import BodyMap, { BODY_PART_LABELS, BRUISE } from './BodyMap';
+import AuraLayers from '../ui/AuraLayers';
 import { digitsOf, limbOf } from './bodyGeometry';
 import { SEVERITIES, INJURY_TYPES } from './GmAdjustmentPanel';
 import { ATTRS } from './sheetRules';
@@ -28,7 +29,7 @@ function Pick({ lbl, val, set, opts, blank }) {
   );
 }
 
-export default function InjuryBoard({ sheet, isMaster, onChange }) {
+export default function InjuryBoard({ sheet, isMaster, onChange, conditions = [] }) {
   const toast = useToast();
   const [sel, setSel] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -166,7 +167,8 @@ export default function InjuryBoard({ sheet, isMaster, onChange }) {
 
       <div className="flex flex-col gap-4 sm:flex-row">
         {showBody && (
-          <div className="mx-auto w-full max-w-[280px] shrink-0">
+          <div className="cond-host relative mx-auto w-full max-w-[280px] shrink-0">
+            <AuraLayers keys={conditions} />
             <BodyMap injuries={all} missingParts={missing} wounds={wounds} selected={sel} onSelect={choose}
               tool={isMaster ? tool : null} severity={severity} onDraw={draw} onPoint={point} />
           </div>
