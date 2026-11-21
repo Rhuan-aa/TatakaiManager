@@ -4,12 +4,11 @@ import { getCampaign } from '../../api/campaigns';
 import { listCampaignNpcs } from '../../api/npcs';
 import { parseApiError } from '../../api/parseApiError';
 import AppShell, { Surface } from '../../components/layout/AppShell';
-import InviteMemberForm from '../../components/campaign/InviteMemberForm';
+import CampaignSettings from '../../components/campaign/CampaignSettings';
 import NpcSection from '../../components/npc/NpcSection';
 import TimeSkipPanel from '../../components/timeskip/TimeSkipPanel';
 import LogPanel from '../../components/log/LogPanel';
 import CatalogManager from '../../components/catalog/CatalogManager';
-import RuleSettings from '../../components/campaign/RuleSettings';
 import RollFeed from '../../components/rolls/RollFeed';
 import CombatPanel from '../../components/combat/CombatPanel';
 import SheetsSection from '../../components/sheet/SheetsSection';
@@ -174,18 +173,7 @@ export default function CampaignDetail() {
             )}
             {activeTab === 'Catálogo' && <CatalogManager campaignId={id} isMaster={isMaster} />}
             {activeTab === 'Configurações' && isMaster && (
-              <div>
-                <p className="caption">
-                  Adicione um jogador já cadastrado pelo e-mail.
-                </p>
-                <div className="mt-4 max-w-md">
-                  <InviteMemberForm campaignId={id} />
-                </div>
-                <h3 className="panel-title mt-8 text-lg">Regras opcionais</h3>
-                <div className="mt-3">
-                  <RuleSettings campaignId={id} isMaster={isMaster} />
-                </div>
-              </div>
+              <CampaignSettings campaignId={id} isMaster={isMaster} />
             )}
           </Surface>
         </div>

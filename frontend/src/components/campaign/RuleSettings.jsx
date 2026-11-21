@@ -39,6 +39,10 @@ const RULES = {
   AMMO_STOCK: ['Estoque de munição', 'Recarregar gasta munição do inventário'],
 };
 
+// Regras que só mexem na Construção Inicial
+const BUILD = ['MAX_RANDOM_ATTRIBUTES', 'TRAIT_METHOD', 'DIVINE_INTERVENTION', 'MAX_RANDOM_CLAN', 'EVENTUAL_TRAITS',
+  'EXTRA_SPEC_SLOTS', 'GM_REROLLS', 'FREE_CREATION'];
+
 export default function RuleSettings({ campaignId, isMaster }) {
   const toast = useToast();
   const [rules, setRules] = useState(null);
@@ -70,57 +74,51 @@ export default function RuleSettings({ campaignId, isMaster }) {
   if (error) return <p className="caption">{error}</p>;
   if (!rules) return <div className="skeleton h-24 w-full" />;
 
-  const visible = rules.filter((r) => RULES[r.ruleKey]);
-  const half = Math.ceil(visible.length / 2);
+  const groups = [
+    ['Construção Inicial', 'Mudanças valem para construções iniciadas depois.', BUILD],
+    ['Combate e itens', null, null],
+  ];
+  const known = rules.filter((r) => RULES[r.ruleKey]);
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="caption">Mudanças valem para construções iniciadas depois.</p>
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-3">
-        {[visible.slice(0, half), visible.slice(half)].map((col, i) => (
-          <ul key={i} className="flex flex-col gap-2">
-        {col.map((rule) => {
-          const [name, desc] = RULES[rule.ruleKey];
-          const sel = PARAM_SELECTS[rule.ruleKey];
-          const busy = saving === rule.ruleKey;
-          const id = `rule-${rule.ruleKey}`;
-          return (
-            <li key={rule.ruleKey} className="panel flex flex-col gap-2 p-3">
-              <label htmlFor={id} className="flex flex-1 items-start gap-3">
-                <input
-                  id={id}
-                  type="checkbox"
-                  role="switch"
-                  className="mt-1 h-5 w-5 shrink-0"
-                  style={{ accentColor: 'var(--accent)' }}
-                  checked={rule.enabled}
-                  disabled={!isMaster || busy}
-                  onChange={(e) => save(rule, e.target.checked, rule.params)}
-                />
-                <span>
-                  <span className="panel-title block">{name}</span>
-                  <span className="block text-sm">{desc}</span>
-                </span>
-              </label>
-              {sel && (
-                <select
-                  aria-label={`${sel.label} (${name})`}
-                  className="field"
-                  value={rule.params?.[sel.key] ?? sel.options[0][0]}
-                  disabled={!isMaster || busy}
-                  onChange={(e) => save(rule, rule.enabled, { ...rule.params, [sel.key]: e.target.value })}
-                >
-                  {sel.options.map(([v, l]) => (
-                    <option key={v} value={v}>{l}</option>
-                  ))}
-                </select>
-              )}
-            </li>
-          );
-        })}
-          </ul>
-        ))}
-      </div>
+    <div className="flex flex-col gap-5">
+      {groups.map(([title, note, keys]) => {
+        const list = known.filter((r) => (keys ? keys.includes(r.ruleKey) : !BUILD.includes(r.ruleKey)));
+        return list.length > 0 && (
+          <div key={title} className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-baseline gap-x-3">
+              <h4 className="label">{title}</h4>
+              {note && <span className="hint">{note}</span>}
+            </div>
+            <ul className="grid grid-cols-1 items-start gap-2 md:grid-cols-2">
+              {list.map((rule) => {
+                const [name, desc] = RULES[rule.ruleKey];
+                const sel = PARAM_SELECTS[rule.ruleKey];
+                const busy = saving === rule.ruleKey;
+                const id = `rule-${rule.ruleKey}`;
+                return (
+                  <li key={rule.ruleKey} className={`rule-row${rule.enabled ? ' is-on' : ''}`}>
+                    <label htmlFor={id} className="rule-main">
+                      <input id={id} type="checkbox" role="switch" className="rule-switch" checked={rule.enabled}
+                        disabled={!isMaster || busy} onChange={(e) => save(rule, e.target.checked, rule.params)} />
+                      <span className="min-w-0">
+                        <span className="rule-name">{name}</span>
+                        <span className="rule-desc">{desc}</span>
+                      </span>
+                    </label>
+                    {sel && (
+                      <select aria-label={`${sel.label} (${name})`} className="field" value={rule.params?.[sel.key] ?? sel.options[0][0]}
+                        disabled={!isMaster || busy} onChange={(e) => save(rule, rule.enabled, { ...rule.params, [sel.key]: e.target.value })}>
+                        {sel.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }

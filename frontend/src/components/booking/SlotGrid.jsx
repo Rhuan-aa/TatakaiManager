@@ -67,8 +67,26 @@ function SlotGridSkeleton() {
 }
 
 // Visual: preenchimento "meu" (acento suave) vs. dos outros (painel)
-const fillMine = 'color-mix(in srgb, var(--accent) 22%, var(--panel-bg))';
-const fillOther = 'var(--panel-bg)';
+
+/** Agendamento como recorte de papel: faixa de cor pelo tipo, custo em losangos, selo "Você". */
+function Cut({ title, cost, who, note, mine, solo, cont, children }) {
+  return (
+    <div className={`cut${solo ? ' is-solo' : ''}${mine ? ' is-mine' : ' is-other'}${cont ? ' is-cont' : ''}`}>
+      <div className="cut-in">
+        {mine && !cont && <span className="cut-stamp">Você</span>}
+        <p className="cut-title">{title}{cont ? ' · continua' : ''}</p>
+        {!cont && cost > 0 && (
+          <span className="cut-pips" title={`${cost} pts de ócio`} aria-label={`${cost} pontos de ócio`}>
+            {Array.from({ length: Math.min(cost, 12) }, (_, i) => <i key={i} />)}
+          </span>
+        )}
+        {note && !cont && <p className="cut-note">{note}</p>}
+        {who && <p className="cut-who">{who}</p>}
+        {children}
+      </div>
+    </div>
+  );
+}
 
 const slotKey = (day, npcId, slot) => `${day}:${npcId}:${slot}`;
 
@@ -360,6 +378,21 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
       (b) => b.dayNumber === day && b.slotNumber === EXTRA_SLOT && b.userId === user?.userId
     );
 
+  // Desktop: a reserva de custo N vira um recorte só, ocupando N colunas (nunca entra no extra)
+  function npcCells(npc) {
+    const cells = [];
+    const lastSlot = COLUMNS.length - 1; // índice do extra
+    for (let i = 0; i < COLUMNS.length; i++) {
+      const slot = COLUMNS[i];
+      const b = slot !== EXTRA_SLOT && Object.values(bookings).find(
+        (x) => x.npcId === npc.id && x.dayNumber === day && x.slotNumber === slot);
+      const span = b ? Math.max(1, Math.min(b.idlePointCost || 1, lastSlot - i)) : 1;
+      cells.push({ slot, span });
+      i += span - 1;
+    }
+    return cells;
+  }
+
   // Conteúdo de uma célula de slot de NPC — reutilizado na tabela (desktop) e nos
   // cards empilhados (mobile).
   function renderSlot(npc, slot) {
@@ -373,39 +406,16 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
 
     if (booking && booking.slotNumber !== slot) {
       // Continuação de uma reserva iniciada em um slot anterior (custo > 1)
-      return (
-        <div
-          className="border-2 border-dashed border-[var(--line)] px-2.5 py-1.5 text-left"
-          style={{ background: mine ? fillMine : fillOther }}
-        >
-          <p className="text-[11px] text-[var(--text)] opacity-70">{booking.interactionName} · continuação</p>
-        </div>
-      );
+      return <Cut cont mine={mine} title={booking.interactionName} />;
     }
 
     if (booking) {
       return (
-        <div
-          className="panel px-2.5 py-1.5 text-left"
-          style={{ background: mine ? fillMine : fillOther }}
-        >
-          <p className="text-xs font-bold text-[var(--text)]">{booking.interactionName}</p>
-          {booking.idlePointCost != null && (
-            <p className="text-[11px] font-bold text-[var(--accent)]">
-              {booking.idlePointCost} pts de ócio
-            </p>
-          )}
-          <p className="mt-0.5 text-[11px] text-[var(--text)] opacity-70">{booking.userName}</p>
+        <Cut mine={mine} title={booking.interactionName} cost={booking.idlePointCost} who={booking.userName}>
           {mine && canBook && (
-            <button
-              type="button"
-              onClick={() => handleCancel(booking)}
-              className="btn-ghost mt-1 text-[11px]"
-            >
-              Cancelar
-            </button>
+            <button type="button" onClick={() => handleCancel(booking)} className="cut-cancel">Cancelar</button>
           )}
-        </div>
+        </Cut>
       );
     }
 
@@ -486,49 +496,17 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
     return (
       <div className="flex flex-col gap-1">
         {others.map((o) =>
-          o.slotNumber === slot ? (
-            <div
-              key={o.id}
-              className="panel px-2.5 py-1.5 text-left"
-            >
-              <p className="text-xs font-bold text-[var(--text)]">{bookingSoloLabel(o)}</p>
-              <p className="mt-0.5 text-[11px] text-[var(--text)] opacity-70">{o.userName}</p>
-            </div>
-          ) : (
-            <div
-              key={o.id}
-              className="border-2 border-dashed border-[var(--line)] bg-[var(--panel-bg)] px-2.5 py-1.5 text-left"
-            >
-              <p className="text-[11px] text-[var(--text)] opacity-70">
-                {bookingSoloLabel(o)} · continuação · {o.userName}
-              </p>
-            </div>
-          )
+          o.slotNumber === slot
+            ? <Cut key={o.id} solo title={bookingSoloLabel(o)} cost={o.idlePointCost} who={o.userName} />
+            : <Cut key={o.id} solo cont title={bookingSoloLabel(o)} who={o.userName} />
         )}
 
         {mineCovering && !mine ? (
-          <div className="border-2 border-dashed border-[var(--line)] px-2.5 py-1.5 text-left" style={{ background: fillMine }}>
-            <p className="text-[11px] text-[var(--text)] opacity-70">{bookingSoloLabel(mineCovering)} · continuação</p>
-          </div>
+          <Cut solo cont mine title={bookingSoloLabel(mineCovering)} />
         ) : mine ? (
-          <div className="panel px-2.5 py-1.5 text-left" style={{ background: fillMine }}>
-            <p className="text-xs font-bold text-[var(--text)]">{bookingSoloLabel(mine)}</p>
-            <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--text)] opacity-70">{mine.description}</p>
-            {mine.idlePointCost != null && (
-              <p className="mt-0.5 text-[11px] font-bold text-[var(--accent)]">
-                {mine.idlePointCost} pts de ócio
-              </p>
-            )}
-            {canBook && (
-              <button
-                type="button"
-                onClick={() => handleCancel(mine)}
-                className="btn-ghost mt-1 text-[11px]"
-              >
-                Cancelar
-              </button>
-            )}
-          </div>
+          <Cut solo mine title={bookingSoloLabel(mine)} cost={mine.idlePointCost} note={mine.description}>
+            {canBook && <button type="button" onClick={() => handleCancel(mine)} className="cut-cancel">Cancelar</button>}
+          </Cut>
         ) : canBook ? (
           activeCell === cellId ? (
             <div className="flex flex-col gap-1.5 border-2 border-[var(--line)] bg-[var(--panel-bg)] p-2">
@@ -723,11 +701,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                 </div>
               </td>
               {COLUMNS.map((slot) => (
-                <td
-                  key={slot}
-                  className="slot-td"
-                  style={slot === EXTRA_SLOT ? { background: 'color-mix(in srgb, var(--highlight) 18%, var(--bg))' } : undefined}
-                >
+                <td key={slot} className={`slot-td${slot === EXTRA_SLOT ? ' is-extra' : ''}`}>
                   {renderSoloSlot(slot)}
                 </td>
               ))}
@@ -742,12 +716,8 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                     <span className="text-sm font-bold text-[var(--text)]">{npc.name}</span>
                   </div>
                 </td>
-                {COLUMNS.map((slot) => (
-                  <td
-                  key={slot}
-                  className="slot-td"
-                  style={slot === EXTRA_SLOT ? { background: 'color-mix(in srgb, var(--highlight) 18%, var(--bg))' } : undefined}
-                >
+                {npcCells(npc).map(({ slot, span }) => (
+                  <td key={slot} colSpan={span} className={`slot-td${slot === EXTRA_SLOT ? ' is-extra' : ''}`}>
                     {renderSlot(npc, slot)}
                   </td>
                 ))}

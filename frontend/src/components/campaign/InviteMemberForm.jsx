@@ -3,7 +3,7 @@ import { inviteMember } from '../../api/campaigns';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 
-export default function InviteMemberForm({ campaignId }) {
+export default function InviteMemberForm({ campaignId, onInvited }) {
   const toast = useToast();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -20,6 +20,7 @@ export default function InviteMemberForm({ campaignId }) {
       setSuccess(`${member.name} foi adicionado como jogador.`);
       setEmail('');
       toast(`${member.name} adicionado à campanha.`);
+      onInvited?.(member);
     } catch (err) {
       setError(parseApiError(err).message);
     } finally {

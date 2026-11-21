@@ -2676,8 +2676,11 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
   desmaio em cinza com "Zz", faixas de agarre, brilho de foco; no máximo 2 por elemento) no cartão do `InitiativeTracker`, no retrato e no
   boneco da ficha; entrada animada continua no `ConditionFx`. "Efeitos reduzidos" por navegador (`ui/fxPref`, `<html data-fx="reduced">`,
   botão na barra lateral) desliga auras e onomatopeias; `prefers-reduced-motion` também.
-- **Visual novo** das abas Configurações da campanha e TimeSkip (`TimeSkipPanel`, `RuleSettings`, `InviteMemberForm`); células agendadas da
-  agenda como recortes (`SlotGrid.renderSlot`/`renderSoloSlot` ficaram no visual antigo).
+- ~~**Visual novo** das abas Configurações e agenda~~ — **feito (21/11/2026, conferido na tela)**: `CampaignSettings` (painel "Mesa"
+  com os membros e o convite; "Regras opcionais" agrupadas em Construção Inicial / Combate e itens, interruptor `.rule-switch`, descrição em
+  texto normal). Agenda: agendamentos como recortes de papel (`Cut` em `SlotGrid`: cantos cortados, faixa por tipo, custo em losangos,
+  selo "Você"); no desktop a reserva de custo N ocupa N colunas (`npcCells`, `colSpan`); células vazias tracejadas discretas.
+  O cabeçalho do `TimeSkipPanel` já estava no estilo e ficou como está.
 
 ### 53.5 Verificações devidas (de tudo que já foi feito)
 - Conferir na tela, nos dois temas e no celular: agenda com mais de 4 slots, ficha de NPC vista pelo jogador com seções ocultas, abas da ficha
