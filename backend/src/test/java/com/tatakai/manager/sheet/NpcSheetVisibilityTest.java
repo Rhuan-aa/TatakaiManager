@@ -194,10 +194,20 @@ class NpcSheetVisibilityTest {
     @Test
     @DisplayName("FATIGUE liberado mostra o desgaste sem mostrar recursos")
     void fatigueOnly() {
+        sheet.setNpcTracking(true);
         show(SheetSection.FATIGUE);
         CharacterSheetResponse r = asPlayer();
         assertThat(r.fatigue()).isNotNull();
         assertThat(r.resources()).isNull();
+    }
+
+    @Test
+    @DisplayName("§53.2-6: NPC sem Cansaço/PS ligado não manda desgaste, mesmo com FATIGUE liberado")
+    void fatigueOffByDefault() {
+        show(SheetSection.FATIGUE, SheetSection.HP, SheetSection.SP, SheetSection.KP);
+        CharacterSheetResponse r = asPlayer();
+        assertThat(r.fatigue()).isNull();
+        assertThat(r.progress()).isNull();
     }
 
     @Test

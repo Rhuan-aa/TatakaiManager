@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-/** Abas WAI-ARIA. tabs: [{ id, label }]; o painel é renderizado pelo pai com id `${idBase}-panel`. */
+/** Abas WAI-ARIA. tabs: [{ id, label, alert? }] (alert = pendência: aba pisca em vermelho); o painel é renderizado pelo pai com id `${idBase}-panel`. */
 export default function SheetTabs({ tabs, active, onChange, idBase = 'sheet' }) {
   const refs = useRef({});
   function onKeyDown(e) {
@@ -20,8 +20,9 @@ export default function SheetTabs({ tabs, active, onChange, idBase = 'sheet' }) 
       {tabs.map((t) => (
         <button key={t.id} type="button" role="tab" id={`${idBase}-tab-${t.id}`} ref={(el) => { refs.current[t.id] = el; }}
           aria-selected={t.id === active} aria-controls={`${idBase}-panel`} tabIndex={t.id === active ? 0 : -1}
-          className="sheet-tab" onClick={() => onChange(t.id)}>
+          className={`sheet-tab${t.alert ? ' is-alert' : ''}`} onClick={() => onChange(t.id)}>
           {t.label}
+          {t.alert && <span className="sr-only"> (pendência)</span>}
         </button>
       ))}
     </div>

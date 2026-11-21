@@ -718,6 +718,13 @@ Plano completo, fases futuras (F2–F7) e contratos: `PLANO_FICHA_DIGITAL.md`.
   `RESOURCES` visível ainda vale por HP+SP+PQ. Config (só Mestre): `GET|PATCH /sheet/visibility` e `PUT` em lote `{"sections": {"HP": true}}`
   (avisa `NPCS` no canal `campaign`). `GET .../sheet/martial` devolve artes/bases/técnicas filtradas (ARTS oculta: técnica sem `characterArtId`
   nem `borrowedFrom`). RADAR, BODY_MAP e IMAGE são só sinalizadores para o front.
+- **Cansaço e PS do NPC (§53.2-6):** `CharacterSheet.npcTracking` (coluna `npc_tracking`, padrão `false`); desligado, `toResponse` devolve
+  `fatigue` e `progress` nulos na ficha de NPC. `PATCH /npcs/{nid}/sheet/tracking {enabled}` (só o dono do NPC, outros 404);
+  `CharacterSheetResponse.npcTracking`. Bancos com `validate`: `ALTER TABLE character_sheets ADD COLUMN npc_tracking boolean not null default false`.
+- **Front da ficha (Fase 2):** aba **Configurações** (antes "Mestre") com aprovação (`#sheet-approval`, foco `approval` vindo da aba Aprovações,
+  aba pisca em vermelho com `.sheet-tab.is-alert` enquanto `PENDING_APPROVAL`), imagens, Cansaço/PS e `NpcVisibilityButton` (`<dialog>`, `PUT`
+  em lote) no NPC, ajustes, reabrir, visibilidade e atividade. Jogador vendo NPC (`visibleSections != null`): seção oculta some (bloco/aba);
+  Interações no topo da Visão Geral; aba de artes só leitura. Modal do NPC largo (`max-w-7xl`) com ficha pronta.
 - **Slots do TimeSkip:** `slotsPerDay` 1..12; `TimeSkip.extraSlotNumber()` = 5 até 4 slots (compatível com o que já existe), senão `slotsPerDay + 1`;
   `TimeSkipResponse.extraSlot`; `SlotGrid` monta as colunas pelo TimeSkip. Bancos antigos: trocar o CHECK de `bookings.slot_number` para 1..13.
 

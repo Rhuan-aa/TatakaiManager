@@ -442,4 +442,34 @@ class NpcSheetServiceTest {
                 .isInstanceOf(InvalidCharacterSheetException.class);
         verify(npcVisibilityRepository, never()).save(any());
     }
+
+    // ---------------------------------------------------------------- §53.2-6 Cansaço e PS
+
+    @Test
+    @DisplayName("§53.2-6: ficha de NPC nasce sem Cansaço/PS (desgaste e progresso nulos)")
+    void trackingOffByDefault() {
+        CharacterSheetResponse r = service.getForNpc(npc.getId(), owner.getId());
+        assertThat(r.npcTracking()).isFalse();
+        assertThat(r.fatigue()).isNull();
+        assertThat(r.progress()).isNull();
+    }
+
+    @Test
+    @DisplayName("§53.2-6: dono liga Cansaço/PS e a ficha passa a mostrar desgaste e progresso")
+    void ownerEnablesTracking() {
+        CharacterSheetResponse r = service.setNpcTracking(npc.getId(), true, owner.getId());
+        assertThat(sheet.isNpcTracking()).isTrue();
+        assertThat(r.npcTracking()).isTrue();
+        assertThat(r.fatigue()).isNotNull();
+        assertThat(r.progress()).isNotNull();
+        verify(sheetRepository).save(sheet);
+    }
+
+    @Test
+    @DisplayName("§53.2-6: quem não é dono do NPC não alterna Cansaço/PS (404)")
+    void strangerCannotToggleTracking() {
+        assertThatThrownBy(() -> service.setNpcTracking(npc.getId(), true, stranger.getId()))
+                .isInstanceOf(CharacterSheetNotFoundException.class);
+        verify(sheetRepository, never()).save(any());
+    }
 }

@@ -5,7 +5,8 @@ import LimiterRadar from './LimiterRadar';
 import InjuryBoard from './InjuryBoard';
 import FighterPlaceholder from './FighterPlaceholder';
 import SheetVisibilityPanel from './SheetVisibilityPanel';
-import { exportSheet, getSheetImageUrl, getNpcSheetMartial } from '../../api/characterSheets';
+import NpcVisibilityButton from './NpcVisibilityButton';
+import { exportSheet, getSheetImageUrl, getNpcSheetMartial, setNpcTracking } from '../../api/characterSheets';
 import { GRADS, lab } from '../catalog/artLabels';
 import { listTraits } from '../../api/catalog';
 import { Effects, Variations } from '../catalog/CatalogManager';
@@ -351,7 +352,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const isMaster = isNpc ? isOwner : isCampaignMaster;
   const draft = isNpc || sheet.buildStatus === 'DRAFT';
 
-  const FOCUS_TAB = { martial: 'martial', notebook: 'martial', progress: 'progress' };
+  const FOCUS_TAB = { martial: 'martial', notebook: 'martial', progress: 'progress', approval: 'settings' };
   const tabKey = `sheetTab:${sheet.id}`;
   const [tab, setTab] = useState(() => {
     if (FOCUS_TAB[focusSection]) return FOCUS_TAB[focusSection];
@@ -505,11 +506,6 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             {p && <IdentityChip icon={ICON.belt} title="Keiken" value={KEIKEN[p.keiken]} color="var(--keiken)" />}
           </div>
         </div>
-        {seesPrivate && (
-          <Block title="Imagens do lutador" collapsible>
-            <SheetImagePicker sheet={sheet} onChange={onChange} />
-          </Block>
-        )}
       </div>
 
       <div className="sheet-col">
@@ -526,18 +522,6 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
               );
             })}
           </div>
-        )}
-        {!isNpc && isMaster && sheet.buildStatus === 'PENDING_APPROVAL' && (
-          <Block title="Aprovação">
-            <label className="label">
-              Motivo (opcional)
-              <input className="field mt-1 w-full" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
-            </label>
-            <div className="mt-3 flex gap-2">
-              <button type="button" className="btn-primary" onClick={() => decide(true)}>Aprovar</button>
-              <button type="button" className="btn-secondary" onClick={() => decide(false)}>Devolver</button>
-            </div>
-          </Block>
         )}
         {show(r || f) && <Block title="Recursos">
           {!r && !f ? <Hidden name="recursos" /> : (
@@ -635,9 +619,48 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const canEditDraft = isOwner && draft;
   const showVisibility = !isNpc && seesPrivate && sheet.campaignId && sheet.ownerUserId;
   const showReopen = !isNpc && isMaster && ['COMPLETED', 'PENDING_APPROVAL'].includes(sheet.buildStatus);
-  const hasGm = canEditDraft || seesPrivate || isMaster;
-  const gm = hasGm && (
+  const pendingApproval = !isNpc && isMaster && sheet.buildStatus === 'PENDING_APPROVAL';
+  const npcSettings = isNpc && isOwner;
+  async function toggleTracking(enabled) {
+    try {
+      onChange(await setNpcTracking(sheet.npcId, enabled));
+    } catch (err) {
+      toast(parseApiError(err).message, 'error');
+    }
+  }
+  // Configurações: aprovação, imagens, visibilidade, Cansaço/PS (NPC), edição e ferramentas do Mestre.
+  const hasSettings = canEditDraft || seesPrivate || isMaster;
+  const settings = hasSettings && (
     <div className="flex flex-col gap-4">
+      {!isNpc && isMaster && sheet.buildStatus === 'PENDING_APPROVAL' && (
+        <Block id="sheet-approval" title="Aprovação">
+          <label className="label">
+            Motivo (opcional)
+            <input className="field mt-1 w-full" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+          </label>
+          <div className="mt-3 flex gap-2">
+            <button type="button" className="btn-primary" onClick={() => decide(true)}>Aprovar</button>
+            <button type="button" className="btn-secondary" onClick={() => decide(false)}>Devolver</button>
+          </div>
+        </Block>
+      )}
+      {seesPrivate && (
+        <Block title="Imagens do lutador">
+          <SheetImagePicker sheet={sheet} onChange={onChange} />
+        </Block>
+      )}
+      {npcSettings && (
+        <Block title="NPC">
+          <div className="flex flex-col gap-3">
+            <label className="flex min-h-[44px] items-center gap-2 text-sm">
+              <input type="checkbox" checked={!!sheet.npcTracking} onChange={(e) => toggleTracking(e.target.checked)} />
+              Acompanhar Cansaço e PS deste NPC
+            </label>
+            <p className="hint">Desligado, a ficha não mostra desgaste nem pontos de superação.</p>
+            {isCampaignMaster && campaignId && <NpcVisibilityButton campaignId={campaignId} npcId={sheet.npcId} />}
+          </div>
+        </Block>
+      )}
       {canEditDraft && (
         <button type="button" className="btn-secondary self-start" onClick={() => setEditing(true)}>Editar ficha</button>
       )}
@@ -678,7 +701,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
     show(sheet.inventory) && { id: 'inventory', label: 'Inventário', node: inventory },
     hasProgress && { id: 'progress', label: 'Progressão', node: progress },
     seesPrivate && { id: 'rolls', label: 'Rolagens', node: rolls },
-    hasGm && { id: 'gm', label: 'Mestre', node: gm },
+    hasSettings && { id: 'settings', label: 'Configurações', node: settings, alert: pendingApproval },
   ].filter(Boolean);
   const current = tabs.find((t) => t.id === tab) ?? tabs[0];
 

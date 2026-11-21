@@ -2663,9 +2663,10 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
   (`max-w-7xl`) com ficha pronta (a ficha de 3 colunas ficava espremida em `max-w-2xl`); "Exportar JSON" só para quem pode exportar.
   Causa do 500 ao salvar visibilidade no banco de dev: CHECK de enum antigo em `npc_sheet_visibility.section` (§53.5; dropado localmente).
   Pendente: imagem do NPC para o jogador continua vindo da imagem do NPC, não da flag IMAGE.
-- **Aba "Configurações" da ficha** no lugar de "Mestre" (jogador também usa): imagens (retrato, corpo inteiro), visibilidade, alternância de
-  Cansaço/PS (NPC), e a **aprovação** da ficha (sair da Visão Geral). Vindo da aba Aprovações, abrir nessa aba e fazê-la piscar em vermelho
-  enquanto houver pendência; com `prefers-reduced-motion`, indicador vermelho estático.
+- ~~**Aba "Configurações" da ficha**~~ — **feito (21/11/2026, conferido na tela)**: aprovação, imagens, visibilidade (jogador:
+  `SheetVisibilityPanel`; NPC: botão com pop-up), Cansaço/PS do NPC (`npcTracking`, padrão desligado), editar, ajustes, reabrir e atividade.
+  Item `SHEET` da aba Aprovações abre a ficha nessa aba e rola até a aprovação; a aba pisca em vermelho enquanto `PENDING_APPROVAL`
+  (estática com `prefers-reduced-motion`).
 - **Imagem de item na tela**: upload/remoção no `ItemsCatalog` (global e por campanha) e miniatura no `InventoryGrid` (slot, lista e ficha do
   item) com o ícone atual como fallback.
 
@@ -2683,7 +2684,7 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
   (`cd backend && JAVA_HOME=~/.jdks/jbr-21.0.11 ./mvnw -q package -Dmaven.test.skip=true`), `docker compose up -d --no-build postgres mongo` e
   `docker compose run -d --no-deps --name tatakai-revamp-backend -p 8090:8080 -v $PWD/backend/target/tatakai-manager-0.0.1-SNAPSHOT.jar:/app/app.jar:ro backend`
   (o `docker compose build` falha pelo helper de credenciais gpg; as portas 8080/8081/8082 estão ocupadas por outro projeto). Vite de dev: `VITE_API_URL=http://localhost:8090 npx vite --port 5173`.
-- Migração manual (produção com `validate`): criar `sheet_images` e `catalog_item_images`; `permanent_injuries.body_part varchar(20)`;
+- Migração manual (produção com `validate`): criar `sheet_images` e `catalog_item_images`; `character_sheets.npc_tracking boolean not null default false`; `permanent_injuries.body_part varchar(20)`;
   `character_sheets.missing_parts jsonb default '[]'`; trocar o CHECK de `bookings.slot_number` para 1..13 (achar o nome em `pg_constraint`);
   dropar CHECK de enum em `npc_sheet_visibility.section`/`character_sheet_visibility.section` se o banco tiver (§11.11 do AGENTS.md).
 - Limpeza: worktrees de agente em `.claude/worktrees/` (`git worktree list`; os commits deles já foram trazidos por cherry-pick) e a ficha

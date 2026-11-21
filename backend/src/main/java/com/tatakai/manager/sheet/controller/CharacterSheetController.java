@@ -11,6 +11,7 @@ import com.tatakai.manager.sheet.dto.request.CreateCharacterSheetRequest;
 import com.tatakai.manager.sheet.dto.request.CreateGmSheetRequest;
 import com.tatakai.manager.sheet.dto.request.GmAdjustmentRequest;
 import com.tatakai.manager.sheet.dto.request.SetNpcSectionVisibilityRequest;
+import com.tatakai.manager.sheet.dto.request.SetNpcTrackingRequest;
 import com.tatakai.manager.sheet.dto.request.UpdateCharacterSheetRequest;
 import com.tatakai.manager.sheet.dto.request.UpdateResourcesRequest;
 import com.tatakai.manager.sheet.dto.response.CharacterSheetResponse;
@@ -133,6 +134,12 @@ public class CharacterSheetController {
     @GetMapping("/npcs/{npcId}/sheet")
     public ResponseEntity<CharacterSheetResponse> getForNpc(@PathVariable UUID npcId) {
         return ResponseEntity.ok(sheetService.getForNpc(npcId, AuthenticatedUser.id()));
+    }
+
+    @PatchMapping("/npcs/{npcId}/sheet/tracking")
+    public ResponseEntity<CharacterSheetResponse> setNpcTracking(@PathVariable UUID npcId,
+                                                                 @Valid @RequestBody SetNpcTrackingRequest request) {
+        return ResponseEntity.ok(sheetService.setNpcTracking(npcId, request.enabled(), AuthenticatedUser.id()));
     }
 
     @GetMapping("/campaigns/{campaignId}/npcs/{npcId}/sheet")

@@ -741,6 +741,17 @@ public class CharacterSheetService {
         return toResponse(sheet, true, Set.of());
     }
 
+    /** Liga/desliga Cansaço e PS na ficha de NPC; só o dono do NPC (outros 404). */
+    @Transactional
+    public CharacterSheetResponse setNpcTracking(UUID npcId, boolean enabled, UUID requesterId) {
+        CharacterSheet sheet = sheetRepository.findByNpcId(npcId).orElseThrow(CharacterSheetNotFoundException::new);
+        Access a = access(sheet, requesterId); // 404 se não for o dono
+        sheet.setNpcTracking(enabled);
+        CharacterSheet saved = sheetRepository.save(sheet);
+        publish(SheetEvent.SHEET_UPDATED, saved, ActivityCategory.GM_ADJUSTMENT, "NPC_TRACKING", a.actorName());
+        return toResponse(saved, true, Set.of());
+    }
+
     @Transactional(readOnly = true)
     public CharacterSheetResponse getNpcSheetInCampaign(UUID campaignId, UUID npcId, UUID requesterId) {
         CampaignNpc cn = campaignNpcRepository.findByCampaignIdAndNpcId(campaignId, npcId)
@@ -839,7 +850,8 @@ public class CharacterSheetService {
         boolean showHp = !resOff && !hidden.contains(SheetSection.HP);
         boolean showSp = !resOff && !hidden.contains(SheetSection.SP);
         boolean showKp = !resOff && !hidden.contains(SheetSection.KP);
-        boolean showFatigue = !resOff && !hidden.contains(SheetSection.FATIGUE);
+        boolean npcOff = s.isNpcSheet() && !s.isNpcTracking(); // NPC sem Cansaço/PS (§53.2-6)
+        boolean showFatigue = !resOff && !npcOff && !hidden.contains(SheetSection.FATIGUE);
         boolean showRadar = !hidden.contains(SheetSection.RADAR);
         boolean showInj = !hidden.contains(SheetSection.INJURIES);
         boolean showInv = !hidden.contains(SheetSection.INVENTORY);
@@ -893,7 +905,7 @@ public class CharacterSheetService {
             fatigue = new SheetFatigue(s.getPhysicalFatigue(), SheetRules.fatigueBand(s.getPhysicalFatigue()),
                     s.getMentalFatigue(), SheetRules.fatigueBand(s.getMentalFatigue()));
         }
-        if (showHp && showSp && showKp) {
+        if (showHp && showSp && showKp && !npcOff) {
             int el = s.getFightExperience();
             progress = new SheetProgress(el, s.getPendingOvercomePoints(), ProgressionRules.keiken(el),
                     ProgressionRules.nextKeikenAt(el), s.getSparringExperience(), ProgressionRules.sparringCap(el),
@@ -933,7 +945,7 @@ public class CharacterSheetService {
                 imgs.contains(SheetImageKind.PORTRAIT), imgs.contains(SheetImageKind.FULL_BODY),
                 showInj && !hidden.contains(SheetSection.BODY_MAP)
                         ? List.copyOf(s.getMissingParts() == null ? List.of() : s.getMissingParts()) : null,
-                null, null);
+                null, null, s.isNpcTracking());
     }
 
     /** Tipos de imagem por ficha, numa consulta só e sem carregar os bytes. */

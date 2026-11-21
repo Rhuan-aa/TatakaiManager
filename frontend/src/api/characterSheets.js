@@ -154,3 +154,9 @@ export async function uploadSheetImage(sheetId, kind, file) {
 export async function deleteSheetImage(sheetId, kind) {
   await client.delete(`/character-sheets/${sheetId}/images/${kind}`);
 }
+
+/** Liga/desliga Cansaço e PS na ficha de NPC (só o dono do NPC). */
+export async function setNpcTracking(npcId, enabled) {
+  const { data } = await client.patch(`/npcs/${npcId}/sheet/tracking`, { enabled });
+  return data;
+}

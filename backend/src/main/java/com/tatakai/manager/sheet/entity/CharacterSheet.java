@@ -60,6 +60,11 @@ public class CharacterSheet {
     @Builder.Default
     private boolean combatReady = true;
 
+    /** Ficha de NPC: Cansaço (desgaste) e PS valem só se ligado (§53.2-6). Ficha de jogador ignora. */
+    @Column(name = "npc_tracking", nullable = false, columnDefinition = "boolean not null default false")
+    @Builder.Default
+    private boolean npcTracking = false;
+
     @Column(name = "height_m")
     private double heightM;
 
