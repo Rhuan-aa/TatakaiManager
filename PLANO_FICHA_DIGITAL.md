@@ -2685,8 +2685,9 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
 ### 53.5 Verificações devidas (de tudo que já foi feito)
 - ~~Conferir na tela, nos dois temas e no celular~~ — **feito (21/11/2026)** para o que este ciclo mexeu: ficha de NPC vista pelo jogador,
   pop-up do NPC, boneco, auras, agenda com 6 slots, Configurações (390 px e tema claro). Corrigido no caminho: formulário "Adicionar
-  participante" do combate estourava a largura no celular; células da agenda viram uma coluna abaixo de 480 px. Ainda não conferidos nesta
-  rodada: abas Artes Marciais/Progressão/Rolagens da ficha, upload de retrato/corpo inteiro, logs e registro.
+  participante" do combate estourava a largura no celular; células da agenda viram uma coluna abaixo de 480 px. Também conferidos (desktop;
+  registro também a 390 px): abas Artes Marciais/Progressão/Rolagens/Configurações da ficha do jogador, envio e exibição do retrato,
+  logs e registro. Corrigido: a aba Rolagens repetia o código da variação da arma ("Faca (arremesso) (THROWN)").
 - Ambiente parado em 21/11/2026: nem o container `tatakai-revamp-backend` (8090) nem o Vite (5173) estão rodando. Para subir: reempacotar
   (`cd backend && JAVA_HOME=~/.jdks/jbr-21.0.11 ./mvnw -q package -Dmaven.test.skip=true`), `docker compose up -d --no-build postgres mongo` e
   `docker compose run -d --no-deps --name tatakai-revamp-backend -p 8090:8080 -v $PWD/backend/target/tatakai-manager-0.0.1-SNAPSHOT.jar:/app/app.jar:ro backend`

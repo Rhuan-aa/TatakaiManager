@@ -148,7 +148,8 @@ export default function RollsPanel({ sheetId, campaignId, isMaster, isNpc, refre
           {profiles.map((p) => (
             <li key={key(p)}>
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <strong className="flex-1">{p.name}{p.variation ? ` (${p.variation})` : ''}</strong>
+                {/* arma já vem como "Faca (arremesso)"; técnica vem sem a variação no nome */}
+                <strong className="flex-1">{p.name}{p.variation && !p.name.includes('(') ? ` (${p.variation})` : ''}</strong>
                 <span className="caption">{p.hitFormula}{p.damageFormula ? ` · ${p.damageFormula}` : ''}{p.spCost ? ` · ${p.spCost} SP` : ''}</span>
                 <button type="button" className="btn-primary text-xs" disabled={locked}
                   onClick={() => run({ ...profileBody(p), mode: 'QUICK' })}>Rolar</button>
