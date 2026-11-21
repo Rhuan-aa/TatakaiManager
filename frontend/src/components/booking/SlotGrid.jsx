@@ -741,7 +741,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
             </span>
             <span className="text-sm font-bold text-[var(--text)]">Ação solo</span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-2">
             {COLUMNS.map((slot) => (
               <div key={slot} className="border-2 border-[var(--line)] bg-[var(--bg)] p-2">
                 <p className="panel-title mb-1 text-[10px]">
@@ -768,7 +768,7 @@ export default function SlotGrid({ campaignId, timeSkip, npcs, activitiesVersion
                 </span>
                 <span className="text-sm font-bold text-[var(--text)]">{npc.name}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-2">
                 {COLUMNS.map((slot) => (
                   <div
                     key={slot}

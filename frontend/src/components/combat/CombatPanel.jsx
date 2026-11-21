@@ -253,11 +253,11 @@ export default function CombatPanel({ campaignId, isMaster, npcs, onCloseFight }
           </div>
 
           {isMaster && enc.status !== 'ENDED' && (
-            <form className="flex gap-2" onSubmit={(e) => {
+            <form className="flex flex-wrap gap-2" onSubmit={(e) => {
               e.preventDefault();
               if (addSheet) run(() => api.addParticipant(enc.id, addSheet, Number(addTeam) || undefined)).then(() => setAddSheet(''));
             }}>
-              <select className="field !w-auto" value={addSheet} onChange={(e) => setAddSheet(e.target.value)} aria-label="Participante">
+              <select className="field !w-auto min-w-0 max-w-full" value={addSheet} onChange={(e) => setAddSheet(e.target.value)} aria-label="Participante">
                 <option value="">Adicionar participante…</option>
                 {candidates.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
