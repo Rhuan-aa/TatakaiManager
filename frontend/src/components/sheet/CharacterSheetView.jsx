@@ -237,7 +237,7 @@ function Block({ id, title, aside, collapsible, defaultOpen = false, children })
 }
 
 // V-13: recolhido mostra nome + tags; ao abrir, busca efeitos/variações no catálogo (versão atual, não o snapshot).
-function TraitItem({ t, campaignId }) {
+function TraitItem({ t, campaignId, isNpc }) {
   const [full, setFull] = useState();
   async function load(e) {
     if (!e.currentTarget.open || full !== undefined) return;
@@ -253,7 +253,8 @@ function TraitItem({ t, campaignId }) {
         <summary className="flex cursor-pointer flex-wrap items-center gap-2">
           <strong className="panel-title">{t.name}</strong>
           <span className="tag" style={rarityTagStyle(t.rarity)}>{RARITY[t.rarity]?.label ?? t.rarity}</span>
-          <span className="tag">{t.acquiredIn === 'CAMPAIGN' ? 'Campanha' : 'Construção'}</span>
+          {/* origem na ficha (não no catálogo); NPC não passa pela Construção, então a etiqueta não diz nada */}
+          {!isNpc && <span className="tag">{t.acquiredIn === 'CAMPAIGN' ? 'Ganho em jogo' : 'Construção'}</span>}
         </summary>
         <div className="mt-2 flex flex-col gap-2">
           {t.description && <RichText text={t.description} />}
@@ -281,14 +282,17 @@ function useSheetImage(sheet, kind, has) {
 }
 
 /** Artes/bases/técnicas do NPC liberadas ao jogador (o servidor já filtra por ARTS/BASES/TECHNIQUES). */
+const npcMartialCache = new Map(); // voltar à aba não pisca o skeleton
 function NpcMartialView({ campaignId, npcId }) {
-  const [m, setM] = useState(null);
+  const key = `${campaignId}:${npcId}`;
+  const [m, setRaw] = useState(() => npcMartialCache.get(key) ?? null);
   useEffect(() => {
     let active = true;
-    getNpcSheetMartial(campaignId, npcId).then((x) => active && setM(x)).catch(() => active && setM({ arts: [], techniques: [] }));
+    const setM = (x) => { npcMartialCache.set(key, x); if (active) setRaw(x); };
+    getNpcSheetMartial(campaignId, npcId).then(setM).catch(() => setM({ arts: [], techniques: [] }));
     return () => { active = false; };
-  }, [campaignId, npcId]);
-  if (!m) return <div className="skeleton h-24 w-full" />;
+  }, [campaignId, npcId, key]);
+  if (!m) return <div className="flex flex-col gap-4" aria-busy="true"><div className="skeleton h-24 w-full" /><div className="skeleton h-24 w-full" /></div>;
   const list = (kind) => m.techniques.filter((t) => t.kind === kind);
   const group = (title, items) => items.length > 0 && (
     <Block title={title}>
@@ -347,6 +351,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const { user } = useAuth();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
+  const [addingItem, setAddingItem] = useState(false);
   const condFx = useSheetConditions(campaignId, sheet.id);
   const [reason, setReason] = useState('');
   const isOwner = sheet.ownerUserId === user?.userId;
@@ -470,7 +475,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
           <div className="flex flex-col gap-3">
             {sheet.traits && (sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
               <ul className="sheet-traits">
-                {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} />)}
+                {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} isNpc={isNpc} />)}
               </ul>
             ))}
             {(sheet.clans ?? []).map((c) => (
@@ -608,7 +613,17 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   );
 
   const inventory = (
-    <Block title="Inventário">
+    <Block title="Inventário" aside={isMaster && sheet.inventory && (
+      <button type="button" className={addingItem ? 'btn-ghost' : 'btn-primary'} aria-expanded={addingItem}
+        onClick={() => setAddingItem((v) => !v)}>
+        {addingItem ? 'Fechar' : <><Icon name="plus" size={16} /> Adicionar item</>}
+      </button>
+    )}>
+      {addingItem && (
+        <div className="well mb-4 p-3">
+          <GmAdjustmentPanel sheet={sheet} campaignId={campaignId} only="ADD_ITEM" onDone={(u) => { setAddingItem(false); onChange(u); }} />
+        </div>
+      )}
       {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : (
         <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} artUrl={isNpc ? null : bodyUrl ?? portraitUrl} campaignId={campaignId ?? sheet.campaignId}
           sheetId={sheet.id} canUse={seesPrivate && sheet.combatReady} onChange={onChange} />

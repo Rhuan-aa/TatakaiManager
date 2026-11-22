@@ -26,15 +26,16 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npc
   useEffect(() => { if (focusSheetId) setOpenId(focusSheetId); }, [focusSheetId]);
   const [open, setOpen] = useState(null);
   // o botão de voltar mora fora do card, no CampaignDetail
-  const showBack = Boolean(openId) && open?.buildStatus !== 'IN_BUILD';
+  // ficha em construção também volta: o progresso do assistente fica salvo no servidor
+  const [building, setBuilding] = useState(null);
+  const showBack = Boolean(openId || building);
   useEffect(() => {
-    onSheetOpen?.(showBack ? () => () => setOpenId(null) : null);
+    onSheetOpen?.(showBack ? () => () => { setOpenId(null); setBuilding(null); } : null);
     return () => onSheetOpen?.(null);
   }, [showBack, onSheetOpen]);
   const [creating, setCreating] = useState(false);
   const [free, setFree] = useState(false);
   const [newName, setNewName] = useState('');
-  const [building, setBuilding] = useState(null);
   const [tab, setTab] = useState(fightSheetIds ? 'fight' : 'sheets');
   const [tick, setTick] = useState(0);
   const openIdRef = useRef(null);

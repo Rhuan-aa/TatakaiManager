@@ -8,6 +8,27 @@ import { KEIKEN } from './sheetRules';
 import RichText from '../ui/RichText';
 import Icon from '../ui/Icon';
 import { LooseCatalog, MoveBuilder, TeachPicker } from './LooseMoves';
+import ArtEditor from '../catalog/ArtEditor';
+
+// Última resposta por ficha: voltar à aba mostra na hora e atualiza por trás (sem piscar o skeleton).
+const cache = new Map();
+
+function MartialSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Carregando artes marciais">
+      <div className="skeleton h-10 w-full" />
+      {[0, 1].map((i) => (
+        <div key={i} className="panel flex flex-col gap-3 p-4">
+          <div className="skeleton h-7 w-1/3" />
+          <div className="skeleton h-4 w-2/3" />
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="skeleton h-20" /><div className="skeleton h-20" /><div className="skeleton h-20" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const STATES = { REQUESTED: 'Pedida', IN_TRAINING: 'Em treino', ACTIVE: 'Ativa', STORED: 'Guardada' };
 const MASTERY = [
@@ -385,32 +406,58 @@ function LooseAdder({ catalog, isMaster, run, campaignId }) {
 /** Artes, técnicas e bases da ficha (F3b): jogador pede, Mestre aprova, lança treino e maestria. */
 export default function MartialPanel({ sheetId, campaignId, isMaster, isOwner, refreshKey }) {
   const toast = useToast();
-  const [data, setData] = useState(null);
+  const [data, setRaw] = useState(() => cache.get(sheetId) ?? null);
+  const setData = useCallback((d) => { cache.set(sheetId, d); setRaw(d); }, [sheetId]);
   const [catalog, setCatalog] = useState([]);
+  const [newArt, setNewArt] = useState(false);
+  const [catalogTick, setCatalogTick] = useState(0);
   const [artChoice, setArtChoice] = useState('');
   const [looseOpen, setLooseOpen] = useState(false); // minimizada até clicar
   const canAct = isOwner || isMaster;
 
   const load = useCallback(async () => {
     try { setData(await api.getMartial(sheetId)); } catch (err) { toast(parseApiError(err).message, 'error'); }
-  }, [sheetId, toast]);
+  }, [sheetId, toast, setData]);
   useEffect(() => { load(); }, [load, refreshKey]);
   useEffect(() => {
     let active = true;
     listArts(campaignId).then((a) => active && setCatalog(a)).catch(() => {});
     return () => { active = false; };
-  }, [campaignId]);
+  }, [campaignId, catalogTick]);
 
   async function run(fn, ...args) {
     try { setData(await fn(sheetId, ...args)); } catch (err) { toast(parseApiError(err).message, 'error'); }
   }
 
-  if (!data) return <div className="skeleton h-16 w-full" />;
+  if (!data) return <MartialSkeleton />;
+  if (newArt) {
+    // Arte fora do catálogo: o Mestre cria na campanha (já aprovada) e ela entra direto na ficha.
+    return (
+      <ArtEditor campaignId={campaignId} art={null} canChooseCategory
+        onSaved={(a) => { setNewArt(false); setCatalogTick((t) => t + 1); run(api.requestArt, a.id); }}
+        onCancel={() => setNewArt(false)} />
+    );
+  }
   const ownedArts = new Set(data.arts.map((a) => a.artId));
   const loose = data.techniques.filter((t) => !t.characterArtId);
   const teach = { campaignId, sheetId };
   return (
     <div className="flex flex-col gap-6">
+      {canAct && (
+        <div className="well flex flex-wrap items-center gap-2 p-2">
+          <select className="field m-0 flex-1" aria-label="Arte do catálogo" value={artChoice} onChange={(e) => setArtChoice(e.target.value)}>
+            <option value="">Escolha uma arte do catálogo…</option>
+            {catalog.filter((a) => (!a.status || a.status === 'APPROVED') && !ownedArts.has(a.id)).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <button type="button" className="btn-secondary" disabled={!artChoice}
+            onClick={() => { run(api.requestArt, artChoice); setArtChoice(''); }}>{isMaster ? 'Adicionar arte' : 'Pedir arte'}</button>
+          {isMaster && campaignId && (
+            <button type="button" className="btn-primary" onClick={() => setNewArt(true)}>
+              <Icon name="plus" size={16} /> Nova arte
+            </button>
+          )}
+        </div>
+      )}
       {data.arts.length === 0 && <p className="text-sm">Nenhuma arte marcial.</p>}
       {data.arts.map((ca) => (
         <ArtCard key={ca.id} ca={ca} moves={data.techniques.filter((t) => t.characterArtId === ca.id)}
@@ -437,16 +484,6 @@ export default function MartialPanel({ sheetId, campaignId, isMaster, isOwner, r
           </>
         )}
       </section>
-      {canAct && (
-        <div className="flex flex-wrap gap-2">
-          <select className="field m-0 flex-1" aria-label="Arte do catálogo" value={artChoice} onChange={(e) => setArtChoice(e.target.value)}>
-            <option value="">Escolha uma arte do catálogo…</option>
-            {catalog.filter((a) => (!a.status || a.status === 'APPROVED') && !ownedArts.has(a.id)).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-          <button type="button" className="btn-secondary" disabled={!artChoice}
-            onClick={() => { run(api.requestArt, artChoice); setArtChoice(''); }}>{isMaster ? 'Adicionar arte' : 'Pedir arte'}</button>
-        </div>
-      )}
     </div>
   );
 }

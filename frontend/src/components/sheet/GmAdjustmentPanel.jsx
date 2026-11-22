@@ -33,13 +33,15 @@ const ACTIONS = {
   REMOVE_TRAIT: { label: 'Remover traço', trait: 'sheet' },
 };
 
-export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
+/** `only` trava numa ação (atalho de aba, ex.: ADD_ITEM no Inventário) e já preenche o motivo. */
+export default function GmAdjustmentPanel({ sheet, campaignId, onDone, only }) {
   const toast = useToast();
-  const [action, setAction] = useState('GRANT_FIGHT_EXPERIENCE');
+  const [action, setAction] = useState(only ?? 'GRANT_FIGHT_EXPERIENCE');
   const [field, setField] = useState('');
   const [value, setValue] = useState('');
   const [targetId, setTargetId] = useState('');
-  const [reason, setReason] = useState('');
+  const defaultReason = only ? `${ACTIONS[only].label} pela ficha` : '';
+  const [reason, setReason] = useState(defaultReason);
   const [injury, setInjury] = useState({ type: 'CUTTING', region: '', severity: 'MINOR', damage: '', affectedAttribute: '', bodyPart: '' });
   const [item, setItem] = useState({ name: '', quantity: 1, description: '', weightKg: '', weaponKey: '', equipmentKey: '', consumableKey: '', location: '' });
   const [weapons, setWeapons] = useState([]);
@@ -94,8 +96,9 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
     try {
       const updated = await gmAdjust(sheet.id, body);
       toast('Ajuste aplicado.');
-      setReason('');
+      setReason(defaultReason);
       reset();
+      if (cfg.item) setItem({ name: '', quantity: 1, description: '', weightKg: '', weaponKey: '', equipmentKey: '', consumableKey: '', location: '' });
       onDone?.(updated);
     } catch (err) {
       toast(parseApiError(err).message, 'error');
@@ -117,8 +120,8 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
       <div className="grid gap-2 sm:grid-cols-2">
-        <Sel lbl="Ação" val={action} set={(v) => { setAction(v); reset(); }}
-          opts={Object.entries(ACTIONS).map(([k, a]) => [k, a.label])} />
+        {!only && <Sel lbl="Ação" val={action} set={(v) => { setAction(v); reset(); }}
+          opts={Object.entries(ACTIONS).map(([k, a]) => [k, a.label])} />}
         {cfg.field && <Sel lbl="Campo" val={field || cfg.field[0][0]} set={setField} opts={cfg.field} />}
         {cfg.value && (
           <label className="label">
@@ -259,7 +262,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone }) {
         <input required maxLength={500} className="field mt-1 w-full" value={reason} onChange={(e) => setReason(e.target.value)} />
       </label>
       <button type="submit" className="btn-primary self-start" disabled={busy || !reason.trim()}>
-        {busy ? 'Aplicando…' : 'Aplicar ajuste'}
+        {busy ? 'Aplicando…' : only ? ACTIONS[only].label : 'Aplicar ajuste'}
       </button>
     </form>
   );
