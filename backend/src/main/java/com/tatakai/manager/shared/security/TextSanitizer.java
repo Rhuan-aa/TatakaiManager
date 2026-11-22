@@ -14,6 +14,11 @@ public class TextSanitizer {
     private static final PolicyFactory POLICY = new HtmlPolicyBuilder().toFactory();
 
     public String sanitize(String input) {
-        return input == null ? null : POLICY.sanitize(input);
+        if (input == null) return null;
+        // O OWASP devolve HTML escapado; o front mostra como texto (React escapa de novo), então "&#34;" aparecia na tela.
+        // Desfaz só o que é inofensivo; < e > continuam escapados. &amp; por último, para não decodificar duas vezes.
+        return POLICY.sanitize(input)
+                .replace("&#34;", "\"").replace("&#39;", "'").replace("&#43;", "+").replace("&#61;", "=")
+                .replace("&#64;", "@").replace("&#96;", "`").replace("&amp;", "&");
     }
 }

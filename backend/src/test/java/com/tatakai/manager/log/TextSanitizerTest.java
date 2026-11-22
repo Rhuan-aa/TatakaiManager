@@ -39,4 +39,12 @@ class TextSanitizerTest {
 
         assertThat(result).isEqualTo("Aprendi infiltração com Taryn durante a semana");
     }
+
+    @Test
+    @DisplayName("aspas, apóstrofo e & ficam como texto (sem virar entidade HTML); < e > seguem escapados")
+    void sanitize_keepsQuotesAsText() {
+        String result = sanitizer.sanitize("Ele disse: \"De novo\" & foi d'água <b>já</b> 3 < 5");
+
+        assertThat(result).isEqualTo("Ele disse: \"De novo\" & foi d'água já 3 &lt; 5");
+    }
 }
