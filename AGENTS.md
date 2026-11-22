@@ -592,6 +592,8 @@ no `*ServiceTest` correspondente primeiro.
   `GlobalExceptionHandler` → teste Mockito → função em `frontend/src/api/<recurso>.js`.
 - **Nova coluna/tabela**: altere a entidade JPA (o compose usa `DDL_AUTO=update`);
   produção com `validate` precisa de migração manual — atualize também `schema.sql`.
+  `scripts/prod_upgrade.sql` (idempotente) leva qualquer banco antigo ao schema atual; regenere com
+  `scripts/gen_upgrade_sql.py` (passo a passo no topo do arquivo) e rode antes de subir a versão nova.
 - **Novo campo na ficha do NPC**: `entity/Npc.java` (Mongo, sem migração) +
   `CreateNpcRequest`/`UpdateNpcRequest`/`NpcResponse` + mapeamentos em
   `NpcService` (`create`, `update`, `toResponse`) + `CreateNpcForm`/`EditNpcForm`/`NpcDetailView`.
