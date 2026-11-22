@@ -7,19 +7,17 @@ import { parseApiError } from '../../api/parseApiError';
 import { useAuth } from '../../contexts/AuthContext';
 import { EmptyState } from '../../components/layout/AppShell';
 import { useToast } from '../../contexts/ToastContext';
+import Icon from '../ui/Icon';
 
 function LogSkeleton() {
   return (
-    <div className="panel p-4">
-      <div className="flex items-center gap-3">
-        <div className="skeleton h-8 w-8" />
-        <div className="flex-1">
-          <div className="skeleton h-4 w-32" />
-          <div className="skeleton mt-1.5 h-3 w-48" />
-        </div>
+    <div className="feed-item" aria-hidden="true">
+      <span className="feed-node skeleton" />
+      <div className="feed-card p-4">
+        <div className="skeleton h-4 w-40" />
+        <div className="skeleton mt-3 h-3 w-full" />
+        <div className="skeleton mt-1.5 h-3 w-4/5" />
       </div>
-      <div className="skeleton mt-3 h-3 w-full" />
-      <div className="skeleton mt-1.5 h-3 w-4/5" />
     </div>
   );
 }
@@ -37,6 +35,10 @@ function formatTime(iso) {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+// Logs gravados antes da correção do TextSanitizer vêm com entidades (&#34;): mostra como texto.
+const ENTITIES = { '&#34;': '"', '&#39;': "'", '&#43;': '+', '&#61;': '=', '&#64;': '@', '&#96;': '`' };
+const plain = (t) => (t ?? '').replace(/&#(34|39|43|61|64|96);/g, (m) => ENTITIES[m]).replaceAll('&amp;', '&');
+
 // valor da opção "sem agendamento" no select do jogador (vira um pedido de aprovação)
 const NO_BOOKING = '__none__';
 
@@ -47,10 +49,6 @@ function bookingLabel(booking, npcs) {
   const npcName = npc?.name ?? `NPC ${booking.npcId}`;
   return `${npcName} · Dia ${booking.dayNumber} · Slot ${booking.slotNumber} · ${booking.interactionName} (${booking.idlePointCost} pts de ócio)`;
 }
-
-const textareaClass = 'field';
-
-const selectClass = 'field';
 
 export default function LogPanel({ campaignId, isMaster, npcs = [], focusLogId = null }) {
   const { user } = useAuth();
@@ -108,7 +106,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [], focusLogId =
     const q = filters.text.trim().toLowerCase();
     const out = [];
     for (const log of logs) {
-      if (q && !`${log.narrative} ${log.authorName ?? ''} ${log.npcName ?? ''}`.toLowerCase().includes(q)) continue;
+      if (q && !`${plain(log.narrative)} ${log.authorName ?? ''} ${log.npcName ?? ''}`.toLowerCase().includes(q)) continue;
       if (filters.author && log.authorName !== filters.author) continue;
       if (filters.npc && log.npcName !== filters.npc) continue;
       if (filters.type === 'livre' && log.bookingId) continue;
@@ -200,7 +198,7 @@ export default function LogPanel({ campaignId, isMaster, npcs = [], focusLogId =
     setConfirmDeleteId(null);
     setDeleteError('');
     setEditingLogId(log.id);
-    setEditNarrative(log.narrative);
+    setEditNarrative(plain(log.narrative));
     setEditError('');
   }
 
@@ -257,343 +255,207 @@ export default function LogPanel({ campaignId, isMaster, npcs = [], focusLogId =
     }
   }
 
+  const initial = (name) => name?.charAt(0)?.toUpperCase() ?? '?';
+  const err = (msg) => msg && <p className="mt-1 text-xs font-bold text-[color:var(--accent)]">{msg}</p>;
+
   function renderForm() {
-    if (isMaster) {
-      return (
-        <form
-          onSubmit={handleSubmit}
-          className="panel p-4"
-          noValidate
-        >
-          <label htmlFor="narrative" className="block text-xs font-bold uppercase tracking-wide">
-            Novo log narrativo
-          </label>
-          <textarea
-            id="narrative"
-            rows={3}
-            required
-            value={narrative}
-            onChange={(e) => setNarrative(e.target.value)}
-            placeholder="Descreva o que aconteceu..."
-            className={textareaClass}
-          />
-          {submitError && <p className="mt-1 text-sm font-bold text-[color:var(--accent)]">{submitError}</p>}
-          <div className="mt-3 flex justify-end">
-            <button
-              type="submit"
-              disabled={submitting || !canSubmit}
-              className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
-            >
-              {submitting ? 'Publicando...' : 'Publicar log'}
-            </button>
-          </div>
-        </form>
-      );
-    }
-
-    if (bookingsLoading) {
-      return <p className="text-sm opacity-70">Carregando agendamentos...</p>;
-    }
-
+    if (!isMaster && bookingsLoading) return <div className="skeleton h-40 w-full" />;
+    const isRequest = !isMaster && selectedBookingId === NO_BOOKING;
     return (
-      <form
-        onSubmit={handleSubmit}
-        className="panel p-4"
-        noValidate
-      >
-        <div>
-          <label htmlFor="booking-select" className="block text-xs font-bold uppercase tracking-wide">
-            Agendamento
-          </label>
-          <select
-            id="booking-select"
-            required
-            value={selectedBookingId}
-            onChange={(e) => setSelectedBookingId(e.target.value)}
-            className={selectClass}
-          >
-            <option value="">Selecione um agendamento...</option>
-            <option value={NO_BOOKING}>Sem agendamento — pedir aprovação ao Mestre</option>
-            {myBookings.map((b) => (
-              <option key={b.id} value={b.id}>
-                {bookingLabel(b, npcs)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mt-3">
-          <label htmlFor="narrative" className="block text-xs font-bold uppercase tracking-wide">
-            O que aconteceu?
-          </label>
-          <textarea
-            id="narrative"
-            rows={3}
-            required
-            value={narrative}
-            onChange={(e) => setNarrative(e.target.value)}
-            placeholder="Descreva o que aconteceu..."
-            className={textareaClass}
-          />
-        </div>
-        {submitError && <p className="mt-1 text-sm font-bold text-[color:var(--accent)]">{submitError}</p>}
-        <div className="mt-3 flex justify-end">
-          <button
-            type="submit"
-            disabled={submitting || !canSubmit}
-            className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
-          >
-            {submitting ? 'Enviando...' : selectedBookingId === NO_BOOKING ? 'Pedir aprovação' : 'Publicar log'}
-          </button>
+      <form onSubmit={handleSubmit} className="panel p-4" noValidate>
+        <div className="feed-compose">
+          <span className="feed-node-static" aria-hidden="true">{initial(user?.name)}</span>
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="panel-title text-xl">{isMaster ? 'Narrar a cena' : 'Registrar o que aconteceu'}</h3>
+              <span className="text-fine">{isMaster ? 'Publica direto no registro da campanha.' : 'Ligado a um agendamento seu, ou como pedido ao Mestre.'}</span>
+            </div>
+            {!isMaster && (
+              <select id="booking-select" aria-label="Agendamento" required value={selectedBookingId}
+                onChange={(e) => setSelectedBookingId(e.target.value)} className="field m-0">
+                <option value="">Escolha o agendamento…</option>
+                <option value={NO_BOOKING}>Sem agendamento — pedir aprovação ao Mestre</option>
+                {myBookings.map((b) => <option key={b.id} value={b.id}>{bookingLabel(b, npcs)}</option>)}
+              </select>
+            )}
+            <textarea id="narrative" aria-label="Texto do log" required maxLength={5000} value={narrative}
+              onChange={(e) => setNarrative(e.target.value)}
+              placeholder={isMaster ? 'A chuva cai sobre o porto quando…' : 'Descreva o que aconteceu…'} className="field" />
+            {err(submitError)}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="feed-count">{narrative.length}/5000</span>
+              <button type="submit" disabled={submitting || !canSubmit} className="btn-primary">
+                {submitting ? 'Enviando…' : isRequest ? 'Pedir aprovação' : 'Publicar log'}
+              </button>
+            </div>
+          </div>
         </div>
       </form>
     );
   }
 
+  function kindOf(log) {
+    if (log.status === 'PENDING') return { label: 'Pedido', rail: 'var(--highlight)' };
+    if (log.status === 'REJECTED') return { label: 'Recusado', rail: 'var(--line)' };
+    if (!log.bookingId) return { label: 'Narração', rail: 'var(--accent)', fg: '#fff' };
+    return { label: 'Agendamento', rail: 'var(--highlight)' };
+  }
+
+  function renderLog(log) {
+    const pending = log.status === 'PENDING';
+    const rejected = log.status === 'REJECTED';
+    const mine = log.authorId === user?.userId;
+    const k = kindOf(log);
+    const editing = editingLogId === log.id;
+    return (
+      <article key={log.id} id={`log-${log.id}`} className="feed-item">
+        <span className="feed-node" aria-hidden="true"
+          style={!log.bookingId && !pending ? { '--node-bg': 'var(--accent)', '--node-fg': '#fff' } : undefined}>
+          {initial(log.authorName)}
+        </span>
+        <div className={`feed-card${highlightId === String(log.id) ? ' is-focus' : ''}`} style={{ '--rail': k.rail, '--kind-fg': k.fg }}>
+          <header className="feed-head">
+            <span className="feed-author">{log.authorName}</span>
+            <span className="feed-kind">{k.label}</span>
+            <time className="feed-time" dateTime={log.createdAt}>
+              <Icon name="clock" size={12} />{formatTime(log.createdAt)}{log.updatedAt && ' · editado'}
+            </time>
+          </header>
+          {log.bookingId && (
+            <div className="feed-meta">
+              {log.npcName && <span>{log.npcName}</span>}
+              {log.dayNumber != null && <span>Dia {log.dayNumber}</span>}
+              {log.slotNumber != null && <span>Slot {log.slotNumber}</span>}
+              {log.interactionName && <span>{log.interactionName}</span>}
+              {log.idlePointCost != null && <span>{log.idlePointCost} pts de ócio</span>}
+            </div>
+          )}
+          {(pending || rejected) && (
+            <p className="feed-status">{pending ? 'Aguardando o Mestre' : `Recusado${log.reviewNote ? `: ${log.reviewNote}` : ''}`}</p>
+          )}
+          {editing ? (
+            <div className="p-3">
+              <textarea rows={4} value={editNarrative} onChange={(e) => setEditNarrative(e.target.value)} className="field" aria-label="Editar log" />
+              {err(editError)}
+              <div className="mt-2 flex justify-end gap-2">
+                <button type="button" onClick={cancelEdit} className="btn-ghost">Cancelar</button>
+                <button type="button" onClick={() => handleSaveEdit(log.id)} disabled={savingEdit || !editNarrative.trim()} className="btn-primary">
+                  {savingEdit ? 'Salvando…' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className={`feed-body${!log.bookingId ? ' feed-body--narration' : ''}`}>{plain(log.narrative)}</p>
+          )}
+          {reviewingId === log.id && (
+            <div className="well mx-3 mb-3 p-3">
+              <label htmlFor={`review-note-${log.id}`} className="label">Motivo da recusa (opcional)</label>
+              <input id={`review-note-${log.id}`} type="text" value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} className="field" />
+              {err(reviewError)}
+              <div className="mt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setReviewingId(null)} className="btn-ghost">Cancelar</button>
+                <button type="button" onClick={() => handleReview(log.id, false)} disabled={reviewBusy} className="btn-primary">
+                  {reviewBusy ? 'Recusando…' : 'Confirmar recusa'}
+                </button>
+              </div>
+            </div>
+          )}
+          {!editing && (
+            <footer className="feed-actions">
+              {pending && isMaster && reviewingId !== log.id && (
+                <>
+                  <button type="button" onClick={() => handleReview(log.id, true)} disabled={reviewBusy} className="btn-primary px-3 py-1 text-xs">Aprovar</button>
+                  <button type="button" onClick={() => { setReviewingId(log.id); setReviewNote(''); setReviewError(''); }}
+                    className="btn-ghost text-xs text-[color:var(--accent)]">Recusar</button>
+                </>
+              )}
+              {!isMaster && mine && log.status && log.status !== 'PUBLISHED' && (
+                <button type="button" onClick={() => handleDelete(log.id)} disabled={deleting} className="btn-ghost text-xs text-[color:var(--accent)]">
+                  Cancelar pedido
+                </button>
+              )}
+              {isMaster && (confirmDeleteId === log.id ? (
+                <span className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[color:var(--accent)]">Excluir este log?</span>
+                  <button type="button" onClick={() => handleDelete(log.id)} disabled={deleting} className="btn-primary px-3 py-1 text-xs">
+                    {deleting ? 'Excluindo…' : 'Confirmar'}
+                  </button>
+                  <button type="button" onClick={() => setConfirmDeleteId(null)} className="btn-ghost text-xs">Cancelar</button>
+                </span>
+              ) : (
+                <>
+                  <button type="button" onClick={() => startEdit(log)} className="feed-icon-btn" aria-label="Editar log" title="Editar">
+                    <Icon name="pencil" size={16} />
+                  </button>
+                  <button type="button" onClick={() => { setConfirmDeleteId(log.id); setDeleteError(''); }}
+                    className="feed-icon-btn is-danger" aria-label="Excluir log" title="Excluir">
+                    <Icon name="trash" size={16} />
+                  </button>
+                </>
+              ))}
+            </footer>
+          )}
+          {(confirmDeleteId === log.id || (!isMaster && mine)) && deleteError && <div className="px-3 pb-3">{err(deleteError)}</div>}
+        </div>
+      </article>
+    );
+  }
+
+  const shown = groups.reduce((n, [, items]) => n + items.length, 0);
+
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {renderForm()}
 
       {!loading && !error && logs.length > 0 && (
-        <div className="panel mt-4 grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
-          <input
-            type="search"
-            aria-label="Buscar nos logs"
-            placeholder="Buscar texto..."
-            value={filters.text}
-            onChange={setFilter('text')}
-            className="field sm:col-span-2 lg:col-span-1"
-          />
+        <div className="feed-toolbar">
+          <label className="feed-search">
+            <span className="feed-search-icon"><Icon name="search" size={16} /></span>
+            <input type="search" aria-label="Buscar nos logs" placeholder="Buscar no registro…" value={filters.text}
+              onChange={setFilter('text')} className="field" />
+          </label>
           <select aria-label="Autor" value={filters.author} onChange={setFilter('author')} className="field">
-            <option value="">Todos os autores</option>
+            <option value="">Autor</option>
             {authors.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
-          <select aria-label="NPC" value={filters.npc} onChange={setFilter('npc')} className="field">
-            <option value="">Todos os NPCs</option>
-            {npcNames.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
+          {npcNames.length > 0 && (
+            <select aria-label="NPC" value={filters.npc} onChange={setFilter('npc')} className="field">
+              <option value="">NPC</option>
+              {npcNames.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          )}
           <select aria-label="Tipo" value={filters.type} onChange={setFilter('type')} className="field">
-            <option value="">Todos os tipos</option>
-            <option value="livre">Log livre do Mestre</option>
-            <option value="agendamento">Log de agendamento</option>
+            <option value="">Tipo</option>
+            <option value="livre">Narração</option>
+            <option value="agendamento">Agendamento</option>
             <option value="pendentes">Pendentes</option>
           </select>
-          <select aria-label="Dia" value={filters.day} onChange={setFilter('day')} className="field">
-            <option value="">Todos os dias</option>
-            {days.map((d) => <option key={d} value={String(d)}>Dia {d}</option>)}
-          </select>
-          {filtersActive && (
-            <button
-              type="button"
-              onClick={() => setFilters(EMPTY_FILTERS)}
-              className="btn-ghost text-xs sm:col-span-2 lg:col-span-5"
-            >
-              Limpar filtros
-            </button>
+          {days.length > 0 && (
+            <select aria-label="Dia" value={filters.day} onChange={setFilter('day')} className="field">
+              <option value="">Dia</option>
+              {days.map((d) => <option key={d} value={String(d)}>Dia {d}</option>)}
+            </select>
           )}
+          <span className="feed-count">{shown} de {logs.length}</span>
+          {filtersActive && <button type="button" onClick={() => setFilters(EMPTY_FILTERS)} className="btn-ghost text-xs">Limpar</button>}
         </div>
       )}
 
-      <div className="mt-4 space-y-3">
-        {loading &&
-          Array.from({ length: 2 }).map((_, i) => <LogSkeleton key={i} />)}
-        {!loading && error && <p className="text-sm font-bold text-[color:var(--accent)]">{error}</p>}
-        {!loading && !error && logs.length === 0 && (
-          <EmptyState
-            icon="scroll"
-            title="Nenhum log narrativo ainda"
-            description="Os registros da campanha aparecerão aqui conforme forem publicados."
-          />
-        )}
-        {!loading && !error && logs.length > 0 && groups.length === 0 && (
-          <p className="text-sm opacity-70">Nenhum log corresponde aos filtros.</p>
-        )}
-        {!loading &&
-          !error &&
-          groups.map(([dayLabel, items]) => (
-          <section key={dayLabel} className="space-y-5">
-            <h3 className="border-b-2 border-[color:var(--line)] pb-1 text-xs font-bold uppercase tracking-wide capitalize">
-              {dayLabel}
-            </h3>
-          {items.map((log) => {
-            // Logs vinculados a agendamento = ação de jogador; sem vínculo = narração
-            // livre (Mestre), que ganha um accent lateral vermelho para se destacar.
-            const isNarration = !log.bookingId;
-            const pending = log.status === 'PENDING';
-            const rejected = log.status === 'REJECTED';
-            const mine = log.authorId === user?.userId;
-            return (
-              <div
-                key={log.id}
-                id={`log-${log.id}`}
-                className="panel p-3 sm:p-4"
-                style={highlightId === String(log.id) ? { outline: '4px solid var(--accent)', outlineOffset: '4px' } : undefined}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center border-2 border-[color:var(--line)] bg-[color:var(--highlight)] text-xs font-bold text-[color:var(--ink)]">
-                    {log.authorName?.charAt(0)?.toUpperCase() ?? '?'}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="caption min-w-0 truncate">
-                        <b className="uppercase tracking-wide">{log.authorName}</b>
-                        {log.bookingId &&
-                          ` · ${log.npcName} · Dia ${log.dayNumber} · Slot ${log.slotNumber} · ${log.interactionName}${
-                            log.idlePointCost != null ? ` (${log.idlePointCost} pts)` : ''
-                          }`}
-                      </span>
-                      <span className="shrink-0 text-[11px] uppercase opacity-70">
-                        {formatTime(log.createdAt)}
-                        {log.updatedAt && ' · editado'}
-                      </span>
-                    </div>
-                  </div>
-                  {pending && isMaster && reviewingId !== log.id && (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleReview(log.id, true)}
-                        disabled={reviewBusy}
-                        className="btn-primary px-2 py-1 text-xs disabled:opacity-50"
-                      >
-                        Aprovar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setReviewingId(log.id); setReviewNote(''); setReviewError(''); }}
-                        className="btn-ghost text-xs text-[color:var(--accent)]"
-                      >
-                        Recusar
-                      </button>
-                    </div>
-                  )}
-                  {!isMaster && mine && log.status && log.status !== 'PUBLISHED' && (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(log.id)}
-                      disabled={deleting}
-                      className="btn-ghost shrink-0 text-xs text-[color:var(--accent)] disabled:opacity-50"
-                    >
-                      Cancelar pedido
-                    </button>
-                  )}
-                  {isMaster && editingLogId !== log.id && (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button type="button" onClick={() => startEdit(log)} className="btn-ghost text-xs">
-                        Editar
-                      </button>
-                      {confirmDeleteId === log.id ? (
-                        <span className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[color:var(--accent)]">Excluir?</span>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(log.id)}
-                            disabled={deleting}
-                            className="btn-primary px-2 py-1 text-xs disabled:opacity-50"
-                          >
-                            {deleting ? 'Excluindo...' : 'Confirmar'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteId(null)}
-                            className="btn-ghost text-xs"
-                          >
-                            Cancelar
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setConfirmDeleteId(log.id);
-                            setDeleteError('');
-                          }}
-                          className="btn-ghost text-xs text-[color:var(--accent)]"
-                        >
-                          Excluir
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {(pending || rejected) && (
-                  <p className="tag tag-accent mt-2">
-                    {pending
-                      ? 'Aguardando o Mestre'
-                      : `Recusado${log.reviewNote ? `: ${log.reviewNote}` : ''}`}
-                  </p>
-                )}
-                {!isMaster && mine && deleteError && (pending || rejected) && (
-                  <p className="mt-1.5 text-xs font-bold text-[color:var(--accent)]">{deleteError}</p>
-                )}
-                {reviewingId === log.id && (
-                  <div className="panel mt-2.5 p-3">
-                    <label htmlFor={`review-note-${log.id}`} className="block text-xs font-bold uppercase tracking-wide">
-                      Motivo da recusa (opcional)
-                    </label>
-                    <input
-                      id={`review-note-${log.id}`}
-                      type="text"
-                      value={reviewNote}
-                      onChange={(e) => setReviewNote(e.target.value)}
-                      className="field"
-                    />
-                    {reviewError && (
-                      <p className="mt-1 text-xs font-bold text-[color:var(--accent)]">{reviewError}</p>
-                    )}
-                    <div className="mt-2 flex justify-end gap-2">
-                      <button type="button" onClick={() => setReviewingId(null)} className="btn-ghost px-3 py-1.5 text-sm">
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleReview(log.id, false)}
-                        disabled={reviewBusy}
-                        className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50"
-                      >
-                        {reviewBusy ? 'Recusando...' : 'Confirmar recusa'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {confirmDeleteId === log.id && deleteError && (
-                  <p className="mt-1.5 text-xs font-bold text-[color:var(--accent)]">{deleteError}</p>
-                )}
-                {editingLogId === log.id ? (
-                  <div className="panel mt-2.5 p-3">
-                    <textarea
-                      rows={3}
-                      value={editNarrative}
-                      onChange={(e) => setEditNarrative(e.target.value)}
-                      className={textareaClass}
-                    />
-                    {editError && (
-                      <p className="mt-1 text-xs font-bold text-[color:var(--accent)]">{editError}</p>
-                    )}
-                    <div className="mt-2 flex justify-end gap-2">
-                      <button type="button" onClick={cancelEdit} className="btn-ghost px-3 py-1.5 text-sm">
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSaveEdit(log.id)}
-                        disabled={savingEdit || !editNarrative.trim()}
-                        className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50"
-                      >
-                        {savingEdit ? 'Salvando...' : 'Salvar'}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className={`bubble log-body log-text mt-3 ${isNarration ? 'log-text--narration' : ''}`}>
-                    {log.narrative}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-          </section>
-          ))}
-      </div>
+      {loading && <div className="feed">{[0, 1, 2].map((i) => <LogSkeleton key={i} />)}</div>}
+      {!loading && error && <p className="text-sm font-bold text-[color:var(--accent)]">{error}</p>}
+      {!loading && !error && logs.length === 0 && (
+        <EmptyState icon="scroll" title="Nenhum log narrativo ainda"
+          description="Os registros da campanha aparecerão aqui conforme forem publicados." />
+      )}
+      {!loading && !error && logs.length > 0 && groups.length === 0 && (
+        <p className="text-sm opacity-70">Nenhum log corresponde aos filtros.</p>
+      )}
+      {!loading && !error && groups.map(([dayLabel, items]) => (
+        <section key={dayLabel} aria-label={dayLabel}>
+          <h3 className="feed-day"><span className="capitalize">{dayLabel}</span></h3>
+          <div className="feed">{items.map(renderLog)}</div>
+        </section>
+      ))}
     </div>
   );
 }

@@ -132,6 +132,10 @@ const ICONS = {
       <path d="M3 21l9-9M14 4l6 6-3 3-6-6Z" />
     </>
   ),
+  pencil: svg(<path d="M4 20h4L19 9l-4-4L4 16Zm9-13 4 4" />),
+  trash: svg(<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />),
+  search: svg(<><circle cx="11" cy="11" r="6" /><path d="m20 20-4.500-4.500" /></>),
+  clock: svg(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
 };
 
 export const ICON_NAMES = Object.keys(ICONS);

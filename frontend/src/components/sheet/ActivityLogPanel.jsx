@@ -70,6 +70,12 @@ const ACTION_VERBS = {
   LEVEL_UP: 'subiu a maestria',
   SET_MASTERY: 'definiu o degrau de maestria',
   REMOVE_TECHNIQUE: 'removeu uma técnica',
+  USE_CONSUMABLE: 'usou um consumível',
+};
+// cor do trilho/nó por categoria (tokens do tema, funcionam nos dois temas)
+const COLORS = {
+  BUILD: 'var(--rarity-rare)', ROLL: 'var(--highlight)', RESOURCE: 'var(--blood)', CONDITION: 'var(--rarity-epic)',
+  INVENTORY: 'var(--stat-function)', GM_ADJUSTMENT: 'var(--accent)', PROGRESSION: 'var(--keiken)',
 };
 const ROLES = { PLAYER: 'Jogador', MASTER: 'Mestre', SYSTEM: 'Sistema' };
 
@@ -105,29 +111,34 @@ function Timeline({ entries }) {
     else days.push({ k, items: [e] });
   });
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       {days.map((d) => (
         <section key={d.k} aria-label={d.k}>
-          <h4 className="panel-title mb-2 text-base capitalize">{d.k}</h4>
-          <ol className="flex flex-col gap-2">
-            {d.items.map((e) => (
-              <li key={e.id} className="bubble flex items-start gap-3 p-3 text-sm">
-                <Icon name={ICONS[e.category] ?? 'circle'} size={20} />
-                <div className="min-w-0 flex-1">
-                  <p>
-                    <strong>{e.actorRole === 'MASTER' ? 'Mestre' : (e.actorName ?? 'Sistema')}</strong>{' '}
-                    {sentence(e)}
-                  </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="tag">{CATEGORIES[e.category] ?? e.category}</span>
-                    <span className="opacity-70">
-                      {e.actorRole === 'MASTER' && e.actorName ? `${e.actorName} · ` : ''}
-                      {ROLES[e.actorRole] ?? e.actorRole} · {hour(e.createdAt)}
-                    </span>
+          <h4 className="feed-day"><span className="capitalize">{d.k}</span></h4>
+          <ol className="feed">
+            {d.items.map((e) => {
+              const color = COLORS[e.category] ?? 'var(--line)';
+              return (
+                <li key={e.id} className="feed-item">
+                  <span className="feed-node" style={{ '--node-bg': color, '--node-fg': 'var(--ink)' }}>
+                    <Icon name={ICONS[e.category] ?? 'circle'} size={18} />
+                  </span>
+                  <div className="feed-card" style={{ '--rail': color }}>
+                    <header className="feed-head">
+                      <span className="feed-author">{e.actorRole === 'MASTER' ? 'Mestre' : (e.actorName ?? 'Sistema')}</span>
+                      <span className="feed-kind">{CATEGORIES[e.category] ?? e.category}</span>
+                      <time className="feed-time" dateTime={e.createdAt}><Icon name="clock" size={12} />{hour(e.createdAt)}</time>
+                    </header>
+                    <p className="feed-body text-sm">{sentence(e)}</p>
+                    {(e.actorRole !== 'MASTER' || e.actorName) && (
+                      <p className="text-fine px-[14px] pb-3 -mt-2">
+                        {e.actorRole === 'MASTER' && e.actorName ? `${e.actorName} · ` : ''}{ROLES[e.actorRole] ?? e.actorRole}
+                      </p>
+                    )}
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ol>
         </section>
       ))}
@@ -174,38 +185,26 @@ export default function ActivityLogPanel({ entries, sheetId, campaignId, sheets 
 
   return (
     <div className="flex flex-col gap-3">
-      <div className={`grid gap-2 sm:grid-cols-2 ${campaignId ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+      <div className="feed-toolbar">
+        <label className="feed-search">
+          <span className="feed-search-icon"><Icon name="search" size={16} /></span>
+          <input type="search" aria-label="Buscar na atividade" className="field" value={text} onChange={(e) => setText(e.target.value)} placeholder="Buscar na atividade…" />
+        </label>
         {campaignId && (
-          <label className="label">
-            Ficha
-            <select className="field mt-1 w-full" value={sheetFilter} onChange={(e) => setSheetFilter(e.target.value)}>
-              <option value="">Todas</option>
-              {sheets.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label className="label">
-          Categoria
-          <select className="field mt-1 w-full" value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="">Todas</option>
-            {Object.entries(CATEGORIES).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
+          <select aria-label="Ficha" className="field" value={sheetFilter} onChange={(e) => setSheetFilter(e.target.value)}>
+            <option value="">Todas as fichas</option>
+            {sheets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-        </label>
-        <label className="label">
-          Ator
-          <input className="field mt-1 w-full" value={actor} onChange={(e) => setActor(e.target.value)} placeholder="Nome" />
-        </label>
-        <label className="label">
-          Buscar
-          <input type="search" className="field mt-1 w-full" value={text} onChange={(e) => setText(e.target.value)} placeholder="Texto" />
-        </label>
+        )}
+        <select aria-label="Categoria" className="field" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="">Categoria</option>
+          {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <input aria-label="Ator" className="field" style={{ flex: '0 1 160px', margin: 0 }} value={actor} onChange={(e) => setActor(e.target.value)} placeholder="Ator" />
+        <span className="feed-count">{list.length} registro{list.length === 1 ? '' : 's'}</span>
       </div>
       {error && <p role="alert" className="text-sm" style={{ color: 'var(--accent)' }}>{error}</p>}
-      {loading ? <div className="skeleton h-16 w-full" /> : <Timeline entries={list} />}
+      {loading ? <div className="flex flex-col gap-3">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-16 w-full" />)}</div> : <Timeline entries={list} />}
     </div>
   );
 }
