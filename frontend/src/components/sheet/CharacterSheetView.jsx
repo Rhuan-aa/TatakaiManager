@@ -510,6 +510,8 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             {p && <IdentityChip icon={ICON.belt} title="Keiken" value={KEIKEN[p.keiken]} color="var(--keiken)" />}
           </div>
         </div>
+        {/* NPC não tem retrato aqui: os atributos sobem para baixo da identidade */}
+        {isNpc && attrBlock}
       </div>
 
       <div className="sheet-col">
@@ -582,7 +584,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             <InjuryBoard sheet={sheet} isMaster={isMaster} onChange={onChange} conditions={condFx.map((c) => c.key)} />
           )}
         </Block>}
-        {attrBlock}
+        {!isNpc && attrBlock}
       </div>
     </div>
   );
