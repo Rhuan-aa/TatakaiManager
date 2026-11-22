@@ -22,7 +22,7 @@
   WebSocket, o JWT vai no header nativo do frame STOMP `CONNECT`.
 - **Autorização:** sempre dentro dos *services* (não há `@PreAuthorize` em uso),
   baseada em `campaign_members.role` (`MASTER`/`PLAYER`) e em `npc.ownerId`.
-- **Testes:** 921 testes unitários JUnit 5 + Mockito, só backend
+- **Testes:** 942 testes unitários JUnit 5 + Mockito, só backend
   (`cd backend && ./mvnw test`, não precisa de banco). Frontend não tem testes.
 - **Idioma:** domínio, mensagens de erro e comentários em **português**. Mantenha.
 
@@ -547,7 +547,7 @@ no canal `campaign` e recarregam.
 
 ```bash
 cp .env.example .env && docker compose up --build   # front :3001, API :8080, Postgres :5433
-cd backend && ./mvnw test                            # 921 testes, sem banco; requer JDK 21 (com javac)
+cd backend && ./mvnw test                            # 942 testes, sem banco; requer JDK 21 (com javac)
 cd backend && ./mvnw spring-boot:run                 # requer Postgres + Mongo + application.properties
 cd frontend && npm install && npm run dev            # Vite :5173 (FRONTEND_URL do backend deve incluir essa origem)
 cd frontend && npm run build && npm run lint
@@ -1003,6 +1003,13 @@ reducao)` depois da % e antes do mínimo 1.
   Ligados em `CombatPanel` (condições + feridas por participante) e `CharacterSheetView` (só feridas: a ficha não tem condições).
   Respeita `prefers-reduced-motion`; `pointer-events:none`; `.no-print`. Estado contínuo: `ui/AuraLayers` (`.aura-*` em `.cond-host`: cartão do combate,
   retrato e boneco da ficha). "Efeitos reduzidos": `ui/fxPref` (`html[data-fx=reduced]`, botão na `Sidebar`, localStorage `fx.reduced`).
+
+**Doses e consumíveis fora de combate (§54):** `POST /character-sheets/{sid}/inventory/{itemId}/use {option?}` (dono/Mestre) para Analgésico,
+Calmante, Pomada, Termogênico, Energético e Kit de Cutman (`HP` = 2d6, `WOUNDS` = fecha Feridas). `CharacterSheet.doses` (jsonb `DoseEntry`,
+em `SheetFatigue.doses`) vale até o próximo Repouso; regras em `sheet/service/rules/DoseRules` (dose repetida dobra o Colateral). O Repouso
+(`TrainingService.rest`) devolve o Desgaste escondido, cobra os Colaterais, aplica o Calmante e zera as Doses (Pomada/Calmante não são mais
+consumidos sozinhos). Iniciativa: desvantagem com Calmante/Termogênico, Energético +1 e +1 Adrenalina no início do combate. Corda de Pular =
+Estação de SP/DES no Campo. Bancos com `validate`: `ALTER TABLE character_sheets ADD COLUMN doses jsonb DEFAULT '[]'`.
 
 **Impacto na parede:** `CreateAttackRequest.surface` (checkbox "Parede/obstáculo junto do alvo" no `AttackBuilder` para Esmagar, Empurrar e Empurrão) faz o alvo empurrado sem resistir sofrer 1d4+3 (`AttackService.wallImpact`; PQ só no Esmagar).
 

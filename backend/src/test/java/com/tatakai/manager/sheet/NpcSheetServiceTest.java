@@ -77,6 +77,7 @@ import static org.mockito.Mockito.when;
 class NpcSheetServiceTest {
 
     @Mock private CharacterSheetRepository sheetRepository;
+    @Mock private com.tatakai.manager.roll.service.RollService rollService;
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private CharacterSheetVisibilityRepository visibilityRepository;
     @Mock private SheetActivityLogService activityLog;
@@ -103,7 +104,7 @@ class NpcSheetServiceTest {
     void setUp() {
         service = new CharacterSheetService(sheetRepository, memberRepository, visibilityRepository,
                 activityLog, events, campaignNpcRepository, npcVisibilityRepository, npcRepository, userRepository,
-                ruleService, catalogService, buildRepository, imageRepository);
+                ruleService, catalogService, buildRepository, imageRepository, rollService);
         owner = User.builder().id(UUID.randomUUID()).name("Mestre").build();
         stranger = User.builder().id(UUID.randomUUID()).name("Intruso").build();
         playerUser = User.builder().id(UUID.randomUUID()).name("Ana").build();

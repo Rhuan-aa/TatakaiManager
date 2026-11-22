@@ -334,6 +334,22 @@ class CombatServiceTest {
     }
 
     @Test
+    @DisplayName("§54 Início: Energético dá +1 Adrenalina uma vez; Calmante rola a Iniciativa com desvantagem")
+    void startWithDoses() {
+        sheetA.setDoses(new java.util.ArrayList<>(List.of(
+                new com.tatakai.manager.sheet.entity.DoseEntry("ENERGETICO", 1, 0, false))));
+        npcSheet.setDoses(new java.util.ArrayList<>(List.of(
+                new com.tatakai.manager.sheet.entity.DoseEntry("CALMANTE", 1, 0, false))));
+        lenient().when(rolls.rollInternal(any(), anyString(), anyString(), any(), any(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(Roll.builder().total(3).build());
+        EncounterParticipant[] p = started();
+        assertThat(p[0].getAdrenaline()).isEqualTo(3); // 1 do Energético + 2 do início do turno (A age primeiro)
+        assertThat(sheetA.getDoses().get(0).spent()).isTrue();
+        verify(rolls).rollInternal(eq(npcSheet), anyString(), anyString(), any(), any(), eq(-1));
+        assertThat(p[1].getInitiative()).isEqualTo(3);
+    }
+
+    @Test
     @DisplayName("Início: quem já tem iniciativa definida não é rolado de novo; vazio -> 400; só SETUP -> 409")
     void startRules() {
         assertThatThrownBy(() -> service.start(enc.getId(), master.getId())).isInstanceOf(InvalidCombatException.class);

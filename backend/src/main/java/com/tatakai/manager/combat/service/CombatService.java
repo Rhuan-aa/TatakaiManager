@@ -76,6 +76,7 @@ import com.tatakai.manager.sheet.entity.ItemLocation;
 import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
 import com.tatakai.manager.sheet.service.SheetActivityLogService;
+import com.tatakai.manager.sheet.service.rules.DoseRules;
 import com.tatakai.manager.sheet.service.rules.SheetRules;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -386,9 +387,14 @@ public class CombatService {
     private int rollInitiative(Encounter e, CharacterSheet s, UUID userId) {
         boolean art = arts.findBySheetIdOrderByCreatedAt(s.getId()).stream()
                 .anyMatch(a -> a.getStatus() == CharacterArtStatus.ACTIVE);
-        int bonus = CombatRules.initiativeBonus(s.getDex(), art, s.getPhysicalFatigue());
-        return rolls.rollInternal(s, CombatRules.initiativeExpression(bonus), "Iniciativa — " + e.getName(),
-                userId, ActorRole.MASTER).getTotal();
+        // §54: Energético +1; Calmante/Termogênico do dia dão desvantagem
+        int bonus = CombatRules.initiativeBonus(s.getDex(), art, s.getPhysicalFatigue())
+                + (DoseRules.energized(s.getDoses()) ? 1 : 0);
+        String expr = CombatRules.initiativeExpression(bonus);
+        String why = "Iniciativa — " + e.getName();
+        return (DoseRules.initiativeDisadvantage(s.getDoses())
+                ? rolls.rollInternal(s, expr, why + " (desvantagem: Dose)", userId, ActorRole.MASTER, -1)
+                : rolls.rollInternal(s, expr, why, userId, ActorRole.MASTER)).getTotal();
     }
 
     private CharacterSheet sheetOf(EncounterParticipant p) {
@@ -412,6 +418,12 @@ public class CombatService {
             if (p.getInitiative() == null) {
                 p.setInitiative(rollInitiative(e, s, userId));
                 log(e, p.getId(), CombatEventType.INITIATIVE, p.getName() + " rolou iniciativa: " + p.getInitiative());
+            }
+            if (DoseRules.energized(s.getDoses())) { // §54: Energético vale no primeiro combate depois da dose
+                vital.setAdrenaline(p, p.getAdrenaline() + 1);
+                s.setDoses(new ArrayList<>(DoseRules.spendEnergy(s.getDoses())));
+                sheets.save(s);
+                log(e, p.getId(), CombatEventType.ACTION, p.getName() + ": Energético (+1 Adrenalina)");
             }
         }
         CombatRules.sortOrder(ps, EncounterParticipant::getInitiative, p -> sheetById.get(p.getId()).getDex(), random);

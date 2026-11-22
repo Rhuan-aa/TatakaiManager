@@ -67,6 +67,7 @@ import static org.mockito.Mockito.when;
 class NpcSheetVisibilityTest {
 
     @Mock private CharacterSheetRepository sheetRepository;
+    @Mock private com.tatakai.manager.roll.service.RollService rollService;
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private CharacterSheetVisibilityRepository visibilityRepository;
     @Mock private SheetActivityLogService activityLog;
@@ -97,7 +98,7 @@ class NpcSheetVisibilityTest {
     void setUp() {
         service = new CharacterSheetService(sheetRepository, memberRepository, visibilityRepository, activityLog, events,
                 campaignNpcRepository, npcVisibilityRepository, npcRepository, userRepository, ruleService,
-                catalogService, buildRepository, imageRepository);
+                catalogService, buildRepository, imageRepository, rollService);
         martial = new CharacterTechniqueService(sheetRepository, memberRepository, campaignNpcRepository,
                 characterArtRepository, techniqueRepository, martialArtRepository, activityLog, events,
                 npcVisibilityRepository);

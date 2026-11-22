@@ -171,3 +171,9 @@ export async function removeWound(sheetId, woundId) {
   const { data } = await client.delete(`/character-sheets/${sheetId}/wounds/${woundId}`);
   return data;
 }
+
+/** Usa um consumível fora de combate (§54). `option` só no Kit de Cutman: 'HP' | 'WOUNDS'. */
+export async function consumeItem(sheetId, itemId, option) {
+  const { data } = await client.post(`/character-sheets/${sheetId}/inventory/${itemId}/use`, option ? { option } : {});
+  return data;
+}

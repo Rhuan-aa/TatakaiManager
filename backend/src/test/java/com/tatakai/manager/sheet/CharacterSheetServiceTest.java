@@ -79,6 +79,7 @@ import static org.mockito.Mockito.when;
 class CharacterSheetServiceTest {
 
     @Mock private CharacterSheetRepository sheetRepository;
+    @Mock private com.tatakai.manager.roll.service.RollService rollService;
     @Mock private CampaignMemberRepository memberRepository;
     @Mock private CharacterSheetVisibilityRepository visibilityRepository;
     @Mock private SheetActivityLogService activityLog;
@@ -107,7 +108,7 @@ class CharacterSheetServiceTest {
     void setUp() {
         service = new CharacterSheetService(sheetRepository, memberRepository, visibilityRepository,
                 activityLog, events, campaignNpcRepository, npcVisibilityRepository, npcRepository, userRepository,
-                ruleService, catalogService, buildRepository, imageRepository);
+                ruleService, catalogService, buildRepository, imageRepository, rollService);
         campaign = Campaign.builder().id(UUID.randomUUID()).name("Mesa").build();
         masterUser = user("Mestre");
         playerUser = user("Ana");
@@ -722,5 +723,57 @@ class CharacterSheetServiceTest {
         when(visibilityRepository.findByCampaignMemberId(playerMember.getId()))
                 .thenReturn(List.of(hidden(SheetSection.INJURIES)));
         assertThat(service.get(sheet.getId(), otherUser.getId()).wounds()).isNull();
+    }
+
+    // ------------------------------------------------------------------ §54 Doses e Kit de Cutman
+
+    private com.tatakai.manager.sheet.entity.InventoryItem give(String key, int qty) {
+        var item = com.tatakai.manager.sheet.entity.InventoryItem.builder().id(UUID.randomUUID()).name(key)
+                .consumableKey(key).quantity(qty).build();
+        sheet.getInventory().add(item);
+        return item;
+    }
+
+    @Test
+    @DisplayName("§54: Analgésico esconde 2 de Desgaste Físico, gasta 1 do inventário e registra a Dose")
+    void dose_analgesic() {
+        sheet.setPhysicalFatigue(3);
+        var item = give("ANALGESICO", 1);
+        CharacterSheetResponse r = service.useConsumable(sheet.getId(), item.getId(), null, playerUser.getId());
+        assertThat(sheet.getPhysicalFatigue()).isEqualTo(1);
+        assertThat(sheet.getInventory()).doesNotContain(item);
+        assertThat(r.fatigue().doses()).containsExactly(new com.tatakai.manager.sheet.entity.DoseEntry("ANALGESICO", 1, 2, false));
+        assertPublishedAndLogged(ActivityCategory.INVENTORY, "USE_CONSUMABLE");
+    }
+
+    @Test
+    @DisplayName("§54: Termogênico repetido no dia dobra o Colateral (+1, depois +2 Desgaste Mental)")
+    void dose_thermogenicDoubles() {
+        var item = give("TERMOGENICO", 2);
+        service.useConsumable(sheet.getId(), item.getId(), null, playerUser.getId());
+        service.useConsumable(sheet.getId(), item.getId(), null, playerUser.getId());
+        assertThat(sheet.getMentalFatigue()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("§54: Kit de Cutman rola 2d6 HP ou fecha Feridas; item sem uso pela ficha é 400; outro jogador 403")
+    void cutman() {
+        var kit = give("KIT_CUTMAN", 5);
+        sheet.setCurrentHp(10);
+        sheet.setOpenWounds(2);
+        when(rollService.rollInternal(any(), eq("2d6"), any(), any(), any()))
+                .thenReturn(com.tatakai.manager.roll.entity.Roll.builder().total(7).build());
+        service.useConsumable(sheet.getId(), kit.getId(), "HP", playerUser.getId());
+        assertThat(sheet.getCurrentHp()).isEqualTo(17);
+        service.useConsumable(sheet.getId(), kit.getId(), "WOUNDS", masterUser.getId());
+        assertThat(sheet.getOpenWounds()).isZero();
+        assertThat(kit.getQuantity()).isEqualTo(3);
+        assertThat(sheet.getDoses()).isEmpty();
+
+        var rope = give("RACAO", 1);
+        assertThatThrownBy(() -> service.useConsumable(sheet.getId(), rope.getId(), null, playerUser.getId()))
+                .isInstanceOf(com.tatakai.manager.sheet.exception.InvalidCharacterSheetException.class);
+        assertThatThrownBy(() -> service.useConsumable(sheet.getId(), kit.getId(), "HP", otherUser.getId()))
+                .isInstanceOf(com.tatakai.manager.shared.exception.AccessDeniedException.class);
     }
 }

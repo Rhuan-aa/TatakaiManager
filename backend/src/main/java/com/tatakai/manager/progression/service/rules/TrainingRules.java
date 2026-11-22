@@ -69,7 +69,8 @@ public final class TrainingRules {
 
     /**
      * Um treino de atributo/recurso. `nthToday`: 1-based no dia e alvo (Sobrecarga); `fullsThisWeek`: Plenos já
-     * feitos na semana neste alvo; `band`: faixa de Desgaste do tipo antes do treino; `portableKit`: se usa Kit de Treino Portátil.
+     * feitos na semana neste alvo; `band`: faixa de Desgaste do tipo antes do treino; `portableKit`: se há Estação portátil para o
+     * alvo (Kit de Treino Portátil: FOR/CON/DES; Corda de Pular: SP/DES), conferido pelo chamador.
      */
     public static Outcome train(String target, int tal, BodyType bt, int nthToday, int fullsThisWeek, int kpIndex,
                                 FatigueBand band, TrainingVenue venue, boolean portableKit) {
@@ -82,7 +83,7 @@ public final class TrainingRules {
         boolean full = true;
         if (!mental) {
             int baseLimit = weeklyFullLimit(venue);
-            if (venue == TrainingVenue.FIELD && portableKit && ("STR".equals(target) || "CON".equals(target) || "DEX".equals(target))) {
+            if (venue == TrainingVenue.FIELD && portableKit) {
                 baseLimit += 1;
             }
             int limit = baseLimit - (band == FatigueBand.DRAINED ? 1 : 0);

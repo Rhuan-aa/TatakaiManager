@@ -400,8 +400,16 @@ public class RollService {
      */
     @Transactional
     public Roll rollInternal(CharacterSheet sheet, String expression, String purpose, UUID actorId, ActorRole role) {
+        return rollInternal(sheet, expression, purpose, actorId, role, 0);
+    }
+
+    /** Idem, com vantagem (+1) ou desvantagem (−1) na expressão inteira. */
+    @Transactional
+    public Roll rollInternal(CharacterSheet sheet, String expression, String purpose, UUID actorId, ActorRole role,
+                             int advantage) {
         UUID campaignId = sheet.isNpcSheet() ? null : sheet.getCampaignMember().getCampaign().getId();
-        Roll roll = execute(sheet.getId(), campaignId, expression, purpose, actorId, RollChannel.PUBLIC, null);
+        Roll roll = execute(sheet.getId(), campaignId, expression, purpose, actorId, RollChannel.PUBLIC, null,
+                advantage, false);
         activityLog.record(sheet, actorId, role, ActivityCategory.ROLL, "ROLL", null, null,
                 expression + " = " + roll.getTotal(), roll.getId(), purpose);
         return roll;

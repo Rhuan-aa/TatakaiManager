@@ -27,6 +27,8 @@ import { ATTRS, BODY_TYPES, DOMINANCES, BAND_LABELS, FATIGUE_LABELS, KEIKEN, KEI
 import { RARITY, rarityTagStyle } from '../ui/rarity';
 import RichText from '../ui/RichText';
 import InventoryGrid from './InventoryGrid';
+
+const DOSE_LABELS = { ANALGESICO: 'Analgésico', CALMANTE: 'Calmante', POMADA: 'Pomada', TERMOGENICO: 'Termogênico', ENERGETICO: 'Energético' };
 import Icon from '../ui/Icon';
 import BleedEdge from '../ui/BleedEdge';
 import AuraLayers from '../ui/AuraLayers';
@@ -546,6 +548,12 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
                   <p className="caption">Desgaste (cansaço)</p>
                   <FatigueMeter name="Físico" points={f.physical} bandKey={f.physicalBand} kind="physical" onSave={saveResource('physicalFatigue')} />
                   <FatigueMeter name="Mental" points={f.mental} bandKey={f.mentalBand} kind="mental" onSave={saveResource('mentalFatigue')} />
+                  {f.doses?.length > 0 && (
+                    <p className="hint" title="Valem até o próximo Repouso; repetir a mesma dose dobra o Colateral">
+                      Doses até o Repouso: {f.doses.map((x) => `${DOSE_LABELS[x.key] ?? x.key}${x.count > 1 ? ` ×${x.count}` : ''}`
+                        + (x.masked > 0 ? ` (esconde ${x.masked})` : '')).join(' · ')}
+                    </p>
+                  )}
                 </div>
               )}
               {p && (
@@ -600,7 +608,8 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const inventory = (
     <Block title="Inventário">
       {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : (
-        <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} artUrl={isNpc ? null : bodyUrl ?? portraitUrl} campaignId={campaignId ?? sheet.campaignId} />
+        <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} artUrl={isNpc ? null : bodyUrl ?? portraitUrl} campaignId={campaignId ?? sheet.campaignId}
+          sheetId={sheet.id} canUse={seesPrivate && sheet.combatReady} onChange={onChange} />
       )}
     </Block>
   );

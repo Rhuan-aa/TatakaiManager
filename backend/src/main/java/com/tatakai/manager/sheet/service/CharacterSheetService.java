@@ -4,6 +4,9 @@ import com.tatakai.manager.sheet.dto.request.AddWoundRequest;
 import com.tatakai.manager.sheet.entity.WoundMark;
 import com.tatakai.manager.sheet.dto.response.WoundMarkResponse;
 import com.tatakai.manager.sheet.service.rules.WoundRules;
+import com.tatakai.manager.sheet.service.rules.DoseRules;
+import com.tatakai.manager.sheet.entity.DoseEntry;
+import com.tatakai.manager.roll.service.RollService;
 import com.tatakai.manager.sheet.entity.BodyPart;
 import com.tatakai.manager.sheet.dto.response.SheetUpdateMessage.SheetEvent;
 
@@ -88,6 +91,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.tatakai.manager.sheet.entity.SheetImageKind;
 import com.tatakai.manager.sheet.repository.SheetImageRepository;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -120,6 +124,7 @@ public class CharacterSheetService {
 
     /** Catálogo estático (só leitura do classpath): instanciado aqui para não mexer no construtor. */
     private final SheetImageRepository imageRepository;
+    private final RollService rollService;
     private final WeaponCatalog weaponCatalog = new WeaponCatalog();
     private final EquipmentCatalog equipmentCatalog = new EquipmentCatalog();
     private final ConsumableCatalog consumableCatalog = new ConsumableCatalog();
@@ -136,7 +141,9 @@ public class CharacterSheetService {
                                  CampaignRuleService ruleService,
                                  CatalogService catalogService,
                                  CharacterBuildRepository buildRepository,
-                                 SheetImageRepository imageRepository) {
+                                 SheetImageRepository imageRepository,
+                                 RollService rollService) {
+        this.rollService = rollService;
         this.sheetRepository = sheetRepository;
         this.memberRepository = memberRepository;
         this.visibilityRepository = visibilityRepository;
@@ -358,6 +365,72 @@ public class CharacterSheetService {
         activityLog.record(saved, requesterId, ActorRole.MASTER, ActivityCategory.GM_ADJUSTMENT, "REMOVE_WOUND",
                 "wound:" + w.getPart(), w.getType(), null, null, null);
         publish(SheetEvent.SHEET_UPDATED, saved, ActivityCategory.GM_ADJUSTMENT, "REMOVE_WOUND", a.actorName());
+        return toResponse(saved, true, Set.of());
+    }
+
+    /**
+     * Usa um consumível do inventário fora de combate (§54): Doses (Analgésico, Calmante, Pomada, Termogênico,
+     * Energético) e Kit de Cutman (`option` HP = 2d6 HP, WOUNDS = fecha as Feridas). Dono ou Mestre.
+     */
+    @Transactional
+    public CharacterSheetResponse useConsumable(UUID sheetId, UUID itemId, String option, UUID requesterId) {
+        CharacterSheet s = loadSheet(sheetId);
+        SheetRules.requireCombatReady(s);
+        Access a = access(s, requesterId);
+        if (!a.master()) requireOwner(a);
+        InventoryItem item = findItem(s, itemId);
+        String key = item.getConsumableKey() != null ? item.getConsumableKey() : item.getEquipmentKey();
+        if (key == null || !DoseRules.SHEET_USE.contains(key)) {
+            throw new InvalidCharacterSheetException(item.getName() + " não tem uso pela ficha");
+        }
+        if (item.getQuantity() <= 0) throw new InvalidCharacterSheetException(item.getName() + " acabou");
+        List<DoseEntry> doses = s.getDoses() == null ? List.of() : s.getDoses();
+        int factor = DoseRules.factor(doses, key);
+        String result;
+        switch (key) {
+            case DoseRules.ANALGESICO -> {
+                int m = Math.min(2, s.getPhysicalFatigue());
+                s.setPhysicalFatigue(s.getPhysicalFatigue() - m);
+                doses = DoseRules.take(doses, key, m);
+                result = "ignora " + m + " de Desgaste Físico até o Repouso";
+            }
+            case DoseRules.POMADA -> {
+                if (s.getPhysicalFatigue() <= 0) throw new InvalidCharacterSheetException("Sem Desgaste Físico para tratar");
+                s.setPhysicalFatigue(s.getPhysicalFatigue() - 1);
+                doses = DoseRules.take(doses, key, 0);
+                result = "−1 Desgaste Físico";
+            }
+            case DoseRules.TERMOGENICO -> {
+                s.setMentalFatigue(s.getMentalFatigue() + factor);
+                doses = DoseRules.take(doses, key, 0);
+                result = "+" + factor + " Desgaste Mental; desvantagem em Iniciativa até o Repouso";
+            }
+            case DoseRules.KIT_CUTMAN -> {
+                if ("WOUNDS".equals(option)) {
+                    if (s.getOpenWounds() <= 0) throw new InvalidCharacterSheetException("Não há Feridas abertas");
+                    s.setOpenWounds(0);
+                    result = "Feridas fechadas";
+                } else {
+                    int hp = rollService.rollInternal(s, "2d6", "Kit de Cutman: HP", requesterId, a.role()).getTotal();
+                    int effMax = SheetRules.effectiveHpMax(s.getHpMax(), s.getInjuries());
+                    s.setCurrentHp(Math.min(effMax, s.getCurrentHp() + hp));
+                    result = "+" + hp + " HP";
+                }
+            }
+            default -> { // CALMANTE, ENERGETICO: efeito no Repouso / no próximo combate
+                doses = DoseRules.take(doses, key, 0);
+                result = DoseRules.CALMANTE.equals(key) ? "o próximo Repouso remove +1 Desgaste Mental"
+                        : "+1 Iniciativa e +1 Adrenalina no próximo combate";
+            }
+        }
+        if (DoseRules.DOSES.contains(key) && factor > 1) result += " (dose repetida: Colateral dobrado)";
+        s.setDoses(new ArrayList<>(doses));
+        item.setQuantity(item.getQuantity() - 1);
+        if (item.getQuantity() <= 0) s.getInventory().remove(item);
+        CharacterSheet saved = sheetRepository.save(s);
+        activityLog.record(saved, requesterId, a.role(), ActivityCategory.INVENTORY, "USE_CONSUMABLE",
+                "item:" + item.getId(), item.getName(), result, null, null);
+        publish(SheetEvent.SHEET_UPDATED, saved, ActivityCategory.INVENTORY, "USE_CONSUMABLE", a.actorName());
         return toResponse(saved, true, Set.of());
     }
 
@@ -947,7 +1020,8 @@ public class CharacterSheetService {
         }
         if (showFatigue) {
             fatigue = new SheetFatigue(s.getPhysicalFatigue(), SheetRules.fatigueBand(s.getPhysicalFatigue()),
-                    s.getMentalFatigue(), SheetRules.fatigueBand(s.getMentalFatigue()));
+                    s.getMentalFatigue(), SheetRules.fatigueBand(s.getMentalFatigue()),
+                    s.getDoses() == null ? List.of() : List.copyOf(s.getDoses()));
         }
         if (showHp && showSp && showKp && !npcOff) {
             int el = s.getFightExperience();

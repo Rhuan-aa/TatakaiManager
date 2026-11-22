@@ -4,6 +4,16 @@ import { ITEM_LOCATION } from '../ui/gear';
 import { useConsumables, useEquipment, useWeapons } from '../ui/useCatalog';
 import FighterPlaceholder from './FighterPlaceholder';
 import ItemImage, { itemRef, useItemImageIndex } from '../ui/ItemImage';
+import { consumeItem } from '../../api/characterSheets';
+import { parseApiError } from '../../api/parseApiError';
+import { useToast } from '../../contexts/ToastContext';
+
+/** Consumíveis com uso pela ficha, fora de combate (§54); o Kit de Cutman pede o efeito. */
+const SHEET_USE = {
+  ANALGESICO: [['Tomar dose', null]], CALMANTE: [['Tomar dose', null]], POMADA: [['Aplicar dose', null]],
+  TERMOGENICO: [['Tomar dose', null]], ENERGETICO: [['Tomar dose', null]],
+  KIT_CUTMAN: [['Recuperar 2d6 HP', 'HP'], ['Fechar Feridas', 'WOUNDS']],
+};
 
 const kg = (v) => (Math.round((v ?? 0) * 10) / 10).toString().replace('.', ',');
 // Carga (capítulo de Condições): efeitos de cada estado acima da Carga
@@ -17,7 +27,7 @@ const DAMAGE = { BLUNT: 'Contundente', SLASH: 'Cortante', PIERCE: 'Perfurante', 
 const REACH = { CURTO: 'Curto', MEDIO: 'Médio', LONGO: 'Longo', ARREMESSO: 'Arremesso', DISPARO: 'Disparo' };
 const ARMOR = { LIGHT: 'Leve', MEDIUM: 'Média', HEAVY: 'Pesada' };
 const REGION = { CABECA: 'Cabeça', TRONCO: 'Tronco', BRACOS: 'Braços', PERNAS: 'Pernas' };
-const USE = { SELF: 'Em si', ALLY: 'Em aliado', OFFENSIVE: 'Ofensivo' };
+const USE = { SELF: 'Em si', ALLY: 'Em aliado', OFFENSIVE: 'Ofensivo', NONE: 'Fora de combate' };
 
 const KINDS = [
   { id: 'all', label: 'Tudo', icon: 'grid' },
@@ -78,7 +88,9 @@ function Slot({ item, on, onSelect, images, campaignId }) {
 }
 
 /** Inventário: boneco com o que está equipado, lista por tipo e ficha do item selecionado. */
-export default function InventoryGrid({ items, money, derived, artUrl, campaignId }) {
+export default function InventoryGrid({ items, money, derived, artUrl, campaignId, sheetId, canUse, onChange }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
   const images = useItemImageIndex(campaignId);
   const weapons = useWeapons();
   const equipment = useEquipment();
@@ -183,6 +195,23 @@ export default function InventoryGrid({ items, money, derived, artUrl, campaignI
             </dl>
             {st.length > 0 && <p className="flex flex-wrap gap-1">{st.map((s) => <span key={s} className="tag tag-accent">{s}</span>)}</p>}
             {text.map((t) => <p key={t} className="text-sm">{t}</p>)}
+            {canUse && cur.quantity > 0 && SHEET_USE[cur.consumableKey ?? cur.equipmentKey] && (
+              <p className="flex flex-wrap gap-2">
+                {SHEET_USE[cur.consumableKey ?? cur.equipmentKey].map(([label, option]) => (
+                  <button key={label} type="button" className="btn-primary" disabled={busy} onClick={async () => {
+                    setBusy(true);
+                    try {
+                      onChange?.(await consumeItem(sheetId, cur.id, option));
+                      toast(`${cur.name}: ${label.toLowerCase()}`, 'success');
+                    } catch (err) {
+                      toast(parseApiError(err).message, 'error');
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}>{label}</button>
+                ))}
+              </p>
+            )}
           </aside>
         )}
       </div>

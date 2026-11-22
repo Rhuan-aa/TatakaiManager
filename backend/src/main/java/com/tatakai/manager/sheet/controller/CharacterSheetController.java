@@ -15,6 +15,7 @@ import com.tatakai.manager.sheet.dto.request.SetNpcSectionVisibilityRequest;
 import com.tatakai.manager.sheet.dto.request.SetNpcTrackingRequest;
 import com.tatakai.manager.sheet.dto.request.UpdateCharacterSheetRequest;
 import com.tatakai.manager.sheet.dto.request.UpdateResourcesRequest;
+import com.tatakai.manager.sheet.dto.request.UseConsumableRequest;
 import com.tatakai.manager.sheet.dto.response.CharacterSheetResponse;
 import com.tatakai.manager.sheet.dto.response.CharacterSheetSummaryResponse;
 import com.tatakai.manager.sheet.dto.response.NpcSectionVisibilityResponse;
@@ -141,6 +142,13 @@ public class CharacterSheetController {
     public ResponseEntity<CharacterSheetResponse> addWound(@PathVariable UUID sheetId,
                                                            @Valid @RequestBody AddWoundRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(sheetService.addWound(sheetId, request, AuthenticatedUser.id()));
+    }
+
+    @PostMapping("/character-sheets/{sheetId}/inventory/{itemId}/use")
+    public ResponseEntity<CharacterSheetResponse> useConsumable(@PathVariable UUID sheetId, @PathVariable UUID itemId,
+                                                                @Valid @RequestBody(required = false) UseConsumableRequest request) {
+        return ResponseEntity.ok(sheetService.useConsumable(sheetId, itemId, request == null ? null : request.option(),
+                AuthenticatedUser.id()));
     }
 
     @DeleteMapping("/character-sheets/{sheetId}/wounds/{woundId}")

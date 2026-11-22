@@ -188,27 +188,25 @@ class TrainingServiceTest {
     }
 
     @Test
-    @DisplayName("Repouso com kit de socorro, rolo, pomada e calmante")
-    void restWithMedicalKitRollerOintmentAndSedative() {
-        sheet.setPhysicalFatigue(5);
+    @DisplayName("§54: Repouso com kit de socorro, rolo e Doses (Analgésico devolve o Desgaste + Colateral, Calmante +1 Mental)")
+    void restWithMedicalKitRollerAndDoses() {
+        sheet.setPhysicalFatigue(3); // 5 reais, 2 escondidos pelo Analgésico
         sheet.setMentalFatigue(4);
         var kit = com.tatakai.manager.sheet.entity.InventoryItem.builder().equipmentKey("KIT_SOCORROS").quantity(1).build();
         var rolo = com.tatakai.manager.sheet.entity.InventoryItem.builder().equipmentKey("ROLO").quantity(1).build();
-        var pomada = com.tatakai.manager.sheet.entity.InventoryItem.builder().consumableKey("POMADA").quantity(1).build();
-        var calmante = com.tatakai.manager.sheet.entity.InventoryItem.builder().consumableKey("CALMANTE").quantity(1).build();
-        sheet.setInventory(new ArrayList<>(List.of(kit, rolo, pomada, calmante)));
+        sheet.setInventory(new ArrayList<>(List.of(kit, rolo)));
+        sheet.setDoses(new ArrayList<>(List.of(new com.tatakai.manager.sheet.entity.DoseEntry("ANALGESICO", 1, 2, false),
+                new com.tatakai.manager.sheet.entity.DoseEntry("CALMANTE", 1, 0, false))));
 
         book((short) 1, (short) 1, SoloActivityType.REPOUSO, null, RestQuality.SIMPLE);
 
         service.processUpTo(ts, (short) 2);
 
-        // Kit de socorros eleva qualidade simples para treinado (recupera 2)
-        // Rolo e pomada recuperam +1 de fadiga física cada (5 - 2 - 1 - 1 = 1)
-        assertThat(sheet.getPhysicalFatigue()).isEqualTo(1);
-        // Calmante recupera +1 de fadiga mental (4 - 2 - 1 = 1)
+        // kit eleva a Tratado (−2), rolo −1, Colateral do Analgésico +1: 5 − 2 − 1 + 1 = 3
+        assertThat(sheet.getPhysicalFatigue()).isEqualTo(3);
+        // Calmante: 4 − 2 − 1 = 1
         assertThat(sheet.getMentalFatigue()).isEqualTo(1);
-        assertThat(pomada.getQuantity()).isZero();
-        assertThat(calmante.getQuantity()).isZero();
+        assertThat(sheet.getDoses()).isEmpty();
     }
 
     @Test

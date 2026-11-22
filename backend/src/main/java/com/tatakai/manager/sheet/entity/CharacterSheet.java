@@ -160,6 +160,12 @@ public class CharacterSheet {
     @Builder.Default
     private List<BodyPart> missingParts = new ArrayList<>();
 
+    /** Doses de consumível desde o último Repouso (§54): Regra de Dose e Colaterais adiados. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "doses", columnDefinition = "jsonb default '[]'")
+    @Builder.Default
+    private List<DoseEntry> doses = new ArrayList<>();
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

@@ -25,11 +25,11 @@ import com.tatakai.manager.sheet.entity.ActorRole;
 import com.tatakai.manager.sheet.entity.Attribute;
 import com.tatakai.manager.sheet.entity.CharacterSheet;
 import com.tatakai.manager.sheet.entity.FatigueBand;
-import com.tatakai.manager.sheet.entity.InventoryItem;
 import com.tatakai.manager.sheet.entity.ResourceType;
 import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
 import com.tatakai.manager.sheet.service.SheetActivityLogService;
+import com.tatakai.manager.sheet.service.rules.DoseRules;
 import com.tatakai.manager.sheet.service.rules.SheetRules;
 import com.tatakai.manager.timeskip.entity.Booking;
 import com.tatakai.manager.timeskip.entity.SoloActivityType;
@@ -41,6 +41,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -212,8 +213,8 @@ public class TrainingService {
         boolean mental = TrainingRules.isMental(target);
         FatigueBand band = SheetRules.fatigueBand(mental ? sheet.getMentalFatigue() : sheet.getPhysicalFatigue());
 
-        boolean portableKit = sheet.getInventory() != null && sheet.getInventory().stream()
-                .anyMatch(i -> !i.isBroken() && i.getQuantity() > 0 && "KIT_TREINO".equals(i.getEquipmentKey()));
+        boolean portableKit = hasGear(sheet, "KIT_TREINO") && Set.of("STR", "CON", "DEX").contains(target)
+                || hasGear(sheet, "CORDA_PULAR_KIT") && Set.of("SP", "DEX").contains(target); // §54: Corda de Pular
 
         TrainingRules.Outcome o = TrainingRules.train(target, sheet.getTal(), sheet.getBodyType(), nthToday,
                 fullsThisWeek, kpIndex, band, ts.getVenue(), portableKit);
@@ -232,6 +233,11 @@ public class TrainingService {
                 .full(true).status(result == null ? TrainingEntryStatus.LOST : TrainingEntryStatus.APPLIED)
                 .note(result == null ? "Nenhuma Forja em andamento" : result).build());
         log(sheet, ActivityCategory.PROGRESSION, "FORGE_SESSION", "forge", null, result, null);
+    }
+
+    private static boolean hasGear(CharacterSheet s, String key) {
+        return s.getInventory() != null && s.getInventory().stream()
+                .anyMatch(i -> !i.isBroken() && i.getQuantity() > 0 && key.equals(i.getEquipmentKey()));
     }
 
     private void addFatigue(CharacterSheet s, boolean mental, int amount) {
@@ -257,6 +263,8 @@ public class TrainingService {
         s.setCurrentSp(Math.min(s.getSpMax(), s.getCurrentSp() + sp));
         s.setCurrentKp(s.getKpMax());
         if (effectiveQuality == RestQuality.TREATED) s.setKnockoutSequel(false); // Repouso Tratado apaga a Sequela de Nocaute
+        DoseRules.RestEffect dose = DoseRules.onRest(s.getDoses()); // §54: o Analgésico para de esconder o Desgaste
+        s.setPhysicalFatigue(s.getPhysicalFatigue() + dose.masked());
         int rec = TrainingRules.restFatigueRecovery(effectiveQuality);
         s.setPhysicalFatigue(Math.max(0, s.getPhysicalFatigue() - rec));
         s.setMentalFatigue(Math.max(0, s.getMentalFatigue() - rec));
@@ -270,27 +278,10 @@ public class TrainingService {
             }
         }
 
-        // Pomada Anti-inflamatória (POMADA): se após repouso e rolo ainda tiver physicalFatigue > 0, consome 1 e -1 Desgaste Físico
-        if (s.getPhysicalFatigue() > 0 && s.getInventory() != null) {
-            InventoryItem pomada = s.getInventory().stream()
-                    .filter(i -> i.getQuantity() > 0 && ("POMADA".equals(i.getConsumableKey()) || "POMADA".equals(i.getEquipmentKey())))
-                    .findFirst().orElse(null);
-            if (pomada != null) {
-                consumeInventoryItem(s, pomada);
-                s.setPhysicalFatigue(Math.max(0, s.getPhysicalFatigue() - 1));
-            }
-        }
-
-        // Calmante (CALMANTE): se tiver mentalFatigue > 0 após a recuperação base, consome 1 e -1 Desgaste Mental
-        if (s.getMentalFatigue() > 0 && s.getInventory() != null) {
-            InventoryItem calmante = s.getInventory().stream()
-                    .filter(i -> i.getQuantity() > 0 && ("CALMANTE".equals(i.getConsumableKey()) || "CALMANTE".equals(i.getEquipmentKey())))
-                    .findFirst().orElse(null);
-            if (calmante != null) {
-                consumeInventoryItem(s, calmante);
-                s.setMentalFatigue(Math.max(0, s.getMentalFatigue() - 1));
-            }
-        }
+        // Doses (§54): Colaterais adiados (Analgésico/Energético, dobrados na dose repetida) e Calmante +1 Mental
+        if (dose.mentalRecovery() > 0) s.setMentalFatigue(Math.max(0, s.getMentalFatigue() - dose.mentalRecovery()));
+        if (dose.collateral() > 0) s.setPhysicalFatigue(s.getPhysicalFatigue() + dose.collateral());
+        s.setDoses(new ArrayList<>());
 
         log(s, ActivityCategory.RESOURCE, "REST", "rest", null, effectiveQuality.name(), "+" + hp + " HP, +" + sp + " SP");
 
@@ -302,17 +293,6 @@ public class TrainingService {
             int applied = RESOURCES.contains(e.getTarget()) ? consolidateResource(s, e.getTarget(), gain)
                     : consolidateAttribute(s, Attribute.valueOf(e.getTarget()), gain);
             e.setNote((e.getNote() == null ? "" : e.getNote() + " · ") + "consolidado +" + applied);
-        }
-    }
-
-    private void consumeInventoryItem(CharacterSheet s, InventoryItem item) {
-        item.setQuantity(item.getQuantity() - 1);
-        if (item.getQuantity() <= 0) {
-            try {
-                s.getInventory().remove(item);
-            } catch (UnsupportedOperationException ignored) {
-                // lista imutável em mocks/testes
-            }
         }
     }
 

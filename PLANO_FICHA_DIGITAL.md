@@ -2340,13 +2340,13 @@ seção nova e risque o item aqui.
     desvantagem em percepção, Roupa Escura (+2 Furtividade), Furtividade em geral.
 21. ~~Ferramentas: Kit de Primeiros Socorros não dá vantagem sozinho no Estabilizar (continua o checkbox "Kit médico"), nem
     eleva o Repouso a Tratado; Corda/Algemas/Abraçadeiras (condição "Preso") não existem.~~ (feito, §48)
-22. ~~Academia: Kit de Treino Portátil, Rolo de Liberação e Cinto de Levantamento (+6 kg de Carga)~~ (feito, §48); Corda de Pular não entra no TimeSkip.
+22. ~~Academia: Kit de Treino Portátil, Rolo de Liberação e Cinto de Levantamento (+6 kg de Carga)~~ (feito, §48); ~~Corda de Pular não entra no TimeSkip.~~ (feito, §54)
 23. Vestir/tirar proteção leva minutos (Leve 1, Média 5, Pesada 10): hoje é só mudar o local do item.
 
 **Consumíveis**
-24. ~~Calmante, Creatina, Pomada, Tala, Saquinho de Pó~~ (feito, §48). Fora de combate/TimeSkip, sem efeito automático: Analgésico, Kit de Cutman (5 usos),
-    Termogênico, Energético, Ração, Suplemento Proteico, Hipercalórico.
-25. Regra de Dose (2ª dose no dia dobra o Colateral) e Colaterais adiados (no próximo Repouso) não são controlados.
+24. ~~Calmante, Creatina, Pomada, Tala, Saquinho de Pó~~ (feito, §48). ~~Fora de combate/TimeSkip, sem efeito automático: Analgésico, Kit de Cutman (5 usos),
+    Termogênico, Energético~~ (feito, §54); Ração, Suplemento Proteico, Hipercalórico (dependem da Alimentação, que não existe).
+25. ~~Regra de Dose (2ª dose no dia dobra o Colateral) e Colaterais adiados (no próximo Repouso) não são controlados.~~ (feito, §54; fora de combate)
 26. ~~Estimulante de Combate: o SP máximo −25% até o Repouso é só um aviso.~~ (feito, §48)
 27. Bombas (Ciclo Leve/Pesado/Veterinário): ciclo Carga → Queda → Rastro, Treinos Plenos extras, Marcas de Abuso,
     Abstinência, Sequelas e antidoping — nada implementado.
@@ -2708,3 +2708,29 @@ Trabalho interrompido por limite de uso ao fim da **Fase 1**. Branches: `feat/sh
 - Limpeza de imagens ao apagar ficha: **não se aplica** — não existe fluxo de apagar ficha. Se um dia existir, apagar `sheet_images` e
   `wound_marks` junto (as marcas já saem por `orphanRemoval`).
 - As alterações não commitadas do dono (peso inicial, RN-ATR-08) continuam fora dos commits.
+
+## 54. Bloco D — Doses, Colaterais adiados e consumíveis fora de combate (contrato, 21/11/2026)
+
+- **Uso pela ficha:** `POST /character-sheets/{sid}/inventory/{itemId}/use` `{option?}` (dono ou Mestre; NPC: dono do NPC; ficha leve → 400).
+  Gasta 1 da quantidade (sai do inventário no 0), log `INVENTORY/USE_CONSUMABLE`, evento da ficha. Só as chaves de `DoseRules.SHEET_USE`;
+  outro item → 400. Front: botões na ficha do item (`InventoryGrid`) e "Doses até o Repouso" abaixo do Desgaste.
+- **Dia da Dose = até o próximo Repouso.** `CharacterSheet.doses` (jsonb `DoseEntry{key, count, masked, spent}`, em `SheetFatigue.doses`),
+  zerado em `TrainingService.rest`. Regras puras em `sheet/service/rules/DoseRules`. Repetir o mesmo consumível no dia dobra o Colateral
+  daquela dose (1, depois 2 cada: total `2n−1`); o efeito não muda.
+- **Efeitos:**
+  - Analgésico: esconde até 2 de Desgaste Físico (sai do valor e fica em `masked`); no Repouso o escondido volta **antes** da recuperação e o
+    Colateral (+1) entra **depois**.
+  - Pomada: −1 Desgaste Físico na hora (400 sem Desgaste). Calmante: o Repouso remove +1 Desgaste Mental (não acumula) e desvantagem na
+    Iniciativa até o Repouso. Pomada e Calmante **deixaram de ser consumidos sozinhos no Repouso** (§48): agora são tomados pelo jogador.
+  - Termogênico: +1 Desgaste Mental na hora (×2 repetido) e desvantagem na Iniciativa. A perda de peso **não** é aplicada (não há Alimentação).
+  - Energético: no primeiro combate depois da dose, +1 na Iniciativa e +1 Adrenalina (`CombatService.start`, marca `spent`); Colateral +1
+    Desgaste Físico no Repouso.
+  - Iniciativa com desvantagem: `RollService.rollInternal(..., advantage)` (nova sobrecarga), motivo "(desvantagem: Dose)".
+  - Kit de Cutman (não é Dose; quantidade = usos): `option` `HP` (2d6 HP pelo `RollService`, até o HP máx. efetivo) ou `WOUNDS` (zera as
+    Feridas abertas; 400 sem Feridas). Meio-Cego/Desorientado são condições de combate: o Mestre remove no encontro.
+- **Corda de Pular** (`CORDA_PULAR_KIT`): Estação de SP e DES no Campo (+1 Treino Pleno semanal), como o Kit de Treino Portátil faz com
+  FOR/CON/DES. O alvo coberto agora é decidido em `TrainingService` (`TrainingRules.train` só recebe se há Estação).
+- **Fora:** Ração, Suplemento Proteico, Hipercalórico e o peso do Termogênico dependem da Alimentação, que não existe no sistema (fica com o
+  Mestre). Doses usadas em combate (Estimulante) não entram no registro. Sem Repouso (fora do TimeSkip) as Doses só zeram pelo banco.
+- **Bancos com `validate`:** `ALTER TABLE character_sheets ADD COLUMN doses jsonb DEFAULT '[]'`. Nenhum CHECK novo.
+- Testes: `DoseRulesTest`, `CharacterSheetServiceTest` (dose_*, cutman), `TrainingServiceTest` (Repouso com Doses), `CombatServiceTest.startWithDoses`.
