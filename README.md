@@ -1,8 +1,9 @@
 # Tatakai Manager
 
-Sistema web para **gerenciar NPCs de RPG de mesa**: fichas de NPC, agendamento de
-interações em slots de *TimeSkip*, controle de tempo de jogo e logs narrativos — com
-sincronização **em tempo real** entre Mestre e jogadores.
+Sistema web para **mesas de RPG de luta**: ficha digital de jogadores e NPCs, Construção
+Inicial guiada, Criação Marcial, motor de combate, rolagens no servidor, agendamento de
+interações em slots de *TimeSkip* e logs narrativos — com sincronização **em tempo real**
+entre Mestre e jogadores.
 
 Monorepo com backend (Spring Boot), frontend (React) e a orquestração de deploy num
 repositório só.
@@ -11,22 +12,39 @@ repositório só.
 
 ## Funcionalidades
 
-- **Autenticação** por JWT (cadastro/login).
-- **Campanhas** com papéis por membro (Mestre / jogador) e convite de membros.
-- **NPCs**: acervo reutilizável, associação por campanha, ficha completa (atributos,
-  traços, specs, conhecimentos, tipos de interação), imagem (retrato) e visibilidade
-  controlada pelo Mestre.
-- **TimeSkip**: 4 slots de interação por dia + um slot extra diário, avanço de dia e
-  encerramento, com histórico.
-- **Agendamento em tempo real**: grade de NPCs × slots sincronizada via **WebSocket**
-  (STOMP) — o que um cliente agenda aparece na hora para os outros.
-- **Ações solo**: jogador ocupa um slot sem NPC (treino, estudo ou ação geral), e o
-  Mestre pode criar **atividades customizadas por TimeSkip** com custo próprio.
-- **Custo em pontos de ociosidade**: uma ação de custo N ocupa N slots consecutivos do
-  dia; ações de custo zero vão para o slot extra (limite de uma por jogador por dia).
-- **Logs narrativos**: feed da campanha; jogadores vinculam o log a um agendamento,
-  Mestre narra livremente e pode editar/excluir. Sanitização de XSS no backend.
-- **UI**: tema claro/escuro, layout responsivo, toasts e estados de carregamento.
+**Campanha e agenda**
+- **Autenticação** por JWT (cadastro/login) e **campanhas** com papéis por membro (Mestre / jogador).
+- **NPCs**: acervo reutilizável, associação por campanha, retrato, visibilidade e ficha própria
+  (leve ou pronta para combate), com o que o jogador vê liberado **por seção** pelo Mestre.
+- **TimeSkip** em dois modos: *Período Ocioso* (4 pontos de ócio por dia + slot extra, avanço de
+  dia) e *TimeSkip* (salto de vários dias com envio para aprovação). Slots por dia configuráveis.
+- **Agendamento em tempo real** (WebSocket/STOMP): interações com NPC, ações solo (Treino,
+  Estudo, Repouso, Forja…) e atividades customizadas; custo N ocupa N slots consecutivos.
+- **Logs narrativos** em feed: Mestre narra livremente; jogador registra o próprio agendamento
+  ou pede um log livre, que o Mestre aprova. Texto sanitizado contra XSS no backend.
+- **Aprovações**: uma aba do Mestre reúne tudo que espera decisão (fichas, artes, técnicas,
+  logs, envios do TimeSkip…).
+
+**Ficha digital**
+- **Construção Inicial** passo a passo (identidade, traços, teste de sangue, atributos, pontos
+  livres), com toda rolagem feita e registrada no servidor; ou criação livre, se a regra permitir.
+- Ficha em abas: recursos (HP/SP/PQ), Desgaste, atributos e limitadores (radar), traços e clãs,
+  boneco de ferimentos desenhado pelo Mestre, inventário com itens equipados, artes marciais,
+  progressão (Keiken, PS, Instintos, Rivais) e log de atividade auditável.
+- **Treino e Repouso** processados pela agenda; **consumíveis** fora de combate com Regra de Dose.
+- **Exportar/importar** a ficha (`.tatakai.json`) e imprimir/PDF.
+
+**Artes marciais e combate**
+- **Catálogo** global + extensões por campanha: traços, clãs, artes, armas, equipamentos,
+  consumíveis, instintos e marcos (com imagem opcional por item).
+- **Criação Marcial**: editor de técnicas e bases com cálculo de Complexidade; Caderno e Forja.
+- **Motor de combate**: iniciativa, turnos e PA, ataque e reação, guarda e base, interação
+  marcial, Adrenalina, desmaios, condições, Agarre, armas e proteções.
+- **Rolagens** sempre no servidor, em canais (público, privado do Mestre, personalizados), com
+  animação de revelação.
+
+**UI**: estilo quadrinhos/brutalista, tema claro/escuro, responsiva, efeitos de condição
+(com opção de efeitos reduzidos).
 
 ---
 
@@ -35,7 +53,7 @@ repositório só.
 | Camada    | Tecnologias |
 |-----------|-------------|
 | Backend   | Java 21, Spring Boot 3.3 (Web, Data JPA, Security, WebSocket) |
-| Bancos    | PostgreSQL (dados relacionais + imagem de NPC) e MongoDB (ficha textual de NPC) |
+| Bancos    | PostgreSQL (fichas, agenda, combate, rolagens, logs, imagens) e MongoDB (NPCs e catálogos) |
 | Frontend  | React + Vite, React Router, Tailwind CSS v4, STOMP/SockJS |
 | Infra     | Docker + Docker Compose; Caddy (TLS/WSS) para self-host |
 
@@ -49,7 +67,10 @@ TatakaiManager/
 ├── frontend/                # SPA React + Vite
 ├── docker-compose.yml       # ambiente de desenvolvimento (Postgres + Mongo + back + front)
 ├── docker-compose.prod.yml  # self-host (Caddy à frente; back/DB só na rede interna)
-└── Caddyfile                # reverse proxy com TLS/WSS automáticos (self-host)
+├── Caddyfile                # reverse proxy com TLS/WSS automáticos (self-host)
+├── scripts/                 # dados de teste, seeds do catálogo e migração de produção
+├── AGENTS.md                # referência técnica (arquitetura, API, regras) para devs e agentes de IA
+└── PLANO_FICHA_DIGITAL.md   # plano e contratos das fases da ficha digital
 ```
 
 ---
@@ -101,6 +122,17 @@ os bancos ficarem saudáveis antes de iniciar e cria o schema automaticamente
 
 Abra http://localhost:3001, crie uma conta e uma campanha — pronto.
 
+Para já ter dados de teste (campanha "Mesa de Testes" com Mestre, jogadores, NPCs, fichas e
+TimeSkip), rode com a stack no ar:
+
+```bash
+python3 scripts/dev_fixtures.py --api http://localhost:8080   # reexecutável
+```
+
+Contas criadas (senha `tatakai123`): `mestre@tatakai.dev`, `jogador1@tatakai.dev` (ficha
+aprovada), `jogador2@tatakai.dev` (em construção) e `jogador3@tatakai.dev` (sem ficha).
+Para o Mestre editar o catálogo global, coloque o e-mail dele em `CATALOG_EDITORS` no `.env`.
+
 ### 5. Parar / resetar
 
 ```bash
@@ -118,7 +150,7 @@ O backend exige **JDK 21**:
 
 ```bash
 cd backend
-./mvnw test                  # suíte de testes (não requer bancos)
+./mvnw test                  # ~940 testes unitários (Mockito), não requer bancos
 ./mvnw spring-boot:run       # requer Postgres + Mongo + envs (DB_URL, MONGO_URI, ...)
 ```
 
@@ -136,8 +168,11 @@ precisar).
 ```bash
 cd frontend
 npm install
-npm run dev                  # servidor de desenvolvimento Vite
+npm run dev                  # servidor de desenvolvimento Vite (:5173)
+npm run build && npm run lint
 ```
+
+O `FRONTEND_URL` do backend precisa incluir a origem do Vite (`http://localhost:5173`).
 
 ---
 
@@ -151,7 +186,8 @@ Tudo é injetado por env — nada de endpoint hard-coded.
 | `MONGO_URI` | backend | conexão com o MongoDB (com o nome do banco no path) |
 | `JWT_SECRET` | backend | segredo do JWT (≥ 32 caracteres em produção) |
 | `FRONTEND_URL` | backend | origem liberada para CORS e handshake WebSocket |
-| `DDL_AUTO` | backend | `update` no 1º boot (cria schema), depois `validate` |
+| `DDL_AUTO` | backend | `update` em desenvolvimento (cria tabelas/colunas); `validate` em produção |
+| `CATALOG_EDITORS` | backend | e-mails (separados por vírgula) que podem editar o catálogo global |
 | `API_URL` / `WS_URL` | frontend | endpoints que o navegador usa (injetados em runtime) |
 | `DB_HOST_PORT` / `BACKEND_HOST_PORT` / `FRONTEND_HOST_PORT` | compose | portas publicadas no host (mude se houver conflito) |
 
@@ -171,6 +207,21 @@ modelos suportados:
 - **Self-host**: qualquer servidor Linux com Docker, via `docker-compose.prod.yml` com
   **Caddy** provendo HTTPS e WebSocket seguro (WSS) automaticamente — um único
   `git clone` + `docker compose -f docker-compose.prod.yml up --build -d`.
+
+### Atualizando um banco existente
+
+Com `DDL_AUTO=validate` o backend **não** cria tabelas nem colunas: se o schema estiver
+atrás do código, ele nem sobe. Antes de subir uma versão nova, faça backup e rode o script
+idempotente (pode rodar mais de uma vez, em banco de qualquer versão anterior):
+
+```bash
+# PG = URL do Postgres no formato do psql (postgresql://usuario:senha@host:5432/banco), não a JDBC do DB_URL
+pg_dump "$PG" > backup.sql
+psql "$PG" -v ON_ERROR_STOP=1 -f scripts/prod_upgrade.sql
+```
+
+Ele cria o que falta, recoloca chaves e índices e remove os CHECKs antigos de enum. Ao mudar
+entidades, regenere-o com `scripts/gen_upgrade_sql.py` (passo a passo no topo do arquivo).
 
 > O runbook detalhado de produção (provisionamento, DNS, credenciais, backup) é mantido
 > **fora do repositório**, apenas localmente.
