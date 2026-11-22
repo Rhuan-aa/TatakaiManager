@@ -68,9 +68,7 @@ TatakaiManager/
 ├── docker-compose.yml       # ambiente de desenvolvimento (Postgres + Mongo + back + front)
 ├── docker-compose.prod.yml  # self-host (Caddy à frente; back/DB só na rede interna)
 ├── Caddyfile                # reverse proxy com TLS/WSS automáticos (self-host)
-├── scripts/                 # dados de teste, seeds do catálogo e migração de produção
-├── AGENTS.md                # referência técnica (arquitetura, API, regras) para devs e agentes de IA
-└── PLANO_FICHA_DIGITAL.md   # plano e contratos das fases da ficha digital
+└── scripts/                 # dados de teste, seeds do catálogo e migração de produção
 ```
 
 ---
