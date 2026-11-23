@@ -1,5 +1,8 @@
 package com.tatakai.manager.sheet.service;
 
+import com.tatakai.manager.sheet.entity.ItemLocation;
+import com.tatakai.manager.sheet.service.rules.InventoryRules;
+import com.tatakai.manager.sheet.dto.request.MoveItemRequest;
 import com.tatakai.manager.sheet.dto.request.AddWoundRequest;
 import com.tatakai.manager.sheet.entity.WoundMark;
 import com.tatakai.manager.sheet.dto.response.WoundMarkResponse;
@@ -332,6 +335,64 @@ public class CharacterSheetService {
         if (sheet.getBuildStatus() == BuildStatus.IN_BUILD) {
             throw new SheetLockedException("A ficha está em Construção Inicial");
         }
+    }
+
+    // ---------------------------------------------------------------- inventário: mover e trocar itens
+
+    /** Dono ou Mestre movem um item (equipar, guardar, pôr num contêiner) ou trocam dois de lugar, sem aprovação. */
+    @Transactional
+    public CharacterSheetResponse moveItem(UUID sheetId, UUID itemId, MoveItemRequest req, UUID requesterId) {
+        CharacterSheet s = loadSheet(sheetId);
+        Access a = access(s, requesterId);
+        if (!a.privileged()) throw new AccessDeniedException("Apenas o dono da ficha ou o Mestre move itens");
+        List<InventoryItem> inv = s.getInventory();
+        InventoryItem item = findItem(s, itemId);
+        InventoryItem other = req.swapWithId() == null ? null : findItem(s, req.swapWithId());
+        if (other == item) throw new InvalidCharacterSheetException("Escolha outro item para trocar");
+
+        ItemLocation fromLoc = item.getLocation();
+        UUID fromBox = InventoryRules.areaOf(item, inv, this::containerOf);
+        ItemLocation toLoc = req.location();
+        UUID toBox = toLoc == ItemLocation.QUICK || toLoc == ItemLocation.PACK ? req.containerId() : null;
+        String before = locationText(fromLoc, fromBox, inv);
+
+        place(item, toLoc, toBox);
+        if (other != null) place(other, fromLoc, fromBox);
+        InventoryRules.requireEmptyIfUnworn(inv, item, this::containerOf);
+        if (other != null) InventoryRules.requireEmptyIfUnworn(inv, other, this::containerOf);
+        InventoryRules.check(inv, toLoc, toBox, this::containerOf, this::handsOf);
+        if (other != null) InventoryRules.check(inv, fromLoc, fromBox, this::containerOf, this::handsOf);
+
+        CharacterSheet saved = sheetRepository.save(s);
+        String after = locationText(toLoc, toBox, inv) + (other != null ? " (trocou com " + other.getName() + ")" : "");
+        activityLog.record(saved, requesterId, a.role(), ActivityCategory.INVENTORY, "MOVE_ITEM",
+                "item:" + item.getId(), item.getName() + ": " + before, after, null, null);
+        publish(SheetEvent.SHEET_UPDATED, saved, ActivityCategory.INVENTORY, "MOVE_ITEM", a.actorName());
+        return toResponse(saved, true, Set.of());
+    }
+
+    private static void place(InventoryItem i, ItemLocation loc, UUID box) {
+        i.setLocation(loc);
+        i.setContainerId(box);
+        if (loc != ItemLocation.HAND) i.setTwoHanded(false);
+    }
+
+    private EquipmentCatalog.Container containerOf(InventoryItem i) {
+        return equipmentCatalog.find(i.getEquipmentKey()).map(EquipmentCatalog.Def::container).orElse(null);
+    }
+
+    private int handsOf(InventoryItem i) {
+        return weaponCatalog.find(i.getWeaponKey())
+                .map(w -> w.forcesTwoHands() || (w.variable() && i.isTwoHanded()) ? 2 : 1).orElse(1);
+    }
+
+    private static String locationText(ItemLocation loc, UUID box, List<InventoryItem> inv) {
+        String name = switch (loc) {
+            case HAND -> "Em mãos"; case QUICK -> "Acesso Rápido"; case PACK -> "Carregando";
+            case WORN -> "Vestido"; case DROPPED -> "No chão";
+        };
+        if (box == null) return name;
+        return name + " · " + inv.stream().filter(i -> box.equals(i.getId())).map(InventoryItem::getName).findFirst().orElse("?");
     }
 
     // ---------------------------------------------------------------- ferimentos desenhados (§53.3)

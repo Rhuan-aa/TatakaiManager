@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import SheetTabs from './SheetTabs';
 import SheetImagePicker from './SheetImagePicker';
 import LimiterRadar from './LimiterRadar';
@@ -6,7 +6,7 @@ import InjuryBoard from './InjuryBoard';
 import FighterPlaceholder from './FighterPlaceholder';
 import SheetVisibilityPanel from './SheetVisibilityPanel';
 import NpcVisibilityButton from './NpcVisibilityButton';
-import { exportSheet, getSheetImageUrl, getNpcSheetMartial, setNpcTracking } from '../../api/characterSheets';
+import { exportSheet, getSheet, getSheetImageUrl, getNpcSheetMartial, listChangeRequests, setNpcTracking } from '../../api/characterSheets';
 import { GRADS, lab } from '../catalog/artLabels';
 import { listTraits } from '../../api/catalog';
 import { Effects, Variations } from '../catalog/CatalogManager';
@@ -18,6 +18,7 @@ import { useToast } from '../../contexts/ToastContext';
 import CharacterSheetForm from './CharacterSheetForm';
 import GmAdjustmentPanel from './GmAdjustmentPanel';
 import { DeleteSheetBlock, ChangeRequestsBlock } from './SheetManagePanels';
+import { ChangedTag, EditBar, EditCtx, EditField, PendingBar, TraitAdder, changedParts, readOnlyCtl, useEditDraft } from './SheetEditMode';
 import RollsPanel from './RollsPanel';
 import ActivityLogPanel from './ActivityLogPanel';
 import MartialPanel from './MartialPanel';
@@ -71,13 +72,17 @@ function InlineNumber({ value, label: lbl, onSave }) {
   );
 }
 
-function Meter({ name, value, max, color, onSave }) {
+function Meter({ name, value, max, color, onSave, maxEdit }) {
+  const ed = useContext(EditCtx);
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
     <div>
       <div className="flex items-baseline justify-between text-xs uppercase">
         <span className="font-bold">{name}</span>
-        <span><InlineNumber value={value} label={name} onSave={onSave} /> / {max}</span>
+        <span><InlineNumber value={value} label={name} onSave={onSave} /> / {ed && maxEdit
+          ? <EditField label={`${name} máximo`} min={1} before={maxEdit.before} after={ed.draft.max[maxEdit.key] ?? maxEdit.before}
+            onChange={(n) => ed.setMax(maxEdit.key, n)} readOnly={ed.readOnly} />
+          : max}</span>
       </div>
       <div className="meter" role="meter" aria-label={name} aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
         <div className="meter-fill" style={{ width: `${pct}%`, '--meter-color': color }} />
@@ -183,6 +188,7 @@ function gainsFor(sheet, en) {
 }
 
 function AttributeCard({ a, v, m, lim, bandKey, gains }) {
+  const ed = useContext(EditCtx);
   const inapt = INAPT_BANDS.includes(bandKey);
   const pct = lim > 0 ? Math.min(100, Math.round((v / lim) * 100)) : 0;
   return (
@@ -196,7 +202,10 @@ function AttributeCard({ a, v, m, lim, bandKey, gains }) {
         </span>
       </div>
       <div className="flex flex-col gap-1 p-2">
-        <div className="panel-title text-4xl leading-none">{v}</div>
+        {ed ? (
+          <EditField label={a.label} before={v} after={ed.draft.attrs[a.enumName] ?? v}
+            onChange={(n) => ed.setAttr(a.enumName, n)} className="text-2xl" readOnly={ed.readOnly} />
+        ) : <div className="panel-title text-4xl leading-none">{v}</div>}
         {gains && gains.items.length > 0 && (
           <div className="flex flex-wrap gap-1 text-[10px]" title={gains.items.join('\n')}>
             {gains.flat !== 0 && <span className="tag-accent">{gains.flat > 0 ? '+' : ''}{gains.flat} traços</span>}
@@ -218,10 +227,10 @@ function AttributeCard({ a, v, m, lim, bandKey, gains }) {
   );
 }
 
-function Block({ id, title, aside, collapsible, defaultOpen = false, children }) {
+function Block({ id, title, aside, collapsible, defaultOpen = false, changed, children }) {
   const [open, setOpen] = useState(!collapsible || defaultOpen);
   return (
-    <section id={id} className="panel scroll-mt-4 p-4">
+    <section id={id} className={`panel scroll-mt-4 p-4${changed ? ' block-changed' : ''}`}>
       <div className={`flex flex-wrap items-start gap-2 ${open ? 'mb-4' : ''}`}>
         {collapsible ? (
           <button type="button" className="flex flex-1 items-start gap-2 text-left" aria-expanded={open}
@@ -230,6 +239,7 @@ function Block({ id, title, aside, collapsible, defaultOpen = false, children })
             <span aria-hidden="true" className="ml-auto text-xs">{open ? '▲' : '▼'}</span>
           </button>
         ) : <h3 className="panel-title ribbon">{title}</h3>}
+        {changed && <ChangedTag />}
         {aside && <span className="ml-auto">{aside}</span>}
       </div>
       <div className={`collapsible-body${open ? '' : ' is-collapsed'}`}>{children}</div>
@@ -239,6 +249,7 @@ function Block({ id, title, aside, collapsible, defaultOpen = false, children })
 
 // V-13: recolhido mostra nome + tags; ao abrir, busca efeitos/variações no catálogo (versão atual, não o snapshot).
 function TraitItem({ t, campaignId, isNpc }) {
+  const ed = useContext(EditCtx);
   const [full, setFull] = useState();
   async function load(e) {
     if (!e.currentTarget.open || full !== undefined) return;
@@ -248,9 +259,10 @@ function TraitItem({ t, campaignId, isNpc }) {
       setFull(null);
     }
   }
+  const removed = ed?.draft.remove.includes(t.id);
   return (
-    <li>
-      <details className="bubble p-2 text-sm" onToggle={load}>
+    <li className={`${ed ? 'flex items-start gap-2' : ''}${removed ? ' edit-changed' : ''}`}>
+      <details className={`bubble min-w-0 flex-1 p-2 text-sm${removed ? ' edit-removed' : ''}`} onToggle={load}>
         <summary className="flex cursor-pointer flex-wrap items-center gap-2">
           <strong className="panel-title">{t.name}</strong>
           <span className="tag" style={rarityTagStyle(t.rarity)}>{RARITY[t.rarity]?.label ?? t.rarity}</span>
@@ -263,6 +275,12 @@ function TraitItem({ t, campaignId, isNpc }) {
           {full && <Variations variations={full.variations} />}
         </div>
       </details>
+      {ed && !ed.readOnly && (
+        <button type="button" className="btn-ghost shrink-0" onClick={() => ed.toggleRemove(t.id)}>
+          {removed ? 'Manter' : 'Remover'}
+        </button>
+      )}
+      {removed && ed.readOnly && <span className="tag-accent tag shrink-0 m-1">será removido</span>}
     </li>
   );
 }
@@ -352,6 +370,22 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const { user } = useAuth();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const editCtl = useEditDraft();
+  // Pedido de alteração pendente (dono e Mestre veem; os outros jogadores não).
+  const [pendingReq, setPendingReq] = useState(null);
+  const [pendingRev, setPendingRev] = useState(0);
+  const tracksChanges = sheet.npcId == null && sheet.buildStatus === 'COMPLETED'
+    && (sheet.ownerUserId === user?.userId || isCampaignMaster);
+  useEffect(() => {
+    if (!tracksChanges) { setPendingReq(null); return undefined; }
+    let active = true;
+    listChangeRequests(sheet.id)
+      .then((list) => active && setPendingReq(list.find((r) => r.status === 'PENDING') ?? null))
+      .catch(() => active && setPendingReq(null));
+    return () => { active = false; };
+  }, [tracksChanges, sheet.id, sheet.version, refreshKey, pendingRev]);
+  const pendingCtl = useMemo(() => (pendingReq ? readOnlyCtl(sheet, pendingReq.changes) : null), [pendingReq, sheet]);
   const [addingItem, setAddingItem] = useState(false);
   const condFx = useSheetConditions(campaignId, sheet.id);
   const [reason, setReason] = useState('');
@@ -361,7 +395,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const isMaster = isNpc ? isOwner : isCampaignMaster;
   const draft = isNpc || sheet.buildStatus === 'DRAFT';
 
-  const FOCUS_TAB = { martial: 'martial', notebook: 'martial', progress: 'progress', approval: 'settings' };
+  const FOCUS_TAB = { martial: 'martial', notebook: 'martial', progress: 'progress', approval: 'settings', changes: 'overview' };
   const tabKey = `sheetTab:${sheet.id}`;
   const [tab, setTab] = useState(() => {
     if (FOCUS_TAB[focusSection]) return FOCUS_TAB[focusSection];
@@ -434,6 +468,10 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
 
   const { resources: r, fatigue: f, progress: p, derived: d } = sheet;
   const canEditResources = isOwner || isMaster;
+  // Modo edição: só o dono (não Mestre) de ficha pronta; o Mestre já ajusta direto.
+  const canEditMode = !isNpc && isOwner && !isMaster && sheet.buildStatus === 'COMPLETED';
+  const ed = pendingCtl ?? (editMode && canEditMode ? editCtl : null);
+  const parts = changedParts(sheet, ed);
   const saveResource = (key) => canEditResources ? async (n) => {
     try {
       onChange(await updateResources(sheet.id, { [key]: n }));
@@ -458,7 +496,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const radarAxes = axes.length >= 3 ? axes : null;
 
   const attrBlock = show(sheet.attributes) && (
-      <Block title="Atributos">
+      <Block title="Atributos" changed={parts.attrs}>
         {!sheet.attributes ? <Hidden name="atributos" /> : (
           <div className="sheet-attrs">
             {ATTRS.map((a) => (
@@ -471,7 +509,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   );
   // NPC separa TRAITS de CLANS; no jogador as duas vêm juntas.
   const traitsBlock = show(sheet.traits || sheet.clans) && (
-      <Block title="Traços e clãs">
+      <Block title="Traços e clãs" changed={parts.traits}>
         {!sheet.traits && !sheet.clans ? <Hidden name="traços e clãs" /> : (
           <div className="flex flex-col gap-3">
             {sheet.traits && (sheet.traits.length === 0 ? <p className="text-sm">Nenhum traço.</p> : (
@@ -479,6 +517,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
                 {sheet.traits.map((t) => <TraitItem key={t.id} t={t} campaignId={campaignId} isNpc={isNpc} />)}
               </ul>
             ))}
+            {ed && <TraitAdder ctl={ed} campaignId={campaignId ?? sheet.campaignId} />}
             {(sheet.clans ?? []).map((c) => (
               <div key={c.id} className="bubble p-2 text-sm">
                 <strong>Clã {c.name}</strong>
@@ -535,14 +574,14 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
             })}
           </div>
         )}
-        {show(r || f) && <Block title="Recursos">
+        {show(r || f) && <Block title="Recursos" changed={parts.resources}>
           {!r && !f ? <Hidden name="recursos" /> : (
             <>
               {r && (
                 <div className="flex flex-col gap-3">
-                  {r.currentHp != null && <Meter name="HP" value={r.currentHp} max={r.effectiveHpMax} color="var(--meter-hp)" onSave={saveResource('currentHp')} />}
-                  {r.currentSp != null && <Meter name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" onSave={saveResource('currentSp')} />}
-                  {r.currentKp != null && <Meter name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" onSave={saveResource('currentKp')} />}
+                  {r.currentHp != null && <Meter name="HP" value={r.currentHp} max={r.effectiveHpMax} color="var(--meter-hp)" onSave={saveResource('currentHp')} maxEdit={{ key: 'HP', before: r.hpMax }} />}
+                  {r.currentSp != null && <Meter name="SP" value={r.currentSp} max={r.spMax} color="var(--meter-sp)" onSave={saveResource('currentSp')} maxEdit={{ key: 'SP', before: r.spMax }} />}
+                  {r.currentKp != null && <Meter name="PQ" value={r.currentKp} max={r.kpMax} color="var(--meter-kp)" onSave={saveResource('currentKp')} maxEdit={{ key: 'KP', before: r.kpMax }} />}
                 </div>
               )}
               {r?.openWounds != null && (
@@ -569,6 +608,16 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
                   <ProgressChip title="EL" value={p.fightExperience} color="var(--chip-el)"
                     bar={{ value: p.fightExperience - (KEIKEN_MIN[p.keiken] ?? 0), max: p.nextKeikenAt == null ? 0 : p.nextKeikenAt - (KEIKEN_MIN[p.keiken] ?? 0) }} />
                   <ProgressChip title="PS pendentes" value={p.pendingOvercomePoints} color="var(--chip-ps)" />
+                  {ed && (!ed.readOnly || ed.draft.el != null || ed.draft.ps != null) && (
+                    <div className="flex items-end gap-3">
+                      <label className="label">EL (só aumenta)
+                        <EditField label="EL" min={p.fightExperience} before={p.fightExperience} after={ed.draft.el ?? p.fightExperience} onChange={ed.setEl} readOnly={ed.readOnly} />
+                      </label>
+                      <label className="label">PS pendentes
+                        <EditField label="PS pendentes" before={p.pendingOvercomePoints} after={ed.draft.ps ?? p.pendingOvercomePoints} onChange={ed.setPs} readOnly={ed.readOnly} />
+                      </label>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -614,7 +663,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   );
 
   const inventory = (
-    <Block title="Inventário" aside={isMaster && sheet.inventory && (
+    <Block title="Inventário" changed={parts.inventory} aside={isMaster && sheet.inventory && (
       <button type="button" className={addingItem ? 'btn-ghost' : 'btn-primary'} aria-expanded={addingItem}
         onClick={() => setAddingItem((v) => !v)}>
         {addingItem ? 'Fechar' : <><Icon name="plus" size={16} /> Adicionar item</>}
@@ -627,7 +676,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
       )}
       {sheet.money == null || !sheet.inventory ? <Hidden name="inventário" /> : (
         <InventoryGrid items={sheet.inventory} money={sheet.money} derived={d} artUrl={isNpc ? null : bodyUrl ?? portraitUrl} campaignId={campaignId ?? sheet.campaignId}
-          sheetId={sheet.id} canUse={seesPrivate && sheet.combatReady} onChange={onChange} />
+          sheetId={sheet.id} canUse={seesPrivate && sheet.combatReady} canMove={seesPrivate} sheet={sheet} onChange={onChange} />
       )}
     </Block>
   );
@@ -699,9 +748,8 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         </Block>
       )}
       {!isNpc && sheet.buildStatus === 'COMPLETED' && (isOwner || isMaster) && (
-        <Block id="sheet-changes" title={isMaster ? 'Pedidos de ajuste' : 'Editar com aprovação'}>
-          <ChangeRequestsBlock sheet={sheet} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
-            onChange={onChange} />
+        <Block title="Histórico de pedidos de alteração" collapsible>
+          <ChangeRequestsBlock sheet={sheet} refreshKey={pendingRev + rev} />
         </Block>
       )}
       {!isNpc && (isOwner || isMaster) && onDeleted && (
@@ -734,11 +782,11 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   );
 
   const tabs = [
-    { id: 'overview', label: 'Visão Geral', node: <div className="flex flex-col gap-4">{overview}{traitsBlock}</div> },
+    { id: 'overview', label: 'Visão Geral', alert: parts.overview, node: <div className="flex flex-col gap-4">{overview}{traitsBlock}</div> },
     seesPrivate && { id: 'martial', label: 'Artes Marciais', node: martial },
     npcView && ['ARTS', 'BASES', 'TECHNIQUES'].some((s) => sheet.visibleSections.includes(s))
       && { id: 'martial', label: 'Artes Marciais', node: <NpcMartialView campaignId={campaignId} npcId={sheet.npcId} /> },
-    show(sheet.inventory) && { id: 'inventory', label: 'Inventário', node: inventory },
+    show(sheet.inventory) && { id: 'inventory', label: 'Inventário', alert: parts.inventory, node: inventory },
     hasProgress && { id: 'progress', label: 'Progressão', node: progress },
     seesPrivate && { id: 'rolls', label: 'Rolagens', node: rolls },
     hasSettings && { id: 'settings', label: 'Configurações', node: settings, alert: pendingApproval },
@@ -746,6 +794,7 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
   const current = tabs.find((t) => t.id === tab) ?? tabs[0];
 
   return (
+    <EditCtx.Provider value={ed}>
     <div className="page-gutter flex flex-col">
       {r && <BleedEdge wounds={r.openWounds} page />}
       <ConditionFx entries={[...(r?.openWounds > 0 ? [{ id: `w${r.openWounds}`, anchorId: null, key: 'FERIDA', name: `Feridas abertas ${r.openWounds}` }] : []), ...condFx]} />
@@ -764,6 +813,15 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
           window.dispatchEvent(new Event('beforeprint'));
           setTimeout(() => window.print(), 600);
         }}>Imprimir / PDF</button>
+        {canEditMode && !pendingReq && (
+          <EditBar sheet={sheet} ctl={editCtl} on={editMode} setOn={setEditMode} onSent={() => setPendingRev((n) => n + 1)} />
+        )}
+        {pendingReq && (
+          <PendingBar sheet={sheet} request={pendingReq} isMaster={isMaster} onDone={async () => {
+            setPendingRev((n) => n + 1);
+            try { onChange(await getSheet(sheet.id)); } catch { /* o WS recarrega */ }
+          }} />
+        )}
       </div>
       {!isNpc && <p className="caption self-start">Jogador · {sheet.ownerName}</p>}
       {printing ? (
@@ -785,5 +843,6 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
         </>
       )}
     </div>
+    </EditCtx.Provider>
   );
 }

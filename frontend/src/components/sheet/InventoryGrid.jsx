@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import Icon from '../ui/Icon';
 import { ITEM_LOCATION } from '../ui/gear';
 import { useConsumables, useEquipment, useWeapons } from '../ui/useCatalog';
 import FighterPlaceholder from './FighterPlaceholder';
 import ItemImage, { itemRef, useItemImageIndex } from '../ui/ItemImage';
-import { consumeItem } from '../../api/characterSheets';
+import { consumeItem, moveItem } from '../../api/characterSheets';
+import { EditCtx, EditField } from './SheetEditMode';
+import GmAdjustmentPanel from './GmAdjustmentPanel';
 import { parseApiError } from '../../api/parseApiError';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -39,8 +41,31 @@ const KINDS = [
 const kindOf = (i) => KINDS.find((k) => k.id === (i.weaponKey ? 'weapon' : i.equipmentKey ? 'equipment' : i.consumableKey ? 'consumable' : 'other'));
 const locOf = (i) => i.location ?? 'PACK';
 const states = (i) => [i.broken && 'quebrada', i.jammed && 'travada', i.damaged && !i.broken && 'danificada', i.cocked && 'engatilhada'].filter(Boolean);
-// lados do boneco: [local, mínimo de espaços desenhados (só visual, sem limite de regra)]
-const SIDES = [[['HAND', 2], ['QUICK', 2]], [['WORN', 4]]];
+// Espaços (espelha InventoryRules no backend): mãos 2; sem contêiner 2 no Acesso Rápido e 4 em Carregando;
+// cada contêiner vestido (mochila, cinto, pochete…) abre os próprios espaços. Vestido e chão não têm limite.
+const BASE_SLOTS = { HAND: 2, QUICK: 2, PACK: 4 };
+const boxOf = (equipment, i) => (i && locOf(i) === 'WORN' && equipment[i.equipmentKey]?.container) || null;
+/** Contêiner em que o item está de fato (vestido e do mesmo local); senão o espaço básico. */
+function areaOf(i, items, equipment) {
+  if (!i.containerId || !['QUICK', 'PACK'].includes(locOf(i))) return null;
+  const box = items.find((x) => x.id === i.containerId);
+  return boxOf(equipment, box)?.location === locOf(i) ? box.id : null;
+}
+/** Áreas do inventário, na ordem do boneco: lado esquerdo (mãos, acesso rápido) e direito (vestido, carregando). */
+function inventoryAreas(items, equipment) {
+  const boxes = items.filter((i) => boxOf(equipment, i));
+  const make = (loc, box) => {
+    const k = box ? boxOf(equipment, box) : null;
+    const list = items.filter((i) => locOf(i) === loc
+      && (loc === 'QUICK' || loc === 'PACK' ? areaOf(i, items, equipment) === (box?.id ?? null) : true));
+    const cap = k ? k.slots : BASE_SLOTS[loc] ?? null;
+    const limits = k ? [k.maxItemKg != null && `até ${kg(k.maxItemKg)} kg/item`, k.maxKg != null && `máx. ${kg(k.maxKg)} kg`].filter(Boolean) : [];
+    return { key: box ? `${loc}:${box.id}` : loc, loc, box: box?.id ?? null, label: box ? box.name : ITEM_LOCATION[loc],
+      cap, items: list, limits, full: cap != null && list.length >= cap };
+  };
+  const inLoc = (loc) => [make(loc), ...boxes.filter((b) => boxOf(equipment, b).location === loc).map((b) => make(loc, b))];
+  return { sides: [[make('HAND'), ...inLoc('QUICK')], [make('WORN'), ...inLoc('PACK')]], dropped: make('DROPPED') };
+}
 
 /** Linhas [rótulo, valor] do catálogo para o item (armas, proteções, consumíveis). */
 function catalogRows(i, w, e, c) {
@@ -71,12 +96,12 @@ function Pic({ item, images, campaignId, size, thumb = true, className = 'inv-pi
   );
 }
 
-function Slot({ item, on, onSelect, images, campaignId }) {
+function Slot({ item, on, onSelect, images, campaignId, removed }) {
   if (!item) return <li className="inv-slot inv-empty" aria-label="Espaço vazio"><span aria-hidden="true">Vazio</span></li>;
   const s = states(item);
   return (
     <li>
-      <button type="button" className="inv-slot" aria-pressed={on} onClick={() => onSelect(item.id)}
+      <button type="button" className={`inv-slot${removed ? ' edit-changed edit-removed' : ''}`} aria-pressed={on} onClick={() => onSelect(item.id)}
         aria-label={`${item.name}, ${ITEM_LOCATION[locOf(item)]}${s.length ? `, ${s.join(', ')}` : ''}`}>
         <Pic item={item} images={images} campaignId={campaignId} size={26} />
         <span className="inv-slot-name">{item.name}</span>
@@ -88,7 +113,44 @@ function Slot({ item, on, onSelect, images, campaignId }) {
 }
 
 /** Inventário: boneco com o que está equipado, lista por tipo e ficha do item selecionado. */
-export default function InventoryGrid({ items, money, derived, artUrl, campaignId, sheetId, canUse, onChange }) {
+/** Escolhe para onde levar o item; área cheia pede com qual item trocar. */
+function MoveBox({ item, areas, busy, onMove }) {
+  const all = [...areas.sides.flat(), areas.dropped];
+  const here = all.find((a) => a.items.some((i) => i.id === item.id));
+  const [to, setTo] = useState('');
+  const [swap, setSwap] = useState('');
+  const target = all.find((a) => a.key === to);
+  const needsSwap = target?.full;
+  return (
+    <div className="inv-move flex flex-col gap-2">
+      <label className="label">
+        Mover para
+        <select className="field mt-1 w-full" value={to} onChange={(e) => { setTo(e.target.value); setSwap(''); }}>
+          <option value="">Escolha…</option>
+          {all.filter((a) => a.key !== here?.key).map((a) => (
+            <option key={a.key} value={a.key}>{a.label}{a.cap != null ? ` (${a.items.length}/${a.cap}${a.full ? ', cheio' : ''})` : ''}</option>
+          ))}
+        </select>
+      </label>
+      {needsSwap && (
+        <label className="label">
+          Trocar com
+          <select className="field mt-1 w-full" value={swap} onChange={(e) => setSwap(e.target.value)}>
+            <option value="">Escolha um item de {target.label}…</option>
+            {target.items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+          </select>
+        </label>
+      )}
+      <button type="button" className="btn-primary self-start" disabled={busy || !target || (needsSwap && !swap)}
+        onClick={async () => { if (await onMove(target, swap || null)) { setTo(''); setSwap(''); } }}>
+        {needsSwap ? 'Trocar' : 'Mover'}
+      </button>
+    </div>
+  );
+}
+
+/** Inventário: boneco com o que está equipado, lista por tipo e ficha do item selecionado. */
+export default function InventoryGrid({ items, money, derived, artUrl, campaignId, sheetId, canUse, canMove, sheet, onChange }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const images = useItemImageIndex(campaignId);
@@ -97,6 +159,25 @@ export default function InventoryGrid({ items, money, derived, artUrl, campaignI
   const consumables = useConsumables();
   const [sel, setSel] = useState(null);
   const [kind, setKind] = useState('all');
+  const ed = useContext(EditCtx);
+  const editable = ed && !ed.readOnly;
+  const [asking, setAsking] = useState(false);
+  const removed = (id) => !!ed?.draft.removeItems.includes(id);
+  const areas = inventoryAreas(items, equipment);
+
+  async function move(target, swapWithId) {
+    setBusy(true);
+    try {
+      onChange?.(await moveItem(sheetId, cur.id, { location: target.loc, containerId: target.box, swapWithId }));
+      toast(swapWithId ? 'Itens trocados.' : `${cur.name} → ${target.label}`, 'success');
+      return true;
+    } catch (err) {
+      toast(parseApiError(err).message, 'error');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
   const d = derived;
   const pct = d?.carryKg > 0 ? Math.min(100, Math.round((d.carriedKg / d.carryKg) * 100)) : 0;
   const load = d?.loadState ?? 'FREE';
@@ -114,7 +195,11 @@ export default function InventoryGrid({ items, money, derived, artUrl, campaignI
   return (
     <div className="inv">
       <div className="inv-head">
-        {money != null && <span className="inv-money"><b>{money}</b> Diárias</span>}
+        {money != null && (ed ? (
+          <span className="inv-money">
+            <EditField label="Diárias" before={money} after={ed.draft.money ?? money} onChange={ed.setMoney} readOnly={ed.readOnly} /> Diárias
+          </span>
+        ) : <span className="inv-money"><b>{money}</b> Diárias</span>)}
         {d && (
           <div className="inv-load">
             <span className="caption">Carga {kg(d.carriedKg)} / {kg(d.carryKg)} kg</span>
@@ -128,19 +213,46 @@ export default function InventoryGrid({ items, money, derived, artUrl, campaignI
         )}
       </div>
 
+      {ed && (ed.draft.addItems.length > 0 || editable) && (
+        <div className="inv-requests flex flex-col gap-2">
+          {ed.draft.addItems.map((it, n) => (
+            <div key={n} className="edit-changed flex items-center justify-between gap-2 p-2 text-sm">
+              <span><strong>{it.name}</strong> ×{it.quantity} <span className="tag-accent tag">novo</span></span>
+              {editable && <button type="button" className="btn-ghost" onClick={() => ed.dropItem(n)}>Desfazer</button>}
+            </div>
+          ))}
+          {editable && (asking ? (
+            <div className="well p-3">
+              <GmAdjustmentPanel sheet={sheet} campaignId={campaignId} only="ADD_ITEM"
+                onSubmit={async (body) => { ed.addItem(body.item); setAsking(false); return null; }} />
+              <button type="button" className="btn-ghost mt-2" onClick={() => setAsking(false)}>Fechar</button>
+            </div>
+          ) : (
+            <button type="button" className="btn-secondary self-start" onClick={() => setAsking(true)}>
+              <Icon name="plus" size={16} /> Pedir item
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="inv-stage">
         <section className="inv-doll" aria-label="Equipado">
           <div className="inv-figure" aria-hidden="true">{artUrl ? <img src={artUrl} alt="" /> : <FighterPlaceholder className="inv-ph" />}</div>
-          {SIDES.map((side, n) => (
+          {areas.sides.map((side, n) => (
             <div key={n} className={`inv-side inv-side-${n}`}>
-              {side.map(([loc, min]) => {
-                const list = items.filter((i) => locOf(i) === loc);
-                const slots = [...list, ...Array(Math.max(0, min - list.length)).fill(null)];
+              {side.map((a) => {
+                const min = a.cap ?? (a.loc === 'WORN' ? 4 : 0);
+                const slots = [...a.items, ...Array(Math.max(0, min - a.items.length)).fill(null)];
+                const over = a.cap != null && a.items.length > a.cap;
                 return (
-                  <div key={loc}>
-                    <h4 className="inv-loc">{ITEM_LOCATION[loc]}</h4>
+                  <div key={a.key}>
+                    <h4 className="inv-loc">{a.label}{a.cap != null && ` ${a.items.length}/${a.cap}`}</h4>
+                    {(a.limits.length > 0 || over) && (
+                      <p className="hint">{[...a.limits, over && 'acima do limite: guarde algo'].filter(Boolean).join(' · ')}</p>
+                    )}
                     <ul className="inv-slots">
-                      {slots.map((i, x) => <Slot key={i?.id ?? x} item={i} on={i?.id === cur?.id} onSelect={setSel} images={images} campaignId={campaignId} />)}
+                      {slots.map((i, x) => <Slot key={i?.id ?? x} item={i} on={i?.id === cur?.id} onSelect={setSel} images={images}
+                        campaignId={campaignId} removed={i && removed(i.id)} />)}
                     </ul>
                   </div>
                 );
@@ -165,7 +277,7 @@ export default function InventoryGrid({ items, money, derived, artUrl, campaignI
             <ul className="inv-list">
               {listed.map((i) => (
                 <li key={i.id}>
-                  <button type="button" className="inv-row" aria-pressed={i.id === cur.id} onClick={() => setSel(i.id)}>
+                  <button type="button" className={`inv-row${removed(i.id) ? ' edit-changed edit-removed' : ''}`} aria-pressed={i.id === cur.id} onClick={() => setSel(i.id)}>
                     <Pic item={i} images={images} campaignId={campaignId} size={22} />
                     <span className="inv-row-name">{i.name}</span>
                     {i.quantity > 1 && <span className="inv-row-qty">×{i.quantity}</span>}
@@ -194,6 +306,13 @@ export default function InventoryGrid({ items, money, derived, artUrl, campaignI
               {cur.twoHanded && <div className="inv-stat"><dt>Empunhadura</dt><dd>Duas mãos</dd></div>}
             </dl>
             {st.length > 0 && <p className="flex flex-wrap gap-1">{st.map((s) => <span key={s} className="tag tag-accent">{s}</span>)}</p>}
+            {removed(cur.id) && <p><span className="tag-accent tag">remoção pedida</span></p>}
+            {editable && (
+              <button type="button" className="btn-secondary self-start" onClick={() => ed.toggleRemoveItem(cur.id)}>
+                {removed(cur.id) ? 'Manter item' : 'Pedir remoção'}
+              </button>
+            )}
+            {canMove && <MoveBox key={cur.id} item={cur} areas={areas} busy={busy} onMove={move} />}
             {text.map((t) => <p key={t} className="text-sm">{t}</p>)}
             {canUse && cur.quantity > 0 && SHEET_USE[cur.consumableKey ?? cur.equipmentKey] && (
               <p className="flex flex-wrap gap-2">

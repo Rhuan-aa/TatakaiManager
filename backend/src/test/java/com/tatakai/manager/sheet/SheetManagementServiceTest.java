@@ -49,6 +49,7 @@ class SheetManagementServiceTest {
     @Mock private ApplicationEventPublisher events;
     @Mock private EntityManager em;
     @Mock private Query query;
+    @Mock private com.tatakai.manager.sheet.service.SheetActivityLogService activityLog;
 
     private SheetManagementService service;
     private User master, owner, other;
@@ -57,7 +58,7 @@ class SheetManagementServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SheetManagementService(sheetRepository, memberRepository, changeRepository, sheetService, events, em);
+        service = new SheetManagementService(sheetRepository, memberRepository, changeRepository, sheetService, events, em, activityLog);
         Campaign campaign = Campaign.builder().id(UUID.randomUUID()).build();
         master = User.builder().id(UUID.randomUUID()).build();
         owner = User.builder().id(UUID.randomUUID()).build();

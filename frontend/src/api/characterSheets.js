@@ -200,3 +200,8 @@ export async function reviewChanges(sheetId, requestId, { approved, note }) {
 export async function cancelChanges(sheetId, requestId) {
   await client.delete(`/character-sheets/${sheetId}/change-requests/${requestId}`);
 }
+
+export async function moveItem(sheetId, itemId, { location, containerId = null, swapWithId = null }) {
+  const { data } = await client.patch(`/character-sheets/${sheetId}/inventory/${itemId}/location`, { location, containerId, swapWithId });
+  return data;
+}

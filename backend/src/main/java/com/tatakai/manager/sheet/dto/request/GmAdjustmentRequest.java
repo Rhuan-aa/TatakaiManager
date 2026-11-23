@@ -13,7 +13,8 @@ import java.util.UUID;
 
 public record GmAdjustmentRequest(
         @NotNull GmAction action,
-        String field,
+        /** Campo da ação; em ADD_TRAIT de pedido do jogador leva o nome do traço (só para exibir). */
+        @Size(max = 100) @Pattern(regexp = "^[^<>]*$", message = "caracteres < e > não são permitidos") String field,
         Integer value,
         @NotBlank @Size(max = 500) @Pattern(regexp = "^[^<>]*$", message = "caracteres < e > não são permitidos") String reason,
         @Valid InjuryPayload injury,

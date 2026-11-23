@@ -12,6 +12,7 @@ import com.tatakai.manager.sheet.dto.response.ChangeRequestResponse;
 import com.tatakai.manager.sheet.dto.response.SheetUpdateMessage;
 import com.tatakai.manager.sheet.dto.response.SheetUpdateMessage.SheetEvent;
 import com.tatakai.manager.sheet.entity.ActivityCategory;
+import com.tatakai.manager.sheet.entity.ActorRole;
 import com.tatakai.manager.sheet.entity.CharacterSheet;
 import com.tatakai.manager.sheet.entity.SheetChangeRequest;
 import com.tatakai.manager.sheet.entity.SheetChangeStatus;
@@ -19,6 +20,7 @@ import com.tatakai.manager.sheet.exception.CharacterSheetNotFoundException;
 import com.tatakai.manager.sheet.exception.InvalidCharacterSheetException;
 import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
 import com.tatakai.manager.sheet.repository.SheetChangeRequestRepository;
+import com.tatakai.manager.sheet.service.rules.ChangeSummary;
 
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
@@ -45,10 +47,12 @@ public class SheetManagementService {
     private final CharacterSheetService sheetService;
     private final ApplicationEventPublisher events;
     private final EntityManager em;
+    private final SheetActivityLogService activityLog;
 
     public SheetManagementService(CharacterSheetRepository sheetRepository, CampaignMemberRepository memberRepository,
                                   SheetChangeRequestRepository changeRepository, CharacterSheetService sheetService,
-                                  ApplicationEventPublisher events, EntityManager em) {
+                                  ApplicationEventPublisher events, EntityManager em, SheetActivityLogService activityLog) {
+        this.activityLog = activityLog;
         this.sheetRepository = sheetRepository;
         this.memberRepository = memberRepository;
         this.changeRepository = changeRepository;
@@ -93,15 +97,17 @@ public class SheetManagementService {
         SheetChangeRequest saved = changeRepository.save(SheetChangeRequest.builder()
                 .sheetId(sheetId).requesterId(requesterId).status(SheetChangeStatus.PENDING)
                 .changes(req.changes()).build());
+        activityLog.record(sheet, requesterId, ActorRole.PLAYER, ActivityCategory.GM_ADJUSTMENT, "PROPOSE_CHANGES",
+                null, null, String.join("; ", ChangeSummary.describeAll(sheet, req.changes())), null, null);
         publish(sheet, "PROPOSE_CHANGES");
-        return toResponse(saved);
+        return toResponse(saved, sheet);
     }
 
     @Transactional(readOnly = true)
     public List<ChangeRequestResponse> list(UUID sheetId, UUID requesterId) {
         CharacterSheet sheet = playerSheet(sheetId);
         access(sheet, requesterId);
-        return changeRepository.findBySheetIdOrderByCreatedAtDesc(sheetId).stream().map(this::toResponse).toList();
+        return changeRepository.findBySheetIdOrderByCreatedAtDesc(sheetId).stream().map(r -> toResponse(r, sheet)).toList();
     }
 
     /** Aprovar aplica todos os ajustes como Mestre, na mesma transação: se um falhar, nenhum vale. */
@@ -112,6 +118,10 @@ public class SheetManagementService {
             throw new AccessDeniedException("Apenas o Mestre pode realizar esta ação");
         }
         SheetChangeRequest cr = pending(sheetId, requestId);
+        // resumo antes de aplicar: guarda os valores de antes de cada alteração
+        List<String> lines = ChangeSummary.describeAll(sheet, cr.getChanges());
+        String summary = String.join("; ", lines);
+        cr.setSummary(String.join("\n", lines));
         if (req.approved()) {
             for (GmAdjustmentRequest change : cr.getChanges()) {
                 sheetService.applyGmAdjustment(sheetId, change, requesterId);
@@ -120,8 +130,11 @@ public class SheetManagementService {
         cr.setStatus(req.approved() ? SheetChangeStatus.APPROVED : SheetChangeStatus.REJECTED);
         cr.setReviewNote(req.note());
         cr.setReviewedAt(Instant.now());
-        publish(sheet, req.approved() ? "APPROVE_CHANGES" : "REJECT_CHANGES");
-        return toResponse(changeRepository.save(cr));
+        String action = req.approved() ? "APPROVE_CHANGES" : "REJECT_CHANGES";
+        activityLog.record(sheet, requesterId, ActorRole.MASTER, ActivityCategory.GM_ADJUSTMENT, action,
+                null, null, summary, null, req.note());
+        publish(sheet, action);
+        return toResponse(changeRepository.save(cr), sheet);
     }
 
     @Transactional
@@ -171,8 +184,10 @@ public class SheetManagementService {
                 ActivityCategory.GM_ADJUSTMENT, action, null));
     }
 
-    private ChangeRequestResponse toResponse(SheetChangeRequest r) {
+    /** Resumo calculado contra a ficha atual (pedido pendente mostra "antes → depois"). */
+    private ChangeRequestResponse toResponse(SheetChangeRequest r, CharacterSheet sheet) {
         return new ChangeRequestResponse(r.getId(), r.getSheetId(), r.getRequesterId(), r.getStatus(), r.getChanges(),
+                r.getSummary() != null ? List.of(r.getSummary().split("\n")) : ChangeSummary.describeAll(sheet, r.getChanges()),
                 r.getReviewNote(), r.getCreatedAt(), r.getReviewedAt());
     }
 }

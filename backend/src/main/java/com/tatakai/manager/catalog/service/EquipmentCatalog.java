@@ -26,11 +26,18 @@ public class EquipmentCatalog {
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Def(String key, String name, String kind, Map<String, Integer> protection, List<String> cover,
-                      Double weightKg, String category, List<String> effects, String text, String price, String access) {
+                      Double weightKg, String category, List<String> effects, String text, String price, String access,
+                      Container container) {
         public boolean has(String effect) {
             return effects != null && effects.contains(effect);
         }
     }
+
+    /**
+     * Item que, vestido, abre espaços extras em QUICK (Acesso Rápido) ou PACK (Carregando): {@code slots} itens,
+     * cada um com até {@code maxItemKg} e no total até {@code maxKg} (nulo = sem limite).
+     */
+    public record Container(String location, int slots, Double maxItemKg, Double maxKg) { }
 
     private List<Def> defs;
 

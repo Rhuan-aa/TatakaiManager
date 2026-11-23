@@ -25,7 +25,10 @@ import com.tatakai.manager.progression.entity.OvercomeStatus;
 import com.tatakai.manager.progression.repository.OvercomeDistributionRepository;
 import com.tatakai.manager.shared.exception.AccessDeniedException;
 import com.tatakai.manager.sheet.entity.CharacterSheet;
+import com.tatakai.manager.sheet.entity.SheetChangeStatus;
 import com.tatakai.manager.sheet.repository.CharacterSheetRepository;
+import com.tatakai.manager.sheet.repository.SheetChangeRequestRepository;
+import com.tatakai.manager.sheet.service.rules.ChangeSummary;
 import com.tatakai.manager.timeskip.entity.SubmissionStatus;
 import com.tatakai.manager.timeskip.entity.TimeSkip;
 import com.tatakai.manager.timeskip.entity.TimeSkipStatus;
@@ -62,6 +65,7 @@ public class ApprovalService {
     private final InteractionLogRepository logRepository;
     private final TimeSkipRepository timeSkipRepository;
     private final TimeSkipSubmissionRepository submissionRepository;
+    private final SheetChangeRequestRepository changeRepository;
 
     public ApprovalService(CampaignRepository campaignRepository,
                            CampaignMemberRepository memberRepository,
@@ -74,7 +78,9 @@ public class ApprovalService {
                            MartialArtRepository martialArtRepository,
                            InteractionLogRepository logRepository,
                            TimeSkipRepository timeSkipRepository,
-                           TimeSkipSubmissionRepository submissionRepository) {
+                           TimeSkipSubmissionRepository submissionRepository,
+                           SheetChangeRequestRepository changeRepository) {
+        this.changeRepository = changeRepository;
         this.campaignRepository = campaignRepository;
         this.memberRepository = memberRepository;
         this.sheetRepository = sheetRepository;
@@ -162,6 +168,14 @@ public class ApprovalService {
                 .filter(d -> d.getStatus() == NotebookStatus.PENDING_APPROVAL)
                 .forEach(d -> items.add(sheetItem("NOTEBOOK_DRAFT", d.getId(), d.getName(), who,
                         d.getCreatedAt(), sid, uid)));
+        changeRepository.findBySheetIdOrderByCreatedAtDesc(sid).stream()
+                .filter(c -> c.getStatus() == SheetChangeStatus.PENDING)
+                .forEach(c -> {
+                    List<String> lines = ChangeSummary.describeAll(sheet, c.getChanges());
+                    items.add(new ApprovalItemResponse("SHEET_CHANGES", c.getId(),
+                            sheetName + ": " + lines.size() + (lines.size() == 1 ? " alteração" : " alterações"),
+                            who, c.getCreatedAt(), sid, null, null, null, uid, lines));
+                });
         overcomeRepository.findBySheetIdOrderByCreatedAtDesc(sid).stream()
                 .filter(o -> o.getStatus() == OvercomeStatus.PENDING)
                 .forEach(o -> items.add(sheetItem("OVERCOME", o.getId(), "Distribuição de PS", who,

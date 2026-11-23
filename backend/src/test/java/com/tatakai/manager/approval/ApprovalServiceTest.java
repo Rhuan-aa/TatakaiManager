@@ -75,6 +75,7 @@ class ApprovalServiceTest {
     @Mock private InteractionLogRepository logRepository;
     @Mock private TimeSkipRepository timeSkipRepository;
     @Mock private TimeSkipSubmissionRepository submissionRepository;
+    @Mock private com.tatakai.manager.sheet.repository.SheetChangeRequestRepository changeRepository;
 
     private ApprovalService service;
 
@@ -88,7 +89,7 @@ class ApprovalServiceTest {
     void setUp() {
         service = new ApprovalService(campaignRepository, memberRepository, sheetRepository, buildRepository,
                 artRepository, techniqueRepository, draftRepository, overcomeRepository, martialArtRepository,
-                logRepository, timeSkipRepository, submissionRepository);
+                logRepository, timeSkipRepository, submissionRepository, changeRepository);
         player = User.builder().id(UUID.randomUUID()).name("Jogador").build();
         sheet = CharacterSheet.builder().id(UUID.randomUUID()).name("Ficha X")
                 .campaignMember(CampaignMember.builder().user(player).role(Role.PLAYER).build())

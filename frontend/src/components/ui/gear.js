@@ -1,5 +1,5 @@
 // Itens ligados aos catálogos de armas/equipamentos/consumíveis (plano §42–§44)
-export const ITEM_LOCATION = { HAND: 'Em mãos', QUICK: 'Acesso Rápido', PACK: 'Mochila', WORN: 'Vestido', DROPPED: 'No chão' };
+export const ITEM_LOCATION = { HAND: 'Em mãos', QUICK: 'Acesso Rápido', PACK: 'Carregando', WORN: 'Vestido', DROPPED: 'No chão' };
 
 /** Situação de uma arma para mostrar ao lado do nome: munição, travada, engatilhada, quebrada/danificada. */
 export function gearStatus(i, weapon) {

@@ -51,6 +51,10 @@ public class InventoryItem {
     @Builder.Default
     private ItemLocation location = ItemLocation.PACK;
 
+    /** Contêiner vestido (mochila, cinto…) em que o item está, em QUICK/PACK; nulo = espaço básico do local. */
+    @Column(name = "container_id")
+    private UUID containerId;
+
     /** Disparos restantes antes de recarregar (Capacidade). */
     @Column(nullable = false, columnDefinition = "integer not null default 0")
     private int loaded;

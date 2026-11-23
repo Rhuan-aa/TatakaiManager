@@ -66,7 +66,7 @@ export default function CampaignDetail() {
   const approvals = useApprovals(id, isMaster);
   // Aprovações: leva ao item (ficha/seção, log, TimeSkip) conforme o tipo da pendência
   function openApproval(item) {
-    const section = { SHEET: 'approval', ART_REQUEST: 'martial', TECHNIQUE_REQUEST: 'martial', NOTEBOOK_DRAFT: 'notebook', OVERCOME: 'progress' }[item.kind];
+    const section = { SHEET: 'approval', SHEET_CHANGES: 'changes', ART_REQUEST: 'martial', TECHNIQUE_REQUEST: 'martial', NOTEBOOK_DRAFT: 'notebook', OVERCOME: 'progress' }[item.kind];
     if (item.sheetId) { setFocus({ sheetId: item.sheetId, section }); setActiveTab('Fichas'); }
     else if (item.kind === 'LOG') { setFocus({ logId: item.logId }); setActiveTab('Logs'); }
     else if (item.kind === 'TIMESKIP_SUBMISSION') { setFocus({ timeSkipId: item.timeSkipId }); setActiveTab('Agenda'); }

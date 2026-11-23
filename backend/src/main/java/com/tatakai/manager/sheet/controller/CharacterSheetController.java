@@ -151,6 +151,12 @@ public class CharacterSheetController {
                 AuthenticatedUser.id()));
     }
 
+    @PatchMapping("/character-sheets/{sheetId}/inventory/{itemId}/location")
+    public ResponseEntity<CharacterSheetResponse> moveItem(@PathVariable UUID sheetId, @PathVariable UUID itemId,
+                                                           @Valid @RequestBody com.tatakai.manager.sheet.dto.request.MoveItemRequest request) {
+        return ResponseEntity.ok(sheetService.moveItem(sheetId, itemId, request, AuthenticatedUser.id()));
+    }
+
     @DeleteMapping("/character-sheets/{sheetId}/wounds/{woundId}")
     public ResponseEntity<CharacterSheetResponse> removeWound(@PathVariable UUID sheetId, @PathVariable UUID woundId) {
         return ResponseEntity.ok(sheetService.removeWound(sheetId, woundId, AuthenticatedUser.id()));

@@ -41,6 +41,10 @@ public class SheetChangeRequest {
     @Builder.Default
     private List<GmAdjustmentRequest> changes = new ArrayList<>();
 
+    /** Resumo congelado na decisão (linhas separadas por \n); pendente = calculado na hora. */
+    @Column(columnDefinition = "text")
+    private String summary;
+
     @Column(name = "review_note", length = 500)
     private String reviewNote;
 

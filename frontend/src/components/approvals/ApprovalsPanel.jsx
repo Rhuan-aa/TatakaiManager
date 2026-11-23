@@ -8,6 +8,7 @@ import Icon from '../ui/Icon';
 
 const KIND_LABELS = {
   SHEET: 'Fichas',
+  SHEET_CHANGES: 'Alterações de ficha',
   BUILD_TRAIT: 'Traços da construção',
   ART_REQUEST: 'Artes solicitadas',
   TECHNIQUE_REQUEST: 'Técnicas solicitadas',
@@ -99,6 +100,11 @@ export default function ApprovalsPanel({ campaignId, items, loading, onReload, o
                       <span className="block truncate text-xs text-[var(--text)] opacity-70">
                         {item.requesterName}{item.createdAt ? ` · ${formatWhen(item.createdAt)}` : ''}
                       </span>
+                      {item.details?.length > 0 && (
+                        <ul className="mt-1 list-disc pl-5 text-xs text-[var(--text)]">
+                          {item.details.map((l, i) => <li key={i}>{l}</li>)}
+                        </ul>
+                      )}
                     </span>
                   </button>
                   {inline && (

@@ -370,7 +370,13 @@
     "price": "1",
     "access": "Livre",
     "weightKg": 1,
-    "text": "Carrega o que não cabe no Acesso Rápido"
+    "text": "Vestida: +10 espaços em Carregando (até 20 kg no total)",
+    "container": {
+      "location": "PACK",
+      "slots": 10,
+      "maxItemKg": null,
+      "maxKg": 20
+    }
   },
   {
     "key": "BAINHA",
@@ -378,7 +384,73 @@
     "kind": "TOOL",
     "price": "½",
     "access": "Livre",
-    "text": "Põe uma arma ou item no Acesso Rápido"
+    "text": "Vestida: +1 espaço no Acesso Rápido para uma arma ou item de até 3 kg",
+    "container": {
+      "location": "QUICK",
+      "slots": 1,
+      "maxItemKg": 3,
+      "maxKg": null
+    }
+  },
+  {
+    "key": "CINTO_UTILIDADES",
+    "name": "Cinto de Utilidades",
+    "kind": "TOOL",
+    "price": "1",
+    "access": "Livre",
+    "weightKg": 0.5,
+    "text": "Vestido: +4 espaços no Acesso Rápido, só itens leves (até 0,5 kg cada)",
+    "container": {
+      "location": "QUICK",
+      "slots": 4,
+      "maxItemKg": 0.5,
+      "maxKg": null
+    }
+  },
+  {
+    "key": "POCHETE",
+    "name": "Pochete (bolsa de cintura)",
+    "kind": "TOOL",
+    "price": "1",
+    "access": "Livre",
+    "weightKg": 0.3,
+    "text": "Vestida: +2 espaços no Acesso Rápido (até 1 kg cada, 2 kg no total)",
+    "container": {
+      "location": "QUICK",
+      "slots": 2,
+      "maxItemKg": 1,
+      "maxKg": 2
+    }
+  },
+  {
+    "key": "BOLSA_LATERAL",
+    "name": "Bolsa Lateral",
+    "kind": "TOOL",
+    "price": "1",
+    "access": "Livre",
+    "weightKg": 0.5,
+    "text": "Vestida: +5 espaços em Carregando (até 6 kg no total)",
+    "container": {
+      "location": "PACK",
+      "slots": 5,
+      "maxItemKg": null,
+      "maxKg": 6
+    }
+  },
+  {
+    "key": "MOCHILA_CARGUEIRA",
+    "name": "Mochila Cargueira",
+    "kind": "TOOL",
+    "price": "3",
+    "access": "Livre",
+    "weightKg": 2,
+    "text": "Vestida: +16 espaços em Carregando (até 35 kg no total)",
+    "container": {
+      "location": "PACK",
+      "slots": 16,
+      "maxItemKg": null,
+      "maxKg": 35
+    }
   },
   {
     "key": "ROUPA_COMUM",
