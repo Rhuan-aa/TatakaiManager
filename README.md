@@ -208,18 +208,19 @@ modelos suportados:
 
 ### Atualizando um banco existente
 
-Com `DDL_AUTO=validate` o backend **não** cria tabelas nem colunas: se o schema estiver
-atrás do código, ele nem sobe. Antes de subir uma versão nova, faça backup e rode o script
-idempotente (pode rodar mais de uma vez, em banco de qualquer versão anterior):
+Com `DDL_AUTO=validate` o Hibernate **não** cria tabelas nem colunas. Por isso o backend roda
+sozinho, a cada boot e antes do Hibernate, o script idempotente
+`backend/src/main/resources/db/upgrade.sql`: ele cria o que falta, recoloca chaves e índices e
+remove os CHECKs antigos de enum. **Basta subir a versão nova** — não há passo manual no deploy.
+Para desligar (ex.: aplicar à mão), use `APP_SCHEMA_UPGRADE=false`.
+
+Ao mudar entidades, regenere o script com `scripts/gen_upgrade_sql.py` (passo a passo no topo do
+arquivo) no mesmo commit. Backup antes de versões grandes continua recomendado:
 
 ```bash
-# PG = URL do Postgres no formato do psql (postgresql://usuario:senha@host:5432/banco), não a JDBC do DB_URL
+# PG = URL do Postgres no formato do psql (postgresql://usuario:senha@host:5432/banco)
 pg_dump "$PG" > backup.sql
-psql "$PG" -v ON_ERROR_STOP=1 -f scripts/prod_upgrade.sql
 ```
-
-Ele cria o que falta, recoloca chaves e índices e remove os CHECKs antigos de enum. Ao mudar
-entidades, regenere-o com `scripts/gen_upgrade_sql.py` (passo a passo no topo do arquivo).
 
 > O runbook detalhado de produção (provisionamento, DNS, credenciais, backup) é mantido
 > **fora do repositório**, apenas localmente.

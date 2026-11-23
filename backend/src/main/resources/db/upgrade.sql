@@ -743,6 +743,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
     two_handed boolean DEFAULT false NOT NULL,
     weight_kg double precision DEFAULT 0 NOT NULL,
     location character varying(10) DEFAULT 'PACK'::character varying NOT NULL,
+    container_id uuid,
     id uuid NOT NULL,
     sheet_id uuid NOT NULL,
     consumable_key character varying(40),
@@ -760,6 +761,8 @@ ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS quantity integer;
 ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS two_handed boolean DEFAULT false NOT NULL;
 ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS weight_kg double precision DEFAULT 0 NOT NULL;
 ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS location character varying(10) DEFAULT 'PACK'::character varying NOT NULL;
+ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS container_id uuid;
+ALTER TABLE public.inventory_items ALTER COLUMN container_id DROP NOT NULL;
 ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS id uuid;
 ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS sheet_id uuid;
 ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS consumable_key character varying(40);
@@ -1075,6 +1078,30 @@ ALTER TABLE public.sheet_activity_logs ADD COLUMN IF NOT EXISTS after_value text
 ALTER TABLE public.sheet_activity_logs ALTER COLUMN after_value DROP NOT NULL;
 ALTER TABLE public.sheet_activity_logs ADD COLUMN IF NOT EXISTS before_value text;
 ALTER TABLE public.sheet_activity_logs ALTER COLUMN before_value DROP NOT NULL;
+
+CREATE TABLE IF NOT EXISTS public.sheet_change_requests (
+    created_at timestamp(6) with time zone NOT NULL,
+    reviewed_at timestamp(6) with time zone,
+    id uuid NOT NULL,
+    requester_id uuid NOT NULL,
+    sheet_id uuid NOT NULL,
+    status character varying(20) NOT NULL,
+    review_note character varying(500),
+    summary text,
+    changes jsonb NOT NULL
+);
+ALTER TABLE public.sheet_change_requests ADD COLUMN IF NOT EXISTS created_at timestamp(6) with time zone;
+ALTER TABLE public.sheet_change_requests ADD COLUMN IF NOT EXISTS reviewed_at timestamp(6) with time zone;
+ALTER TABLE public.sheet_change_requests ALTER COLUMN reviewed_at DROP NOT NULL;
+ALTER TABLE public.sheet_change_requests ADD COLUMN IF NOT EXISTS id uuid;
+ALTER TABLE public.sheet_change_requests ADD COLUMN IF NOT EXISTS requester_id uuid;
+ALTER TABLE public.sheet_change_requests ADD COLUMN IF NOT EXISTS sheet_id uuid;
+ALTER TABLE public.sheet_change_requests ADD COLUMN IF NOT EXISTS status character varying(20);
+ALTER TABLE public.sheet_change_requests ADD COLUMN IF NOT EXISTS review_note character varying(500);
+ALTER TABLE public.sheet_change_requests ALTER COLUMN review_note DROP NOT NULL;
+ALTER TABLE public.sheet_change_requests ADD COLUMN IF NOT EXISTS summary text;
+ALTER TABLE public.sheet_change_requests ALTER COLUMN summary DROP NOT NULL;
+ALTER TABLE public.sheet_change_requests ADD COLUMN IF NOT EXISTS changes jsonb;
 
 CREATE TABLE IF NOT EXISTS public.sheet_images (
     id uuid NOT NULL,
@@ -1501,6 +1528,12 @@ DO $$ BEGIN
     ALTER TABLE public.sheet_activity_logs ADD CONSTRAINT sheet_activity_logs_pkey PRIMARY KEY (id);
   END IF;
 EXCEPTION WHEN others THEN RAISE WARNING 'public.sheet_activity_logs sheet_activity_logs_pkey: %', SQLERRM;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE contype = 'p' AND conrelid = 'public.sheet_change_requests'::regclass) THEN
+    ALTER TABLE public.sheet_change_requests ADD CONSTRAINT sheet_change_requests_pkey PRIMARY KEY (id);
+  END IF;
+EXCEPTION WHEN others THEN RAISE WARNING 'public.sheet_change_requests sheet_change_requests_pkey: %', SQLERRM;
 END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE contype = 'p' AND conrelid = 'public.sheet_images'::regclass) THEN

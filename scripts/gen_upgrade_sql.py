@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Generates an idempotent upgrade script (scripts/prod_upgrade.sql) from a schema-only pg_dump.
+"""Generates an idempotent upgrade script (backend/src/main/resources/db/upgrade.sql; the backend runs it on every boot) from a schema-only pg_dump.
 
 Production runs with ddl-auto=validate, so it never creates tables or columns on its own.
 To get the dump of the current entities:
   1. create an empty database (e.g. `schemagen`) on a dev Postgres;
   2. boot the backend jar against it with DDL_AUTO=create (and a throwaway MONGO_URI db);
   3. pg_dump -U postgres --schema-only --no-owner --no-privileges schemagen > gen.sql
-Then: python3 scripts/gen_upgrade_sql.py gen.sql > scripts/prod_upgrade.sql
+Then: python3 scripts/gen_upgrade_sql.py gen.sql > backend/src/main/resources/db/upgrade.sql
 
 The output can run on any older database (or twice): it creates missing tables, adds missing
 columns, drops NOT NULL where the entity allows null, drops every CHECK (Hibernate's enum CHECKs
