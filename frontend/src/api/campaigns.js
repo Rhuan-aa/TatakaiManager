@@ -25,3 +25,7 @@ export async function listMembers(campaignId) {
   const { data } = await client.get(`/campaigns/${campaignId}/members`);
   return data;
 }
+
+export async function deleteCampaign(campaignId) {
+  await client.delete(`/campaigns/${campaignId}`);
+}
