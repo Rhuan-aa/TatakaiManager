@@ -9,6 +9,7 @@ import AttributesStep from './AttributesStep';
 import FreePointsStep from './FreePointsStep';
 import ReviewStep from './ReviewStep';
 import Icon from '../ui/Icon';
+import { DeleteSheetBlock } from '../sheet/SheetManagePanels';
 
 const STEPS = [
   { key: 'IDENTITY', label: 'Identidade', C: IdentityStep },
@@ -20,7 +21,7 @@ const STEPS = [
 ];
 
 /** `isOwner` (opcional): dono da ficha; padrão = não é Mestre. Quem não é dono só vê (Mestre ainda resolve traços pendentes). */
-export default function BuildWizard({ campaignId, sheetId, isMaster, isOwner = !isMaster, onDone }) {
+export default function BuildWizard({ campaignId, sheetId, isMaster, isOwner = !isMaster, onDone, onDeleted }) {
   const toast = useToast();
   const [build, setBuild] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -77,6 +78,12 @@ export default function BuildWizard({ campaignId, sheetId, isMaster, isOwner = !
         <C build={build} campaignId={campaignId} canAct={canAct} isMaster={isMaster} busy={busy}
           act={act} confirm={confirm} burst={burst} onBack={back} onDone={onDone} />
       </div>
+      {onDeleted && (isOwner || isMaster) && (
+        <div className="panel flex flex-col gap-2 p-4">
+          <h2 className="panel-title">Excluir ficha</h2>
+          <DeleteSheetBlock sheet={{ id: sheetId, name: build.name ?? 'esta ficha' }} onDeleted={onDeleted} />
+        </div>
+      )}
     </section>
   );
 }

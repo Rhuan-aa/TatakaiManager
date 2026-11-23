@@ -122,6 +122,7 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npc
         sheetId={building}
         isMaster={isMaster}
         onDone={() => { const id = building; setBuilding(null); setOpenId(id); reload(); }}
+        onDeleted={() => { setBuilding(null); setOpenId(null); setOpen(null); reload(); }}
       />
     );
   }
@@ -156,7 +157,8 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npc
   }
 
   if (openId && open?.buildStatus === 'IN_BUILD') {
-    return <BuildWizard campaignId={campaignId} sheetId={openId} isMaster={isMaster} onDone={() => { reload(); }} />;
+    return <BuildWizard campaignId={campaignId} sheetId={openId} isMaster={isMaster} onDone={() => { reload(); }}
+      onDeleted={() => { setOpenId(null); setOpen(null); reload(); }} />;
   }
 
   if (openId) {
