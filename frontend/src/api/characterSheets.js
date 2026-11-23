@@ -177,3 +177,26 @@ export async function consumeItem(sheetId, itemId, option) {
   const { data } = await client.post(`/character-sheets/${sheetId}/inventory/${itemId}/use`, option ? { option } : {});
   return data;
 }
+
+export async function deleteSheet(sheetId) {
+  await client.delete(`/character-sheets/${sheetId}`);
+}
+
+export async function listChangeRequests(sheetId) {
+  const { data } = await client.get(`/character-sheets/${sheetId}/change-requests`);
+  return data;
+}
+
+export async function proposeChanges(sheetId, changes) {
+  const { data } = await client.post(`/character-sheets/${sheetId}/change-requests`, { changes });
+  return data;
+}
+
+export async function reviewChanges(sheetId, requestId, { approved, note }) {
+  const { data } = await client.post(`/character-sheets/${sheetId}/change-requests/${requestId}/review`, { approved, note });
+  return data;
+}
+
+export async function cancelChanges(sheetId, requestId) {
+  await client.delete(`/character-sheets/${sheetId}/change-requests/${requestId}`);
+}

@@ -168,6 +168,7 @@ export default function SheetsSection({ campaignId, isMaster, fightSheetIds, npc
         refreshKey={tick}
         focusSection={focusSection}
         onChange={(s) => { setOpen(s); reload(); }}
+        onDeleted={() => { setOpenId(null); setOpen(null); reload(); }}
       />
     ) : <div className="skeleton h-32 w-full" />;
   }

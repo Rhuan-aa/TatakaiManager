@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import CharacterSheetForm from './CharacterSheetForm';
 import GmAdjustmentPanel from './GmAdjustmentPanel';
+import { DeleteSheetBlock, ChangeRequestsBlock } from './SheetManagePanels';
 import RollsPanel from './RollsPanel';
 import ActivityLogPanel from './ActivityLogPanel';
 import MartialPanel from './MartialPanel';
@@ -347,7 +348,7 @@ function InteractionsBlock({ items }) {
   );
 }
 
-export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, campaignId, refreshKey = 0, onChange, onBack, focusSection, interactions }) {
+export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, campaignId, refreshKey = 0, onChange, onBack, onDeleted, focusSection, interactions }) {
   const { user } = useAuth();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
@@ -695,6 +696,17 @@ export default function CharacterSheetView({ sheet, isMaster: isCampaignMaster, 
       {isMaster && (
         <Block title="Ajustes do Mestre">
           <GmAdjustmentPanel sheet={sheet} campaignId={campaignId} onDone={onChange} />
+        </Block>
+      )}
+      {!isNpc && sheet.buildStatus === 'COMPLETED' && (isOwner || isMaster) && (
+        <Block id="sheet-changes" title={isMaster ? 'Pedidos de ajuste' : 'Editar com aprovação'}>
+          <ChangeRequestsBlock sheet={sheet} campaignId={campaignId} isMaster={isMaster} isOwner={isOwner}
+            onChange={onChange} />
+        </Block>
+      )}
+      {!isNpc && (isOwner || isMaster) && onDeleted && (
+        <Block title="Excluir ficha">
+          <DeleteSheetBlock sheet={sheet} onDeleted={onDeleted} />
         </Block>
       )}
       {showReopen && (

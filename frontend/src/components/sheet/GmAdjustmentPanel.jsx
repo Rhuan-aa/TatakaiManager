@@ -14,7 +14,7 @@ export const SEVERITIES = [['MINOR', 'Leve'], ['MODERATE', 'Moderado'], ['SEVERE
 export const INJURY_TYPES = [['CUTTING', 'Corte'], ['PIERCING', 'Perfuração'], ['BLUNT', 'Contusão']];
 
 // kind: number (value), select (field), injury, item, target (targetId)
-const ACTIONS = {
+export const ACTIONS = {
   GRANT_FIGHT_EXPERIENCE: { label: 'Conceder EL', value: 'Quantidade (> 0)' },
   ADJUST_OVERCOME_POINTS: { label: 'Ajustar PS', value: 'Delta' },
   SET_RESOURCE: { label: 'Definir recurso atual', field: RESOURCES.map((r) => [r, r]), value: 'Novo valor' },
@@ -34,7 +34,8 @@ const ACTIONS = {
 };
 
 /** `only` trava numa ação (atalho de aba, ex.: ADD_ITEM no Inventário) e já preenche o motivo. */
-export default function GmAdjustmentPanel({ sheet, campaignId, onDone, only }) {
+/** `onSubmit(body)` (opcional) troca o envio direto por devolver o ajuste montado — usado nos pedidos do jogador. */
+export default function GmAdjustmentPanel({ sheet, campaignId, onDone, only, onSubmit }) {
   const toast = useToast();
   const [action, setAction] = useState(only ?? 'GRANT_FIGHT_EXPERIENCE');
   const [field, setField] = useState('');
@@ -94,8 +95,8 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone, only }) {
       location: item.location || null };
     setBusy(true);
     try {
-      const updated = await gmAdjust(sheet.id, body);
-      toast('Ajuste aplicado.');
+      const updated = onSubmit ? await onSubmit(body) : await gmAdjust(sheet.id, body);
+      if (!onSubmit) toast('Ajuste aplicado.');
       setReason(defaultReason);
       reset();
       if (cfg.item) setItem({ name: '', quantity: 1, description: '', weightKg: '', weaponKey: '', equipmentKey: '', consumableKey: '', location: '' });
@@ -262,7 +263,7 @@ export default function GmAdjustmentPanel({ sheet, campaignId, onDone, only }) {
         <input required maxLength={500} className="field mt-1 w-full" value={reason} onChange={(e) => setReason(e.target.value)} />
       </label>
       <button type="submit" className="btn-primary self-start" disabled={busy || !reason.trim()}>
-        {busy ? 'Aplicando…' : only ? ACTIONS[only].label : 'Aplicar ajuste'}
+        {busy ? 'Aplicando…' : onSubmit ? 'Adicionar ao pedido' : only ? ACTIONS[only].label : 'Aplicar ajuste'}
       </button>
     </form>
   );
